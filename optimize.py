@@ -1,9 +1,9 @@
 #!/usr/bin/python
 # Calling program provides user-specified options.
-def optimize( molsys, options_in, fsetGeometry, fgradient, fhessian, fenergy ):
+def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy ):
     
     import caseInsensitiveDict
-    userOptions = caseInsensitiveDict.CaseInsensitiveDict( options_from_calling_program )
+    userOptions = caseInsensitiveDict.CaseInsensitiveDict( options_in )
     # Save copy of original user options.
     origOptions = userOptions.copy()
     
@@ -14,6 +14,7 @@ def optimize( molsys, options_in, fsetGeometry, fgradient, fhessian, fenergy ):
     print op.Params
 
     from printTools import printGeomGrad, printMat, printArray
+    from addIntcos import connectivityFromDistances
     import optExceptions
     import history 
     import stepAlgorithms
@@ -23,79 +24,83 @@ def optimize( molsys, options_in, fsetGeometry, fgradient, fhessian, fenergy ):
     import testB
     energies = []
 
-    print molsys
+    print Molsys
 
-    hessian_func()
+    # *** Construct coordinates to use.
+    # See what is bonded.
+    C = connectivityFromDistances(Molsys.geom, Molsys.Z)
+
+    if op.Params.frag_mode == 'SINGLE':
+        # Add to connectivity to make sure all fragments connected.
+        Molsys.augmentConnectivityToSingleFragment(C)
+        Molsys.consolidateFragments();
+
+    elif op.Params.frag_mode == 'MULTI':
+        # should do nothing if fragments are already split by calling program/constructor.
+        Molsys.splitFragmentsByConnectivity()
+
+    if op.Params.opt_coordinates in ['REDUNDANT','BOTH']:
+        Molsys.addIntcosFromConnectivity(C)
+    if op.Params.opt_coordinates in ['CARTESIAN','BOTH']:
+        Molsys.addCartesianIntcos()
     
+    Molsys.printIntcos();
+
     stepNumber = 0
     while stepNumber < op.Params.geom_maxiter: 
-        E, g_x = gradient_func()
-        misc.printGeomGrad(oneFrag.geom, g_x)
+        E, g_x = fGradient()
+        printGeomGrad(Molsys.geom, g_x)
         energies.append( E )
     
-        # Construct coordinates to use.
-    
-        if stepNumber == 0:
-            if op.Params.opt_coordinates in ['REDUNDANT','BOTH']:
-                oneFrag.addIntcosFromConnectivity()
-            if op.Params.opt_coordinates in ['CARTESIAN','BOTH']:
-                oneFrag.addCartesianIntcos()
-    
-        oneFrag.printIntcos();
     
         if op.Params.test_B:
-            testB.testB(oneFrag.intcos, oneFrag.geom)
+            testB.testB(Molsys.intcos, Molsys.geom)
         if op.Params.test_derivative_B:
-            testB.testDerivativeB(oneFrag.intcos, oneFrag.geom)
+            testB.testDerivativeB(Molsys.intcos, Molsys.geom)
     
         if op.Params.print_lvl > 3:
-            B = intcosMisc.Bmat(oneFrag.intcos, oneFrag.geom)
+            B = intcosMisc.Bmat(Molsys.intcos, Molsys.geom)
             print "B matrix:"
-            misc.printMat(B)
-    
-        fq = intcosMisc.qForces(oneFrag.intcos, oneFrag.geom, g_x)
+            printMat(B)
+
+        fq = intcosMisc.qForces(Molsys.intcos, Molsys.geom, g_x)
         if (op.Params.print_lvl > 1):
             print "Internal forces in au"
-            misc.printArray(fq)
+            printArray(fq)
     
-        history.History.append(oneFrag.geom, E, fq); # Save initial step info.
+        history.History.append(Molsys.geom, E, fq); # Save initial step info.
     
         history.History.currentStepReport()
     
         if stepNumber == 0:
-            H = hessian.guess(oneFrag.intcos, oneFrag.geom, oneFrag.Z, op.Params.intrafrag_hess)
-    
-    
+            H = hessian.guess(Molsys.intcos, Molsys.geom, Molsys.Z, op.Params.intrafrag_hess)
         else:
-            history.History.hessianUpdate(H, oneFrag.intcos)
+            history.History.hessianUpdate(H, Molsys.intcos)
     
         print 'Hessian (in au) is:'
-        misc.printMat(H)
-        #print 'Hessian in aJ/Ang^2 or aJ/deg^2'
-        #hessian.show(H, intcos)
-    
-        intcosMisc.project_redundancies(oneFrag.intcos, oneFrag.geom, fq, H)
-    
+        printMat(H)
+        print 'Hessian in aJ/Ang^2 or aJ/deg^2'
+        hessian.show(H, Molsys.intcos)
+
+        intcosMisc.project_redundancies(Molsys.intcos, Molsys.geom, fq, H)
+
         try:
            # displaces and adds step to history
-           Dq = stepAlgorithms.Dq(oneFrag.intcos, oneFrag.geom, E, fq, H)
+           print 'geom before dq'
+           printMat(Molsys.geom)
+           print 'id before stepAlgorithms %d' % id(Molsys.geom)
+           Dq = stepAlgorithms.Dq(Molsys, E, fq, H)
+           print 'geom after dq'
+           printMat(Molsys.geom)
+           print 'id after stepAlgorithms %d' % id(Molsys.geom)
         except optExceptions.BAD_STEP_EXCEPT:
            if history.History.consecutiveBacksteps < op.Params.consecutive_backsteps_allowed:
                print 'Taking backward step'
-               Dq = stepAlgorithms.Dq(oneFrag.intcos, oneFrag.geom, E, fq, H, stepType="BACKSTEP")
+               Dq = stepAlgorithms.Dq(Molsys.intcos, Molsys.geom, E, fq, H, stepType="BACKSTEP")
            else:
                print 'Maximum number of backsteps has been attempted.  Continuing.'
-        
-        #print '\tIntco Values (Angstroms and degrees)'
-        #for intco in oneFrag.intcos:
-        #   print '\t\t%-10s%10.5f' % (intco, intco.qShow(oneFrag.geom))
-        # print 'Dq'
-        # misc.printArray(Dq)
-        # print 'fq'
-        # misc.printArray(fq)
-    
-        check = False
-        check = convCheck.convCheck(stepNumber, oneFrag.intcos, Dq, fq, energies)
+
+        check = convCheck.convCheck(stepNumber, Molsys.intcos, Dq, fq, energies)
     
         if check:
            print 'Converged in %d steps!' % (int(stepNumber)+1)
@@ -103,13 +108,13 @@ def optimize( molsys, options_in, fsetGeometry, fgradient, fhessian, fenergy ):
         
         # Now need to return geometry in preparation for next step.
         print "\tStructure for next step (au):"
-        oneFrag.printGeom()
-        print "\tStructure for next step (Angstroms):"
-        oneFrag.showGeom()
-        setGeometry_func(oneFrag.geom)
+        Molsys.printGeom()
+        #print "\tStructure for next step (Angstroms):"
+        #Molsys.showGeom()
+        fSetGeometry(Molsys.geom)
     
         stepNumber += 1
     
-    print history.History
+    #print history.History
     history.History.summary()
 

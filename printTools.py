@@ -5,8 +5,13 @@
 
 def printMat(M):
     for row in range(M.shape[0]):
+       tab = 0
        for col in range(M.shape[1]):
+           tab += 1
            print " %10.6f" % M[row,col],
+           if tab == 7 and col != (M.shape[1]-1):
+               print
+               tab = 0
        print
     return
 

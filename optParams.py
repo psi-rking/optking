@@ -48,7 +48,7 @@ class OPT_PARAMS(object):
     g_convergence   = stringOption( 'g_convergence' )
     hess_update     = stringOption( 'hess_update' )
     intrafrag_hess  = stringOption( 'intrafrag_hess' )
-    #frag_mode       = stringOption( 'frag_mode' )
+    frag_mode       = stringOption( 'frag_mode' )
     #interfrag_mode  = stringOption( 'interfrag_mode' )
     #interfrag_hess  = stringOption( 'interfrag_hess' )
 
@@ -58,7 +58,7 @@ class OPT_PARAMS(object):
         for attr in dir(P):
             if not hasattr( getattr(P,attr), '__self__' ): # omit bound methods
                 if '__' not in attr:                       # omit these methods
-                    s += "\t%-25s = %15s\n" %(attr, getattr(P,attr))
+                    s += "\t%-30s = %15s\n" %(attr, getattr(P,attr))
         return s
 
     def __init__(P, uod):
@@ -69,7 +69,8 @@ class OPT_PARAMS(object):
         # Maximum number of geometry optimization steps
         P.geom_maxiter = uod.get('geom_maxiter', 50)
         # Print level.  1 = normal
-        P.print_lvl = uod.get('print_lvl', 1)
+        ##P.print_lvl = uod.get('print_lvl', 1)
+        P.print_lvl = uod.get('print', 1)
         ## Print all optimization parameters.
         #P.print_opt_params = uod.get('PRINT_OPT_PARAMS', False)
         # Specifies minimum search, transition-state search, or IRC following
@@ -203,7 +204,7 @@ class OPT_PARAMS(object):
         ## For multi-fragment molecules, treat as single bonded molecule or via interfragment
         ## coordinates. A primary difference is that in ``MULTI`` mode, the interfragment 
         ## coordinates are not redundant.
-        #P.frag_mode = uod.get('FRAG_MODE', 'SINGLE')
+        P.frag_mode = uod.get('FRAG_MODE', 'SINGLE')
         ## Which atoms define the reference points for interfragment coordinates?
         #P.frag_ref_atoms = uod.get('FRAG_REF_ATOMS', '')
         ## Do freeze all fragments rigid?
@@ -227,7 +228,7 @@ class OPT_PARAMS(object):
         ## When connecting disparate fragments when frag_mode = SIMPLE, a "bond"
         ## is assigned if interatomic distance is less than (this number) * sum of covalent radii. The
         ## value is then increased until all the fragments are connected (directly or indirectly).
-        #P.interfragment_connect = uod.get('INTERFRAGMENT_CONNECT', 1.8)
+        P.interfragment_connect = uod.get('INTERFRAGMENT_CONNECT', 1.8)
         ## General, maximum distance for the definition of H-bonds.
         #P.h_bond_connect = uod.get('h_bond_connect', 4.3)
         ## Only generate the internal coordinates and then stop (boolean)

@@ -1,45 +1,36 @@
 import numpy as np
 
 molecule hooh {
-  H
-  O 1 0.90
-  O 2 1.40 1 100.0
-  H 3 0.90 2 100.0 1 115.0
+H        0.937015      1.604407      0.555213
+O       -0.019115      1.414938      0.581411
+O        0.025938      0.224323     -0.256620
+H       -0.252091     -0.426417      0.433259
 --
-  H 0.0 1.0  1.0
-  O 0.0 1.0  0.0
-  H 0.0 1.0 -1.0
+H       -0.855884     -2.552886      1.676809
+O       -0.791926     -1.587530      1.580706
+H       -1.404821     -1.259905      2.261963
+  no_com
+  no_reorient
+  unit Angstrom
 }
 
 set {
   basis dz
-  puream false
-  df_scf_guess false
-  scf_type pk
-  guess sad
-  d_convergence 10
 }
 
 set optking {
-  Geom_maxiter  1
+  Geom_maxiter  10
   step_type     rfo
   hess_update   bfgs
-  consecutive_backsteps 2
   intrafrag_hess SIMPLE
-#  full_hess_every 1
 }
-
-mol = core.get_active_molecule()
-mol.update_geometry()
-mol.print_out()
-
-print 'PSI4 molecule with %d fragments' % mol.nfragments()
 
 # Create initial molecular structure object in optking
 #  (atomic numbers, cartesians, masses, ...) using class method
-#  in pyopt.frag.py for a PSI4 molecule.
-import pyopt
-pyopt_molsys = pyopt.molsys.MOLSYS.fromPsi4Molecule(mol)
+#  in optking.frag.py for a PSI4 molecule.
+mol = core.get_active_molecule()
+import optking
+Molsys = optking.molsys.MOLSYS.fromPsi4Molecule(mol)
 
 # Collect the user-specified OPTKING keywords in a dict.
 all_options = p4util.prepare_options_for_modules()
@@ -72,18 +63,10 @@ def gradient_func(printResults=True):
 
 def hessian_func(printResults=True):
     H = driver.hessian('hf', molecule=mol)
-    print H
+    if printResults:
+        print '\t Hessian'
+        print H
     return H
-#    molname = ref_wfn.molecule().name()
-#    prefix = core.get_writer_file_prefix(molname)
-#    with open(prefix+".hess", 'w') as fp:
-#        fp.read("%5d%5d\n" % (natoms, junk))
-#        Hin = np.array(natoms,3)
-#        for row in fp:
-#            fp.read("%20.10f%20.10f%20.10f\n", Hin[row,0], Hin[row,1], Hin[row,2])
-#        np.reshape(Hin, (3*natoms,3*natoms))
-#    print 'hessian'
-#    print Hin
 
 #  This function only matters for special purposes like 1D line searching.
 # The energy is usually obtained from the gradient function.
@@ -94,7 +77,7 @@ def energy_func(printResults=True):
     return E
 
 # Provide optimizer function the following arguments:
-# 1. pyopt.molsys.MOLSYS system (defined by class method above.
+# 1. optking.molsys.MOLSYS system (defined by class method above.
 # 2. a dictionary of optking options
 # 3. a method which prepares a given Cartesian, numpy geometry
 #     for subsequent gradient computation or analysis.
@@ -102,6 +85,6 @@ def energy_func(printResults=True):
 # 5. optional hessian function
 # 6. optional energy function for line-searching algorithms
 
-pyopt.optimize( pyopt_molsys, optking_user_options, setGeometry_func, gradient_func, \
+optking.optimize( Molsys, optking_user_options, setGeometry_func, gradient_func, \
                 hessian_func, energy_func )
 

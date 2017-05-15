@@ -19,7 +19,7 @@ def connectivityFromDistances(geom, Z):
 
     for i,j in combinations( range(len(geom)), 2):
         R = v3d.dist(geom[i], geom[j])
-        Rcov = (covRadii.R[Z[i]] + covRadii.R[Z[j]])/pc.bohr2angstroms
+        Rcov = (covRadii.R[int(Z[i])] + covRadii.R[int(Z[j])])/pc.bohr2angstroms
         if R < op.Params.covalent_connect * Rcov:
             C[i,j] = C[j,i] = True
 
@@ -182,8 +182,9 @@ def linearBendCheck(intcos, geom, dq):
                 linearBends.append( bend.BEND(A,B,C,bendType="COMPLEMENT") )
 
     linearBendsMissing = []
-    print "\tThe following linear bends should be present. Checking."
-    for b in linearBends:
+    for ib, b in enumerate(linearBends):
+        if ib == 0:
+            print "\tThe following linear bends should be present."
         print b
 
         if b in intcos:

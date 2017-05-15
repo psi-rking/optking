@@ -7,30 +7,30 @@ from intcosMisc import qShowForces
 from addIntcos import linearBendCheck
 from math import sqrt, fabs
 from printTools import printArray, printMat
-from misc import symmetrizeXYZ, isDqSymmetric, \
+from misc import symmetrizeXYZ, isDqSymmetric
 from linearAlgebra import absMax, symmMatEig, asymmMatEig, symmMatInv
 import v3d
 from history import History
-import opt_exceptions
+import optExceptions
 
 # This function and its components:
 # 1. Computes Dq, the step in internal coordinates.
 # 2. Calls displace and attempts to take the step.
 # 3. Updates history with results.
-def Dq(intcos, geom, E, qForces, H, stepType=None):
+def Dq(Molsys, E, qForces, H, stepType=None):
     if len(H) == 0 or len(qForces) == 0: return np.zeros( (0), float)
 
     if not stepType:
       stepType = Params.step_type
 
     if stepType == 'NR':
-        return Dq_NR(intcos, geom, E, qForces, H)
+        return Dq_NR(Molsys, E, qForces, H)
     elif stepType == 'RFO':
-        return Dq_RFO(intcos, geom, E, qForces, H)
+        return Dq_RFO(Molsys, E, qForces, H)
     elif stepType == 'SD':
-        return Dq_SD(intcos, geom, E, qForces)
+        return Dq_SD(Molsys, E, qForces)
     elif stepType == 'BACKSTEP':
-        return Dq_BACKSTEP(intcos, geom) 
+        return Dq_BACKSTEP(Molsys) 
     else:
         raise ValueError('Dq: step type not yet implemented')
 
@@ -94,7 +94,8 @@ def Dq_NR(intcos, geom, E, fq, H):
     # save values in step data
     History.appendRecord(DEprojected, dq, nr_u, nr_g, nr_h)
 
-    linearList = linearBendCheck(intcos, geom, dq)
+    # Can check full geometry, but returned indices will correspond then to that.
+    linearList = linearBendCheck(Molsys.intcos, Molsys.geom, dq)
     if linearList:
         raise INTCO_EXCEPT("New linear angles", linearList)
 
@@ -102,7 +103,7 @@ def Dq_NR(intcos, geom, E, fq, H):
 
 
 # Take Rational Function Optimization step
-def Dq_RFO(intcos, geom, E, fq, H):
+def Dq_RFO(Molsys, E, fq, H):
     print "\tTaking RFO optimization step."
     dim = len(fq)
     dq = np.zeros( (dim), float)         # To be determined and returned.
@@ -202,7 +203,7 @@ def Dq_RFO(intcos, geom, E, fq, H):
                 # Check symmetry of root.
                 dq[:] = SRFOevects[i,0:dim]
                 if not Params.accept_symmetry_breaking:
-                    symm_rfo_step = isDqSymmetric(intcos, geom, dq)
+                    symm_rfo_step = isDqSymmetric(Molsys.intcos, Molsys.geom, dq)
     
                     if not symm_rfo_step:  # Root is assymmetric so reject it.
                         if alphaIter == 0:
@@ -326,8 +327,11 @@ def Dq_RFO(intcos, geom, E, fq, H):
     print "\tProjected energy change by RFO approximation: %20.10lf" % DEprojected
 
     # Scale fq into aJ for printing
-    fq_aJ = qShowForces(intcos, fq)
-    displace(intcos, geom, dq, fq_aJ)
+    fq_aJ = qShowForces(Molsys.intcos, fq)
+
+    # this won't work for multiple fragments yet until dq and fq get cut up.
+    for F in Molsys._fragments:
+        displace(F.intcos, F.geom, dq, fq_aJ)
 
     # For now, saving RFO unit vector and using it in projection to match C++ code,
     # could use actual Dq instead.
@@ -351,14 +355,14 @@ def Dq_RFO(intcos, geom, E, fq, H):
 
     History.appendRecord(DEprojected, dq, rfo_u, rfo_g, rfo_h)
 
-    linearList = linearBendCheck(intcos, geom, dq)
+    linearList = linearBendCheck(Molsys.intcos, Molsys.geom, dq)
     if linearList:
         raise INTCO_EXCEPT("New linear angles", linearList)
 
     # Before quitting, make sure step is reasonable.  It should only be
     # screwball if we are using the "First Guess" after the back-transformation failed.
     if sqrt(np.dot(dq, dq)) > 10 * trust:
-        raise opt_exceptions.BAD_STEP_EXCEPT("opt.py: Step is far too large.")
+        raise optExceptions.BAD_STEP_EXCEPT("opt.py: Step is far too large.")
 
     return dq
 
@@ -412,7 +416,7 @@ def Dq_SD(intcos, geom, E, fq):
 
     History.appendRecord(DEprojected, dq, sd_u, sd_g, sd_h)
 
-    linearList = linearBendCheck(intcos, geom, dq)
+    linearList = linearBendCheck(Molsys.intcos, Molsys.geom, dq)
     if linearList:
         raise INTCO_EXCEPT("New linear angles", linearList)
 
@@ -472,7 +476,7 @@ def Dq_BACKSTEP(intcos, geom):
     History.steps[-1].projectedDE = DEprojected
     History.steps[-1].Dq[:] = dq
 
-    linearList = linearBendCheck(intcos, geom, dq)
+    linearList = linearBendCheck(Molsys.intcos, Molsys.geom, dq)
     if linearList:
         raise INTCO_EXCEPT("New linear angles", linearList)
 

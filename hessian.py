@@ -2,7 +2,7 @@ from stre import *
 from bend import *
 import numpy as np
 import physconst as pc
-import misc
+from printTools import printMat
 
 # print the Hessian in common spectroscopic units of aJ/Ang^2, aJ/deg^2 or aJ/(Ang deg)
 def show(H, intcos):
@@ -10,7 +10,7 @@ def show(H, intcos):
     for i, row in enumerate(intcos):
         for j, col in enumerate(intcos):
             Hscaled[i,j] = H[i,j] * pc.hartree2aJ / row.qShowFactor / col.qShowFactor
-    misc.printMat(Hscaled)
+    printMat(Hscaled)
 
 def guess(intcos, geom, Z, guessType="SIMPLE"):
     """ Generates diagonal empirical Hessians in a.u. such as 

@@ -1,4 +1,4 @@
 
-from optking import *
+from optimize import *
 from molsys import *
 

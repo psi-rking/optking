@@ -5,7 +5,6 @@ import oofp
 import tors
 from linearAlgebra import symmMatInv
 from printTools import printMat
-from intcosMisc import Gmat
 import optParams as op
 
 # Simple operations on internal coordinate sets.  For example,
@@ -128,12 +127,12 @@ def project_redundancies(intcos, geom, fq, H):
 
     # compute projection matrix = G G^-1
     G = Gmat(intcos, geom)
-    G_inv = misc.symmMatInv(G, redundant=True)
+    G_inv = symmMatInv(G, redundant=True)
     P = np.dot(G, G_inv) 
 
     if op.Params.print_lvl >= 3:
         print "\tProjection matrix for redundancies."
-        misc.printMat(P)
+        printMat(P)
 
     # Project redundancies out of forces.
     # Unconstrained forces will not need this projection, unless we have
@@ -158,5 +157,5 @@ def project_redundancies(intcos, geom, fq, H):
 
     if op.Params.print_lvl >= 3:
         print "Projected (PHP) Hessian matrix"
-        misc.printMat(H)
+        printMat(H)
 

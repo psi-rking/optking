@@ -2,6 +2,7 @@ import numpy as np
 import misc
 import addIntcos
 import physconst
+from printTools import printArrayString, printMatString
 
 # Geometry is 2D object (atom,xyz)
 
@@ -17,11 +18,11 @@ class FRAG():
 
     def __str__(self):
         s = "Z (Atomic Numbers)\n"
-        s += misc.printArrayString(self._Z)
+        s += printArrayString(self._Z)
         s += "Geom\n"
-        s += misc.printMatString(self._geom)
+        s += printMatString(self._geom)
         s += "Masses\n"
-        s += misc.printArrayString(self._masses)
+        s += printArrayString(self._masses)
         if (self._intcos): s += 'Intco Values (Angstroms and degrees)\n'
         for intco in self._intcos:
             s += '\t%-10s%10.5f\n' % (intco, intco.qShow(self._geom))
@@ -67,10 +68,13 @@ class FRAG():
         print 'Intco Values (Angstroms and degrees)'
         for coord in self._intcos:
             print '\t%-15s%20.6f' % (coord, coord.qShow(self._geom))
+        return
 
-    def addIntcosFromConnectivity(self):
-        C = addIntcos.connectivityFromDistances(self._geom, self._Z)
-        addIntcos.addIntcosFromConnectivity(C, self._intcos, self._geom)
+    def connectivityFromDistances(self):
+        return addIntcos.connectivityFromDistances(F._geom, F._Z)
+
+    def addIntcosFromConnectivity(self, connectivity):
+        addIntcos.addIntcosFromConnectivity(connectivity, self._intcos, self._geom)
 
     def addCartesianIntcos(self):
         addIntcos.addCartesianIntcos(self._intcos, self._geom)

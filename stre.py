@@ -47,7 +47,7 @@ class STRE(SIMPLE):
         return v3d.dist( geom[self.A], geom[self.B] )
 
     def qShow(self, geom):
-        return self.showQFactor * self.q(geom)
+        return self.qShowFactor * self.q(geom)
 
     @property
     def qShowFactor(self):

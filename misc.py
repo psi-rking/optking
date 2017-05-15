@@ -1,6 +1,12 @@
 from math import fabs
 import numpy as np
 
+def delta(i, j):
+    if i == j:
+        return 1
+    else:
+        return 0
+
 def isDqSymmetric(intcos, geom, Dq):
     print '\tTODO add isDqSymmetric'
     return True

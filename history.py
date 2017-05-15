@@ -3,7 +3,8 @@ import numpy as np
 import optParams as op
 import intcosMisc
 from math import fabs
-from misc import absMax,rms
+from linearAlgebra import absMax,rms,signOfDouble
+from printTools import printMat, printMatString, printArrayString
 
 class STEP(object):
     def __init__(self,geom,E,forces):
@@ -26,15 +27,15 @@ class STEP(object):
     def __str__(self):
         s = "Step Info\n"
         s += "Geometry     = \n"
-        s += misc.printMatString(self.geom)
+        s += printMatString(self.geom)
         s += "Energy       = %15.10f\n" % self.E
         s += "forces       = "
-        s += misc.printArrayString(self.forces)
+        s += printArrayString(self.forces)
         s += "Projected DE = %15.10f\n" % self.projectedDE
         s += "Dq           = "
-        s += misc.printArrayString(self.Dq)
+        s += printArrayString(self.Dq)
         s += "followedUnitVector       = "
-        s += misc.printArrayString(self.followedUnitVector)
+        s += printArrayString(self.followedUnitVector)
         s += "oneDgradient = %15.10f\n" % self.oneDgradient
         s += "oneDhessian  = %15.10f\n" % self.oneDhessian
         return s
@@ -155,7 +156,7 @@ class HISTORY(object):
         f[:] = currentStep.forces
         x[:] = currentStep.geom
         print 'Current? x'
-        misc.printMat(x)
+        printMat(x)
         q[:] = intcosMisc.qValues(intcos,x)
 
         # Fix configuration of torsions and out-of-plane angles,
@@ -285,7 +286,7 @@ class HISTORY(object):
                      if fabs(H_new[i,j]) < maximum:
                          H[i,j] += H_new[i,j]
                      else: # limit change to max
-                         H[i,j] += maximum * misc.signOfDouble(H_new[i,j])
+                         H[i,j] += maximum * signOfDouble(H_new[i,j])
 
             else:  # only copy H_new into H
                 H[:,:] = H_new
@@ -295,7 +296,7 @@ class HISTORY(object):
 
         if op.Params.print_lvl >= 2:
             print "Updated Hessian (in au)"
-            misc.printMat(H)
+            printMat(H)
         return
 
 History = HISTORY()

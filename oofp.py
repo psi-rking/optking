@@ -58,17 +58,6 @@ class OOFP(SIMPLE):
     def fShowFactor(self):
         return pc.hartree2aJ * pc.pi / 180.0
 
-    @staticmethod
-    def zeta(a, m, n):
-        if   a == m: return 1
-        elif a == n: return -1
-        else:        return 0
-
-    @staticmethod
-    def delta(i, j):
-        if i == j: return 1
-        else:      return 0
-
     # compute angle and return value in radians
     def q(self, geom):
         check, tau = v3d.oofp(geom[self.A], geom[self.B], geom[self.C], geom[self.D])
