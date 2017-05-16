@@ -3,40 +3,52 @@
 
 ### Printing functions.
 
-def printMat(M):
+def printMat(M, Ncol=7):
     for row in range(M.shape[0]):
        tab = 0
        for col in range(M.shape[1]):
            tab += 1
            print " %10.6f" % M[row,col],
-           if tab == 7 and col != (M.shape[1]-1):
+           if tab == Ncol and col != (M.shape[1]-1):
                print
                tab = 0
        print
     return
 
-def printArray(M, Ncol=None):
-    if Ncol == None:
-        Ncol = M.shape[0]
+def printMatString(M,Ncol=7):
+    s = ''
+    for row in range(M.shape[0]):
+       tab = 0
+       for col in range(M.shape[1]):
+           tab += 1
+           s += " %10.6f" % M[row,col]
+           if tab == Ncol and col != (M.shape[1]-1):
+               s += '\n'
+               tab = 0
+       s += '\n'
+    return s
 
-    for col in range(Ncol):
+def printArray(M, Ncol=7):
+    tab = 0
+    for i, entry in enumerate(M):
+        tab += 1
         print " %10.6f" % M[col],
+        if tab == Ncol and i != (len(M)-1):
+            print
+            tab = 0
     print
     return
 
-def printArrayString(M):
+def printArrayString(M, Ncol=7):
+    tab = 0
     s = ''
-    for col in range(M.shape[0]):
-        s += " %10.6f" % M[col]
+    for i, entry in enumerate(M):
+        tab += 1
+        s += " %10.6f" % entry
+        if tab == Ncol and i != (len(M)-1):
+            s += '\n'
+            tab = 0
     s += '\n'
-    return s
-
-def printMatString(M):
-    s = ''
-    for row in range(M.shape[0]):
-       for col in range(M.shape[1]):
-           s += " %10.6f" % M[row,col]
-       s += '\n'
     return s
 
 def printGeomGrad(geom, grad):

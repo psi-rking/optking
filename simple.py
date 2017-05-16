@@ -4,9 +4,10 @@ class SIMPLE(object):
     __metaclass__ = ABCMeta
 
     def __init__(self, atoms, frozen=False, fixedEqVal=None):
-        self._atoms = atoms        # atom indices for internal definition
-        self._frozen = frozen      # bool - is internal coordinate frozen?
-        self._fixedEqVal = fixedEqVal # target value if artificial forces are to be added
+        # these lines use the property's and setters below
+        self.atoms = atoms        # atom indices for internal definition
+        self.frozen = frozen      # bool - is internal coordinate frozen?
+        self.fixedEqVal = fixedEqVal # target value if artificial forces are to be added
 
     @property
     def atoms(self):
@@ -35,7 +36,7 @@ class SIMPLE(object):
         return self._fixedEqVal
 
     @fixedEqVal.setter
-    def fixedEqVal(self, qTarget):
+    def fixedEqVal(self, qTarget=None):
         if qTarget != None:
             try:
                 float(qTarget)

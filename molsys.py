@@ -44,9 +44,11 @@ class MOLSYS():
             fragGeom = np.zeros( (fragNatom,3), float)
             fragGeom[:] = fragMol.geometry()
          
-            fragZ = np.zeros( fragNatom, int)
+            #fragZ = np.zeros( fragNatom, int)
+            fragZ= []
             for i in range(fragNatom):
-                fragZ[i] = fragMol.Z(i)
+                fragZ.append( int(fragMol.Z(i)) )
+                #fragZ[i] = fragMol.Z(i)
          
             fragMasses = np.zeros( fragNatom, float)
             for i in range(fragNatom):
@@ -93,10 +95,21 @@ class MOLSYS():
 
     @property
     def Z(self):
-        z = np.zeros( self.Natom, float )
+        return []
+
+    #@Z.setter
+    #def Z(self):
+        #for iF, F in enumerate(self._fragments):
+            #first = self.frag_1st_atom(iF)
+            #F[:] = z[first:(first+F.Natom)]
+        #return
+
+    @Z.getter
+    def Z(self):
+        z = [0 for i in range(self.Natom)]
         for iF, F in enumerate(self._fragments):
-            start = self.frag_1st_atom(iF)
-            z[start:(start+F.Natom)] = F.Z
+            first = self.frag_1st_atom(iF)
+            z[first:(first+F.Natom)] = F.Z
         return z
 
     @property

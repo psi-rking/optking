@@ -34,9 +34,10 @@ class FRAG():
         geom = np.array( mol.geometry() )
         Natom = mol.natom()
          
-        Z = np.zeros( Natom, int)
+        #Z = np.zeros( Natom, int)
+        Z = []
         for i in range(Natom):
-            Z[i] = mol.Z(i)
+            Z.append( int(mol.Z(i)) )
          
         masses = np.zeros( Natom, float)
         for i in range(Natom):
