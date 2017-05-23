@@ -3,7 +3,9 @@ import numpy as np
 import v3d
 import physconst as pc  # has physical constants
 from math import sqrt, cos
-from misc import delta
+from misc import delta, ZtoPeriod, HguessLindhRho
+from physconst import bohr2angstroms
+import covRadii
 
 class BEND(SIMPLE):
 
@@ -217,13 +219,39 @@ class BEND(SIMPLE):
       
         return
 
-    def diagonalHessianGuess(self, geom, Z, guess = "SIMPLE"):
+    def diagonalHessianGuess(self, geom, Z, connectivity = False, guessType = "SIMPLE"):
         """ Generates diagonal empirical Hessians in a.u. such as 
           Schlegel, Theor. Chim. Acta, 66, 333 (1984) and
           Fischer and Almlof, J. Phys. Chem., 96, 9770 (1992).
         """
-        if guess == "SIMPLE":
+        if guessType == "SIMPLE":
             return 0.2
+
+        elif guessType == "SCHLEGEL":
+            if Z[self.A] == 1 or Z[self.C] == 1:
+                return 0.160
+            else:
+                return 0.250
+
+        elif guessType == "FISCHER":
+            a = 0.089
+            b = 0.11
+            c = 0.44
+            d = -0.42
+            Rcov_AB = (covRadii.R[Z[self.A]]+covRadii.R[Z[self.B]])/bohr2angstroms
+            Rcov_BC = (covRadii.R[Z[self.C]]+covRadii.R[Z[self.B]])/bohr2angstroms
+            R_AB = v3d.dist(geom[self.A],geom[self.B])
+            R_BC = v3d.dist(geom[self.B],geom[self.C])
+            return a + b/(np.power(Rcov_AB*Rcov_BC,d))*np.exp(-c*(R_AB+R_BC-Rcov_AB-Rcov_BC))
+
+        elif guessType == "LINDH_SIMPLE":
+            R_AB = v3d.dist(geom[self.A],geom[self.B])
+            R_BC = v3d.dist(geom[self.B],geom[self.C])
+            k_phi = 0.15
+            Lindh_Rho_AB = HguessLindhRho( Z[self.A], Z[self.B], R_AB)
+            Lindh_Rho_BC = HguessLindhRho( Z[self.B], Z[self.C], R_BC)
+            return k_phi*Lindh_Rho_AB*Lindh_Rho_BC
+
         else:
             print "Warning: Hessian guess encountered unknown coordinate type."
             return 1.0

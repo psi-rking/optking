@@ -108,7 +108,7 @@ class SIMPLE(object):
         raise NotImplementedError
 
     @abstractmethod  # Diagonal hessian guess
-    def diagonalHessianGuess(geom, Z, guessType):
+    def diagonalHessianGuess(geom, Z, connectivity, guessType):
         raise NotImplementedError
 
 

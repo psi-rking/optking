@@ -3,8 +3,9 @@ import physconst as pc
 from simple import *
 import v3d
 import covRadii
-from misc import delta, ZtoPeriod
+from misc import delta, ZtoPeriod, HguessLindhRho
 import numpy as np
+from physconst import bohr2angstroms
 
 class STRE(SIMPLE):
 
@@ -115,41 +116,59 @@ class STRE(SIMPLE):
 
         return
 
-    def diagonalHessianGuess(self, geom, Z, guess = "SIMPLE"):
+    def diagonalHessianGuess(self, geom, Z, connectivity = False, guessType = "SIMPLE"):
         """ Generates diagonal empirical Hessians in a.u. such as 
           Schlegel, Theor. Chim. Acta, 66, 333 (1984) and
           Fischer and Almlof, J. Phys. Chem., 96, 9770 (1992).
         """
-        if guess == "SIMPLE":
+        if guessType == "SIMPLE":
             return 0.5
-	if guess == "SCHLEGEL":
-	    Rcov = (covRadii.R[Z[self.A]]+covRadii.R[Z[self.B]])
 
-	    PerA = ZtoPeriod(self.A)
-	    PerB = ZtoPeriod(self.B)
+	if guessType == "SCHLEGEL":
 
-	    A = 1.734
-	    if   PerA == 1 and PerB == 1:
-	        B = -0.244
-	    elif PerA == 1 and PerB == 2:
-		B = 0.352
-	    elif PerA == 2 and PerB == 2:
-		B = 1.085
-	    elif PerA == 1 and PerB == 3:
-		B = 0.660
-	    elif PerA == 2 and PerB == 3:
-		B = 1.522
-	    elif PerA == 3 and PerB == 3:
-		B = 2.068
+            R = v3d.dist(geom[self.A],geom[self.B])
+	    PerA = ZtoPeriod(Z[self.A])
+	    PerB = ZtoPeriod(Z[self.B])
 
-	    F = A/((Rcov-B)*(Rcov-B)*(Rcov-B))
+	    AA = 1.734
+	    if PerA == 1:
+	        if PerB == 1:
+	            BB = -0.244
+	        elif PerB == 2:
+		    BB = 0.352
+                else:
+		    BB = 0.660
+	    elif PerA == 2:
+	        if PerB == 1:
+		    BB = 0.352
+                elif PerB == 2:
+		    BB = 1.085
+	        else:
+		    BB = 1.522
+	    else:
+	        if PerB == 1:
+		    BB = 0.660
+                elif PerB == 2:
+		    BB = 1.522
+                else:
+		    BB = 2.068
 
+	    F = AA/((R-BB)*(R-BB)*(R-BB))
 	    return F
 
-#	if guess == "FISCHER":
+	elif guessType == "FISCHER":
 
-#	if guess == "LINDH_SIMPLE":
-   
+	    Rcov = (covRadii.R[Z[self.A]]+covRadii.R[Z[self.B]])/bohr2angstroms
+            R = v3d.dist(geom[self.A],geom[self.B])
+            AA = 0.3601
+            BB = 1.944
+            return AA*(np.exp(-BB*(R-Rcov)))
+
+        elif guessType == "LINDH_SIMPLE":
+            R = v3d.dist(geom[self.A],geom[self.B])
+            k_r = 0.45
+            return k_r * HguessLindhRho( Z[self.A], Z[self.B], R)
+
         else:
             print "Warning: Hessian guess encountered unknown coordinate type."
             return 1.0

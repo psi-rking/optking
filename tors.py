@@ -4,6 +4,9 @@ import v3d
 import physconst as pc  # has physical constants
 from math import sqrt, fabs
 import optParams as op
+from physconst import bohr2angstroms
+from misc import HguessLindhRho
+import covRadii
 
 class TORS(SIMPLE):
 
@@ -226,15 +229,53 @@ class TORS(SIMPLE):
 
 
 
-    def diagonalHessianGuess(self, geom, Z, guess = "SIMPLE"):
+    def diagonalHessianGuess(self, geom, Z, connectivity = False, guessType = "SIMPLE"):
         """ Generates diagonal empirical Hessians in a.u. such as 
           Schlegel, Theor. Chim. Acta, 66, 333 (1984) and
           Fischer and Almlof, J. Phys. Chem., 96, 9770 (1992).
         """
-        if guess == "SIMPLE":
+        if guessType == "SIMPLE":
             return 0.1
+
+        elif guessType == "SCHLEGEL":
+            R_BC = v3d.dist(geom[self.B],geom[self.C])
+            Rcov = (covRadii.R[Z[self.B]]+covRadii.R[Z[self.C]])/bohr2angstroms
+            return 0.0023-(0.07*(R_BC-Rcov))
+
+        elif guessType == "FISCHER":
+            R = v3d.dist(geom[self.B],geom[self.C])
+            Rcov = covRadii.R[Z[self.B]]+covRadii.R[Z[self.C]]/bohr2angstroms
+            a = 0.0015
+            b = 14.0
+            c = 2.85
+            d = 0.57
+            e = 4.00
+
+            # Determine connectivity factor L
+            Brow = connectivity[self.B]
+            Crow = connectivity[self.C]
+            Bbonds = 0
+            Cbonds = 0
+            for i in range(0, len(Crow)):
+                Bbonds = Bbonds + Brow[i]
+                Cbonds = Cbonds + Crow[i]
+            L = Bbonds + Cbonds - 2
+            print "Connectivity of central 2 torsional atoms - 2 = L = %d" % L
+            return a + b*(np.power(L,d))/(np.power(R*Rcov,e))*(np.exp(-c*(R-Rcov)))
+
+        elif guessType == "LINDH_SIMPLE":
+
+            R_AB = v3d.dist(geom[self.A],geom[self.B])
+            R_BC = v3d.dist(geom[self.B],geom[self.C])
+            R_CD = v3d.dist(geom[self.C],geom[self.D])
+            k_tau = 0.005
+
+            Lindh_Rho_AB = HguessLindhRho( Z[self.A], Z[self.B], R_AB )
+            Lindh_Rho_BC = HguessLindhRho( Z[self.B], Z[self.C], R_BC )
+            Lindh_Rho_CD = HguessLindhRho( Z[self.C], Z[self.D], R_CD )
+            return k_tau*Lindh_Rho_AB*Lindh_Rho_BC*Lindh_Rho_CD
+
         else:
             print "Warning: Hessian guess encountered unknown coordinate type."
             return 1.0
-
 

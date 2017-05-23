@@ -5,6 +5,13 @@ H        0.937015      1.604407      0.555213
 O       -0.019115      1.414938      0.581411
 O        0.025938      0.224323     -0.256620
 H       -0.252091     -0.426417      0.433259
+--
+H       -0.855884     -2.552886      1.676809
+O       -0.791926     -1.587530      1.580706
+H       -1.404821     -1.259905      2.261963
+  no_com
+  no_reorient
+  unit Angstrom
 }
 
 set {
@@ -12,10 +19,10 @@ set {
 }
 
 set optking {
-  Geom_maxiter  1
+  Geom_maxiter  10
   step_type     rfo
   hess_update   bfgs
-  intrafrag_hess LINDH_SIMPLE
+  intrafrag_hess SIMPLE
 }
 
 # Create initial molecular structure object in optking

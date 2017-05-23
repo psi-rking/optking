@@ -12,7 +12,7 @@ def show(H, intcos):
             Hscaled[i,j] = H[i,j] * pc.hartree2aJ / row.qShowFactor / col.qShowFactor
     printMat(Hscaled)
 
-def guess(intcos, geom, Z, guessType="SIMPLE"):
+def guess(intcos, geom, Z, connectivity = False, guessType="SIMPLE"):
     """ Generates diagonal empirical Hessians in a.u. such as 
       Schlegel, Theor. Chim. Acta, 66, 333 (1984) and
       Fischer and Almlof, J. Phys. Chem., 96, 9770 (1992).
@@ -21,7 +21,7 @@ def guess(intcos, geom, Z, guessType="SIMPLE"):
 
     H = np.zeros( (dim,dim), float)
     for i,intco in enumerate(intcos):
-        H[i,i] = intco.diagonalHessianGuess(geom, Z, guessType)
+        H[i,i] = intco.diagonalHessianGuess(geom, Z, connectivity, guessType)
 
     return H
 

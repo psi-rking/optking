@@ -73,7 +73,8 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy ):
         history.History.currentStepReport()
     
         if stepNumber == 0:
-            H = hessian.guess(Molsys.intcos, Molsys.geom, Molsys.Z, op.Params.intrafrag_hess)
+            C = connectivityFromDistances(Molsys.geom, Molsys.Z)
+            H = hessian.guess(Molsys.intcos, Molsys.geom, Molsys.Z, C, op.Params.intrafrag_hess)
         else:
             history.History.hessianUpdate(H, Molsys.intcos)
     
@@ -88,11 +89,9 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy ):
            # displaces and adds step to history
            print 'geom before dq'
            printMat(Molsys.geom)
-           print 'id before stepAlgorithms %d' % id(Molsys.geom)
            Dq = stepAlgorithms.Dq(Molsys, E, fq, H)
            print 'geom after dq'
            printMat(Molsys.geom)
-           print 'id after stepAlgorithms %d' % id(Molsys.geom)
         except optExceptions.BAD_STEP_EXCEPT:
            if history.History.consecutiveBacksteps < op.Params.consecutive_backsteps_allowed:
                print 'Taking backward step'
