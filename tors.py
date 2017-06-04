@@ -239,12 +239,16 @@ class TORS(SIMPLE):
 
         elif guessType == "SCHLEGEL":
             R_BC = v3d.dist(geom[self.B],geom[self.C])
-            Rcov = (covRadii.R[Z[self.B]]+covRadii.R[Z[self.C]])/bohr2angstroms
-            return 0.0023-(0.07*(R_BC-Rcov))
+            Rcov = (covRadii.R[ Z[self.B] ] + covRadii.R[ Z[self.C] ])/bohr2angstroms
+            A = 0.0023
+            B = 0.07
+            if R_BC > (Rcov + A/B):
+                B = 0.0; # keep guess torsion positive
+            return A - (B*(R_BC - Rcov))
 
         elif guessType == "FISCHER":
-            R = v3d.dist(geom[self.B],geom[self.C])
-            Rcov = covRadii.R[Z[self.B]]+covRadii.R[Z[self.C]]/bohr2angstroms
+            R = v3d.dist(geom[self.B], geom[self.C])
+            Rcov = (covRadii.R[ Z[self.B] ] + covRadii.R[ Z[self.C] ])/bohr2angstroms
             a = 0.0015
             b = 14.0
             c = 2.85

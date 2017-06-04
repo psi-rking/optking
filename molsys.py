@@ -195,13 +195,15 @@ class MOLSYS():
         del self._fragments[:]
         self._fragments = newFragments
 
-    # bond separated fragments
+    # Supplements a connectivity matrix to connect all fragments.  Assumes the
+    # definition of the fragments has ALREADY been determined before function called.
+FIX this
     def augmentConnectivityToSingleFragment(self, C):
-        if self.Nfragments:
-            return
         print '\tAugmenting connectivity matrix to join fragments.'
+        #if self.Nfragments:
+        #    return
         fragAtoms = []
-        for iF, F in enumerate(fragments):
+        for iF, F in enumerate(self.fragments):
             fragAtoms.append(range(self.frag_1st_atom(iF), self.frag_1st_atom(iF) + F.Natom))
 
         # which fragments are connected?
