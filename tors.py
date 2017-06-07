@@ -240,11 +240,15 @@ class TORS(SIMPLE):
         elif guessType == "SCHLEGEL":
             R_BC = v3d.dist(geom[self.B],geom[self.C])
             Rcov = (covRadii.R[Z[self.B]]+covRadii.R[Z[self.C]])/bohr2angstroms
-            return 0.0023-(0.07*(R_BC-Rcov))
+            a = 0.0023
+            b = 0.07
+            if R_BC > (Rcov + a/b):
+                b = 0.0
+            return a - (b*(R_BC-Rcov))
 
         elif guessType == "FISCHER":
             R = v3d.dist(geom[self.B],geom[self.C])
-            Rcov = covRadii.R[Z[self.B]]+covRadii.R[Z[self.C]]/bohr2angstroms
+            Rcov = (covRadii.R[Z[self.B]]+covRadii.R[Z[self.C]])/bohr2angstroms
             a = 0.0015
             b = 14.0
             c = 2.85
@@ -256,7 +260,7 @@ class TORS(SIMPLE):
             Crow = connectivity[self.C]
             Bbonds = 0
             Cbonds = 0
-            for i in range(0, len(Crow)):
+            for i in range(len(Crow)):
                 Bbonds = Bbonds + Brow[i]
                 Cbonds = Cbonds + Crow[i]
             L = Bbonds + Cbonds - 2
