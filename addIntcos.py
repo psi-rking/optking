@@ -12,10 +12,12 @@ import stre
 import bend
 import tors
 import cart
+from printTools import printMat
+from printTools import printArray
 
 # returns connectivity matrix.  Matrix is 0 if i==j.
 def connectivityFromDistances(geom, Z):
-    C = np.zeros( (len(geom), len(geom)), float )
+    C = np.zeros( (len(geom), len(geom)), bool )
 
     for i,j in combinations( range(len(geom)), 2):
         R = v3d.dist(geom[i], geom[j])

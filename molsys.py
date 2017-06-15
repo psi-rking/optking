@@ -197,24 +197,21 @@ class MOLSYS():
 
     # Supplements a connectivity matrix to connect all fragments.  Assumes the
     # definition of the fragments has ALREADY been determined before function called.
-FIX this
     def augmentConnectivityToSingleFragment(self, C):
         print '\tAugmenting connectivity matrix to join fragments.'
-        #if self.Nfragments:
-        #    return
         fragAtoms = []
-        for iF, F in enumerate(self.fragments):
+        for iF, F in enumerate(self._fragments):
             fragAtoms.append(range(self.frag_1st_atom(iF), self.frag_1st_atom(iF) + F.Natom))
 
         # which fragments are connected?
         nF = self.Nfragments
-        frag_connectivity = np.array( (nF,nF), bool)
+        frag_connectivity = np.zeros((nF,nF))
         for iF in range(nF):
-          frag_connectivity[iF][iF] = True
+            frag_connectivity[iF,iF] = 1
 
         Z = self.Z
 
-        scale_dist = Params.interfragment_connect
+        scale_dist = 1.3 # Params.interfragment_connect
         all_connected = False
         while not all_connected:
             for f2 in range(nF):

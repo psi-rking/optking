@@ -31,10 +31,9 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy ):
     C = connectivityFromDistances(Molsys.geom, Molsys.Z)
 
     if op.Params.frag_mode == 'SINGLE':
-        # Add to connectivity to make sure all fragments connected.
+        #Add to connectivity to make sure all fragments connected.
         Molsys.augmentConnectivityToSingleFragment(C)
         Molsys.consolidateFragments();
-
     elif op.Params.frag_mode == 'MULTI':
         # should do nothing if fragments are already split by calling program/constructor.
         Molsys.splitFragmentsByConnectivity()

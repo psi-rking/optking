@@ -30,7 +30,7 @@ def printMatString(M,Ncol=7):
 
 def printArray(M, Ncol=7):
     tab = 0
-    for i, entry in enumerate(M):
+    for col, entry in enumerate(M):
         tab += 1
         print " %10.6f" % M[col],
         if tab == Ncol and i != (len(M)-1):
