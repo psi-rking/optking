@@ -1,10 +1,11 @@
 import numpy as np
 
 molecule hooh {
-H        0.937015      1.604407      0.555213
-O       -0.019115      1.414938      0.581411
-O        0.025938      0.224323     -0.256620
-H       -0.252091     -0.426417      0.433259
+    H            1.699924772228     1.549001852664     0.729368159665
+    O           -0.027495833355     1.120334367050     0.682522182417
+    O           -0.047683750414    -1.071778830756    -0.755485307218
+    H           -0.506770221333    -2.319613449532     0.428609578964
+# unit au
 }
 
 set {
@@ -15,7 +16,7 @@ set optking {
   Geom_maxiter  1
   step_type     rfo
   hess_update   bfgs
-  intrafrag_hess LINDH_SIMPLE
+  intrafrag_hess SIMPLE
 }
 
 # Create initial molecular structure object in optking
