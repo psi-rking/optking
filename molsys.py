@@ -197,6 +197,7 @@ class MOLSYS():
 
     # Supplements a connectivity matrix to connect all fragments.  Assumes the
     # definition of the fragments has ALREADY been determined before function called.
+    #FixThis	
     def augmentConnectivityToSingleFragment(self, C):
         print '\tAugmenting connectivity matrix to join fragments.'
         fragAtoms = []
