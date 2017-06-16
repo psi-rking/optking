@@ -58,8 +58,8 @@ class STRE(SIMPLE):
     def fShowFactor(self):
         return pc.hartree2aJ/pc.bohr2angstroms 
 
-    # If mini == False, dqdx is 2x(3*number of atoms in fragment).
-    # if mini == True, dqdx is 2x6.
+    # If mini == False, dqdx is 1x(3*number of atoms in fragment).
+    # if mini == True, dqdx is 1x6.
     def DqDx(self, geom, dqdx, mini=False):
         check, eAB = v3d.eAB(geom[self.A], geom[self.B]) # A->B
         if not check:

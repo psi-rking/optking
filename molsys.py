@@ -95,17 +95,6 @@ class MOLSYS():
 
     @property
     def Z(self):
-        return []
-
-    #@Z.setter
-    #def Z(self):
-        #for iF, F in enumerate(self._fragments):
-            #first = self.frag_1st_atom(iF)
-            #F[:] = z[first:(first+F.Natom)]
-        #return
-
-    @Z.getter
-    def Z(self):
         z = [0 for i in range(self.Natom)]
         for iF, F in enumerate(self._fragments):
             first = self.frag_1st_atom(iF)
