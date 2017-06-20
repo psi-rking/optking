@@ -121,13 +121,13 @@ class OPT_PARAMS(object):
         P.rsrfo_alpha_max = uod.get('RSRFO_ALPHA_MAX', 1e8)
 #
         ## Specify distances between atoms to be frozen (unchanged)
-        #P.frozen_distance = uod.get('FROZEN_DISTANCE','')
+        P.frozen_distance = uod.get('FROZEN_DISTANCE','')
         ## Specify angles between atoms to be frozen (unchanged)
-        #P.frozen_bend     = uod.get('FROZEN_BEND','')
+        P.frozen_bend = uod.get('FROZEN_BEND','')
         ## Specify dihedral angles between atoms to be frozen (unchanged)
-        #P.frozen_dihedral = uod.get('FROZEN_DIHEDRAL','')
+        P.frozen_dihedral = uod.get('FROZEN_DIHEDRAL','')
         ## Specify atom and X, XY, XYZ, ... to be frozen (unchanged)
-        #P.frozen_cartesian = uod.get('FROZEN_CARTESIAN','')
+        P.frozen_cartesian = uod.get('FROZEN_CARTESIAN','')
 #
         ## Specify distances between atoms to be fixed (eq. value specified)
         #P.fixed_distant = uod.get("FIXED_DISTANCE", "")

@@ -14,7 +14,7 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy ):
     print op.Params
 
     from printTools import printGeomGrad, printMat, printArray
-    from addIntcos import connectivityFromDistances
+    from addIntcos import connectivityFromDistances, markAsFrozen, parseFrozenString
     import optExceptions
     import history 
     import stepAlgorithms
@@ -42,6 +42,13 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy ):
         Molsys.addIntcosFromConnectivity(C)
     if op.Params.opt_coordinates in ['CARTESIAN','BOTH']:
         Molsys.addCartesianIntcos()
+# Testing Implementaiton of frozen coordinates
+    if op.Params.frozen_distance != None:
+        addIntcos.markAsFrozen(frozen_distance, Molsys.intcos)
+    if op.Params.frozen_bend != None:
+        addIntcos.markAsFrozen(frozen_bend, Molsys.intcos)
+    if op.Params.frozen_dihedral != None:
+        addIntcos.markAsFrozen(frozen_dihedral, Molsys.intcos)   	    	
     
     Molsys.printIntcos();
 
