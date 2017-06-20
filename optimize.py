@@ -13,6 +13,8 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy ):
     print '\tParameters from optking.optimize'
     print op.Params
 
+    # while op.Params.dynamic_level
+
     from printTools import printGeomGrad, printMat, printArray
     from addIntcos import connectivityFromDistances
     import optExceptions

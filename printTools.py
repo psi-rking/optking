@@ -33,7 +33,7 @@ def printArray(M, Ncol=7):
     for col, entry in enumerate(M):
         tab += 1
         print " %10.6f" % M[col],
-        if tab == Ncol and i != (len(M)-1):
+        if tab == Ncol and col != (len(M)-1):
             print
             tab = 0
     print
