@@ -93,11 +93,7 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy ):
 
         try:
            # displaces and adds step to history
-           print 'geom before dq'
-           printMat(Molsys.geom)
            Dq = stepAlgorithms.Dq(Molsys, E, fq, H)
-           print 'geom after dq'
-           printMat(Molsys.geom)
         except optExceptions.BAD_STEP_EXCEPT:
            if history.History.consecutiveBacksteps < op.Params.consecutive_backsteps_allowed:
                print 'Taking backward step'
@@ -109,6 +105,7 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy ):
     
         if check:
            print 'Converged in %d steps!' % (int(stepNumber)+1)
+           fSetGeometry(Molsys.geom)
            break
         
         # Now need to return geometry in preparation for next step.
@@ -122,4 +119,6 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy ):
     
     #print history.History
     history.History.summary()
+
+    return history.History[-1].E
 
