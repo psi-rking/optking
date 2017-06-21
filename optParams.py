@@ -277,26 +277,26 @@ class OPT_PARAMS(object):
                 #P.step_type = 'P_RFO'
 #
         ## INTERNAL is a synonym
-        #if P.coordinates == 'INTERNAL': P.coordinates = 'REDUNDANT'
+        #if P.opt_coordinates == 'INTERNAL': P.opt_coordinates = 'REDUNDANT'
 #
-        ## Initial Hessian guess for cartesians with coordinates BOTH is stupid, so don't scale
-        ##   step size down too much.  Steepest descent has no good hessian either.
-        #if 'INTRAFRAG_TRUST_MIN' not in uod:
-            #if P.coordinates == 'BOTH':
-                #P.intrafragment_trust_min = Opt_params.intrafragment_trust / 2.0;
-            #if P.step_type == 'SD':
-                #P.intrafragment_trust_min = Opt_params.intrafragment_trust;
+        # Initial Hessian guess for cartesians with coordinates BOTH is stupid, so don't scale
+        #   step size down too much.  Steepest descent has no good hessian either.
+        if 'INTRAFRAG_TRUST_MIN' not in uod:
+            if P.opt_coordinates == 'BOTH':
+                P.intrafrag_trust_min = P.intrafrag_trust / 2.0
+            elif P.step_type == 'SD':
+                P.intrafrag_trust_min = P.intrafrag_trust
 #
         ## Original Lindh specification was to redo at every step.
         #if 'H_GUESS_EVERY' not in uod and P.intrafrag_hess == 'LINDH':
             #P.h_guess_every = True
 #
         ## Default for cartesians: use Lindh force field for initial guess, then BFGS.
-        #if P.coordinates == 'CARTESIAN':
-            #if 'INTRAFRAG_HESS_GUESS' not in uod:
-                #P.intrafrag_hess = 'LINDH'
+        if P.opt_coordinates == 'CARTESIAN':
+            if 'INTRAFRAG_HESS' not in uod:
+                P.intrafrag_hess = 'LINDH'
                 #if 'H_GUESS_EVERY' not in uod:
-                    #Opt_params.H_guess_every = False;
+                    #P.H_guess_every = False;
 #
         ## Set Bofill as default for TS optimizations.
         #if P.opt_type == 'TS' or P.opt_type == 'IRC':
@@ -325,14 +325,14 @@ class OPT_PARAMS(object):
         ##  Delta-E's are possible, and this threshold should be made larger.
         #if P.fragment_mode == 'MULTI' and 'RFO_NORMALIZATION_MAX' not in uod:
             #P.rfo_normalization_max = 1.0e5
-#
+        # Arbitrary user forces, don't shrink stepsize.
         #if P.fixed_distance or P.fixed_bend or P.fixed_dihedral:
-            #if 'INTRAFRAGMENT_TRUST' not in uod:
-                #P.intrafragment_trust     = 0.1
-            #if 'INTRAFRAGMENT_TRUST_MIN' not in uod:
-                #P.intrafragment_trust_min = 0.1
-            #if 'INTRAFRAGMENT_TRUST_MAX' not in uod:
-                #P.intrafragment_trust_max = 0.1
+        #    if 'INTRAFRAGMENT_TRUST' not in uod:
+        #        P.intrafrag_trust     = 0.1
+        #    if 'INTRAFRAGMENT_TRUST_MIN' not in uod:
+        #        P.intrafrag_trust_min = 0.1
+        #    if 'INTRAFRAGMENT_TRUST_MAX' not in uod:
+        #        P.intrafrag_trust_max = 0.1
 #
         ## -- Items are below unlikely to need modified
 #
@@ -477,129 +477,86 @@ class OPT_PARAMS(object):
            P.intrafrag_trust
         return
 
+    def updateDynamicLevelParameters(P):
+        level = P.dynamic_level
 
-
-    '''
-Need to check some dynamic initializations in set_params.cc
-
-*  if dynamic mode is on, then other settings are overridden.
-* step_type = step
-* intrafragment_trust = trust
-* consecutive_backsteps = backsteps
-* RI = redundant internals; D = default anyway
-
-*dynamic  step   coord   trust      backsteps              criteria
-* level                                               for downmove    for upmove
-*  0      RFO    RI      dynamic         no           none            none
-*
-*  1      RFO    RI      dynamic(D)      no           1 bad step
-*
-*  2      RFO    RI      small initial   yes (1)      1 bad step
-*                        dynamic(D)    
-*
-*  3      SD     RI      large(D)        yes (1)      1 bad step
-*
-*  4      SD     RI+XYZ  large(D)        yes (1)      1 bad step
-*
-*  5      SD     XYZ     large(D)        yes (1)      1 bad step
-*
-*  6      SD     XYZ     small           yes (1)      1 bad step
-*
-*  7  abort
-*
-*  BackStep:
-*   DE > 0 in minimization
-*
-*  BadStep:
-*   DE > 0 and backsteps exceeded and iterations > 5  ** OR **
-*   badly defined internal coordinate or derivative
-*
-* 
-  if (options.get_int("DYNAMIC_LEVEL") == 0) // if 0, then not dynamic
-    Opt_params.dynamic = 0;
-  else if (INTCO_EXCEPT::dynamic_level != 0) // already set
-    Opt_params.dynamic = INTCO_EXCEPT::dynamic_level;
-  else
-    Opt_params.dynamic = options.get_int("DYNAMIC_LEVEL");
-
-
-  switch(Opt_params.dynamic) {
-    case 0: // not dynamic
-      break;
-    case 1:
-      Opt_params.coordinates = OPT_PARAMS::REDUNDANT;
-      Opt_params.consecutive_backsteps_allowed = 0;
-      Opt_params.step_type = OPT_PARAMS::RFO;
-             printf("At level 1: Red. Int., RFO, no backsteps, dynamic trust\n");
-      oprintf_out("\tAt level 1: Red. Int., RFO, no backsteps, dynamic trust\n");
-      break;
-    case 2:
-      Opt_params.coordinates = OPT_PARAMS::REDUNDANT;
-      Opt_params.consecutive_backsteps_allowed = 1;
-      Opt_params.step_type = OPT_PARAMS::RFO;
-      Opt_params.intrafragment_trust = 0.2;
-      Opt_params.intrafragment_trust_min = 0.2; //this code overwrites changes anyway
-      Opt_params.intrafragment_trust_max = 0.2;
-             printf("At level 2: Red. Int., RFO, backsteps, smaller trust.\n");
-      oprintf_out("\tAt level 2: Red. Int., RFO, backsteps, smaller trust.\n");
-      break;
-    case 3:
-      Opt_params.coordinates = OPT_PARAMS::BOTH;
-      Opt_params.consecutive_backsteps_allowed = 1;
-      Opt_params.step_type = OPT_PARAMS::RFO;
-      Opt_params.intrafragment_trust = 0.1;
-      Opt_params.intrafragment_trust_min = 0.1; //this code overwrites changes anyway
-      Opt_params.intrafragment_trust_max = 0.1;
-             printf("At level 3: Red. Int. + XYZ, RFO, backsteps, smaller trust.\n");
-      oprintf_out("\tAt level 3: Red. Int. + XYZ, RFO, backsteps, smaller trust.\n");
-      break;
-    case 4:
-      Opt_params.coordinates = OPT_PARAMS::CARTESIAN;
-      Opt_params.consecutive_backsteps_allowed = 1;
-      Opt_params.step_type = OPT_PARAMS::RFO;
-      Opt_params.intrafragment_H = OPT_PARAMS::LINDH;
-      Opt_params.intrafragment_trust = 0.3;
-      Opt_params.intrafragment_trust_min = 0.3; //this code overwrites changes anyway
-      Opt_params.intrafragment_trust_max = 0.3;
-             printf("At level 4: XYZ, RFO, backsteps, larger trust.\n");
-      oprintf_out("\tAt level 4: XYZ, RFO, backsteps, larger trust.\n");
-      break;
-    case 5:   // Try repeating level 4 which is working well
-      Opt_params.coordinates = OPT_PARAMS::CARTESIAN;
-      Opt_params.consecutive_backsteps_allowed = 1;
-      Opt_params.step_type = OPT_PARAMS::RFO;
-      Opt_params.intrafragment_H = OPT_PARAMS::LINDH;
-      Opt_params.intrafragment_trust = 0.2;
-      Opt_params.intrafragment_trust_min = 0.2; //this code overwrites changes anyway
-      Opt_params.intrafragment_trust_max = 0.2;
-             printf("At level 5: XYZ, RFO, backsteps, medium trust.\n");
-      oprintf_out("\tAt level 5: XYZ, RFO, backsteps, medium trust.\n");
-      break;
-    case 6:
-      Opt_params.coordinates = OPT_PARAMS::CARTESIAN;
-      Opt_params.consecutive_backsteps_allowed = 1;
-      Opt_params.step_type = OPT_PARAMS::SD;
-      Opt_params.sd_hessian = 0.3;
-      Opt_params.intrafragment_trust = 0.3;
-      Opt_params.intrafragment_trust_min = 0.3; //this code overwrites changes anyway
-      Opt_params.intrafragment_trust_max = 0.3;
-             printf("At level 5: XYZ, SD, backsteps, larger trust.\n");
-      oprintf_out("\tAt level 5: XYZ, SD, backsteps, larger trust.\n");
-      break;
-    case 7:
-      Opt_params.coordinates = OPT_PARAMS::CARTESIAN;
-      Opt_params.consecutive_backsteps_allowed = 1;
-      Opt_params.step_type = OPT_PARAMS::SD;
-      Opt_params.sd_hessian = 0.6;
-      Opt_params.intrafragment_trust = 0.1;
-      Opt_params.intrafragment_trust_min = 0.1; //this code overwrites changes anyway
-      Opt_params.intrafragment_trust_max = 0.1;
-             printf("Moving to level 6: XYZ, SD, backsteps, small trust, smaller steps.\n");
-      oprintf_out("\tMoving to level 6: XYZ, SD, backsteps, small trust, smaller steps.\n");
-      break;
-  default:
-      oprintf_out("Unknown value of Opt_params.dynamic variable.\n");
-  }
-}
-    '''
+        """
+        *dynamic  step   coord   trust      backsteps         criteria
+        * level                                               for downmove    for upmove
+        *  0      RFO    RI      dynamic         no           none            none
+        *  1      RFO    RI      dynamic(D)      no           1 bad step
+        *  2      RFO    RI      smaller         yes (1)      1 bad step
+        *  3      RFO    BOTH    small           yes (1)      1 bad step
+        *  4      RFO    XYZ     large           yes (1)      1 bad step
+        *  5      RFO    XYZ     small           yes (1)      1 bad step
+        *  6      SD     XYZ     large           yes (1)      1 bad step
+        *  7      SD     XYZ     small           yes (1)      1 bad step
+        *  8  abort
+        *  BackStep:
+        *   DE > 0 in minimization
+        *  BadStep:
+        *   DE > 0 and backsteps exceeded and iterations > 5  ** OR **
+        *   badly defined internal coordinate or derivative
+        """
+        if level == 0:
+            pass
+        elif level == 1:
+            P.opt_coordinates = 'REDUNDANT'
+            P.consecutiveBackstepsAllowed = 0
+            P.step_type = 'RFO'
+            print "Going to level 1: Red. Int., RFO, no backsteps, default, dynamic trust."
+        elif level == 2:
+            P.opt_coordinates = 'REDUNDANT'
+            P.consecutiveBackstepsAllowed = 1
+            P.step_type = 'RFO'
+            P.intrafrag_trust = 0.2
+            P.intrafrag_trust_min = 0.2
+            P.intrafrag_trust_max = 0.2
+            print "Going to level 2: Red. Int., RFO, 1 backstep, smaller trust."
+        elif level == 3:
+            P.opt_coordinates = 'BOTH'
+            P.consecutiveBackstepsAllowed = 1
+            P.step_type = 'RFO'
+            P.intrafrag_trust = 0.1
+            P.intrafrag_trust_min = 0.1
+            P.intrafrag_trust_max = 0.1
+            print "Going to level 3: Red. Int. + XYZ, RFO, 1 backstep, smaller trust."
+        elif level == 4:
+            P.opt_coordinates = 'CARTESIAN'
+            P.consecutiveBackstepsAllowed = 1
+            P.step_type = 'RFO'
+            P.intrafrag_hess = 'LINDH'
+            P.intrafrag_trust = 0.3
+            P.intrafrag_trust_min = 0.3
+            P.intrafrag_trust_max = 0.3
+            print "Going to level 4: XYZ, RFO, 1 backstep, average trust."
+        elif level == 5:
+            P.opt_coordinates = 'CARTESIAN'
+            P.consecutiveBackstepsAllowed = 1
+            P.step_type = 'RFO'
+            P.intrafrag_hess = 'LINDH'
+            P.intrafrag_trust = 0.2
+            P.intrafrag_trust_min = 0.2
+            P.intrafrag_trust_max = 0.2
+            print "Going to level 5: XYZ, RFO, 1 backstep, smaller trust."
+        elif level == 6:
+            P.opt_coordinates = 'CARTESIAN'
+            P.consecutiveBackstepsAllowed = 1
+            P.step_type = 'SD'
+            P.sd_hessian = 0.3
+            P.intrafrag_trust = 0.3
+            P.intrafrag_trust_min = 0.3
+            P.intrafrag_trust_max = 0.3
+            print "Going to level 5: XYZ, SD, 1 backstep, average trust."
+        elif level == 7:
+            P.opt_coordinates = 'CARTESIAN'
+            P.consecutiveBackstepsAllowed = 1
+            P.step_type = 'SD'
+            P.sd_hessian = 0.6
+            P.intrafrag_trust = 0.1
+            P.intrafrag_trust_min = 0.1
+            P.intrafrag_trust_max = 0.1
+            print "Moving to level 6: XYZ, SD, 1 backstep, smaller trust, smaller step."
+        else:
+            raise ValueError("Unknown value of dynamic_level")
 
