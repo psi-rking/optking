@@ -473,12 +473,11 @@ class OPT_PARAMS(object):
            P.intrafrag_trust
         return
 
-    def updateDynamicLevelParameters(P):
-        level = P.dynamic_level
+    def updateDynamicLevelParameters(P, run_level):
 
         """
         *dynamic  step   coord   trust      backsteps         criteria
-        * level                                               for downmove    for upmove
+        * run_level                                           for downmove    for upmove
         *  0      RFO    RI      dynamic         no           none            none
         *  1      RFO    RI      dynamic(D)      no           1 bad step
         *  2      RFO    RI      smaller         yes (1)      1 bad step
@@ -494,30 +493,30 @@ class OPT_PARAMS(object):
         *   DE > 0 and backsteps exceeded and iterations > 5  ** OR **
         *   badly defined internal coordinate or derivative
         """
-        if level == 0:
+        if run_level == 0:
             pass
-        elif level == 1:
+        elif run_level == 1:
             P.opt_coordinates = 'REDUNDANT'
             P.consecutiveBackstepsAllowed = 0
             P.step_type = 'RFO'
-            print "Going to level 1: Red. Int., RFO, no backsteps, default, dynamic trust."
-        elif level == 2:
+            print "Going to run_level 1: Red. Int., RFO, no backsteps, default, dynamic trust."
+        elif run_level == 2:
             P.opt_coordinates = 'REDUNDANT'
             P.consecutiveBackstepsAllowed = 1
             P.step_type = 'RFO'
             P.intrafrag_trust = 0.2
             P.intrafrag_trust_min = 0.2
             P.intrafrag_trust_max = 0.2
-            print "Going to level 2: Red. Int., RFO, 1 backstep, smaller trust."
-        elif level == 3:
+            print "Going to run_level 2: Red. Int., RFO, 1 backstep, smaller trust."
+        elif run_level == 3:
             P.opt_coordinates = 'BOTH'
             P.consecutiveBackstepsAllowed = 1
             P.step_type = 'RFO'
             P.intrafrag_trust = 0.1
             P.intrafrag_trust_min = 0.1
             P.intrafrag_trust_max = 0.1
-            print "Going to level 3: Red. Int. + XYZ, RFO, 1 backstep, smaller trust."
-        elif level == 4:
+            print "Going to run_level 3: Red. Int. + XYZ, RFO, 1 backstep, smaller trust."
+        elif run_level == 4:
             P.opt_coordinates = 'CARTESIAN'
             P.consecutiveBackstepsAllowed = 1
             P.step_type = 'RFO'
@@ -525,8 +524,8 @@ class OPT_PARAMS(object):
             P.intrafrag_trust = 0.3
             P.intrafrag_trust_min = 0.3
             P.intrafrag_trust_max = 0.3
-            print "Going to level 4: XYZ, RFO, 1 backstep, average trust."
-        elif level == 5:
+            print "Going to run_level 4: XYZ, RFO, 1 backstep, average trust."
+        elif run_level == 5:
             P.opt_coordinates = 'CARTESIAN'
             P.consecutiveBackstepsAllowed = 1
             P.step_type = 'RFO'
@@ -534,8 +533,8 @@ class OPT_PARAMS(object):
             P.intrafrag_trust = 0.2
             P.intrafrag_trust_min = 0.2
             P.intrafrag_trust_max = 0.2
-            print "Going to level 5: XYZ, RFO, 1 backstep, smaller trust."
-        elif level == 6:
+            print "Going to run_level 5: XYZ, RFO, 1 backstep, smaller trust."
+        elif run_level == 6:
             P.opt_coordinates = 'CARTESIAN'
             P.consecutiveBackstepsAllowed = 1
             P.step_type = 'SD'
@@ -543,8 +542,8 @@ class OPT_PARAMS(object):
             P.intrafrag_trust = 0.3
             P.intrafrag_trust_min = 0.3
             P.intrafrag_trust_max = 0.3
-            print "Going to level 5: XYZ, SD, 1 backstep, average trust."
-        elif level == 7:
+            print "Going to run_level 5: XYZ, SD, 1 backstep, average trust."
+        elif run_level == 7:
             P.opt_coordinates = 'CARTESIAN'
             P.consecutiveBackstepsAllowed = 1
             P.step_type = 'SD'
@@ -552,7 +551,7 @@ class OPT_PARAMS(object):
             P.intrafrag_trust = 0.1
             P.intrafrag_trust_min = 0.1
             P.intrafrag_trust_max = 0.1
-            print "Moving to level 6: XYZ, SD, 1 backstep, smaller trust, smaller step."
+            print "Moving to run_level 6: XYZ, SD, 1 backstep, smaller trust, smaller step."
         else:
-            raise ValueError("Unknown value of dynamic_level")
+            raise ValueError("Unknown value of run_level")
 
