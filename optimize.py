@@ -14,7 +14,7 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy ):
     print op.Params
 
     from printTools import printGeomGrad, printMat, printArray
-    from addIntcos import connectivityFromDistances, markAsFrozen, parseFrozenString
+    import addIntcos
     import optExceptions
     import history 
     import stepAlgorithms
@@ -22,16 +22,18 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy ):
     import hessian
     import convCheck
     import testB
+    converged = False
+    run_level = op.Params.dynamic_level
 
     # Loop over a variety of algorithms
-    while op.Params.dynamic_level < op.Params.dynamic_level_max:
+    while (converged == False) and (run_level < op.Params.dynamic_level_max):
 
         try:
             print Molsys
             energies = []
         
             # Construct connectivity.
-            C = connectivityFromDistances(Molsys.geom, Molsys.Z)
+            C = addIntcos.connectivityFromDistances(Molsys.geom, Molsys.Z)
         
             if op.Params.frag_mode == 'SINGLE':
                 #Add to connectivity to make sure all fragments connected.
@@ -45,18 +47,22 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy ):
                 Molsys.addIntcosFromConnectivity(C)
             if op.Params.opt_coordinates in ['CARTESIAN','BOTH']:
                 Molsys.addCartesianIntcos()
+
             # Testing Implementaiton of frozen coordinates
-            if op.Params.frozen_distance != None:
-                addIntcos.markAsFrozen(frozen_distance, Molsys.intcos)
-            if op.Params.frozen_bend != None:
-                addIntcos.markAsFrozen(frozen_bend, Molsys.intcos)
-            if op.Params.frozen_dihedral != None:
-                addIntcos.markAsFrozen(frozen_dihedral, Molsys.intcos)   	    	
+            if op.Params.frozen_distance is not None:
+                print (op.Params.frozen_distance)
+                FrozenIntcosListDis = addIntcos.parseFrozenString(op.Params.frozen_distance)
+                addIntcos.markDisAsFrozen(FrozenIntcosListDis, Molsys.intcos)
+            if op.Params.frozen_bend is not None:
+                FrozenIntcosListBend = addIntcos.parseFrozenString(op.Params.frozen_bend)
+                addIntcos.markBendAsFrozen(FrozenIntcosListBend, Molsys.intcos)
+            if op.Params.frozen_dihedral is not None:
+                FrozenIntcosListTors = addIntcos.parseFrozenString(op.Params.frozen_dihedral)
+                addIntcos.markTorsAsFrozen(FrozenIntcosListTors, Molsys.intcos)
             
             Molsys.printIntcos();
         
-            stepNumber = 0
-            while stepNumber < op.Params.geom_maxiter: 
+            for stepNumber in range(op.Params.geom_maxiter): 
                 E, g_x = fGradient()
                 printGeomGrad(Molsys.geom, g_x)
                 energies.append( E )
@@ -82,7 +88,7 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy ):
                 history.History.currentStepReport()
             
                 if stepNumber == 0:
-                    C = connectivityFromDistances(Molsys.geom, Molsys.Z)
+                    C = addIntcos.connectivityFromDistances(Molsys.geom, Molsys.Z)
                     H = hessian.guess(Molsys.intcos, Molsys.geom, Molsys.Z, C, op.Params.intrafrag_hess)
                 else:
                     history.History.hessianUpdate(H, Molsys.intcos)
@@ -106,23 +112,25 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy ):
                         print 'Re-raising BAD_STEP exception'
                         raise optExceptions.BAD_STEP_EXCEPT()
         
-                check = convCheck.convCheck(stepNumber, Molsys.intcos, Dq, fq, energies)
-            
-                if check:
-                    print 'Converged in %d steps!' % (int(stepNumber)+1)
-                    fSetGeometry(Molsys.geom)
-                break
-                
-                # Now need to return geometry in preparation for next step.
+                converged = convCheck.convCheck(stepNumber, Molsys.intcos, Dq, fq, energies)
+
                 print "\tStructure for next step (au):"
                 Molsys.printGeom()
                 fSetGeometry(Molsys.geom)
             
-                stepNumber += 1
+                if converged:
+                    print 'Converged in %d steps!' % (stepNumber+1)
+                    fSetGeometry(Molsys.geom)
+                    break
+
+            else: # executes if too many steps
+                print "Number of steps (%d) has reached value of GEOM_MAXITER." % (stepNumber+1)
+                raise optExceptions.BAD_STEP_EXCEPT()
         
-        except optExceptions.BAD_STEP_EXCEPT():
-            print "Caught bad step exception."   
-            op.Params.dynamic_level = 8
+        except optExceptions.BAD_STEP_EXCEPT:
+            print "optimize.py: Caught bad step exception."   
+            print "Increasing run_level."
+            run_level += 1
     
     history.History.summary()
     return history.History[-1].E
