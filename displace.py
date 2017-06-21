@@ -11,6 +11,8 @@ from linearAlgebra import absMax,rms,symmMatInv
 #   Reduce step size as necessary until back-transformation converges.
 
 def displace(intcos, geom, dq, fq, atom_offset=0, ensure_convergence=False):
+    print ("Alex")
+    print (dq)
     if not len(intcos) or not len(geom) or not len(dq):
         dq[:] = 0
         return

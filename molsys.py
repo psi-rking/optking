@@ -116,7 +116,7 @@ class MOLSYS():
 
     def addIntcosFromConnectivity(self, C=None):
         for F in self._fragments:
-            if C == None:
+            if C is None:
                 C = F.connectivityFromDistances()
             F.addIntcosFromConnectivity(C)
 

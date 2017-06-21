@@ -14,7 +14,8 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy ):
     print op.Params
 
     from printTools import printGeomGrad, printMat, printArray
-    from addIntcos import connectivityFromDistances, markAsFrozen, parseFrozenString
+    from addIntcos import connectivityFromDistances
+    import addIntcos
     import optExceptions
     import history 
     import stepAlgorithms
@@ -43,12 +44,16 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy ):
     if op.Params.opt_coordinates in ['CARTESIAN','BOTH']:
         Molsys.addCartesianIntcos()
 # Testing Implementaiton of frozen coordinates
-    if op.Params.frozen_distance != None:
-        addIntcos.markAsFrozen(frozen_distance, Molsys.intcos)
-    if op.Params.frozen_bend != None:
-        addIntcos.markAsFrozen(frozen_bend, Molsys.intcos)
-    if op.Params.frozen_dihedral != None:
-        addIntcos.markAsFrozen(frozen_dihedral, Molsys.intcos)   	    	
+    if op.Params.frozen_distance is not None:
+        print (op.Params.frozen_distance)
+        FrozenIntcosListDis = addIntcos.parseFrozenString(op.Params.frozen_distance)
+        addIntcos.markDisAsFrozen(FrozenIntcosListDis, Molsys.intcos)
+    if op.Params.frozen_bend is not None:
+        FrozenIntcosListBend = addIntcos.parseFrozenString(op.Params.frozen_bend)
+        addIntcos.markBendAsFrozen(FrozenIntcosListBend, Molsys.intcos)
+    if op.Params.frozen_dihedral is not None:	
+        FrozenIntcosListTors = addIntcos.parseFrozenString(op.Params.frozen_dihedral)
+        addIntcos.markTorsAsFrozen(FrozenIntcosListTors, Molsys.intcos)   	    	
     
     Molsys.printIntcos();
 
