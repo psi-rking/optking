@@ -6,6 +6,7 @@ import optParams as op
 import physconst as pc
 from intcosMisc import qValues
 
+import simple
 import v3d
 import covRadii
 import stre
@@ -198,60 +199,115 @@ def linearBendCheck(intcos, geom, dq):
     return linearBendsMissing
 ####
 ## params: string of integers corresponding to internal coordinates
-## returns: parsed string of only integers
+## returns: a list of integers correspoding to an atom
 ## removes spaces or non integer characters from string of internal coordinates to be frozen        
- 
-    def parseFrozenString(frozenStr):
-	i = 0
-        while i < len(frozenStr):
-            try:
-                int(frozenStr[i])
-                i += 1
-    	    except ValueError:
-                if i < (len(frozenStr)):
-                    frozenStr = (frozenStr[:i] + frozenStr[i+1:])
-	return frozenStr 
+#### 
+def parseFrozenString(frozenStr):
+#    frozenStr = int(frozenStr)
+    parsedList = frozenStr.encode('utf-8')
+    parsedList = str.replace(parsedList, '(' , '')
+    parsedList = str.replace(parsedList, ')' , '')
+    parsedList = parsedList.split() #this is where string actually becomes a List
+    for i in range (0, len(parsedList)):
+        parsedList[i] = int(parsedList[i])
+#    for i in range(0, len(parsedString)):
+#        parsedString[i]= int(parsedString[i])
+#    print (parsedString)
+    return parsedList	
 #####
-## params: string of integers correspoding to internal coordinate to be frozen
-##	   list of internal coordinates
+## params: List of integers correspoding to atoms of distance to be frozen
+##	       list of internal coordinates
 ## calls frozen_setter for stretches, bends, or dihedrals
 ####
 ## To-Do add exceptions and exception handling
-def markAsFrozen(self, frozenStr, intcos)
+def markDisAsFrozen(frozenIntcosList, intcos):
+    if(len(frozenIntcosList) % 2 == 0):
+        for i in range (0, len(frozenIntcosList), 2):
+            stretch = stre.STRE(frozenIntcosList[i] - 1, frozenIntcosList[i + 1] - 1)
+            try:
+                indexing = intcos.index(stretch)
+                intcos[indexing].frozen = True
+            except ValueError:
+                intcos.append(stretch)
+                intcos[-1].frozen = True 
+    else:
+        print("Frozen Distance did not contain a suitable number of atoms, please freeze the distance in sets of two atoms. No distances frozen")
+    return
+#####
+## params: List of integers correspoding to atoms of bend to be frozen
+##	       list of internal coordinates
+## calls frozen_setter for stretches, bends, or dihedrals
+####
+## To-Do add exceptions and exception handling
+def markBendAsFrozen(frozenIntcosList, intcos):
+    if len(frozenIntcosList) % 3 == 0:
+        for i in range (0, len(frozenIntcosList), 3):
+            bendFroz = bend.Bend(frozenIntcosList[i] - 1, frozenIntcosList[i + 1] - 1, frozenIntcosList[i + 2] - 1)
+            try:
+                indexing = intcos.index(bendFroz)
+                intcos[indexing].frozen = True 
+            except ValueError:
+                intcos.append(bendFroz)
+                intcos[-1].frozen = True 
+    else:	
+        print ("Frozen Bend did not contain suitable number of atoms, please freeze Bends in sets of three atoms. No Bends frozen")
+	return
+ 
+#####
+## params: List of integers correspoding to atoms of dihedral to be frozen
+##	       list of internal coordinates
+## calls frozen_setter for stretches, bends, or dihedrals
+####
+## To-Do add exceptions and exception handling
+def markTorsAsFrozen(frozenIntcosList, intcos):
+    if len(frozenIntcosList) % 3 == 0:
+        for i in range (0, len(frozenIntcosList), 4):
+            torsAngle = tors.Tors(frozenIntcosList[i] - 1, frozenIntcosList[i + 1] - 1, frozenIntcosList[i + 2] - 1, frozenIntcosList[i + 3] - 1)
+            try:
+                indexing = intcos.index(torsAngle)
+                intcos[indexing].frozen = True 
+            except ValueError:
+                intcos.append(torsAngle)
+                intcos[-1].frozen = True 
+    else:
+        print ("Frozen Dihedral angle does not contain suitable number of atoms, please freeze dihedrals in sets of four atoms. No Dihedrals frozen")
+	return
+#    for i in range (0, len(frozenStr)):
 
-    frozenStr = parseFrozenString(frozenStr)
-
-    if (frozenStr == optParams.frozenDistance):
-        if (len(frozenStr) % 2 == 0):
-            for j in range (0, len(frozenStr/2):
-                k = j + 1
-                for j,k in purmutations ( range(Natoms, 2)):
-                    frozen(intcos.index(stre.STRE(frozenStr[j], frozenStr[k])), True)
-                j = k
-            else:
-                print ("Frozen Bond did not contain suitable number of atoms, please freeze bonds in sets of two atoms
-			Bond not frozen")
-    elif (frozenStr == optParams.frozenBend):
-        if (len(frozenStr) % 3 == 0):
-            for j in range (0, len(frozenStr/3):
-                k = j + 1
-                l = j + 2
-                for j,k,l in purmutations ( range(Natoms, 3):
-                    frozen(intcos.index(bend.BEND(frozenStr[j], frozenStr[k], frozenStr[l])), True)
-                j = l
-            else:
-		print ("Frozen Bend did not contain suitable number of atoms, please freeze Bends in sets of three atoms
-			Bend not frozen") 
-    elif (frozenStr == optParams.frozenDihedral):
-        if (len(frozenStr) % 4 == 0):
-	    for j in range (0, lenfrozenStr/3):
-	        k = j + 1
-                l = j + 2
-                m = j + 3
-                for j, k, l, m in purmutations ( range(Natoms, 3):
-                    frozen(intcos.index(bend.BEND(frozenStr[j], frozenStr[k], frozenStr[l])), True)	 
-	        j = m
-            else:
-                print ("Frozen Dihedral angle does not contain suitable number of atoms, please freeze dihedrals in sets of four atoms
-			Dihedral not frozen")
-
+#	int(op.Params.frozen_distance(i))	 
+#    frozenStr = parseFrozenString(frozenStr)
+#    op.Params.frozen_distance.replace('(', '')
+#    op.Params.frozen_distance.replace(')', '')
+#    print (op.Params.frozen_distance)
+#    if (frozenStr == op.Params.frozen_distance):
+#	
+#	print (op.Params.frozen_distance)
+#        if (len(frozenStr) % 2 == 0):
+#            for j in range (0, (len(frozenStr)/2)):
+#                k = j + 1
+#                for j,k in purmutations ( range(Natoms, 2)):
+#                    simple.frozen(intcos.index(stre.STRE(frozenStr[j], frozenStr[k])), True)
+#                j = k
+#        else:
+#            print ("Frozen Bond did not contain suitable number of atoms, please freeze bonds in sets of two atoms. Bond not frozen")
+#    elif (frozenStr == op.Params.frozen_bend):
+#        if (len(frozenStr) % 3 == 0):
+#            for j in range (0, (len(frozenStr)/3)):
+#                k = j + 1
+#                l = j + 2
+#                for j,k,l in purmutations ( range(Natoms, 3)):
+#                    simple.frozen(intcos.index(bend.BEND(frozenStr[j], frozenStr[k], frozenStr[l])), True)
+#                j = l
+#        else:
+#          print ("Frozen Bend did not contain suitable number of atoms, please freeze Bends in sets of three atoms. Bend not frozen") 
+#    elif (frozenStr == op.Params.frozen_dihedral):
+#        if (len(frozenStr) % 4 == 0):
+#	    for j in range (0, (len(frozenStr)/3)):
+#	        k = j + 1
+#                l = j + 2
+#                m = j + 3
+#                for j, k, l, m in purmutations ( range(Natoms, 4)):
+#                    simple.frozen(intcos.index(tors.TORS(frozenStr[j], frozenStr[k], frozenStr[l], frozenStr[m])), True)	 
+#	        j = m
+#        else:
+#            print ("Frozen Dihedral angle does not contain suitable number of atoms, please freeze dihedrals in sets of four atoms. Dihedral not frozen")
