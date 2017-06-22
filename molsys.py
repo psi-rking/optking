@@ -77,6 +77,17 @@ class MOLSYS():
             start += self._fragments[i].Natom
         return start
 
+    def frag_atom_range(self, iF):
+        start = self.frag_1st_atom(iF)
+        return range(start, start + self._fragments[iF].Natom)
+
+    # accepts absolute atom index, returns fragment index
+    def atom2frag_index(self, atom_index):
+        for iF,F in enumerate(self._fragments):
+           if atom_index in self.frag_atom_range(iF):
+               return iF
+        raise ValueError("atom_index impossibly large")
+
     @property
     def geom(self):
         geom = np.zeros( (self.Natom,3), float)
