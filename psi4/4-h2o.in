@@ -14,7 +14,7 @@ set {
   e_convergence 10
   d_convergence 10
   scf_type pk
-  geom_maxiter 20
+  geom_maxiter 1
 }
 
 import Psi4Opt

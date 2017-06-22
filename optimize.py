@@ -23,10 +23,9 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy ):
     import convCheck
     import testB
     converged = False
-    run_level = op.Params.dynamic_level
 
     # Loop over a variety of algorithms
-    while (converged == False) and (run_level < op.Params.dynamic_level_max):
+    while (converged == False) and (op.Params.dynamic_level < op.Params.dynamic_level_max):
 
         try:
             print Molsys
@@ -129,8 +128,17 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy ):
         
         except optExceptions.BAD_STEP_EXCEPT:
             print "optimize.py: Caught bad step exception."   
-            print "Increasing run_level."
-            run_level += 1
+            op.Params.dynamic_level += 1
+            if op.Params.dynamic_level == op.Params.dynamic_level_max:
+                print 'dynamic_level (%d) may not be further increased.' % op.Params.dynamic_level
+            else:   # keep going
+                print "increasing dynamic_level."
+                print "Erasing old history, hessian, intcos."
+                del H 
+                for f in Molsys._fragments:
+                    del f._intcos
+                del history.History
+                op.Params.updateDynamicLevelParameters(op.Params.dynamic_level)
     
     history.History.summary()
     return history.History[-1].E
