@@ -52,13 +52,13 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy ):
             if op.Params.frozen_distance is not None:
                 print (op.Params.frozen_distance)
                 FrozenIntcosListDis = addIntcos.parseFrozenString(op.Params.frozen_distance)
-                addIntcos.markDisAsFrozen(FrozenIntcosListDis, Molsys.intcos)
+                addIntcos.markDisAsFrozen(FrozenIntcosListDis, Molsys, Molsys.intcos)
             if op.Params.frozen_bend is not None:
                 FrozenIntcosListBend = addIntcos.parseFrozenString(op.Params.frozen_bend)
-                addIntcos.markBendAsFrozen(FrozenIntcosListBend, Molsys.intcos)
+                addIntcos.markBendAsFrozen(FrozenIntcosListBend, Molsys, Molsys.intcos)
             if op.Params.frozen_dihedral is not None:
                 FrozenIntcosListTors = addIntcos.parseFrozenString(op.Params.frozen_dihedral)
-                addIntcos.markTorsAsFrozen(FrozenIntcosListTors, Molsys.intcos)
+                addIntcos.markTorsAsFrozen(FrozenIntcosListTors, Molsys, Molsys.intcos)
             
             Molsys.printIntcos();
         
