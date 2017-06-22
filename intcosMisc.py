@@ -120,10 +120,18 @@ def qShowForces(intcos, forces):
 #    for (int i=0; i<Nintco; ++i)
 #      oprintf_out("\t%12.6lf    %12.6lf   %12.6lf\n", dq_orig[i], dq[i], dq[i]-dq_orig[i]);
 
+def constraint_matrix(intcos):
+    if not any( [coord.frozen for coord in intcos ]):
+        return None
+    C = np.zeros((len(intcos),len(intcos)), float)
+    for i,coord in intcos:
+        if coord.frozen:
+            C[i,i] = 1.0
+    return C
 
-# Project redundancies and constraints out of forces and Hessian
+# Project redundancies and constraints out of forces and Hessian.
 def project_redundancies(intcos, geom, fq, H):
-    #dim = len(intcos)
+    dim = len(intcos)
 
     # compute projection matrix = G G^-1
     G = Gmat(intcos, geom)
@@ -134,9 +142,37 @@ def project_redundancies(intcos, geom, fq, H):
         print "\tProjection matrix for redundancies."
         printMat(P)
 
+    # Add constraints to projection matrix
+    C = constraint_matrix(intcos)
+
+    if C != None {
+        print "Adding constraints for projection."
+
+    """
+  # P = P' - P' C (CPC)^-1 C P'
+  if (constraints_present) {
+    double **T = init_matrix(Nintco,Nintco);
+    opt_matrix_mult(P, 0, C, 0,  T, 0, Nintco, Nintco, Nintco, 0);
+    double **T2 = init_matrix(Nintco,Nintco);
+    opt_matrix_mult(C, 0, T, 0, T2, 0, Nintco, Nintco, Nintco, 0);
+    double **T3 = symm_matrix_inv(T2, Nintco, 1);
+
+    opt_matrix_mult( C, 0,  P, 0,  T, 0, Nintco, Nintco, Nintco, 0);
+    opt_matrix_mult(T3, 0,  T, 0, T2, 0, Nintco, Nintco, Nintco, 0);
+    free_matrix(T);
+    opt_matrix_mult( C, 0, T2, 0, T3, 0, Nintco, Nintco, Nintco, 0);
+    opt_matrix_mult( P, 0, T3, 0, T2, 0, Nintco, Nintco, Nintco, 0);
+    free_matrix(T3);
+    for (int i=0; i<Nintco; ++i)
+      for (int j=0; j<Nintco; ++j)
+        P[i][j] -= T2[i][j];
+    free_matrix(T2);
+  }
+  free_matrix(C);
+    """
+
+
     # Project redundancies out of forces.
-    # Unconstrained forces will not need this projection, unless we have
-    # interpolated forces, or some other as yet unimplemented method.
     # fq~ = P fq
     fq[:] = np.dot(P, fq.T)
 
