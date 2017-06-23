@@ -236,7 +236,8 @@ def markDisAsFrozen(frozenIntcosList, Molsys, intcos):
                 indexing = intcos.index(stretch)
                 intcos[indexing].frozen = True
             except ValueError:
-                checkAtomIndex(frozenIntcosList, stretch, i + 1, Molsys) 
+                checkAtomIndex(frozenIntcosList, stretch, i + 1, Molsys)
+                checkFragment(frozenIntcosList, bendFroz, i, Molsys, identifier) 
                 intcos.append(stretch)
                 intcos[-1].frozen = True 
     else:
@@ -257,8 +258,9 @@ def markBendAsFrozen(frozenIntcosList, Molsys, intcos):
                 intcos[indexing].frozen = True 
             except ValueError: 
                 checkAtomIndex(frozenIntcosList, bendFroz, i + 2, Molsys)
-                intcos.append(bendFroz)
-                intcos[-1].frozen = True 
+                identifier = "bendFroz"
+                checkFragment(frozenIntcosList, bendFroz, i, Molsys, identifier)
+                Molsys._fragments[atom2gragment_index(i)]._intcos.append(bendFroz)
     else:	
         print ("Frozen Bend did not contain suitable number of atoms, please freeze Bends in sets of three atoms. No Bends frozen")
 	return
@@ -278,10 +280,9 @@ def markTorsAsFrozen(frozenIntcosList, Molsys, intcos):
                 intcos[indexing].frozen = True 
             except ValueError:
                 checkAtomIndex(frozenIntcosList, torsAngle, i+3, Molsys)
-                #Molsys._fragments[0]._intcos.append(torsAngle)
-                #intcos[-1].frozen = True
-                #print (intcos)
-                #print ("      " * 100) 
+                identifier = "torsAngle"
+                checkFragment(froenIntcosList, torsAngle, i, Molsys, identifier)
+                Molsys._fragments[0]._intcos.append(torsAngle)
     else:
         print ("Frozen Dihedral angle does not contain suitable number of atoms, please freeze dihedrals in sets of four atoms. No Dihedrals frozen")
 	return
@@ -298,3 +299,25 @@ def checkAtomIndex(frozenIntcosList, intcosType, index, Molsys):
             return
     except ValueError as e:
         sys.exit(1)
+
+def checkFragment(frozenIntcosList, intcosType, index, Molsys, identifier):
+    fragmentIndex = MOlsys.atom2frag_index(i)
+    fragmentRange = Molsys.frag_atom_range(fragmentIndex)
+    try:
+        if (identifier == "torsAngle"):
+            lastIndex = i + 3
+        elif (identifier == "bendFroz"):
+            lastIndex = i + 2
+        elif (identifier == "stretch"):
+            lastIndex = i + 1
+
+        if frozenIntcosList[lastIndex] > i + fragmentRange:
+            print (intcosType),
+            print ("contains atoms that are not in the same fragment"),
+            print ("Optking cannot currently freeze interfragment coordinates")
+            print ("Qutting program")
+            raise ValueError
+        else:
+            return
+    except ValueError as e:
+            sys.exit(1)         

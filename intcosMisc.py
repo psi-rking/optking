@@ -4,10 +4,11 @@ import bend
 import oofp
 import tors
 from linearAlgebra import symmMatInv
-from printTools import printMat
+from printTools import printMat, printArray
 import optParams as op
 
-# Simple operations on internal coordinate sets.  For example,
+# Simple operations on internal :148
+#coordinate sets.  For example,
 # return values, Bmatrix or fix orientation.
 
 # q    -> qValues
@@ -124,7 +125,7 @@ def constraint_matrix(intcos):
     if not any( [coord.frozen for coord in intcos ]):
         return None
     C = np.zeros((len(intcos),len(intcos)), float)
-    for i,coord in intcos:
+    for i,coord in enumerate(intcos):
         if coord.frozen:
             C[i,i] = 1.0
     return C
@@ -136,19 +137,47 @@ def project_redundancies(intcos, geom, fq, H):
     # compute projection matrix = G G^-1
     G = Gmat(intcos, geom)
     G_inv = symmMatInv(G, redundant=True)
-    P = np.dot(G, G_inv) 
-
+    Pprime = np.dot(G, G_inv) 
     if op.Params.print_lvl >= 3:
         print "\tProjection matrix for redundancies."
-        printMat(P)
+        printMat(Pprime)
 
     # Add constraints to projection matrix
     C = constraint_matrix(intcos)
 
-    if C != None {
+    if C is not None:
         print "Adding constraints for projection."
+        print (C)
+        P= np.zeros((len(intcos), len(intcos)), float)
+        #print (np.dot(C, np.dot(Pprime, C)))
+        CPC = np.zeros((len(intcos), len(intcos)), float) 
+        CPC[:,:] = np.dot(C, np.dot(Pprime, C))
+        CPC = symmMatInv(CPC, redundant = True)  
+        P[:,:] = Pprime - np.dot(Pprime, np.dot(C, np.dot(CPC, np.dot(C, Pprime))))
+        # Project redundancies out of forces.
+        # fq~ = P fq
+        fq[:] = np.dot(P, fq.T)
 
-    """
+        if op.Params.print_lvl >= 3:
+            print "\tInternal forces in au, after projection of redundancies and constraints."
+            printArray(fq)
+        # Project redundancies out of Hessian matrix.
+        # Peng, Ayala, Schlegel, JCC 1996 give H -> PHP + 1000(1-P)
+        # The second term appears unnecessary and sometimes messes up Hessian updating.
+        tempMat = np.dot(H, P)
+        H[:,:] = np.dot(P, tempMat)
+        #for i in range(dim)
+        #    H[i,i] += 1000 * (1.0 - P[i,i])
+        #for i in range(dim)
+        #    for j in range(i):
+        #        H[j,i] = H[i,j] = H[i,j] + 1000 * (1.0 - P[i,j])
+        if op.Params.print_lvl >= 3:
+            print "Projected (PHP) Hessian matrix"
+            printMat(H)
+        #performed elsewhere
+        #Hinv = symmMatInv(H, redundent = True)
+        #dq = np.dot(-Hinv, fq)
+        """
   # P = P' - P' C (CPC)^-1 C P'
   if (constraints_present) {
     double **T = init_matrix(Nintco,Nintco);
@@ -169,29 +198,4 @@ def project_redundancies(intcos, geom, fq, H):
     free_matrix(T2);
   }
   free_matrix(C);
-    """
-
-
-    # Project redundancies out of forces.
-    # fq~ = P fq
-    fq[:] = np.dot(P, fq.T)
-
-    if op.Params.print_lvl >= 3:
-        print "\tInternal forces in au, after projection of redundancies and constraints."
-
-    # Project redundancies out of Hessian matrix.
-    # Peng, Ayala, Schlegel, JCC 1996 give H -> PHP + 1000(1-P)
-    # The second term appears unnecessary and sometimes messes up Hessian updating.
-
-    tempMat = np.dot(H, P)
-    H[:,:] = np.dot(P, tempMat)
-    #for i in range(dim)
-    #    H[i,i] += 1000 * (1.0 - P[i,i])
-    #for i in range(dim)
-    #    for j in range(i):
-    #        H[j,i] = H[i,j] = H[i,j] + 1000 * (1.0 - P[i,j])
-
-    if op.Params.print_lvl >= 3:
-        print "Projected (PHP) Hessian matrix"
-        printMat(H)
-
+        """
