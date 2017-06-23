@@ -130,14 +130,16 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy ):
             print "optimize.py: Caught bad step exception."   
             op.Params.dynamic_level += 1
             if op.Params.dynamic_level == op.Params.dynamic_level_max:
-                print 'dynamic_level (%d) may not be further increased.' % op.Params.dynamic_level
+                print 'dynamic_level (%d) may not be further increased.' % (op.Params.dynamic_level-1)
             else:   # keep going
                 print "increasing dynamic_level."
                 print "Erasing old history, hessian, intcos."
                 del H 
                 for f in Molsys._fragments:
-                    del f._intcos
-                del history.History
+                    del f._intcos[:]
+                del history.History[:] # delete steps in history
+                history.History.stepsSinceLastHessian = 0
+                history.History.consecutiveBacksteps = 0
                 op.Params.updateDynamicLevelParameters(op.Params.dynamic_level)
     
     history.History.summary()

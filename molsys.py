@@ -1,7 +1,7 @@
 import numpy as np
 import frag
 from optParams import Params
-from addIntcos import connectivityFromDistances
+from addIntcos import connectivityFromDistances, addCartesianIntcos
 from printTools import printMat
 import physconst as pc
 import covRadii
@@ -133,7 +133,7 @@ class MOLSYS():
 
     def addCartesianIntcos(self):
         for F in self._fragments:
-            addIntcos.addCartesianIntcos(F._intcos, F._geom)
+            addCartesianIntcos(F._intcos, F._geom)
 
     def printGeom(self):
         for iF, F in enumerate(self._fragments):

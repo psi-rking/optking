@@ -63,17 +63,14 @@ class CART(SIMPLE):
         dqdx[3*self.A+self._xyz] = 1.0
         return
 
-    # def Dq2Dx3(self, geom, dqdx):
-    # Return zero matrix, no change in B.
+    # Do nothing, derivative B matrix is zero.
+    def Dq2Dx2(self, geom, dq2dx2):
+        pass
 
-    def diagonalHessianGuess(self, geom, Z, guess="SIMPLE"):
+    def diagonalHessianGuess(self, geom, Z, connectivity, guessType):
         """ Generates diagonal empirical Hessians in a.u. such as 
           Schlegel, Theor. Chim. Acta, 66, 333 (1984) and
           Fischer and Almlof, J. Phys. Chem., 96, 9770 (1992).
         """
-        if guess == "SIMPLE":
-            return 0.1
-        else:
-            print "Warning: Hessian guess encountered unknown coordinate type."
-            return 1.0
+        return 0.1
 
