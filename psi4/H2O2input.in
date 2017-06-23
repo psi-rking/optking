@@ -1,9 +1,9 @@
 #! Various constrained energy minimizations of HOOH with cc-pvdz RHF
 #! Internal-coordinate constraints in internal-coordinate optimizations.
 
-OH_frozen_stre_rhf       = -150.78104113   #TEST
-OOH_frozen_bend_rhf      = -150.78628057   #TEST
-HOOH_frozen_dihedral_rhf = -150.78667424   #TEST
+OH_frozen_stre_rhf       = -150.781122585018   #TEST
+OOH_frozen_bend_rhf      = -150.786370678734   #TEST
+HOOH_frozen_dihedral_rhf = -150.786766848345   #TEST
 
 set {
   diis false
@@ -21,7 +21,7 @@ set {
 #}
 #
 #set optking {
-#  geom_maxiter 10
+#  geom_maxiter 25
 #  print = 3
 #  frozen_distance = ("
 #    1  2
@@ -35,21 +35,21 @@ set {
 #compare_values(OH_frozen_stre_rhf , thisenergy, 7, "Int. Coord. RHF opt of HOOH with O-H frozen, energy")  #TEST
 
 # Constrained minimization with O-O-H angles frozen.
-#molecule {
-#  H
-#  O 1 0.90
-#  O 2 1.40 1 100.0
-#  H 3 0.90 2 100.0 1 115.0
-#}
-#
-#set optking {
-#  geom_maxiter 10
-#  frozen_distance = ""  # here, it's been previous used, so must be blanked
-#  frozen_bend = ("
-#    1 2 3
-#    2 3 4
-#  ")
-#}
+molecule {
+  H
+  O 1 0.90
+  O 2 1.40 1 100.0
+  H 3 0.90 2 100.0 1 115.0
+}
+
+set optking {
+  geom_maxiter 25
+  frozen_distance = ""  # here, it's been previous used, so must be blanked
+  frozen_bend = ("
+    1 2 3
+    2 3 4
+  ")
+}
 #thisenergy = optimize('scf')
 #import Psi4Opt
 #Psi4Opt.calcName = 'hf'
@@ -65,6 +65,7 @@ molecule {
 }
 
 set optking {
+  geom_maxiter 25
   frozen_distance = ""   # here, it's been previous used, so must be blanked
   frozen_bend =     ""
   frozen_dihedral = ("
@@ -74,7 +75,7 @@ set optking {
 import Psi4Opt
 Psi4Opt.calcName = 'hf'
 thisenergy = Psi4Opt.Psi4Opt()
-
+#
 #compare_values(nucenergy, h2o.nuclear_repulsion_energy(), 3, "Nuclear repulsion energy")    #TEST
 #compare_values(refenergy, thisenergy, 6, "Reference energy")                                #TEST
 #thisenergy = optimize('scf')

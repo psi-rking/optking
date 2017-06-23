@@ -55,7 +55,7 @@ def DE_projected(model, step, grad, hess):
 
 # geometry and E are just for passing
 # at present we are not storing the ACTUAL dq but the attempted
-def Dq_NR(intcos, geom, E, fq, H):
+def Dq_NR(Molsys, E, fq, H):
     print "\tTaking NR optimization step."
 
     # Hinv fq = dq
@@ -82,8 +82,8 @@ def Dq_NR(intcos, geom, E, fq, H):
     print "\tProjected energy change by quadratic approximation: %20.10lf" % DEprojected
 
     # Scale fq into aJ for printing
-    fq_aJ = qShowForces(intcos, fq)
-    displace(intcos, geom, dq, fq_aJ)
+    fq_aJ = qShowForces(Molsys.intcos, fq)
+    displace(Molsys._fragments[0].intcos, Molsys._fragments[0].geom, dq, fq_aJ)
 
     dq_actual = sqrt( np.dot(dq,dq) )
     print "\tNorm of achieved step-size %15.10f" % dq_actual
