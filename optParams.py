@@ -104,11 +104,11 @@ class OPT_PARAMS(object):
         #P.irc_stop = uod.get('IRC_STOP', 'STOP')
 #
         # Initial maximum step size in bohr or radian along an internal coordinate
-        P.intrafrag_trust = uod.get('INTRAFRAG_TRUST', 0.5)
+        P.intrafrag_trust = uod.get('INTRAFRAG_STEP_LIMIT', 0.5)
         # Lower bound for dynamic trust radius [au]
-        P.intrafrag_trust_min = uod.get('INTRAFRAG_TRUST_MIN', 0.001)
+        P.intrafrag_trust_min = uod.get('INTRAFRAG_STEP_LIMIT_MIN', 0.001)
         # Upper bound for dynamic trust radius [au]
-        P.intrafrag_trust_max = uod.get('INTRAFRAG_TRUST_MAX', 1.0)
+        P.intrafrag_trust_max = uod.get('INTRAFRAG_STEP_LIMIT_MAX', 1.0)
         # Maximum step size in bohr or radian along an interfragment coordinate
         #P.interfrag_trust = uod.get('INTERFRAG_TRUST', 0.5)
         ## Reduce step size as necessary to ensure convergence of back-transformation of
