@@ -193,8 +193,7 @@ class HBOND(STRE):
         elif self.inverse != other.inverse: return False
         else: return True
 
-
-    def diagonalHessianGuess(self, geom, Z, guess="SIMPLE"):
+    def diagonalHessianGuess(self, geom, Z, connectivity, guessType):
         """ Generates diagonal empirical Hessians in a.u. such as 
           Schlegel, Theor. Chim. Acta, 66, 333 (1984) and
           Fischer and Almlof, J. Phys. Chem., 96, 9770 (1992).

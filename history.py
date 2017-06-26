@@ -64,6 +64,9 @@ class HISTORY(object):
     def __setitem__(self,index,item):
         self.steps[index] = item
 
+    def __delitem__(self,index):
+        del self.steps[index]
+
     # Add new step.  We will store geometry as 1D in history.
     def append(self, geom, E, forces):
         s = STEP( geom, E, forces)
