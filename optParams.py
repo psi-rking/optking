@@ -268,9 +268,9 @@ class OPT_PARAMS(object):
         ## --- Complicated defaults ---
 #
         ## Assume RFO means P-RFO for transition states.
-        #if P.opt_type == 'TS':
-            #if P.step_type == 'RFO' or 'STEP_TYPE' not in uod:
-                #P.step_type = 'P_RFO'
+        if P.opt_type == 'TS':
+            if P.step_type == 'RFO' or 'STEP_TYPE' not in uod:
+                P.step_type = 'P_RFO'
 #
         ## INTERNAL is a synonym
         #if P.opt_coordinates == 'INTERNAL': P.opt_coordinates = 'REDUNDANT'
@@ -295,9 +295,9 @@ class OPT_PARAMS(object):
                     #P.H_guess_every = False;
 #
         ## Set Bofill as default for TS optimizations.
-        #if P.opt_type == 'TS' or P.opt_type == 'IRC':
-            #if 'HESS_UPDATE' not in uod:
-                #P.hess_update = 'BOFILL'
+        if P.opt_type == 'TS' or P.opt_type == 'IRC':
+            if 'HESS_UPDATE' not in uod:
+                P.hess_update = 'BOFILL'
 #
         ## Make trajectory file printing the default for IRC.
         #if P.opt_type == 'IRC' and 'PRINT_TRAJECTORY_XYZ_FILE' not in uod:

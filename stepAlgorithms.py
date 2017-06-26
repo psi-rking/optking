@@ -367,7 +367,7 @@ def Dq_RFO(Molsys, E, fq, H):
     return dq
 
 # Take Steepest Descent step
-def Dq_SD(intcos, geom, E, fq):
+def Dq_SD(Molsys, E, fq):
     print "\tTaking SD optimization step."
     dim = len(fq)
     sd_h = Params.sd_hessian # default value
@@ -405,8 +405,8 @@ def Dq_SD(intcos, geom, E, fq):
     DEprojected = DE_projected('NR', sd_dqnorm, sd_g, sd_h);
     print "\tProjected energy change by quadratic approximation: %20.10lf" % DEprojected
 
-    fq_aJ = qShowForces(intcos, fq) # for printing
-    displace(intcos, geom, dq, fq_aJ)
+    fq_aJ = qShowForces(Molsys.intcos, fq) # for printing
+    displace(Molsys._fragments[0].intcos, Molsys._fragments[0].geom, dq, fq_aJ)
 
     dqnorm_actual = np.linalg.norm(dq)
     print "\tNorm of achieved step-size %15.10f" % dqnorm_actual
@@ -433,7 +433,7 @@ def Dq_SD(intcos, geom, E, fq):
 #       Dq - cut in half
 #       projectedDE - recompute
 
-def Dq_BACKSTEP(intcos, geom):
+def Dq_BACKSTEP(Molsys):
     print "\tRe-doing last optimization step - smaller this time."
 
     if len(History.steps) < 2:
@@ -465,8 +465,8 @@ def Dq_BACKSTEP(intcos, geom):
         DEprojected = DE_projected('NR', dqNorm, oneDgradient, oneDhessian)
     print "\tProjected energy change : %20.10lf" % DEprojected
 
-    fq_aJ = qShowForces(intcos, fq) # for printing
-    displace(intcos, geom, dq, fq_aJ)
+    fq_aJ = qShowForces(Molsys.intcos, fq) # for printing
+    displace(Molsys._fragments[0].intcos, Molsys._fragments[0].geom, dq, fq_aJ)
     dqNormActual = np.linalg.norm(dq)
     print "\tNorm of achieved step-size %15.10f" % dqNormActual
     # Symmetrize the geometry for next step

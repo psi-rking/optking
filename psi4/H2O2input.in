@@ -65,6 +65,7 @@ molecule {
 }
 
 set optking {
+  step_type SD
   geom_maxiter 25
   frozen_distance = ""   # here, it's been previous used, so must be blanked
   frozen_bend =     ""
@@ -79,5 +80,5 @@ thisenergy = Psi4Opt.Psi4Opt()
 #compare_values(nucenergy, h2o.nuclear_repulsion_energy(), 3, "Nuclear repulsion energy")    #TEST
 #compare_values(refenergy, thisenergy, 6, "Reference energy")                                #TEST
 #thisenergy = optimize('scf')
-#compare_values(HOOH_frozen_dihedral_rhf , thisenergy, 7, "Int. Coord. RHF opt of HOOH with H-O-O-H frozen, energy") #TEST
+compare_values(HOOH_frozen_dihedral_rhf , thisenergy, 7, "Int. Coord. RHF opt of HOOH with H-O-O-H frozen, energy") #TEST
 
