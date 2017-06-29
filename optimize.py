@@ -47,17 +47,21 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy ):
             if op.Params.opt_coordinates in ['CARTESIAN','BOTH']:
                 Molsys.addCartesianIntcos()
 
-            # Testing Implementaiton of frozen coordinates
-            if op.Params.frozen_distance is not None:
-                print (op.Params.frozen_distance)
-                FrozenIntcosListDis = addIntcos.parseFrozenString(op.Params.frozen_distance)
-                addIntcos.markDisAsFrozen(FrozenIntcosListDis, Molsys, Molsys.intcos)
-            if op.Params.frozen_bend is not None:
-                FrozenIntcosListBend = addIntcos.parseFrozenString(op.Params.frozen_bend)
-                addIntcos.markBendAsFrozen(FrozenIntcosListBend, Molsys, Molsys.intcos)
-            if op.Params.frozen_dihedral is not None:
-                FrozenIntcosListTors = addIntcos.parseFrozenString(op.Params.frozen_dihedral)
-                addIntcos.markTorsAsFrozen(FrozenIntcosListTors, Molsys, Molsys.intcos)
+            # Read in frozen coordinates
+            if op.Params.frozen_distance:
+                addIntcos.freezeStretchesFromInputAtomList(op.Params.frozen_distance, Molsys, Molsys.intcos)
+            if op.Params.frozen_bend:
+                addIntcos.freezeBendsFromInputAtomList(op.Params.frozen_bend, Molsys, Molsys.intcos)
+            if op.Params.frozen_dihedral:
+                addIntcos.freezeTorsionsFromInputAtomList(op.Params.frozen_dihedral, Molsys, Molsys.intcos)
+
+            # Read in fixed coordinates
+            if op.Params.fixed_distance:
+                addIntcos.fixStretchesFromInput(op.Params.fixed_distance, Molsys, Molsys.intcos)
+            if op.Params.fixed_bend:
+                addIntcos.fixBendsFromInput(op.Params.fixed_bend, Molsys, Molsys.intcos)
+            if op.Params.fixed_dihedral:
+                addIntcos.fixTorsionsFromInput(op.Params.fixed_dihedral, Molsys, Molsys.intcos)
             
             Molsys.printIntcos();
         
@@ -142,6 +146,21 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy ):
                 history.History.consecutiveBacksteps = 0
                 op.Params.updateDynamicLevelParameters(op.Params.dynamic_level)
     
+    # print summary
     history.History.summary()
-    return history.History[-1].E
+    energy = history.History[-1].E
+
+    # clean up
+    del H
+    for f in Molsys._fragments:
+        del f._intcos[:]
+        del f
+    del history.History[:]
+
+    return energy
+
+
+    
+
+
 

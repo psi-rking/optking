@@ -198,126 +198,114 @@ def linearBendCheck(intcos, geom, dq):
             linearBendsMissing.append(b)
 
     return linearBendsMissing
-####
-## params: string of integers corresponding to internal coordinates
-## returns: a list of integers correspoding to an atom
-## removes spaces or non integer characters from string of internal coordinates to be frozen        
-#### 
-def parseFrozenString(frozenStr):
-#    frozenStr = int(frozenStr)
-    parsedList = frozenStr.encode('utf-8')
-    parsedList = str.replace(parsedList, '(' , '')
-    parsedList = str.replace(parsedList, ')' , '')
-    parsedList = parsedList.split() #this is where string actually becomes a List
-    for i in range (0, len(parsedList)):
-        parsedList[i] = int(parsedList[i])
-#    for i in range(0, len(parsedString)):
-#        parsedString[i]= int(parsedString[i])
-#    print (parsedString)
-    return parsedList	
+
 #####
 ## params: List of integers correspoding to atoms of distance to be frozen
 ##	       list of internal coordinates
-## calls frozen_setter for stretches, bends, or dihedrals
 ####
-## To-Do add exceptions and exception handling
-def markDisAsFrozen(frozenIntcosList, Molsys, intcos):
-    if(len(frozenIntcosList) % 2 == 0):
-        for i in range (0, len(frozenIntcosList), 2):
+def freezeStretchesFromInputAtomList(frozenStreList, Molsys, intcos):
+    if len(frozenStreList) % 2 != 0:
+        raise ValueError("Number of atoms in frozen stretch list not divisible by 2.")
 
-#determine fragment of atom 1
-#determine fragment of atom 2
-#if different - raise exception for now.
-#if same
-#molsys._fragment[iF].intcos.append( )
-
-            stretch = stre.STRE(frozenIntcosList[i] - 1, frozenIntcosList[i + 1] - 1)
-            try:
-                indexing = intcos.index(stretch)
-                intcos[indexing].frozen = True
-            except ValueError:
-                checkAtomIndex(frozenIntcosList, stretch, i + 1, Molsys)
-                checkFragment(frozenIntcosList, bendFroz, i, Molsys, identifier) 
-                intcos.append(stretch)
-                intcos[-1].frozen = True 
-    else:
-        print("Frozen Distance did not contain a suitable number of atoms, please freeze the distance in sets of two atoms. No distances frozen")
+    for i in range (0, len(frozenStreList), 2):
+        stretch = stre.STRE(frozenStreList[i]-1, frozenStreList[i+1]-1, frozen=True)
+        f = checkFragment(stretch.atoms, Molsys)
+        try:
+            I = Molsys._fragments[f]._intcos.index(stretch)
+            Molsys._fragments[f]._intcos[I].frozen = True
+        except ValueError:
+            print("Frozen stretch not present, so adding it.")
+            Molsys._fragments[f]._intcos.append(stretch)
     return
+
 #####
 ## params: List of integers correspoding to atoms of bend to be frozen
 ##	       list of internal coordinates
-## calls frozen_setter for stretches, bends, or dihedrals
 ####
-## To-Do add exceptions and exception handling
-def markBendAsFrozen(frozenIntcosList, Molsys, intcos):
-    if len(frozenIntcosList) % 3 == 0:
-        for i in range (0, len(frozenIntcosList), 3):
-            bendFroz = bend.BEND(frozenIntcosList[i] - 1, frozenIntcosList[i + 1] - 1, frozenIntcosList[i + 2] - 1)
-            try:
-                indexing = intcos.index(bendFroz)
-                intcos[indexing].frozen = True 
-            except ValueError: 
-                checkAtomIndex(frozenIntcosList, bendFroz, i + 2, Molsys)
-                identifier = "bendFroz"
-                checkFragment(frozenIntcosList, bendFroz, i, Molsys, identifier)
-                Molsys._fragments[atom2gragment_index(i)]._intcos.append(bendFroz)
-    else:	
-        print ("Frozen Bend did not contain suitable number of atoms, please freeze Bends in sets of three atoms. No Bends frozen")
-	return
+def freezeBendsFromInputAtomList(frozenBendList, Molsys, intcos):
+    if len(frozenBendList) % 3 != 0:
+        raise ValueError("Number of atoms in frozen bend list not divisible by 3.")
+
+    for i in range (0, len(frozenBendList), 3):
+        bendFroz = bend.BEND(frozenBendList[i]-1, frozenBendList[i+1]-1, \
+                             frozenBendList[i+2]-1, frozen=True)
+        f = checkFragment(bendFroz.atoms, Molsys)
+        try:
+            I = Molsys._fragments[f]._intcos.index(bendFroz)
+            Molsys._fragments[f]._intcos[I].frozen = True
+        except ValueError: 
+            print("Frozen bend not present, so adding it.")
+            Molsys._fragments[f]._intcos.append(bendFroz)
+    return
  
 #####
 ## params: List of integers correspoding to atoms of dihedral to be frozen
 ##	       list of internal coordinates
-## calls frozen_setter for stretches, bends, or dihedrals
 ####
-## To-Do add exceptions and exception handling
-def markTorsAsFrozen(frozenIntcosList, Molsys, intcos):
-    if len(frozenIntcosList) % 4 == 0:
-        for i in range (0, len(frozenIntcosList), 4):
-            torsAngle = tors.TORS(frozenIntcosList[i] - 1, frozenIntcosList[i + 1] - 1, frozenIntcosList[i + 2] - 1, frozenIntcosList[i + 3] - 1)
-            try:
-                indexing = intcos.index(torsAngle)
-                intcos[indexing].frozen = True 
-            except ValueError:
-                checkAtomIndex(frozenIntcosList, torsAngle, i+3, Molsys)
-                identifier = "torsAngle"
-                checkFragment(froenIntcosList, torsAngle, i, Molsys, identifier)
-                Molsys._fragments[0]._intcos.append(torsAngle)
-    else:
-        print ("Frozen Dihedral angle does not contain suitable number of atoms, please freeze dihedrals in sets of four atoms. No Dihedrals frozen")
-	return
+def freezeTorsionsFromInputAtomList(frozenTorsList, Molsys, intcos):
+    if len(frozenTorsList) % 4 != 0:
+        raise ValueError("Number of atoms in frozen torsion list not divisible by 4.")
 
-def checkAtomIndex(frozenIntcosList, intcosType, index, Molsys):
-    try:
-        if frozenIntcosList[index] > Molsys.Natom:
-            print ("=" * 90)
-            print (intcosType),
-            print ("contains atoms that do not exist in the molecule provided")
-            print ("=" * 90)
-            raise ValueError ("Qutting Program")
-        else:
-            return
-    except ValueError as e:
-        sys.exit(1)
+    for i in range (0, len(frozenTorsList), 4):
+        torsAngle = tors.TORS(frozenTorsList[i]-1, frozenTorsList[i+1]-1,  \
+                              frozenTorsList[i+2]-1, frozenTorsList[i+3]-1, frozen=True)
+        f = checkFragment(torsAngle.atoms, Molsys)
+        try:
+            I = Molsys._fragments[f]._intcos.index(torsAngle)
+            Molsys._fragments[f]._intcos[I].frozen = True
+        except ValueError:
+            print("Frozen dihedral not present, so adding it.")
+            Molsys._fragments[f]._intcos.append(torsAngle)
+    return
 
-def checkFragment(frozenIntcosList, intcosType, index, Molsys, identifier):
-    fragmentIndex = MOlsys.atom2frag_index(i)
-    fragmentRange = Molsys.frag_atom_range(fragmentIndex)
-    try:
-        if (identifier == "torsAngle"):
-            lastIndex = i + 3
-        elif (identifier == "bendFroz"):
-            lastIndex = i + 2
-        elif (identifier == "stretch"):
-            lastIndex = i + 1
+# Check if a group of atoms are in the same fragment (or not).
+# Implicitly this function also returns a ValueError for too high atom indices.
+# Raise error if different, return fragment if same.
+def checkFragment(atomList, Molsys):
+    fragList = Molsys.atomList2uniqueFragList(atomList)
+    if len(fragList) != 1:
+        print("Coordinate contains atoms in different fragments. Not currently supported.")
+        raise ValueError("Atom list contains multiple fragments.")
+    return fragList[0]
 
-        if frozenIntcosList[lastIndex] > i + fragmentRange:
-            print (intcosType),
-            print ("contains atoms that are not in the same fragment"),
-            print ("Optking cannot currently freeze interfragment coordinates")
-            print ("Qutting program")
-            raise ValueError
-        else:
-            return
-    except ValueError as e:
-            sys.exit(1)         
+# Length mod 3 should be checked in optParams
+def fixStretchesFromInput(fixedStreList, Molsys, intcos):
+    for i in range (0, len(fixedStreList), 3):  # loop over fixed stretches
+        stretch = stre.STRE(fixedStreList[i]-1, fixedStreList[i+1]-1, 
+                            fixedEqVal=fixedStreList[i+2])
+        f = checkFragment(stretch.atoms, Molsys)
+        try:
+            I = Molsys._fragments[f]._intcos.index(stretch)
+            Molsys._fragments[f]._intcos[I].fixedEqVal = fixedStreList[i+2]
+        except ValueError:
+            print("Fixed stretch not present, so adding it.")
+            Molsys._fragments[f]._intcos.append(stretch)
+    return
+
+def fixBendsFromInput(fixedBendList, Molsys, intcos):
+    for i in range (0, len(fixedBendList), 4):  # loop over fixed bends
+        one_bend = bend.BEND(fixedBendList[i]-1, fixedBendList[i+1]-1, fixedBendList[i+2]-1,\
+                         fixedEqVal = fixedBendList[i+3])
+        f = checkFragment(fixedIntcosList, Molsys)
+        try:
+            I = Molsys._fragments[f]._intcos.index(one_bend)
+            Molsys._fragments[f]._intcos[I].fixedEqVal = fixedBendList[i+3]
+        except ValueError:
+            print("Fixed bend not present, so adding it.")
+            Molsys._fragments[f]._intcos.append(one_bend)
+    return
+
+def fixTorsionsFromInput(fixedTorsList, Molsys, intcos):
+    for i in range (0, len(fixedBendList), 5):  # loop over fixed dihedrals
+        one_tors = tors.BEND(fixedTorsList[i]-1, fixedTorsList[i+1]-1, fixedTorsList[i+2]-1,\
+                        fixedTorsList[i+3]-1, fixedEqVal = fixedTorsList[i+4])
+        f = checkFragment(fixedTorsList, Molsys)
+        try:
+            I = Molsys._fragments[f]._intcos.index(one_bend)
+            Molsys._fragments[f]._intcos[I].fixedEqVal = fixedTorsList[i+4]
+        except ValueError:
+            print("Fixed torsion not present, so adding it.")
+            Molsys._fragments[f]._intcos.append(one_tors)
+    return
+
+

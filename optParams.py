@@ -38,6 +38,8 @@ allowedStringOptions = {
 def enum_key( enum_type, value):
     print [key for key, val in enum_type.__dir__.items() if val == value][0]
 
+from misc import intList, intIntFloatList, intIntIntFloatList, intIntIntIntFloatList, tokenizeInputString
+
 class OPT_PARAMS(object):
     # define properties
     opt_type        = stringOption( 'opt_type' )
@@ -124,21 +126,31 @@ class OPT_PARAMS(object):
         # Absolute maximum value of RS-RFO.
         P.rsrfo_alpha_max = uod.get('RSRFO_ALPHA_MAX', 1e8)
         ## Specify distances between atoms to be frozen (unchanged)
-        P.frozen_distance = uod.get('FROZEN_DISTANCE','')
+        # P.frozen_distance = uod.get('FROZEN_DISTANCE','')
+        frozen = uod.get('FROZEN_DISTANCE','')
+        P.frozen_distance = intList( tokenizeInputString(frozen) )
         ## Specify angles between atoms to be frozen (unchanged)
-        P.frozen_bend = uod.get('FROZEN_BEND','')
+        #P.frozen_bend = uod.get('FROZEN_BEND','')
+        frozen = uod.get('FROZEN_BEND','')
+        P.frozen_bend = intList( tokenizeInputString(frozen) )
         ## Specify dihedral angles between atoms to be frozen (unchanged)
-        P.frozen_dihedral = uod.get('FROZEN_DIHEDRAL','')
+        #P.frozen_dihedral = uod.get('FROZEN_DIHEDRAL','')
+        frozen = uod.get('FROZEN_DIHEDRAL','')
+        P.frozen_dihedral = intList( tokenizeInputString(frozen) )
         ## Specify atom and X, XY, XYZ, ... to be frozen (unchanged)
         P.frozen_cartesian = uod.get('FROZEN_CARTESIAN','')
-#
-        ## Specify distances between atoms to be fixed (eq. value specified)
-        #P.fixed_distant = uod.get("FIXED_DISTANCE", "")
-        ## Specify angles between atoms to be fixed (eq. value specified)
+        # Specify distances between atoms to be fixed (eq. value specified)
+        #P.fixed_distance = uod.get("FIXED_DISTANCE", "")
+        fixed = uod.get("FIXED_DISTANCE", "")
+        P.fixed_distance = intIntFloatList( tokenizeInputString(fixed) )
+        # Specify angles between atoms to be fixed (eq. value specified)
         #P.fixed_bend    = uod.get("FIXED_BEND", "")
-        ## Specify dihedral angles between atoms to be fixed (eq. value specified)
+        fixed = uod.get("FIXED_BEND", "")
+        P.fixed_bend    = intIntIntFloatList( tokenizeInputString(fixed) )
+        # Specify dihedral angles between atoms to be fixed (eq. value specified)
         #P.fixed_dihedral = uod.get("FIXED_DIHEDRAL","")
-#
+        fixed = uod.get("FIXED_DIHEDRAL","")
+        P.fixed_dihedral = intIntIntIntFloatList( tokenizeInputString(fixed) )
 #
         ## Should an xyz trajectory file be kept (useful for visualization)?
         #P.print_trajectory_xyz = uod.get('PRINT_TRAJECTORY_XYZ', False)
@@ -321,14 +333,14 @@ class OPT_PARAMS(object):
         ##  Delta-E's are possible, and this threshold should be made larger.
         #if P.fragment_mode == 'MULTI' and 'RFO_NORMALIZATION_MAX' not in uod:
             #P.rfo_normalization_max = 1.0e5
-        # Arbitrary user forces, don't shrink stepsize.
-        #if P.fixed_distance or P.fixed_bend or P.fixed_dihedral:
-        #    if 'INTRAFRAGMENT_TRUST' not in uod:
-        #        P.intrafrag_trust     = 0.1
-        #    if 'INTRAFRAGMENT_TRUST_MIN' not in uod:
-        #        P.intrafrag_trust_min = 0.1
-        #    if 'INTRAFRAGMENT_TRUST_MAX' not in uod:
-        #        P.intrafrag_trust_max = 0.1
+        # Arbitrary user forces, so don't shrink stepsize if Delta(E) is poor..
+        if P.fixed_distance or P.fixed_bend or P.fixed_dihedral:
+            if 'INTRAFRAGMENT_TRUST' not in uod:
+                P.intrafrag_trust     = 0.1
+            if 'INTRAFRAGMENT_TRUST_MIN' not in uod:
+                P.intrafrag_trust_min = 0.1
+            if 'INTRAFRAGMENT_TRUST_MAX' not in uod:
+                P.intrafrag_trust_max = 0.1
 #
         ## -- Items are below unlikely to need modified
 #

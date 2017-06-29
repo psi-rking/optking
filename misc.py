@@ -70,3 +70,49 @@ def HguessLindhRho(ZA, ZB, RAB):
 
     return np.exp(-alpha * (RAB*RAB - r_ref*r_ref))
 
+####
+## params: string of integers corresponding to internal coordinates
+## returns: a list of integers correspoding to an atom
+## removes spaces or non integer characters from string of internal coordinates to be frozen        
+#### 
+def tokenizeInputString(inString):
+    outString = inString.encode('utf-8').replace('(' , '').replace(')' , '')
+    return outString.split()
+
+def intList(inList):
+    outList = [ int(i) for i in inList ]
+    return outList
+
+def intIntFloatList(inList):
+    if len(inList) % 3 != 0:
+        raise ValueError("List is not comprised of int-int-float elements")
+    outList = []
+    for i in range(0,len(inList),3):
+        outList.append( int(inList[i+0]) )
+        outList.append( int(inList[i+1]) )
+        outList.append( float(inList[i+2]) )
+    return outList
+
+def intIntIntFloatList(inList):
+    if len(inList) % 4 != 0:
+        raise ValueError("List is not comprised of int-int-int-float elements")
+    outList = []
+    for i in range(0,len(inList),4):
+        outList.append( int(inList[i+0]) )
+        outList.append( int(inList[i+1]) )
+        outList.append( int(inList[i+2]) )
+        outList.append( float(inList[i+3]) )
+    return outList
+
+def intIntIntIntFloatList(inList):
+    if len(inList) % 5 != 0:
+        raise ValueError("List is not comprised of int-int-int-int-float elements")
+    outList = []
+    for i in range(0,len(inList),5):
+        outList.append( int(inList[i+0]) )
+        outList.append( int(inList[i+1]) )
+        outList.append( int(inList[i+2]) )
+        outList.append( int(inList[i+3]) )
+        outList.append( float(inList[i+4]) )
+    return outList
+

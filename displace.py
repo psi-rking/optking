@@ -11,8 +11,6 @@ from linearAlgebra import absMax,rms,symmMatInv
 #   Reduce step size as necessary until back-transformation converges.
 
 def displace(intcos, geom, dq, fq, atom_offset=0, ensure_convergence=False):
-    print ("Alex")
-    print (dq)
     if not len(intcos) or not len(geom) or not len(dq):
         dq[:] = 0
         return
@@ -85,15 +83,15 @@ def displace(intcos, geom, dq, fq, atom_offset=0, ensure_convergence=False):
             if not intco.frozen:
                 dq_adjust_frozen[i] = 0
 
-        print "\n\tBack-transformation to cartesian coordinates to adjust frozen coordinates...",
+        print "\n\tBack-transformation to cartesian coordinates to adjust frozen coordinates..."
 
         intcosMisc.fixBendAxes(intcos, geom)
         check = stepIter(intcos, geom, dq_adjust_frozen, bt_dx_conv=1.0e-12, \
                              bt_dx_rms_change_conv=1.0e-12, bt_max_iter=100)
         intcosMisc.unfixBendAxes(intcos)
 
-        if check: print "successful."
-        else:     print "unsuccessful, but continuing."
+        if check: print "\tsuccessful."
+        else:     print "\tunsuccessful, but continuing."
 
     # Make sure final Dq is actual change
     q_final = intcosMisc.qValues(intcos, geom)

@@ -88,6 +88,15 @@ class MOLSYS():
                return iF
         raise ValueError("atom_index impossibly large")
 
+    # Given a list of atoms, return all the fragments to which they belong
+    def atomList2uniqueFragList(self, atomList):
+        fragList = []
+        for a in atomList:
+            f = self.atom2frag_index(a)
+            if f not in fragList:
+                fragList.append(f)
+        return fragList
+
     @property
     def geom(self):
         geom = np.zeros( (self.Natom,3), float)
