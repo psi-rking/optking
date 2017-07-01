@@ -27,7 +27,7 @@ class STRE(SIMPLE):
 
         s += "(%d,%d)" % (self.A+1, self.B+1)
         if self.fixedEqVal:
-            s += "[%.4f]" % self.fixedEqVal
+            s += "[%.4f]" % (self.fixedEqVal * self.qShowFactor)
         return s
 
     def __eq__(self, other):

@@ -25,7 +25,7 @@ class FRAG():
         s += printArrayString(self._masses)
         if (self._intcos): s += 'Intco Values (Angstroms and degrees)\n'
         for intco in self._intcos:
-            s += '\t%-10s%10.5f\n' % (intco, intco.qShow(self._geom))
+            s += '\t%-20s%15.5f\n' % (intco, intco.qShow(self._geom))
         return s
 
     @classmethod

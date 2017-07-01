@@ -111,13 +111,13 @@ def displace(intcos, geom, dq, fq, atom_offset=0, ensure_convergence=False):
     qShow_orig  = intcosMisc.qShowValues(intcos, geom_orig)
     dqShow      = qShow_final - qShow_orig;
 
-    print "\n\t      --- Internal Coordinate Step in ANG or DEG, aJ/ANG or AJ/DEG ---"
-    print   "\t----------------------------------------------------------------------------"
-    print   "\t     Coordinate       Previous          Force         Change           New "
-    print   "\t     ----------       --------         ------         ------        ------"
+    print "\n\t       --- Internal Coordinate Step in ANG or DEG, aJ/ANG or AJ/DEG ---"
+    print "\t-----------------------------------------------------------------------------"
+    print "\t         Coordinate      Previous         Force        Change          New "
+    print "\t         ----------      --------        ------        ------        ------ "
     for i, intco in enumerate(intcos):
-        print "\t%15s%15.6f%15.6f%15.6f%15.6f" % (intco, qShow_orig[i], fq[i], dqShow[i], qShow_final[i])
-    print "\t----------------------------------------------------------------------------\n"
+        print "\t%19s%14.5f%14.5f%14.5f%14.5f" % (intco, qShow_orig[i], fq[i], dqShow[i], qShow_final[i])
+    print "\t-----------------------------------------------------------------------------\n"
 
 
 def stepIter(intcos, geom, dq, bt_dx_conv=None, bt_dx_rms_change_conv=None, bt_max_iter=None):

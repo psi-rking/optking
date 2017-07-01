@@ -203,7 +203,7 @@ def linearBendCheck(intcos, geom, dq):
 ## params: List of integers correspoding to atoms of distance to be frozen
 ##	       list of internal coordinates
 ####
-def freezeStretchesFromInputAtomList(frozenStreList, Molsys, intcos):
+def freezeStretchesFromInputAtomList(frozenStreList, Molsys):
     if len(frozenStreList) % 2 != 0:
         raise ValueError("Number of atoms in frozen stretch list not divisible by 2.")
 
@@ -222,7 +222,7 @@ def freezeStretchesFromInputAtomList(frozenStreList, Molsys, intcos):
 ## params: List of integers correspoding to atoms of bend to be frozen
 ##	       list of internal coordinates
 ####
-def freezeBendsFromInputAtomList(frozenBendList, Molsys, intcos):
+def freezeBendsFromInputAtomList(frozenBendList, Molsys):
     if len(frozenBendList) % 3 != 0:
         raise ValueError("Number of atoms in frozen bend list not divisible by 3.")
 
@@ -242,7 +242,7 @@ def freezeBendsFromInputAtomList(frozenBendList, Molsys, intcos):
 ## params: List of integers correspoding to atoms of dihedral to be frozen
 ##	       list of internal coordinates
 ####
-def freezeTorsionsFromInputAtomList(frozenTorsList, Molsys, intcos):
+def freezeTorsionsFromInputAtomList(frozenTorsList, Molsys):
     if len(frozenTorsList) % 4 != 0:
         raise ValueError("Number of atoms in frozen torsion list not divisible by 4.")
 
@@ -269,43 +269,63 @@ def checkFragment(atomList, Molsys):
     return fragList[0]
 
 # Length mod 3 should be checked in optParams
-def fixStretchesFromInput(fixedStreList, Molsys, intcos):
+def fixStretchesFromInputList(fixedStreList, Molsys):
     for i in range (0, len(fixedStreList), 3):  # loop over fixed stretches
-        stretch = stre.STRE(fixedStreList[i]-1, fixedStreList[i+1]-1, 
-                            fixedEqVal=fixedStreList[i+2])
+        stretch = stre.STRE(fixedStreList[i]-1, fixedStreList[i+1]-1)
+        val = fixedStreList[i+2] / stretch.qShowFactor
+        stretch.fixedEqVal = val
         f = checkFragment(stretch.atoms, Molsys)
         try:
             I = Molsys._fragments[f]._intcos.index(stretch)
-            Molsys._fragments[f]._intcos[I].fixedEqVal = fixedStreList[i+2]
+            Molsys._fragments[f]._intcos[I].fixedEqVal = val
         except ValueError:
             print("Fixed stretch not present, so adding it.")
             Molsys._fragments[f]._intcos.append(stretch)
     return
 
-def fixBendsFromInput(fixedBendList, Molsys, intcos):
+def fixBendsFromInputList(fixedBendList, Molsys):
     for i in range (0, len(fixedBendList), 4):  # loop over fixed bends
-        one_bend = bend.BEND(fixedBendList[i]-1, fixedBendList[i+1]-1, fixedBendList[i+2]-1,\
-                         fixedEqVal = fixedBendList[i+3])
-        f = checkFragment(fixedIntcosList, Molsys)
+        one_bend = bend.BEND(fixedBendList[i]-1, fixedBendList[i+1]-1, \
+                             fixedBendList[i+2]-1)
+        val = fixedBendList[i+3] / one_bend.qShowFactor
+        one_bend.fixedEqVal = val
+        f = checkFragment(one_bend.atoms, Molsys)
         try:
             I = Molsys._fragments[f]._intcos.index(one_bend)
-            Molsys._fragments[f]._intcos[I].fixedEqVal = fixedBendList[i+3]
+            Molsys._fragments[f]._intcos[I].fixedEqVal = val
         except ValueError:
             print("Fixed bend not present, so adding it.")
             Molsys._fragments[f]._intcos.append(one_bend)
     return
 
-def fixTorsionsFromInput(fixedTorsList, Molsys, intcos):
-    for i in range (0, len(fixedBendList), 5):  # loop over fixed dihedrals
-        one_tors = tors.BEND(fixedTorsList[i]-1, fixedTorsList[i+1]-1, fixedTorsList[i+2]-1,\
-                        fixedTorsList[i+3]-1, fixedEqVal = fixedTorsList[i+4])
-        f = checkFragment(fixedTorsList, Molsys)
+def fixTorsionsFromInputList(fixedTorsList, Molsys):
+    for i in range (0, len(fixedTorsList), 5):  # loop over fixed dihedrals
+        one_tors = tors.TORS(fixedTorsList[i]-1, fixedTorsList[i+1]-1, fixedTorsList[i+2]-1,\
+                             fixedTorsList[i+3]-1)
+        val = fixedTorsList[i+4] / one_tors.qShowFactor
+        one_tors.fixedEqVal = val
+        f = checkFragment(one_tors.atoms, Molsys)
         try:
-            I = Molsys._fragments[f]._intcos.index(one_bend)
-            Molsys._fragments[f]._intcos[I].fixedEqVal = fixedTorsList[i+4]
+            I = Molsys._fragments[f]._intcos.index(one_tors)
+            Molsys._fragments[f]._intcos[I].fixedEqVal = val
         except ValueError:
             print("Fixed torsion not present, so adding it.")
             Molsys._fragments[f]._intcos.append(one_tors)
     return
 
+def addFrozenAndFixedIntcos(Molsys):
+    if op.Params.frozen_distance:
+        freezeStretchesFromInputAtomList(op.Params.frozen_distance, Molsys)
+    if op.Params.frozen_bend:
+        freezeBendsFromInputAtomList(op.Params.frozen_bend, Molsys)
+    if op.Params.frozen_dihedral:
+        freezeTorsionsFromInputAtomList(op.Params.frozen_dihedral, Molsys)
+
+    if op.Params.fixed_distance:
+        fixStretchesFromInputList(op.Params.fixed_distance, Molsys)
+    if op.Params.fixed_bend:
+        fixBendsFromInputList(op.Params.fixed_bend, Molsys)
+    if op.Params.fixed_dihedral:
+        fixTorsionsFromInputList(op.Params.fixed_dihedral, Molsys)
+    return
 

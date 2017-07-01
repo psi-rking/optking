@@ -89,38 +89,6 @@ def qShowForces(intcos, forces):
         qaJ[i] *= intco.fShowFactor
     return qaJ
 
-#def project_dq(dq):
-#  int Nintco = Ncoord();
-#  int Ncart = 3*g_natom();
-#
-#  double *dq_orig; # only for printing
-#  if Params.print_lvl >=2:
-#    dq_orig = init_array(Nintco);
-#    array_copy(dq, dq_orig, Ncoord());
-#
-#  double **B = compute_B();
-#  opt_matrix_mult(B, 1, B, 0, G, 0, Ncart, Nintco, Ncart, 0);
-#
-#  # B dx = dq
-#  # B^t B dx = B^t dq
-#  # dx = (B^t B)^-1 B^t dq
-#  double **G_inv = symmMatInv(G, Ncart, 1);
-#  double **B_inv = init_matrix(Ncart, Nintco);
-#  opt_matrix_mult(G_inv, 0, B, 1, B_inv, 0, Ncart, Ncart, Nintco, 0);
-#
-#  double **P = init_matrix(Nintco, Nintco);
-#  opt_matrix_mult(B, 0, B_inv, 0, P, 0, Nintco, Ncart, Nintco, 0);
-#
-#  double * temp_arr = init_array(Nintco);
-#  opt_matrix_mult(P, 0, &dq, 1, &temp_arr, 1, Nintco, Nintco, 1, 0);
-#  array_copy(temp_arr, dq, Ncoord());
-#
-#  Params.print_lvl >=2:
-#    print "Projection of redundancies out of step:\n");
-#    print "\tOriginal dq     Projected dq     Difference\n");
-#    for (int i=0; i<Nintco; ++i)
-#      oprintf_out("\t%12.6lf    %12.6lf   %12.6lf\n", dq_orig[i], dq[i], dq[i]-dq_orig[i]);
-
 def constraint_matrix(intcos):
     if not any( [coord.frozen for coord in intcos ]):
         return None
@@ -131,7 +99,7 @@ def constraint_matrix(intcos):
     return C
 
 # Project redundancies and constraints out of forces and Hessian.
-def project_redundancies(intcos, geom, fq, H):
+def projectRedundanciesAndConstraints(intcos, geom, fq, H):
     dim = len(intcos)
 
     # compute projection matrix = G G^-1
@@ -174,28 +142,31 @@ def project_redundancies(intcos, geom, fq, H):
         if op.Params.print_lvl >= 3:
             print "Projected (PHP) Hessian matrix"
             printMat(H)
-        #performed elsewhere
-        #Hinv = symmMatInv(H, redundent = True)
-        #dq = np.dot(-Hinv, fq)
-        """
-  # P = P' - P' C (CPC)^-1 C P'
-  if (constraints_present) {
-    double **T = init_matrix(Nintco,Nintco);
-    opt_matrix_mult(P, 0, C, 0,  T, 0, Nintco, Nintco, Nintco, 0);
-    double **T2 = init_matrix(Nintco,Nintco);
-    opt_matrix_mult(C, 0, T, 0, T2, 0, Nintco, Nintco, Nintco, 0);
-    double **T3 = symm_matrix_inv(T2, Nintco, 1);
 
-    opt_matrix_mult( C, 0,  P, 0,  T, 0, Nintco, Nintco, Nintco, 0);
-    opt_matrix_mult(T3, 0,  T, 0, T2, 0, Nintco, Nintco, Nintco, 0);
-    free_matrix(T);
-    opt_matrix_mult( C, 0, T2, 0, T3, 0, Nintco, Nintco, Nintco, 0);
-    opt_matrix_mult( P, 0, T3, 0, T2, 0, Nintco, Nintco, Nintco, 0);
-    free_matrix(T3);
-    for (int i=0; i<Nintco; ++i)
-      for (int j=0; j<Nintco; ++j)
-        P[i][j] -= T2[i][j];
-    free_matrix(T2);
-  }
-  free_matrix(C);
-        """
+def applyFixedForces(Molsys, fq, H, stepNumber):
+    x = Molsys.geom
+    for iF,F in enumerate(Molsys._fragments):
+        for i, intco in enumerate(F.intcos):
+            if intco.fixed:
+              location = Molsys.frag_1st_intco(iF) + i
+              val   = intco.q(x)
+              eqVal = intco.fixedEqVal
+
+              # Increase force constant by 5% of initial value per iteration
+              k = (1 + 0.05 * stepNumber) * op.Params.fixed_coord_force_constant;
+              force = k * (eqVal - val)
+              H[location][location] = k;
+
+              print("\n\tAdding user-defined constraint: Fragment %d; Coordinate %d:" % (iF+1, i+1))
+              print("\t\tValue = %12.6f; Fixed value    = %12.6f" % (val, eqVal))
+              print("\t\tForce = %12.6f; Force constant = %12.6f" % (force, k))
+              fq[location] = force
+
+              # Delete coupling between this coordinate and others.
+              print("\t\tRemoving off-diagonal coupling between coordinate %d and others." % (location+1))
+              for j in range(len(H)): # gives first dimension length
+                if j != location:
+                  H[j][location] = H[location][j] = 0
+
+    return
+

@@ -128,6 +128,14 @@ class MOLSYS():
            _intcos += F.intcos
         return _intcos
 
+    def frag_1st_intco(self, iF):
+        if iF >= len(self._fragments):
+            return ValueError()
+        start = 0
+        for i in range(0,iF):
+            start += len(self._fragments[i]._intcos)
+        return start
+
     def printIntcos(self):
         for iF, F in enumerate(self._fragments):
             print "Fragment %d" % (iF+1)

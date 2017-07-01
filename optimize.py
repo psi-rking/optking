@@ -47,21 +47,25 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy ):
             if op.Params.opt_coordinates in ['CARTESIAN','BOTH']:
                 Molsys.addCartesianIntcos()
 
+            addIntcos.addFrozenAndFixedIntcos(Molsys)
+
+            """
             # Read in frozen coordinates
             if op.Params.frozen_distance:
-                addIntcos.freezeStretchesFromInputAtomList(op.Params.frozen_distance, Molsys, Molsys.intcos)
+                addIntcos.freezeStretchesFromInputAtomList(op.Params.frozen_distance, Molsys)
             if op.Params.frozen_bend:
-                addIntcos.freezeBendsFromInputAtomList(op.Params.frozen_bend, Molsys, Molsys.intcos)
+                addIntcos.freezeBendsFromInputAtomList(op.Params.frozen_bend, Molsys)
             if op.Params.frozen_dihedral:
-                addIntcos.freezeTorsionsFromInputAtomList(op.Params.frozen_dihedral, Molsys, Molsys.intcos)
+                addIntcos.freezeTorsionsFromInputAtomList(op.Params.frozen_dihedral, Molsys)
 
             # Read in fixed coordinates
             if op.Params.fixed_distance:
-                addIntcos.fixStretchesFromInput(op.Params.fixed_distance, Molsys, Molsys.intcos)
+                addIntcos.fixStretchesFromInputList(op.Params.fixed_distance, Molsys)
             if op.Params.fixed_bend:
-                addIntcos.fixBendsFromInput(op.Params.fixed_bend, Molsys, Molsys.intcos)
+                addIntcos.fixBendsFromInputList(op.Params.fixed_bend, Molsys)
             if op.Params.fixed_dihedral:
-                addIntcos.fixTorsionsFromInput(op.Params.fixed_dihedral, Molsys, Molsys.intcos)
+                addIntcos.fixTorsionsFromInputList(op.Params.fixed_dihedral, Molsys)
+            """
             
             Molsys.printIntcos();
         
@@ -101,7 +105,8 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy ):
                 print 'Hessian in aJ/Ang^2 or aJ/deg^2'
                 hessian.show(H, Molsys.intcos)
         
-                intcosMisc.project_redundancies(Molsys.intcos, Molsys.geom, fq, H)
+                intcosMisc.applyFixedForces(Molsys, fq, H, stepNumber)
+                intcosMisc.projectRedundanciesAndConstraints(Molsys.intcos, Molsys.geom, fq, H)
         
                 try:
                     # displaces and adds step to history

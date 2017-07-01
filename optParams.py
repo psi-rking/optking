@@ -265,7 +265,7 @@ class OPT_PARAMS(object):
         ## In constrained optimizations, for coordinates with user-specified
         ## equilibrium values, this is the initial force constant (in au) used to apply an
         ## additional force to each coordinate.
-        #P.fixed_coord_force_constant = uod.get('FIXED_COORD_FORCE_CONSTANT', 0.5)
+        P.fixed_coord_force_constant = uod.get('FIXED_COORD_FORCE_CONSTANT', 0.5)
         ## If doing a static line search, scan this many points.
         #P.linesearch_static_N = uod.get('LINESEARCH_STATIC_N', 8)
         ## If doing a static line search, this fixes the shortest step, whose largest

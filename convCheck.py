@@ -29,10 +29,9 @@ def convCheck(iterNum, intcos, dq, f, energies, masses=None):
 #   if op.Params.opt_type == 'IRC'
 #       if ircData.go:  return True
 
-    # Save forces and put back in below.
+    # Save original forces and put back in below.
     if op.Params.opt_type == 'IRC' or has_fixed:
-        f_backup = np.array( f.shape(), float )
-        f_backup[:] = f
+        f_backup = np.copy(f)
 
     DE = energy - last_energy
 
