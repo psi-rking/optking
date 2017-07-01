@@ -54,9 +54,11 @@ def energy_func(printResults=True):
         print '\tEnergy: %15.10f' % E
     return E
 
+# Also send python printing function. Otherwise print to stdout will be done
+
 def Psi4Opt():
     thisenergy = optking.optimize( Molsys, optking_user_options, setGeometry_func, gradient_func, \
-                    hessian_func, energy_func )
+                    hessian_func, energy_func, print_out) #None)
     return thisenergy
 
 

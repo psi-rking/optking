@@ -253,7 +253,7 @@ class BEND(SIMPLE):
             return k_phi*Lindh_Rho_AB*Lindh_Rho_BC
 
         else:
-            print "Warning: Hessian guess encountered unknown coordinate type."
+            print_opt("Warning: Hessian guess encountered unknown coordinate type.\n")
             return 1.0
 
 

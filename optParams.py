@@ -35,8 +35,8 @@ allowedStringOptions = {
  'interfrag_hess'  : ('DEFAULT', 'FISCHER_LIKE'),
 }
 
-def enum_key( enum_type, value):
-    print [key for key, val in enum_type.__dir__.items() if val == value][0]
+#def enum_key( enum_type, value):
+#    print [key for key, val in enum_type.__dir__.items() if val == value][0]
 
 from misc import intList, intIntFloatList, intIntIntFloatList, intIntIntIntFloatList, tokenizeInputString
 
@@ -55,17 +55,15 @@ class OPT_PARAMS(object):
     #interfrag_hess  = stringOption( 'interfrag_hess' )
 
     def __str__(P):
-        s = ''
-        print "\t\t -- Optimization Parameters --"
+        s = "\t\t -- Optimization Parameters --\n"
         for attr in dir(P):
             if not hasattr( getattr(P,attr), '__self__' ): # omit bound methods
                 if '__' not in attr:                       # omit these methods
                     s += "\t%-30s = %15s\n" %(attr, getattr(P,attr))
+        s += "\n"
         return s
 
     def __init__(P, uod):
-        print "\tProcessing user input options..."
-
         # SUBSECTION Optimization Algorithm
 
         # Maximum number of geometry optimization steps

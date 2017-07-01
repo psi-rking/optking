@@ -1,19 +1,24 @@
 #!/usr/bin/python
 # Calling program provides user-specified options.
-def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy ):
+def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy, fPrint=None):
     
     import caseInsensitiveDict
     userOptions = caseInsensitiveDict.CaseInsensitiveDict( options_in )
     # Save copy of original user options.
     origOptions = userOptions.copy()
+
+    import printTools
+    from printTools import printInit  # initialize printing function
+    printInit(fPrint)
+    from printTools import printGeomGrad,printMat,printArray,print_opt
     
     # Create full list of parameters from defaults plus user options.
     import optParams as op
+    print_opt("\tProcessing user input options...\n")
     op.Params = op.OPT_PARAMS(userOptions)
-    print '\tParameters from optking.optimize'
-    print op.Params
+    print_opt("\tParameters from optking.optimize\n")
+    print_opt( str(op.Params) )
 
-    from printTools import printGeomGrad, printMat, printArray
     import addIntcos
     import optExceptions
     import history 
@@ -28,7 +33,7 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy ):
     while (converged == False) and (op.Params.dynamic_level < op.Params.dynamic_level_max):
 
         try:
-            print Molsys
+            print_opt( str(Molsys) )
             energies = []
         
             # Construct connectivity.
@@ -82,12 +87,12 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy ):
             
                 if op.Params.print_lvl > 3:
                     B = intcosMisc.Bmat(Molsys.intcos, Molsys.geom)
-                    print "B matrix:"
+                    print_opt("B matrix:\n")
                     printMat(B)
         
                 fq = intcosMisc.qForces(Molsys.intcos, Molsys.geom, g_x)
                 if (op.Params.print_lvl > 1):
-                    print "Internal forces in au"
+                    print_opt("Internal forces in au\n")
                     printArray(fq)
             
                 history.History.append(Molsys.geom, E, fq); # Save initial step info.
@@ -100,9 +105,9 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy ):
                 else:
                     history.History.hessianUpdate(H, Molsys.intcos)
             
-                print 'Hessian (in au) is:'
+                print_opt("Hessian (in au) is:\n")
                 printMat(H)
-                print 'Hessian in aJ/Ang^2 or aJ/deg^2'
+                print_opt("Hessian in aJ/Ang^2 or aJ/deg^2\n")
                 hessian.show(H, Molsys.intcos)
         
                 intcosMisc.applyFixedForces(Molsys, fq, H, stepNumber)
@@ -113,36 +118,36 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy ):
                     Dq = stepAlgorithms.Dq(Molsys, E, fq, H)
                 except optExceptions.BAD_STEP_EXCEPT:
                     if history.History.consecutiveBacksteps < op.Params.consecutiveBackstepsAllowed:
-                        print 'Taking backward step.'
+                        print_opt("Taking backward step.\n")
                         Dq = stepAlgorithms.Dq(Molsys.intcos, Molsys.geom, E, fq, H, stepType="BACKSTEP")
                     else:
-                        print 'Maximum number of backsteps has been attempted.'
-                        print 'Re-raising BAD_STEP exception'
+                        print_opt("Maximum number of backsteps has been attempted.\n")
+                        print_opt("Re-raising BAD_STEP exception.\n")
                         raise optExceptions.BAD_STEP_EXCEPT()
         
                 converged = convCheck.convCheck(stepNumber, Molsys.intcos, Dq, fq, energies)
 
-                print "\tStructure for next step (au):"
+                print_opt("\tStructure for next step (au):\n")
                 Molsys.printGeom()
                 fSetGeometry(Molsys.geom)
             
                 if converged:
-                    print 'Converged in %d steps!' % (stepNumber+1)
+                    print_opt("\tConverged in %d steps!\n" % (stepNumber+1))
                     fSetGeometry(Molsys.geom)
                     break
 
             else: # executes if too many steps
-                print "Number of steps (%d) has reached value of GEOM_MAXITER." % (stepNumber+1)
+                print_opt("Number of steps (%d) has reached value of GEOM_MAXITER.\n" % (stepNumber+1))
                 raise optExceptions.BAD_STEP_EXCEPT()
         
         except optExceptions.BAD_STEP_EXCEPT:
-            print "optimize.py: Caught bad step exception."   
+            print_opt("optimize.py: Caught bad step exception.\n")   
             op.Params.dynamic_level += 1
             if op.Params.dynamic_level == op.Params.dynamic_level_max:
-                print 'dynamic_level (%d) may not be further increased.' % (op.Params.dynamic_level-1)
+                print_opt("dynamic_level (%d) may not be further increased.\n" % (op.Params.dynamic_level-1))
             else:   # keep going
-                print "increasing dynamic_level."
-                print "Erasing old history, hessian, intcos."
+                print_opt("increasing dynamic_level.\n")
+                print_opt("Erasing old history, hessian, intcos.\n")
                 del H 
                 for f in Molsys._fragments:
                     del f._intcos[:]

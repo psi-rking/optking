@@ -1,10 +1,10 @@
+from printTools import printMat, printArray
 import numpy as np
 from math import sqrt
 import bend
 import oofp
 import tors
 from linearAlgebra import symmMatInv
-from printTools import printMat, printArray
 import optParams as op
 
 # Simple operations on internal :148

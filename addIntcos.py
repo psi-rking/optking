@@ -1,3 +1,4 @@
+from printTools import printMat,printArray
 from itertools import combinations,permutations
 import numpy as np
 import sys
@@ -14,8 +15,6 @@ import stre
 import bend
 import tors
 import cart
-from printTools import printMat
-from printTools import printArray
 
 # returns connectivity matrix.  Matrix is 0 if i==j.
 def connectivityFromDistances(geom, Z):
@@ -188,13 +187,13 @@ def linearBendCheck(intcos, geom, dq):
     linearBendsMissing = []
     for ib, b in enumerate(linearBends):
         if ib == 0:
-            print "\tThe following linear bends should be present."
-        print b
+            print_opt("\tThe following linear bends should be present.\n")
+        print_opt(b)
 
         if b in intcos:
-            print ": already present."
+            print_opt(": already present.\n")
         else:
-            print ": missing."
+            print_opt(": missing.\n")
             linearBendsMissing.append(b)
 
     return linearBendsMissing
