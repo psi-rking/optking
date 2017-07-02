@@ -11,7 +11,10 @@ from linearAlgebra import absMax,rms,symmMatInv
 #   Reduce step size as necessary until back-transformation converges.
 
 def displace(intcos, geom, dq, fq, atom_offset=0, ensure_convergence=False):
+<<<<<<< HEAD
     print (dq)
+=======
+>>>>>>> 2a4182a4e07959a66e8c9ba8145135f99fb3538a
     if not len(intcos) or not len(geom) or not len(dq):
         dq[:] = 0
         return
@@ -84,15 +87,15 @@ def displace(intcos, geom, dq, fq, atom_offset=0, ensure_convergence=False):
             if not intco.frozen:
                 dq_adjust_frozen[i] = 0
 
-        print "\n\tBack-transformation to cartesian coordinates to adjust frozen coordinates...",
+        print "\n\tBack-transformation to cartesian coordinates to adjust frozen coordinates..."
 
         intcosMisc.fixBendAxes(intcos, geom)
         check = stepIter(intcos, geom, dq_adjust_frozen, bt_dx_conv=1.0e-12, \
                              bt_dx_rms_change_conv=1.0e-12, bt_max_iter=100)
         intcosMisc.unfixBendAxes(intcos)
 
-        if check: print "successful."
-        else:     print "unsuccessful, but continuing."
+        if check: print "\tsuccessful."
+        else:     print "\tunsuccessful, but continuing."
 
     # Make sure final Dq is actual change
     q_final = intcosMisc.qValues(intcos, geom)
@@ -112,13 +115,13 @@ def displace(intcos, geom, dq, fq, atom_offset=0, ensure_convergence=False):
     qShow_orig  = intcosMisc.qShowValues(intcos, geom_orig)
     dqShow      = qShow_final - qShow_orig;
 
-    print "\n\t      --- Internal Coordinate Step in ANG or DEG, aJ/ANG or AJ/DEG ---"
-    print   "\t----------------------------------------------------------------------------"
-    print   "\t     Coordinate       Previous          Force         Change           New "
-    print   "\t     ----------       --------         ------         ------        ------"
+    print "\n\t       --- Internal Coordinate Step in ANG or DEG, aJ/ANG or AJ/DEG ---"
+    print "\t-----------------------------------------------------------------------------"
+    print "\t         Coordinate      Previous         Force        Change          New "
+    print "\t         ----------      --------        ------        ------        ------ "
     for i, intco in enumerate(intcos):
-        print "\t%15s%15.6f%15.6f%15.6f%15.6f" % (intco, qShow_orig[i], fq[i], dqShow[i], qShow_final[i])
-    print "\t----------------------------------------------------------------------------\n"
+        print "\t%19s%14.5f%14.5f%14.5f%14.5f" % (intco, qShow_orig[i], fq[i], dqShow[i], qShow_final[i])
+    print "\t-----------------------------------------------------------------------------\n"
 
 
 def stepIter(intcos, geom, dq, bt_dx_conv=None, bt_dx_rms_change_conv=None, bt_max_iter=None):

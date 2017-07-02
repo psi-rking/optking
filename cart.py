@@ -20,7 +20,7 @@ class CART(SIMPLE):
 
         s += "(%d)" % (self.A+1)
         if self.fixedEqVal:
-            s += "[%.4f]" % self.fixedEqVal
+            s += "[%.4f]" % (self.fixedEqVal * self.qShowFactor)
         return s
 
     def __eq__(self, other):

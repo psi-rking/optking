@@ -88,6 +88,15 @@ class MOLSYS():
                return iF
         raise ValueError("atom_index impossibly large")
 
+    # Given a list of atoms, return all the fragments to which they belong
+    def atomList2uniqueFragList(self, atomList):
+        fragList = []
+        for a in atomList:
+            f = self.atom2frag_index(a)
+            if f not in fragList:
+                fragList.append(f)
+        return fragList
+
     @property
     def geom(self):
         geom = np.zeros( (self.Natom,3), float)
@@ -118,6 +127,14 @@ class MOLSYS():
         for F in self._fragments:
            _intcos += F.intcos
         return _intcos
+
+    def frag_1st_intco(self, iF):
+        if iF >= len(self._fragments):
+            return ValueError()
+        start = 0
+        for i in range(0,iF):
+            start += len(self._fragments[i]._intcos)
+        return start
 
     def printIntcos(self):
         for iF, F in enumerate(self._fragments):

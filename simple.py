@@ -26,6 +26,13 @@ class SIMPLE(object):
     def frozen(self):
         return self._frozen
 
+    @property
+    def fixed(self):
+        if self._fixedEqVal == None:
+            return False
+        else:
+            return True
+
     @frozen.setter
     def frozen(self, setval):
         self._frozen = bool(setval)
