@@ -30,7 +30,9 @@ def Dq(Molsys, E, qForces, H, stepType=None):
     elif stepType == 'SD':
         return Dq_SD(Molsys, E, qForces)
     elif stepType == 'BACKSTEP':
-        return Dq_BACKSTEP(Molsys) 
+        return Dq_BACKSTEP(Molsys)
+    elif stepType == 'P_RFO':
+        return Dq_P_RFO(Molsys, E, qForces, H) 
     else:
         raise ValueError('Dq: step type not yet implemented')
 
@@ -254,7 +256,6 @@ def Dq_RFO(Molsys, E, fq, H):
         # Project out redundancies in steps.
         # Added this projection in 2014; but doesn't seem to help, as f,H are already projected.
         # project_dq(dq);
-
         # zero steps for frozen coordinates?
 
         dqtdq = np.dot(dq,dq)
@@ -305,8 +306,8 @@ def Dq_RFO(Molsys, E, fq, H):
     print "\t------------------------------------------------"
 
     # Crude/old way to limit step size if RS-RFO iterations
-    if not converged or Params.simple_step_scaling:
-        applyIntrafragStepScaling(dq)
+    #if not converged or Params.simple_step_scaling:
+    applyIntrafragStepScaling(dq)
 
     if Params.print_lvl >= 3:
         print "\tFinal scaled step dq:"
@@ -364,6 +365,138 @@ def Dq_RFO(Molsys, E, fq, H):
     if sqrt(np.dot(dq, dq)) > 10 * trust:
         raise optExceptions.BAD_STEP_EXCEPT("opt.py: Step is far too large.")
 
+    return dq
+
+def Dq_P_RFO(Molsys, E, fq, H):
+
+    dq = np.zeros(len(fq), float) 
+    trust = Params.intrafrag_trust  # maximum step size
+    max_projected_rfo_iter = 25          # max. # of iterations to try to converge RS-RFO
+    rfo_follow_root = Params.rfo_follow_root  # whether to follow root
+    rfo_root = Params.rfo_root  # if following, which root to follow
+    HDiag = np.zeros((len(fq), len(fq)), float)
+    Hessian = np.zeros((len(fq), len(fq)), float)
+    Hessian[:,:] = H
+    
+    hEigValues, hEigVectors = symmMatEig(Hessian)
+
+    for i in range (0, len(hEigValues)):
+        Hessian[i] = hEigVectors[i]
+        print (hEigVectors[i])
+
+    for i in range (0, len(hEigValues)):
+        HDiag[i,i] = hEigValues[i]
+
+    print("Printing Internal Coordinates in Au")
+    printArray(fq)
+    print ("Testing Transpose")
+    printMat(hEigVectors)
+
+    fqTransformed = np.dot(hEigVectors, fq) #gradient trasnformation    
+    print ("print Internal Coordiantes transformed to Hessien eigen vector basis")
+    print (fqTransformed)
+    mu = 1
+    maximizeRFO = np.zeros((mu + 1, mu + 1), float)
+    minimizeRFO = np.zeros((len(fq) - mu + 1, len(fq) - mu + 1), float)
+    #constructs RFO matrix to be maximized with eigen values from Hessian and internal coords
+    for i in range (0, mu):
+        maximizeRFO[i][i] = hEigValues[i]
+        maximizeRFO[i, -1] = -fqTransformed[i]
+        maximizeRFO[-1, i] = -fqTransformed[i]
+    print ("Maximized RFO")
+    printMat (maximizeRFO)      
+    #consructs RFO matrix to be minimized with eigen values from Hessian and internal coords
+    for i in range (0, len(fq) - mu):
+        minimizeRFO[i][i] = HDiag[i + mu][i + mu]
+        minimizeRFO[i][-1] = -fqTransformed[i + mu]
+        minimizeRFO[-1][i] = -fqTransformed[i + mu]
+    print ("Minimized RFO mat")     
+    printMat(minimizeRFO) 
+    RFOMaxEValues, RFOMaxEVectors = symmMatEig(maximizeRFO)
+    RFOMinEValues, RFOMinEVectors = symmMatEig(minimizeRFO)
+    
+    LambdaP = RFOMaxEValues[-1] #Smallest EigenValue for the matrix being maximized
+    LambdaN = RFOMinEValues[0] #Smallest EigenValue for the matrix being miminized
+    VectorP = RFOMaxEVectors[-1]
+    VectorN = RFOMinEVectors[0]
+
+    print ("RFOMaxEVectors")
+    printMat(RFOMaxEVectors)
+
+    print ("RFOMinEVectors")
+    printMat(RFOMinEVectors)
+
+    for i in range (0, len(VectorP)):
+        VectorP[i] = VectorP[i]/VectorP[-1]
+    print ("Normalized RFO Max eigen Vector")
+    print (VectorP)
+
+    for i in range(len(VectorN)):
+        VectorN[i] = VectorN[i]/VectorN[-1]
+
+    print ("Normalized RFO Min eigen Vector")
+    print (VectorN)
+
+    #Combines the eignvectors from RFOmax and min without the added row from addition of the gradient
+    #to the Hessian matrix
+    PRFOEVector = np.zeros(len(fq), float)
+    PRFOEVector[:len(VectorP) - 1] = VectorP[:len(VectorP) - 1]
+    PRFOEVector[len(VectorP) - 1:] = VectorN[:len(VectorN) - 1]
+
+    print ("RFO step in Hessian Eigen Vector Basis")
+    print (PRFOEVector)
+
+    converged = False
+
+    PRFOStep = np.dot(hEigVectors, PRFOEVector)
+    print ("RFO step in original Basis")
+    print (PRFOStep)
+    dq = PRFOStep
+        
+    #if not converged or Params.simple_step_scaling:
+    applyIntrafragStepScaling(dq)
+
+    if Params.print_lvl >= 3:
+        print "\tFinal scaled step dq:"
+        printArray(dq)
+
+    # Get norm |dq|, unit vector, gradient and hessian in step direction
+    # TODO double check Hevects[i] here instead of H ? as for NR
+    rfo_dqnorm = sqrt( np.dot(dq,dq) )
+    print "\tNorm of target step-size %15.10f" % rfo_dqnorm
+    rfo_u = dq.copy() / rfo_dqnorm
+    rfo_g = -1 * np.dot(fq, rfo_u)
+    rfo_h = np.dot( rfo_u, np.dot(H, rfo_u) )
+    DEprojected = DE_projected('RFO', rfo_dqnorm, rfo_g, rfo_h)
+    if Params.print_lvl > 1:
+       print '\t|RFO target step|: %15.10f' % rfo_dqnorm
+       print '\tRFO_gradient       : %15.10f' % rfo_g
+       print '\tRFO_hessian        : %15.10f' % rfo_h
+    print "\tProjected energy change by RFO approximation: %20.10lf" % DEprojected
+
+    # Scale fq into aJ for printing
+    fq_aJ = qShowForces(Molsys.intcos, fq)
+
+    # this won't work for multiple fragments yet until dq and fq get cut up.
+    for F in Molsys._fragments:
+        displace(F.intcos, F.geom, dq, fq_aJ)
+
+    # For now, saving RFO unit vector and using it in projection to match C++ code,
+    # could use actual Dq instead. 
+    dqnorm_actual = sqrt( np.dot(dq,dq) )
+    print "\tNorm of achieved step-size %15.10f" % dqnorm_actual
+        
+    History.appendRecord(DEprojected, dq, rfo_u, rfo_g, rfo_h)
+
+    linearList = linearBendCheck(Molsys.intcos, Molsys.geom, dq)
+    if linearList:
+        raise INTCO_EXCEPT("New linear angles", linearList)
+
+    # Before quitting, make sure step is reasonable.  It should only be
+    # screwball if we are using the "First Guess" after the back-transformation failed.
+    if sqrt(np.dot(dq, dq)) > 10 * trust:
+        raise optExceptions.BAD_STEP_EXCEPT("opt.py: Step is far too large.")
+    
     return dq
 
 # Take Steepest Descent step

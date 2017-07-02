@@ -254,7 +254,7 @@ class HISTORY(object):
                         H_new[i,j] = H[i,j] - qz/(qq*qq)*dq[i]*dq[j] + (Z[i]*dq[j] + dq[i]*Z[j])/qq
            
             elif op.Params.hess_update == 'BOFILL':
-                # Bofill = (1-phi) * MS + phi * Powell
+                #Bofill = (1-phi) * MS + phi * Powell
                 Z = -1.0 * np.dot(H, dq) + dg
                 qz = np.dot(dq, Z)
                 zz = np.dot(Z, Z)
