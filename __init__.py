@@ -1,4 +1,5 @@
 
-from optimize import *
-from molsys import *
+from optimize import optimize
+from printTools import printInit
+#from molsys import MOLSYS
 

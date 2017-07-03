@@ -4,6 +4,8 @@
 # P = parameters ('self')
 # Option keys in the input dictionary are interpreted case-insensitively.
 # The enumerated string types are translated to all upper-case within the parameter object.
+
+from printTools import print_opt
 Params = 0
 
 # Class for enumerated string options.
@@ -36,7 +38,7 @@ allowedStringOptions = {
 }
 
 #def enum_key( enum_type, value):
-#    print [key for key, val in enum_type.__dir__.items() if val == value][0]
+#    print_opt([key for key, val in enum_type.__dir__.items() if val == value][0])
 
 from misc import intList, intIntFloatList, intIntIntFloatList, intIntIntIntFloatList, tokenizeInputString
 
@@ -465,8 +467,8 @@ class OPT_PARAMS(object):
             else:
                 P.intrafrag_trust = new_val
 
-            print "\tEnergy ratio indicates good step: Trust radius increased to %6.3e." % \
-                   P.intrafrag_trust
+            print_opt("\tEnergy ratio indicates good step: Trust radius increased to %6.3e.\n" % \
+                   P.intrafrag_trust)
         return
 
     def decreaseTrustRadius(P):
@@ -479,8 +481,8 @@ class OPT_PARAMS(object):
             else:
                 P.intrafrag_trust = new_val
 
-            print "\tEnergy ratio indicates iffy step: Trust radius decreased to %6.3e." % \
-           P.intrafrag_trust
+            print_opt("\tEnergy ratio indicates iffy step: Trust radius decreased to %6.3e.\n" % \
+           P.intrafrag_trust)
         return
 
     def updateDynamicLevelParameters(P, run_level):
@@ -509,7 +511,7 @@ class OPT_PARAMS(object):
             P.opt_coordinates = 'REDUNDANT'
             P.consecutiveBackstepsAllowed = 0
             P.step_type = 'RFO'
-            print "Going to run_level 1: Red. Int., RFO, no backsteps, default, dynamic trust."
+            print_opt("Going to run_level 1: Red. Int., RFO, no backsteps, default, dynamic trust.\n")
         elif run_level == 2:
             P.opt_coordinates = 'REDUNDANT'
             P.consecutiveBackstepsAllowed = 1
@@ -517,7 +519,7 @@ class OPT_PARAMS(object):
             P.intrafrag_trust = 0.2
             P.intrafrag_trust_min = 0.2
             P.intrafrag_trust_max = 0.2
-            print "Going to run_level 2: Red. Int., RFO, 1 backstep, smaller trust."
+            print_opt("Going to run_level 2: Red. Int., RFO, 1 backstep, smaller trust.\n")
         elif run_level == 3:
             P.opt_coordinates = 'BOTH'
             P.consecutiveBackstepsAllowed = 1
@@ -525,7 +527,7 @@ class OPT_PARAMS(object):
             P.intrafrag_trust = 0.1
             P.intrafrag_trust_min = 0.1
             P.intrafrag_trust_max = 0.1
-            print "Going to run_level 3: Red. Int. + XYZ, RFO, 1 backstep, smaller trust."
+            print_opt("Going to run_level 3: Red. Int. + XYZ, RFO, 1 backstep, smaller trust.\n")
         elif run_level == 4:
             P.opt_coordinates = 'CARTESIAN'
             P.consecutiveBackstepsAllowed = 1
@@ -534,7 +536,7 @@ class OPT_PARAMS(object):
             P.intrafrag_trust = 0.3
             P.intrafrag_trust_min = 0.3
             P.intrafrag_trust_max = 0.3
-            print "Going to run_level 4: XYZ, RFO, 1 backstep, average trust."
+            print_opt("Going to run_level 4: XYZ, RFO, 1 backstep, average trust.\n")
         elif run_level == 5:
             P.opt_coordinates = 'CARTESIAN'
             P.consecutiveBackstepsAllowed = 1
@@ -543,7 +545,7 @@ class OPT_PARAMS(object):
             P.intrafrag_trust = 0.2
             P.intrafrag_trust_min = 0.2
             P.intrafrag_trust_max = 0.2
-            print "Going to run_level 5: XYZ, RFO, 1 backstep, smaller trust."
+            print_opt("Going to run_level 5: XYZ, RFO, 1 backstep, smaller trust.\n")
         elif run_level == 6:
             P.opt_coordinates = 'CARTESIAN'
             P.consecutiveBackstepsAllowed = 1
@@ -552,7 +554,7 @@ class OPT_PARAMS(object):
             P.intrafrag_trust = 0.3
             P.intrafrag_trust_min = 0.3
             P.intrafrag_trust_max = 0.3
-            print "Going to run_level 5: XYZ, SD, 1 backstep, average trust."
+            print_opt("Going to run_level 5: XYZ, SD, 1 backstep, average trust.\n")
         elif run_level == 7:
             P.opt_coordinates = 'CARTESIAN'
             P.consecutiveBackstepsAllowed = 1
@@ -561,7 +563,16 @@ class OPT_PARAMS(object):
             P.intrafrag_trust = 0.1
             P.intrafrag_trust_min = 0.1
             P.intrafrag_trust_max = 0.1
-            print "Moving to run_level 6: XYZ, SD, 1 backstep, smaller trust, smaller step."
+            print_opt("Moving to run_level 6: XYZ, SD, 1 backstep, smaller trust, smaller step.\n")
         else:
             raise ValueError("Unknown value of run_level")
+
+
+def welcome():
+    print_opt("\n\t\t\t-----------------------------------------\n")
+    print_opt(  "\t\t\t OPTKING 3.0: for geometry optimizations \n")
+    print_opt(  "\t\t\t     By R.A. King, Bethel University     \n")
+    print_opt(  "\t\t\t        with contributions from          \n")
+    print_opt(  "\t\t\t    A.V. Copan, J. Cayton, A. Heide      \n")
+    print_opt(  "\t\t\t-----------------------------------------\n")
 

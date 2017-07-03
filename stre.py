@@ -6,6 +6,7 @@ import covRadii
 from misc import delta, ZtoPeriod, HguessLindhRho
 import numpy as np
 from physconst import bohr2angstroms
+from printTools import print_opt
 
 class STRE(SIMPLE):
 
@@ -170,7 +171,7 @@ class STRE(SIMPLE):
             return k_r * HguessLindhRho( Z[self.A], Z[self.B], R)
 
         else:
-            print "Warning: Hessian guess encountered unknown coordinate type."
+            print_opt("Warning: Hessian guess encountered unknown coordinate type.\n")
             return 1.0
 
 class HBOND(STRE):
@@ -201,6 +202,6 @@ class HBOND(STRE):
         if guess == "SIMPLE":
             return 0.1
         else:
-            print "Warning: Hessian guess encountered unknown coordinate type."
+            print_opt("Warning: Hessian guess encountered unknown coordinate type.\n")
             return 1.0
 

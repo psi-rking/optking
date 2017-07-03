@@ -2,6 +2,7 @@ import numpy as np
 import optParams as op
 import intcosMisc
 from linearAlgebra import absMax,rms,symmMatInv
+from printTools import print_opt
 
 # dq : displacements in internal coordinates to be performed.
 #      On exit, overridden to actual displacements performed.
@@ -26,7 +27,7 @@ def displace(intcos, geom, dq, fq, atom_offset=0, ensure_convergence=False):
     best_geom    = np.zeros( geom_orig.shape ,float)
 
     # Do your best to backtransform all internal coordinate displacments.
-    print "\tBeginnning displacement in cartesian coordinates..."
+    print_opt("\tBeginnning displacement in cartesian coordinates...\n")
 
     if ensure_convergence:
         conv = False
@@ -35,7 +36,7 @@ def displace(intcos, geom, dq, fq, atom_offset=0, ensure_convergence=False):
         while not conv:
             ++cnt;
             if cnt > 0:
-                print "Reducing step-size by a factor of %d.\n" % (2*cnt)
+                print_opt("Reducing step-size by a factor of %d.\n" % (2*cnt))
                 dq[:] = dq_orig / (2.0*cnt)
 
             intcosMisc.fixBendAxes(intcos, geom)
@@ -44,17 +45,17 @@ def displace(intcos, geom, dq, fq, atom_offset=0, ensure_convergence=False):
 
             if not conv:
                 if cnt == 5:
-                    print "\tUnable to back-transform even 1/10th of the desired step rigorously."
-                    print "\tContinuing with best (small) step."
+                    print_opt("\tUnable to back-transform even 1/10th of the desired step rigorously.\n")
+                    print_opt("\tContinuing with best (small) step.\n")
                     break;
                 else:
                     geom[:] = geom_orig  # put original geometry back for next try at smaller step.
 
         if conv and cnt > 0:  # We were able to take a modest step.  Try to complete it.
-            print "\tAble to take a small step; trying another partial back-transformations."
+            print_opt("\tAble to take a small step; trying another partial back-transformations.\n")
 
             for j in range(1,2*cnt):
-                print "Mini-step %d of %d.\n", (j+1, 2*cnt)
+                print_opt("Mini-step %d of %d.\n", (j+1, 2*cnt))
                 dq[:] = dq_orig / (2*cnt);
 
                 best_geom[:] = geom
@@ -64,7 +65,7 @@ def displace(intcos, geom, dq, fq, atom_offset=0, ensure_convergence=False):
                 intcosMisc.unfixBendAxes(intcos)
 
                 if not conv:
-                    print "\tCouldn't converge this mini-step, so quitting with previous geometry."
+                    print_opt("\tCouldn't converge this mini-step, so quitting with previous geometry.\n")
                     geom[:] = best_geom
                     break
 
@@ -83,41 +84,41 @@ def displace(intcos, geom, dq, fq, atom_offset=0, ensure_convergence=False):
             if not intco.frozen:
                 dq_adjust_frozen[i] = 0
 
-        print "\n\tBack-transformation to cartesian coordinates to adjust frozen coordinates..."
+        print_opt("\n\tBack-transformation to cartesian coordinates to adjust frozen coordinates...\n")
 
         intcosMisc.fixBendAxes(intcos, geom)
         check = stepIter(intcos, geom, dq_adjust_frozen, bt_dx_conv=1.0e-12, \
                              bt_dx_rms_change_conv=1.0e-12, bt_max_iter=100)
         intcosMisc.unfixBendAxes(intcos)
 
-        if check: print "\tsuccessful."
-        else:     print "\tunsuccessful, but continuing."
+        if check: print_opt("\tsuccessful.\n")
+        else:     print_opt("\tunsuccessful, but continuing.\n")
 
     # Make sure final Dq is actual change
     q_final = intcosMisc.qValues(intcos, geom)
     dq[:]   = q_final - q_orig
 
     if op.Params.print_lvl > 1:
-        print "\n\tReport of back-transformation: (au)"
-        print "\t  int       q_target          Error"
-        print "\t-----------------------------------"
+        print_opt("\n\tReport of back-transformation: (au)\n")
+        print_opt("\t  int       q_target          Error\n")
+        print_opt("\t-----------------------------------\n")
         q_target = q_orig + dq_orig
         for i in range(Nint):
-            print "\t%5d%15.10lf%15.10lf" % (i+1, q_target[i], (q_final-q_target)[i])
-        print "\t-----------------------------------"
+            print_opt("\t%5d%15.10lf%15.10lf\n" % (i+1, q_target[i], (q_final-q_target)[i]))
+        print_opt("\t-----------------------------------\n")
 
     # Set dq to final, total displacement ACHIEVED
     qShow_final = intcosMisc.qShowValues(intcos, geom)
     qShow_orig  = intcosMisc.qShowValues(intcos, geom_orig)
     dqShow      = qShow_final - qShow_orig;
 
-    print "\n\t       --- Internal Coordinate Step in ANG or DEG, aJ/ANG or AJ/DEG ---"
-    print "\t-----------------------------------------------------------------------------"
-    print "\t         Coordinate      Previous         Force        Change          New "
-    print "\t         ----------      --------        ------        ------        ------ "
+    print_opt("\n\t       --- Internal Coordinate Step in ANG or DEG, aJ/ANG or AJ/DEG ---\n")
+    print_opt("\t-----------------------------------------------------------------------------\n")
+    print_opt("\t         Coordinate      Previous         Force        Change          New \n")
+    print_opt("\t         ----------      --------        ------        ------        ------\n")
     for i, intco in enumerate(intcos):
-        print "\t%19s%14.5f%14.5f%14.5f%14.5f" % (intco, qShow_orig[i], fq[i], dqShow[i], qShow_final[i])
-    print "\t-----------------------------------------------------------------------------\n"
+        print_opt("\t%19s%14.5f%14.5f%14.5f%14.5f\n" % (intco, qShow_orig[i], fq[i], dqShow[i], qShow_final[i]))
+    print_opt("\t-----------------------------------------------------------------------------\n")
 
 
 def stepIter(intcos, geom, dq, bt_dx_conv=None, bt_dx_rms_change_conv=None, bt_max_iter=None):
@@ -131,9 +132,9 @@ def stepIter(intcos, geom, dq, bt_dx_conv=None, bt_dx_rms_change_conv=None, bt_m
     q_target = q_orig + dq
 
     if print_lvl > 1:
-        print "\t---------------------------------------------------"
-        print "\t Iter        RMS(dx)        Max(dx)        RMS(dq) "
-        print "\t---------------------------------------------------"
+        print_opt("\t---------------------------------------------------\n")
+        print_opt("\t Iter        RMS(dx)        Max(dx)        RMS(dq) \n")
+        print_opt("\t---------------------------------------------------\n")
 
     new_geom   = np.copy(geom)          # cart geometry to start each iter
     best_geom  = np.zeros( new_geom.shape, float)
@@ -169,19 +170,19 @@ def stepIter(intcos, geom, dq, bt_dx_conv=None, bt_dx_rms_change_conv=None, bt_m
             best_dq_rms = dq_rms
 
         if print_lvl > 1:
-            print "\t%5d %14.1e %14.1e %14.1e" % (bt_iter_cnt+1, dx_rms, dx_max, dq_rms)
+            print_opt("\t%5d %14.1e %14.1e %14.1e\n" % (bt_iter_cnt+1, dx_rms, dx_max, dq_rms))
 
         bt_iter_cnt += 1
 
     if print_lvl > 1:
-        print "\t---------------------------------------------------"
+        print_opt("\t---------------------------------------------------\n")
 
-    if bt_converged:    print "\tSuccessfully converged to displaced geometry."
-    else:               print "\tUnable to completely converge to displaced geometry."
+    if bt_converged:    print_opt("\tSuccessfully converged to displaced geometry.\n")
+    else:               print_opt("\tUnable to completely converge to displaced geometry.\n")
 
     if dq_rms > best_dq_rms:
-        print "\tPrevious geometry is closer to target in internal coordinates, so using that one."
-        print "\tBest geometry has RMS(Delta(q)) = %8.2e\n" % best_dq_rms
+        print_opt("\tPrevious geometry is closer to target in internal coordinates, so using that one.\n")
+        print_opt("\tBest geometry has RMS(Delta(q)) = %8.2e\n" % best_dq_rms)
         geom[:] = best_geom
 
     if op.Params.opt_type == "IRC" and not bt_converged:
@@ -209,10 +210,10 @@ def oneStep(intcos, geom, dq, printDetails=False):
 
     if printDetails:
         dq_achieved = intcosMisc.qValues(intcos, geom) - qOld
-        print "\t      Report of Single-step"
-        print "\t  int       dq_achieved        dq_error"
+        print_opt("\t      Report of Single-step\n")
+        print_opt("\t  int       dq_achieved        dq_error\n")
         for i in range(len(intcos)):
-            print "\t%5d%15.10lf%15.10lf" % (i+1, dq_achieved[i], dq_achieved[i]-dq[i])
+            print_opt("\t%5d%15.10lf%15.10lf\n" % (i+1, dq_achieved[i], dq_achieved[i]-dq[i]))
 
     dx_rms = rms(dx)
     dx_max = absMax(dx)

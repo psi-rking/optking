@@ -1,4 +1,4 @@
-from printTools import printMat, printArray
+from printTools import printMat, printArray, print_opt
 import numpy as np
 from math import sqrt
 import bend
@@ -107,17 +107,17 @@ def projectRedundanciesAndConstraints(intcos, geom, fq, H):
     G_inv = symmMatInv(G, redundant=True)
     Pprime = np.dot(G, G_inv) 
     if op.Params.print_lvl >= 3:
-        print "\tProjection matrix for redundancies."
+        print_opt("\tProjection matrix for redundancies.\n")
         printMat(Pprime)
 
     # Add constraints to projection matrix
     C = constraint_matrix(intcos)
 
     if C is not None:
-        print "Adding constraints for projection."
-        print (C)
+        print_opt("Adding constraints for projection.\n")
+        printMat(C)
         P= np.zeros((len(intcos), len(intcos)), float)
-        #print (np.dot(C, np.dot(Pprime, C)))
+        #print_opt(np.dot(C, np.dot(Pprime, C)))
         CPC = np.zeros((len(intcos), len(intcos)), float) 
         CPC[:,:] = np.dot(C, np.dot(Pprime, C))
         CPC = symmMatInv(CPC, redundant = True)  
@@ -127,7 +127,7 @@ def projectRedundanciesAndConstraints(intcos, geom, fq, H):
         fq[:] = np.dot(P, fq.T)
 
         if op.Params.print_lvl >= 3:
-            print "\tInternal forces in au, after projection of redundancies and constraints."
+            print_opt("\tInternal forces in au, after projection of redundancies and constraints.\n")
             printArray(fq)
         # Project redundancies out of Hessian matrix.
         # Peng, Ayala, Schlegel, JCC 1996 give H -> PHP + 1000(1-P)
@@ -140,7 +140,7 @@ def projectRedundanciesAndConstraints(intcos, geom, fq, H):
         #    for j in range(i):
         #        H[j,i] = H[i,j] = H[i,j] + 1000 * (1.0 - P[i,j])
         if op.Params.print_lvl >= 3:
-            print "Projected (PHP) Hessian matrix"
+            print_opt("Projected (PHP) Hessian matrix\n")
             printMat(H)
 
 def applyFixedForces(Molsys, fq, H, stepNumber):
@@ -157,13 +157,13 @@ def applyFixedForces(Molsys, fq, H, stepNumber):
               force = k * (eqVal - val)
               H[location][location] = k;
 
-              print("\n\tAdding user-defined constraint: Fragment %d; Coordinate %d:" % (iF+1, i+1))
-              print("\t\tValue = %12.6f; Fixed value    = %12.6f" % (val, eqVal))
-              print("\t\tForce = %12.6f; Force constant = %12.6f" % (force, k))
+              print_opt("\n\tAdding user-defined constraint: Fragment %d; Coordinate %d:\n" % (iF+1, i+1))
+              print_opt("\t\tValue = %12.6f; Fixed value    = %12.6f" % (val, eqVal))
+              print_opt("\t\tForce = %12.6f; Force constant = %12.6f" % (force, k))
               fq[location] = force
 
               # Delete coupling between this coordinate and others.
-              print("\t\tRemoving off-diagonal coupling between coordinate %d and others." % (location+1))
+              print_opt("\t\tRemoving off-diagonal coupling between coordinate %d and others." % (location+1))
               for j in range(len(H)): # gives first dimension length
                 if j != location:
                   H[j][location] = H[location][j] = 0

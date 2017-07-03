@@ -1,5 +1,6 @@
 from math import fabs
 import numpy as np
+from printTools import print_opt
 
 def delta(i, j):
     if i == j:
@@ -8,11 +9,11 @@ def delta(i, j):
         return 0
 
 def isDqSymmetric(intcos, geom, Dq):
-    print '\tTODO add isDqSymmetric'
+    print_opt('\tTODO add isDqSymmetric\n')
     return True
 
 def symmetrizeXYZ(XYZ):
-    print '\tTODO add symmetrize XYZ'
+    print_opt('\tTODO add symmetrize XYZ\n')
     return XYZ
 
 # return period from atomic number

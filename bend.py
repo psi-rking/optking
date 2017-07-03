@@ -6,6 +6,7 @@ from math import sqrt, cos
 from misc import delta, ZtoPeriod, HguessLindhRho
 from physconst import bohr2angstroms
 import covRadii
+from printTools import print_opt
 
 class BEND(SIMPLE):
 
@@ -103,7 +104,7 @@ class BEND(SIMPLE):
 
     def q(self, geom):
         #check, phi = v3d.angle(geom[self.A], geom[self.B], geom[self.C])
-        #print 'Traditional Angle = ', phi
+        #print_opt('Traditional Angle = %15.10f\n', phi)
 
         if not self._axes_fixed:
             self.compute_axes(geom);

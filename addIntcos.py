@@ -1,4 +1,4 @@
-from printTools import printMat,printArray
+from printTools import printMat,printArray,print_opt
 from itertools import combinations,permutations
 import numpy as np
 import sys
@@ -213,7 +213,7 @@ def freezeStretchesFromInputAtomList(frozenStreList, Molsys):
             I = Molsys._fragments[f]._intcos.index(stretch)
             Molsys._fragments[f]._intcos[I].frozen = True
         except ValueError:
-            print("Frozen stretch not present, so adding it.")
+            print_opt("Frozen stretch not present, so adding it.\n")
             Molsys._fragments[f]._intcos.append(stretch)
     return
 
@@ -233,7 +233,7 @@ def freezeBendsFromInputAtomList(frozenBendList, Molsys):
             I = Molsys._fragments[f]._intcos.index(bendFroz)
             Molsys._fragments[f]._intcos[I].frozen = True
         except ValueError: 
-            print("Frozen bend not present, so adding it.")
+            print_opt("Frozen bend not present, so adding it.\n")
             Molsys._fragments[f]._intcos.append(bendFroz)
     return
  
@@ -253,7 +253,7 @@ def freezeTorsionsFromInputAtomList(frozenTorsList, Molsys):
             I = Molsys._fragments[f]._intcos.index(torsAngle)
             Molsys._fragments[f]._intcos[I].frozen = True
         except ValueError:
-            print("Frozen dihedral not present, so adding it.")
+            print_opt("Frozen dihedral not present, so adding it.\n")
             Molsys._fragments[f]._intcos.append(torsAngle)
     return
 
@@ -263,7 +263,7 @@ def freezeTorsionsFromInputAtomList(frozenTorsList, Molsys):
 def checkFragment(atomList, Molsys):
     fragList = Molsys.atomList2uniqueFragList(atomList)
     if len(fragList) != 1:
-        print("Coordinate contains atoms in different fragments. Not currently supported.")
+        print_opt("Coordinate contains atoms in different fragments. Not currently supported.\n")
         raise ValueError("Atom list contains multiple fragments.")
     return fragList[0]
 
@@ -278,7 +278,7 @@ def fixStretchesFromInputList(fixedStreList, Molsys):
             I = Molsys._fragments[f]._intcos.index(stretch)
             Molsys._fragments[f]._intcos[I].fixedEqVal = val
         except ValueError:
-            print("Fixed stretch not present, so adding it.")
+            print_opt("Fixed stretch not present, so adding it.\n")
             Molsys._fragments[f]._intcos.append(stretch)
     return
 
@@ -293,7 +293,7 @@ def fixBendsFromInputList(fixedBendList, Molsys):
             I = Molsys._fragments[f]._intcos.index(one_bend)
             Molsys._fragments[f]._intcos[I].fixedEqVal = val
         except ValueError:
-            print("Fixed bend not present, so adding it.")
+            print_opt("Fixed bend not present, so adding it.\n")
             Molsys._fragments[f]._intcos.append(one_bend)
     return
 
@@ -308,7 +308,7 @@ def fixTorsionsFromInputList(fixedTorsList, Molsys):
             I = Molsys._fragments[f]._intcos.index(one_tors)
             Molsys._fragments[f]._intcos[I].fixedEqVal = val
         except ValueError:
-            print("Fixed torsion not present, so adding it.")
+            print_opt("Fixed torsion not present, so adding it.\n")
             Molsys._fragments[f]._intcos.append(one_tors)
     return
 

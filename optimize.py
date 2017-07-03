@@ -1,19 +1,17 @@
 #!/usr/bin/python
 # Calling program provides user-specified options.
-def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy, fPrint=None):
+def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
     
     import caseInsensitiveDict
     userOptions = caseInsensitiveDict.CaseInsensitiveDict( options_in )
     # Save copy of original user options.
     origOptions = userOptions.copy()
 
-    import printTools
-    from printTools import printInit  # initialize printing function
-    printInit(fPrint)
     from printTools import printGeomGrad,printMat,printArray,print_opt
-    
+
     # Create full list of parameters from defaults plus user options.
     import optParams as op
+    op.welcome()  # print header
     print_opt("\tProcessing user input options...\n")
     op.Params = op.OPT_PARAMS(userOptions)
     print_opt("\tParameters from optking.optimize\n")
@@ -171,6 +169,11 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy, fP
 
 
     
-
-
+def welcome():
+    print_out("\n\t\t\t-----------------------------------------\n")
+    print_out(  "\t\t\t OPTKING 3.0: for geometry optimizations \n")
+    print_out(  "\t\t\t     By R.A. King, Bethel University     \n")
+    print_out(  "\t\t\t        with contributions from          \n")
+    print_out(  "\t\t\t    A.V. Copan, J. Cayton, A. Heide      \n")
+    print_out(  "\t\t\t-----------------------------------------\n")
 

@@ -2,7 +2,7 @@ import numpy as np
 import frag
 from optParams import Params
 from addIntcos import connectivityFromDistances, addCartesianIntcos
-from printTools import printMat
+from printTools import printMat, print_opt
 import physconst as pc
 import covRadii
 import v3d
@@ -30,16 +30,17 @@ class MOLSYS():
 
     @classmethod
     def fromPsi4Molecule(cls, mol):
+        print_opt("\n\tGenerating molecular system for optimization from PSI4.\n")
 
         NF = mol.nfragments()
-        print "\t%d Fragments in PSI4 molecule object." % NF
+        print_opt("\t%d Fragments in PSI4 molecule object.\n" % NF)
         frags = []
 
         for iF in range(NF):
             fragMol = mol.extract_subsets(iF+1)
 
             fragNatom = fragMol.natom()
-            print "\tCreating fragment %d with %d atoms" % (iF+1,fragNatom)
+            print_opt("\tCreating fragment %d with %d atoms\n" % (iF+1,fragNatom))
 
             fragGeom = np.zeros( (fragNatom,3), float)
             fragGeom[:] = fragMol.geometry()
@@ -138,7 +139,7 @@ class MOLSYS():
 
     def printIntcos(self):
         for iF, F in enumerate(self._fragments):
-            print "Fragment %d" % (iF+1)
+            print_opt("Fragment %d\n" % (iF+1))
             F.printIntcos()
         return
 
@@ -154,18 +155,18 @@ class MOLSYS():
 
     def printGeom(self):
         for iF, F in enumerate(self._fragments):
-            print "Fragment %d" % (iF+1)
-            print F
+            print_opt("Fragment %d\n" % (iF+1))
+            print_opt( str(F) )
 
     def showGeom(self):
         for iF, F in enumerate(self._fragments):
-            print "Fragment %d" % (iF+1)
-            print F
+            print_opt("Fragment %d\n" % (iF+1))
+            print_opt( str(F) )
 
     def consolidateFragments(self):
         if self.Nfragments == 1:
             return
-        print "Consolidating multiple fragments into one for optimization."
+        print_opt("Consolidating multiple fragments into one for optimization.\n")
         consolidatedFrag = frag.FRAG(self.Z, self.geom, self.masses)
         del self._fragments[:]
         self._fragments.append( consolidatedFrag )
@@ -216,7 +217,7 @@ class MOLSYS():
     # definition of the fragments has ALREADY been determined before function called.
     #FixThis	
     def augmentConnectivityToSingleFragment(self, C):
-        print '\tAugmenting connectivity matrix to join fragments.'
+        print_opt('\tAugmenting connectivity matrix to join fragments.\n')
         fragAtoms = []
         for iF, F in enumerate(self._fragments):
             fragAtoms.append(range(self.frag_1st_atom(iF), self.frag_1st_atom(iF) + F.Natom))
@@ -253,7 +254,7 @@ class MOLSYS():
                   if (Rij > scale_dist * (R_i + R_j)):
                     continue  # ignore this as too far - for starters
       
-                  print "\tConnecting fragments with atoms %d and %d" % (i+1, j+1)
+                  print_opt("\tConnecting fragments with atoms %d and %d\n" % (i+1, j+1))
                   C[i][j] = C[j][i] = True
                   frag_connectivity[f1][f2] = frag_connectivity[f2][f1] = True
                   # Now check for possibly symmetry-related atoms which are just as close
@@ -264,7 +265,7 @@ class MOLSYS():
                       if (fabs(tval - minVal) < 1.0e-14): 
                         i = fragAtoms[f1][f1_atom]
                         j = fragAtoms[f2][f2_atom]
-                        print "\tConnecting fragments with atoms %d and %d" % (i+1, j+1)
+                        print_opt("\tConnecting fragments with atoms %d and %d\n" % (i+1, j+1))
                         C[i][j] = C[j][i] = True
 
             all_connected = True
@@ -291,7 +292,7 @@ class MOLSYS():
 
             if not all_connected:
                 scale_dist += 0.4
-                print "\tIncreasing scaling to %6.3f to connect fragments." % (scale_dist)
+                print_opt("\tIncreasing scaling to %6.3f to connect fragments.\n" % (scale_dist))
 
 """
 

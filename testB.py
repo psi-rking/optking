@@ -3,7 +3,7 @@
 #  a few unfortunates will be slightly worse
 import numpy as np
 import intcosMisc
-from printTools import printMat
+from printTools import printMat, print_opt
 import optParams as op
 from math import fabs
 
@@ -13,12 +13,12 @@ def testB(intcos, geom):
     DISP_SIZE = 0.01
     MAX_ERROR = 50*DISP_SIZE*DISP_SIZE*DISP_SIZE*DISP_SIZE
 
-    print "\n\tTesting B-matrix numerically..."
+    print_opt("\n\tTesting B-matrix numerically...\n")
 
     B_analytic = intcosMisc.Bmat(intcos, geom)
 
     if op.Params.print_lvl >= 3:
-        print "Analytic B matrix in au"
+        print_opt("Analytic B matrix in au\n")
         printMat(B_analytic)
 
     B_fd = np.zeros( (Nintco, 3*Natom), float)
@@ -43,7 +43,7 @@ def testB(intcos, geom):
                 B_fd[i,3*atom+xyz] = (q_m2[i]-8*q_m[i]+8*q_p[i]-q_p2[i]) / (12.0*DISP_SIZE)
 
     if op.Params.print_lvl >= 3:
-        print "Numerical B matrix in au, DISP_SIZE = %lf" % DISP_SIZE
+        print_opt("Numerical B matrix in au, DISP_SIZE = %lf\n" % DISP_SIZE)
         printMat(B_fd)
 
     intcosMisc.unfixBendAxes(intcos)
@@ -56,15 +56,15 @@ def testB(intcos, geom):
                 max_error = fabs(B_analytic[i][j] - B_fd[i][j])
                 max_error_intco = i
   
-    print "\t\tMaximum difference is %.1e for internal coordinate %d." % (max_error, max_error_intco+1)
-    print "\t\tThis coordinate is ", intcos[max_error_intco]
+    print_opt("\t\tMaximum difference is %.1e for internal coordinate %d.\n" % (max_error, max_error_intco+1))
+    print_opt("\t\tThis coordinate is %s", str(intcos[max_error_intco]))
 
     if max_error > MAX_ERROR:
-       print "\tB-matrix could be in error. However, numerical tests may fail for"
-       print "\ttorsions at 180 degrees, and slightly for linear bond angles. This is OK."
+       print_opt("\tB-matrix could be in error. However, numerical tests may fail for\n")
+       print_opt("\ttorsions at 180 degrees, and slightly for linear bond angles. This is OK.\n")
        return False
     else:
-       print "\t...Passed."
+       print_opt("\t...Passed.\n")
        return True
   
 
@@ -82,18 +82,18 @@ def testDerivativeB(intcos, geom_in):
     dq2dx2_analytic = np.zeros( (3*Natom, 3*Natom), float)
     coord           = np.copy(geom_in)
 
-    print "\n\tTesting Derivative B-matrix numerically..."
+    print_opt("\n\tTesting Derivative B-matrix numerically...\n")
 
     warn = False
     for i in range(Nintco):  # test one intco at a time
 
-        print "\t\tTesting internal coordinate %d : " % (i+1) 
+        print_opt("\t\tTesting internal coordinate %d : \n" % (i+1) )
 
         dq2dx2_analytic.fill(0)
         intcos[i].Dq2Dx2(coord, dq2dx2_analytic)
 
         if op.Params.print_lvl >= 3:
-            print  "Analytic B' (Dq2Dx2) matrix in au"
+            print_opt( "Analytic B' (Dq2Dx2) matrix in au\n")
             printMat(dq2dx2_analytic)
 
         # compute B' matrix from B matrices
@@ -122,7 +122,7 @@ def testDerivativeB(intcos, geom_in):
 
 
         if op.Params.print_lvl >= 3:
-            print "\nNumerical B' (Dq2Dx2) matrix in au, DISP_SIZE = %f" % DISP_SIZE
+            print_opt("\nNumerical B' (Dq2Dx2) matrix in au, DISP_SIZE = %f\n" % DISP_SIZE)
             printMat(dq2dx2_fd)
 
         max_error = -1.0;
@@ -133,17 +133,17 @@ def testDerivativeB(intcos, geom_in):
                     max_error = fabs(dq2dx2_analytic[I][J] - dq2dx2_fd[I][J])
                     max_error_xyz = (I,J)
 
-        print "\t\tMax. difference is %.1e; 2nd derivative wrt %d and %d." % (max_error,I+1,J+1)
+        print_opt("\t\tMax. difference is %.1e; 2nd derivative wrt %d and %d.\n" % (max_error,I+1,J+1))
 
         if max_error > MAX_ERROR:
             warn = True
 
     if warn:
-        print "\tSome values did not agree.  However, numerical tests may fail for"
-        print "\ttorsions at 180 degrees and linear bond angles. This is OK."
-        print "\tIf discontinuities are interfering with a geometry optimization,"
-        print "\ttry restarting your optimization at an updated geometry, and/or"
-        print "\tremove angular coordinates that are fixed by symmetry."
+        print_opt("\tSome values did not agree.  However, numerical tests may fail for\n")
+        print_opt("\ttorsions at 180 degrees and linear bond angles. This is OK.\n")
+        print_opt("\tIf discontinuities are interfering with a geometry optimization,\n")
+        print_opt("\ttry restarting your optimization at an updated geometry, and/or\n")
+        print_opt("\tremove angular coordinates that are fixed by symmetry.\n")
 
     return
 

@@ -6,7 +6,7 @@ from displace import displace
 from intcosMisc import qShowForces
 from addIntcos import linearBendCheck
 from math import sqrt, fabs
-from printTools import printArray, printMat
+from printTools import printArray, printMat, print_opt
 from misc import symmetrizeXYZ, isDqSymmetric
 from linearAlgebra import absMax, symmMatEig, asymmMatEig, symmMatInv
 import v3d
@@ -39,8 +39,8 @@ def applyIntrafragStepScaling(dq):
     trust = Params.intrafrag_trust
     if sqrt(np.dot(dq,dq)) > trust:
         scale = trust / sqrt(np.dot(dq,dq))
-        print "\tStep length exceeds trust radius of %10.5f." % trust
-        print "\tScaling displacements by %10.5f" % scale
+        print_opt("\tStep length exceeds trust radius of %10.5f.\n" % trust)
+        print_opt("\tScaling displacements by %10.5f\n" % scale)
         dq *= scale
     return
 
@@ -56,7 +56,7 @@ def DE_projected(model, step, grad, hess):
 # geometry and E are just for passing
 # at present we are not storing the ACTUAL dq but the attempted
 def Dq_NR(Molsys, E, fq, H):
-    print "\tTaking NR optimization step."
+    print_opt("\tTaking NR optimization step.\n")
 
     # Hinv fq = dq
     Hinv = symmMatInv(H, redundant=True)
@@ -68,25 +68,25 @@ def Dq_NR(Molsys, E, fq, H):
     # get norm |q| and unit vector in the step direction
     nr_dqnorm = sqrt( np.dot(dq,dq) )
     nr_u = dq.copy() / nr_dqnorm
-    print "\tNorm of target step-size %15.10f" % nr_dqnorm
+    print_opt("\tNorm of target step-size %15.10f\n" % nr_dqnorm)
 
     # get gradient and hessian in step direction
     nr_g = -1 * np.dot(fq, nr_u) # gradient, not force
     nr_h = np.dot( nr_u, np.dot(H, nr_u) )
 
     if Params.print_lvl > 1:
-       print '\t|NR target step|: %15.10f' % nr_dqnorm
-       print '\tNR_gradient     : %15.10f' % nr_g
-       print '\tNR_hessian      : %15.10f' % nr_h
+       print_opt('\t|NR target step|: %15.10f\n' % nr_dqnorm)
+       print_opt('\tNR_gradient     : %15.10f\n' % nr_g)
+       print_opt('\tNR_hessian      : %15.10f\n' % nr_h)
     DEprojected = DE_projected('NR', nr_dqnorm, nr_g, nr_h)
-    print "\tProjected energy change by quadratic approximation: %20.10lf" % DEprojected
+    print_opt("\tProjected energy change by quadratic approximation: %20.10lf\n" % DEprojected)
 
     # Scale fq into aJ for printing
     fq_aJ = qShowForces(Molsys.intcos, fq)
     displace(Molsys._fragments[0].intcos, Molsys._fragments[0].geom, dq, fq_aJ)
 
     dq_actual = sqrt( np.dot(dq,dq) )
-    print "\tNorm of achieved step-size %15.10f" % dq_actual
+    print_opt("\tNorm of achieved step-size %15.10f\n" % dq_actual)
 
     # Symmetrize the geometry for next step
     # symmetrize_geom()
@@ -104,7 +104,7 @@ def Dq_NR(Molsys, E, fq, H):
 
 # Take Rational Function Optimization step
 def Dq_RFO(Molsys, E, fq, H):
-    print "\tTaking RFO optimization step."
+    print_opt("\tTaking RFO optimization step.\n")
     dim = len(fq)
     dq = np.zeros( (dim), float)         # To be determined and returned.
     trust = Params.intrafrag_trust  # maximum step size
@@ -123,7 +123,7 @@ def Dq_RFO(Molsys, E, fq, H):
         RFOmat[i,dim]= RFOmat[dim,i] = -fq[i]
 
     if Params.print_lvl >= 4:
-        print "Original, unscaled RFO matrix:"
+        print_opt("Original, unscaled RFO matrix:\n")
         printMat(RFOmat)
 
     symm_rfo_step = False
@@ -144,7 +144,7 @@ def Dq_RFO(Molsys, E, fq, H):
         # If we exhaust iterations without convergence, then bail on the
         #  restricted-step algorithm.  Set alpha=1 and apply crude scaling instead.
         if alphaIter == max_projected_rfo_iter:
-            print "\tFailed to converge alpha. Doing simple step-scaling instead."
+            print_opt("\tFailed to converge alpha. Doing simple step-scaling instead.\n")
             alpha = 1.0
         elif Params.simple_step_scaling:
             # Simple_step_scaling is on, not an iterative method.
@@ -158,20 +158,20 @@ def Dq_RFO(Molsys, E, fq, H):
             SRFOmat[dim,i] = RFOmat[dim,i]
 
         if Params.print_lvl >= 4:
-            print "\nScaled RFO matrix."
+            print_opt("\nScaled RFO matrix.\n")
             printMat(SRFOmat)
 
         # Find the eigenvectors and eigenvalues of RFO matrix.
         SRFOevals, SRFOevects = asymmMatEig(SRFOmat)
 
         if Params.print_lvl >= 4:
-            print "Eigenvectors of scaled RFO matrix."
+            print_opt("Eigenvectors of scaled RFO matrix.\n")
             printMat(SRFOevects)
 
         if Params.print_lvl >= 2:
-            print "Eigenvalues of scaled RFO matrix."
+            print_opt("Eigenvalues of scaled RFO matrix.\n")
             printArray(SRFOevals)
-            print "First eigenvector (unnormalized) of scaled RFO matrix."
+            print_opt("First eigenvector (unnormalized) of scaled RFO matrix.\n")
             printArray(SRFOevects[0])
 
         # Do intermediate normalization.  RFO paper says to scale eigenvector
@@ -187,7 +187,7 @@ def Dq_RFO(Molsys, E, fq, H):
                         SRFOevects[i,j] /= SRFOevects[i,dim]
 
         if Params.print_lvl >= 4:
-            print "All scaled RFO eigenvectors (rows)."
+            print_opt("All scaled RFO eigenvectors (rows).\n")
             printMat(SRFOevects)
 
         # Use input rfo_root
@@ -197,7 +197,7 @@ def Dq_RFO(Molsys, E, fq, H):
 
             rfo_root = Params.rfo_root
             if alphaIter == 0:
-                print "\tChecking RFO solution %d." % (rfo_root+1)
+                print_opt("\tChecking RFO solution %d.\n" % (rfo_root+1))
 
             for i in range(rfo_root, dim+1):
                 # Check symmetry of root.
@@ -207,19 +207,19 @@ def Dq_RFO(Molsys, E, fq, H):
     
                     if not symm_rfo_step:  # Root is assymmetric so reject it.
                         if alphaIter == 0:
-                            print "\tRejecting RFO root %d because it breaks the molecular point group."\
-                                    % (rfo_root+1)
+                            print_opt("\tRejecting RFO root %d because it breaks the molecular point group.\n"\
+                                    % (rfo_root+1))
                         continue
                
                 # Check normalizability of root.
                 if fabs(SRFOevects[i][dim]) < 1.0e-10:  # don't even try to divide
                     if alphaIter == 0:
-                        print "\tRejecting RFO root %d because normalization gives large value." % (rfo_root+1)
+                        print_opt("\tRejecting RFO root %d because normalization gives large value.\n" % (rfo_root+1))
                     continue
                 tval = absMax(SRFOevects[rfo_root]/SRFOevects[rfo_root][dim])
                 if tval > Params.rfo_normalization_max: # matching test in code above
                     if alphaIter == 0:
-                        print "\tRejecting RFO root %d because normalization gives large value." % (rfo_root+1)
+                        print_opt("\tRejecting RFO root %d because normalization gives large value.\n" % (rfo_root+1))
                     continue
 
                 rfo_root = i   # This root is acceptable.
@@ -237,16 +237,16 @@ def Dq_RFO(Molsys, E, fq, H):
             rfo_root = np.argmax(dots)
 
         if alphaIter == 0:
-            print "\tUsing RFO solution %d." % (rfo_root+1)
+            print_opt("\tUsing RFO solution %d.\n" % (rfo_root+1))
         last_iter_evect[:] = SRFOevects[rfo_root][0:dim]  # omit last column on right
 
         # Print only the lowest eigenvalues/eigenvectors
         if Params.print_lvl >= 2:
-            print "\trfo_root is %d" % (rfo_root+1)
+            print_opt("\trfo_root is %d\n" % (rfo_root+1))
             for i in range(dim+1):
                 if SRFOevals[i] < -1e-6 or i < rfo_root:
-                    print "Scaled RFO eigenvalue %d: %15.10lf (or 2*%-15.10lf)" % (i+1, SRFOevals[i], SRFOevals[i]/2)
-                    print "eigenvector:"
+                    print_opt("Scaled RFO eigenvalue %d: %15.10lf (or 2*%-15.10lf)\n" % (i+1, SRFOevals[i], SRFOevals[i]/2))
+                    print_opt("eigenvector:\n")
                     printArray(SRFOevects[i])
 
         dq[:] = SRFOevects[rfo_root][0:dim] # omit last column
@@ -266,25 +266,25 @@ def Dq_RFO(Molsys, E, fq, H):
             converged = True
 
         if alphaIter == 0 and not Params.simple_step_scaling:
-            print "\n\tDetermining step-restricting scale parameter for RS-RFO."
+            print_opt("\n\tDetermining step-restricting scale parameter for RS-RFO.\n")
 
         if alphaIter == 0:
-            print "\tMaximum step size allowed %10.5lf" % trust
-            print "\t Iter      |step|        alpha        rfo_root  "
-            print "\t------------------------------------------------"
-            print "\t%5d%12.5lf%14.5lf%12d" % (alphaIter+1, sqrt(dqtdq), alpha, rfo_root+1)
+            print_opt("\tMaximum step size allowed %10.5lf\n" % trust)
+            print_opt("\t Iter      |step|        alpha        rfo_root  \n")
+            print_opt("\t------------------------------------------------\n")
+            print_opt("\t%5d%12.5lf%14.5lf%12d\n" % (alphaIter+1, sqrt(dqtdq), alpha, rfo_root+1))
 
         elif alphaIter > 0 and not Params.simple_step_scaling:
-            print "\t%5d%12.5lf%14.5lf%12d" % (alphaIter+1, sqrt(dqtdq), alpha, rfo_root+1)
+            print_opt("\t%5d%12.5lf%14.5lf%12d\n" % (alphaIter+1, sqrt(dqtdq), alpha, rfo_root+1))
 
         # Find the analytical derivative, d(norm step squared) / d(alpha)
         Lambda = -1 * v3d.dot(fq, dq, dim)
         if Params.print_lvl >= 2:
-            print "dq:"
+            print_opt("dq:\n")
             printArray(dq, dim)
-            print "fq:"
+            print_opt("fq:\n")
             printArray(fq, dim)
-            print "\tLambda calculated by (dq^t).(-f)     = %20.10lf" % Lambda
+            print_opt("\tLambda calculated by (dq^t).(-f)     = %20.10lf\n" % Lambda)
 
         # Calculate derivative of step size wrt alpha.
         # Equation 20, Besalu and Bofill, Theor. Chem. Acc., 1999, 100:265-274
@@ -294,7 +294,7 @@ def Dq_RFO(Molsys, E, fq, H):
 
         analyticDerivative = 2*Lambda / (1 + alpha * dqtdq ) * tval
         if Params.print_lvl >= 2:
-            print "\tAnalytic derivative d(norm)/d(alpha) = %20.10lf" % analyticDerivative
+            print_opt("\tAnalytic derivative d(norm)/d(alpha) = %20.10lf\n" % analyticDerivative)
 
         # Calculate new scaling alpha value.
         # Equation 20, Besalu and Bofill, Theor. Chem. Acc., 1999, 100:265-274
@@ -302,29 +302,29 @@ def Dq_RFO(Molsys, E, fq, H):
 
     # end alpha RS-RFO iterations
 
-    print "\t------------------------------------------------"
+    print_opt("\t------------------------------------------------\n")
 
     # Crude/old way to limit step size if RS-RFO iterations
     if not converged or Params.simple_step_scaling:
         applyIntrafragStepScaling(dq)
 
     if Params.print_lvl >= 3:
-        print "\tFinal scaled step dq:"
+        print_opt("\tFinal scaled step dq:\n")
         printArray(dq)
 
     # Get norm |dq|, unit vector, gradient and hessian in step direction
     # TODO double check Hevects[i] here instead of H ? as for NR
     rfo_dqnorm = sqrt( np.dot(dq,dq) )
-    print "\tNorm of target step-size %15.10f" % rfo_dqnorm
+    print_opt("\tNorm of target step-size %15.10f\n" % rfo_dqnorm)
     rfo_u = dq.copy() / rfo_dqnorm
     rfo_g = -1 * np.dot(fq, rfo_u)
     rfo_h = np.dot( rfo_u, np.dot(H, rfo_u) )
     DEprojected = DE_projected('RFO', rfo_dqnorm, rfo_g, rfo_h)
     if Params.print_lvl > 1:
-       print '\t|RFO target step|: %15.10f' % rfo_dqnorm
-       print '\tRFO_gradient       : %15.10f' % rfo_g
-       print '\tRFO_hessian        : %15.10f' % rfo_h
-    print "\tProjected energy change by RFO approximation: %20.10lf" % DEprojected
+       print_opt('\t|RFO target step|  : %15.10f\n' % rfo_dqnorm)
+       print_opt('\tRFO_gradient       : %15.10f\n' % rfo_g)
+       print_opt('\tRFO_hessian        : %15.10f\n' % rfo_h)
+    print_opt("\tProjected energy change by RFO approximation: %20.10lf\n" % DEprojected)
 
     # Scale fq into aJ for printing
     fq_aJ = qShowForces(Molsys.intcos, fq)
@@ -336,7 +336,7 @@ def Dq_RFO(Molsys, E, fq, H):
     # For now, saving RFO unit vector and using it in projection to match C++ code,
     # could use actual Dq instead.
     dqnorm_actual = sqrt( np.dot(dq,dq) )
-    print "\tNorm of achieved step-size %15.10f" % dqnorm_actual
+    print_opt("\tNorm of achieved step-size %15.10f\n" % dqnorm_actual)
 
     # To test step sizes
     #x_before = original geometry
@@ -348,9 +348,9 @@ def Dq_RFO(Molsys, E, fq, H):
     #    change += (x_before[3*i+xyz] - x_after[3*i+xyz]) * (x_before[3*i+xyz] - x_after[3*i+xyz])
     #             * masses[i]
     #change = sqrt(change);
-    #print "Step-size in mass-weighted cartesian coordinates [bohr (amu)^1/2] : %20.10lf" % change
+    #print_opt("Step-size in mass-weighted cartesian coordinates [bohr (amu)^1/2] : %20.10lf\n" % change)
 
-    #print "\tSymmetrizing new geometry"
+    #print_opt("\tSymmetrizing new geometry\n")
     #geom = symmetrizeXYZ(geom)
 
     History.appendRecord(DEprojected, dq, rfo_u, rfo_g, rfo_h)
@@ -368,7 +368,7 @@ def Dq_RFO(Molsys, E, fq, H):
 
 # Take Steepest Descent step
 def Dq_SD(Molsys, E, fq):
-    print "\tTaking SD optimization step."
+    print_opt("\tTaking SD optimization step.\n")
     dim = len(fq)
     sd_h = Params.sd_hessian # default value
 
@@ -380,7 +380,7 @@ def Dq_SD(Molsys, E, fq):
         previous_forces_u = previous_forces.copy()/np.linalg.norm(previous_forces)
         forces_u = fq.copy() / np.linalg.norm(fq)
         overlap = np.dot(previous_forces_u, forces_u)
-        print "\tOverlap of current forces with previous forces %8.4lf" % overlap
+        print_opt("\tOverlap of current forces with previous forces %8.4lf\n" % overlap)
         previous_dq_norm = np.linalg.norm(previous_dq)
 
         if overlap > 0.50:
@@ -390,26 +390,26 @@ def Dq_SD(Molsys, E, fq):
             previous_forces_norm = v3d.dot(previous_forces, fq, dim)/fq_norm
             sd_h = (previous_forces_norm - fq_norm) / previous_dq_norm
 
-    print "\tEstimate of Hessian along step: %10.5e" % sd_h
+    print_opt("\tEstimate of Hessian along step: %10.5e\n" % sd_h)
     dq = fq / sd_h
 
     applyIntrafragStepScaling(dq)
 
     sd_dqnorm = np.linalg.norm(dq)
-    print "\tNorm of target step-size %10.5f\n" % sd_dqnorm
+    print_opt("\tNorm of target step-size %10.5f\n" % sd_dqnorm)
 
     # unit vector in step direction
     sd_u = dq.copy() / np.linalg.norm( dq )
     sd_g = -1.0 * sd_dqnorm
 
     DEprojected = DE_projected('NR', sd_dqnorm, sd_g, sd_h);
-    print "\tProjected energy change by quadratic approximation: %20.10lf" % DEprojected
+    print_opt("\tProjected energy change by quadratic approximation: %20.10lf\n" % DEprojected)
 
     fq_aJ = qShowForces(Molsys.intcos, fq) # for printing
     displace(Molsys._fragments[0].intcos, Molsys._fragments[0].geom, dq, fq_aJ)
 
     dqnorm_actual = np.linalg.norm(dq)
-    print "\tNorm of achieved step-size %15.10f" % dqnorm_actual
+    print_opt("\tNorm of achieved step-size %15.10f\n" % dqnorm_actual)
 
     # Symmetrize the geometry for next step
     # symmetrize_geom()
@@ -434,13 +434,13 @@ def Dq_SD(Molsys, E, fq):
 #       projectedDE - recompute
 
 def Dq_BACKSTEP(Molsys):
-    print "\tRe-doing last optimization step - smaller this time."
+    print_opt("\tRe-doing last optimization step - smaller this time.\n")
 
     if len(History.steps) < 2:
         raise Exception("Backstep called, but no history is available.")
 
     History.consecutiveBacksteps += 1
-    print "\tConsecutive backstep number %d." % (History.consecutiveBacksteps)
+    print_opt("\tConsecutive backstep number %d.\n" % (History.consecutiveBacksteps))
 
     # Erase last, partial step data for current step.
     del History.steps[-1]
@@ -456,19 +456,19 @@ def Dq_BACKSTEP(Molsys):
     # Compute new Dq and energy step projection.
     dq /= 2
     dqNorm = np.linalg.norm(dq)
-    print "\tNorm of target step-size %10.5f\n" % dqNorm
+    print_opt("\tNorm of target step-size %10.5f\n" % dqNorm)
 
     # Compute new Delta(E) projection.
     if Params.step_type == 'RFO':
         DEprojected = DE_projected('RFO', dqNorm, oneDgradient, oneDhessian)
     else:
         DEprojected = DE_projected('NR', dqNorm, oneDgradient, oneDhessian)
-    print "\tProjected energy change : %20.10lf" % DEprojected
+    print_opt("\tProjected energy change : %20.10lf\n" % DEprojected)
 
     fq_aJ = qShowForces(Molsys.intcos, fq) # for printing
     displace(Molsys._fragments[0].intcos, Molsys._fragments[0].geom, dq, fq_aJ)
     dqNormActual = np.linalg.norm(dq)
-    print "\tNorm of achieved step-size %15.10f" % dqNormActual
+    print_opt("\tNorm of achieved step-size %15.10f\n" % dqNormActual)
     # Symmetrize the geometry for next step
     # symmetrize_geom()
 

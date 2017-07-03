@@ -1,6 +1,7 @@
 import numpy as np
 from math import sqrt, fabs, sin, acos, asin, fsum
 import optParams as op
+from printTools import print_opt
 # a couple of obscure parameters used in torsion computation:
 #  phi_lim = op.Params.v3d_tors_angle_lim
 #  tors_cos_tol = op.Params.v3d_tors_cos_tol
@@ -68,12 +69,12 @@ def are_parallel_or_antiparallel(u, v):
 def angle(A, B, C, tol=1.0e-14):
     check, eBA = eAB(B, A)
     if not check:
-        print "Warning: could not normalize eBA in angle()"
+        print_opt("Warning: could not normalize eBA in angle()\n")
         return False, 0.0
 
     check, eBC = eAB(B, C)
     if not check:
-        print "Warning: could not normalize eBC in angle()"
+        print_opt("Warning: could not normalize eBC in angle()\n")
         return False, 0.0
     
     dotprod = dot(eBA,eBC);

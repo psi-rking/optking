@@ -2,7 +2,7 @@ import numpy as np
 import misc
 import addIntcos
 import physconst
-from printTools import printArrayString, printMatString
+from printTools import printArrayString, printMatString,print_opt
 
 # Geometry is 2D object (atom,xyz)
 
@@ -66,9 +66,9 @@ class FRAG():
         return self._intcos
 
     def printIntcos(self):
-        print 'Intco Values (Angstroms and degrees)'
+        print_opt('Intco Values (Angstroms and degrees)\n')
         for coord in self._intcos:
-            print '\t%-15s%20.6f' % (coord, coord.qShow(self._geom))
+            print_opt('\t%-15s%20.6f\n' % (coord, coord.qShow(self._geom)))
         return
 
     def connectivityFromDistances(self):
@@ -82,13 +82,14 @@ class FRAG():
 
     def printGeom(self):
         for i in range(self._geom.shape[0]):
-            print "\t%5s%15.10f%15.10f%15.10f" % (self._Z[i], self._geom[i,0], self._geom[i,1], self._geom[i,2])
-        print
+            print_opt("\t%5s%15.10f%15.10f%15.10f\n" % \
+            (self._Z[i], self._geom[i,0], self._geom[i,1], self._geom[i,2]))
+        print_opt("\n")
 
     def showGeom(self):
         Ang = self._geom * physconst.bohr2angstroms
         for i in range(self._geom.shape[0]):
-            print "\t%5s%15.10f%15.10f%15.10f" % (self._Z[i], Ang[i,0], Ang[i,1], Ang[i,2])
-        print
+            print_opt("\t%5s%15.10f%15.10f%15.10f\n" % (self._Z[i], Ang[i,0], Ang[i,1], Ang[i,2]))
+        print_opt("\n")
 
 

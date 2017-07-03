@@ -4,6 +4,7 @@ import v3d
 import physconst as pc  # has physical constants
 from math import sqrt, cos, sin, tan
 import optParams as op
+from printTools import print_opt
 
 # Class for out-of-plane angle.  Definition (A,B,C,D) means angle AB with respect
 # to the CBD plane; canonical order is C < D
@@ -127,7 +128,7 @@ class OOFP(SIMPLE):
         if guess == "SIMPLE":
             return 0.1
         else:
-            print "Warning: Hessian guess encountered unknown coordinate type."
+            print_opt("Warning: Hessian guess encountered unknown coordinate type.\n")
             return 1.0
 
 

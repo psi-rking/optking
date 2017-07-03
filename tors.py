@@ -7,6 +7,7 @@ import optParams as op
 from physconst import bohr2angstroms
 from misc import HguessLindhRho
 import covRadii
+from printTools import print_opt
 
 class TORS(SIMPLE):
 
@@ -264,7 +265,7 @@ class TORS(SIMPLE):
                 Bbonds = Bbonds + Brow[i]
                 Cbonds = Cbonds + Crow[i]
             L = Bbonds + Cbonds - 2
-            print "Connectivity of central 2 torsional atoms - 2 = L = %d" % L
+            print_opt("Connectivity of central 2 torsional atoms - 2 = L = %d\n" % L)
             return a + b*(np.power(L,d))/(np.power(R*Rcov,e))*(np.exp(-c*(R-Rcov)))
 
         elif guessType == "LINDH_SIMPLE":
@@ -280,6 +281,6 @@ class TORS(SIMPLE):
             return k_tau*Lindh_Rho_AB*Lindh_Rho_BC*Lindh_Rho_CD
 
         else:
-            print "Warning: Hessian guess encountered unknown coordinate type."
+            print_opt("Warning: Hessian guess encountered unknown coordinate type.\n")
             return 1.0
 
