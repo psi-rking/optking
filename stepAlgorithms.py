@@ -382,19 +382,19 @@ def Dq_P_RFO(Molsys, E, fq, H):
 
     for i in range (0, len(hEigValues)):
         Hessian[i] = hEigVectors[i]
-        print (hEigVectors[i])
+        print_opt( str(hEigVectors[i]) )
 
     for i in range (0, len(hEigValues)):
         HDiag[i,i] = hEigValues[i]
 
-    print("Printing Internal Coordinates in Au")
+    print_opt("Printing Internal Coordinates in Au\n")
     printArray(fq)
-    print ("Testing Transpose")
+    print_opt("Testing Transpose\n")
     printMat(hEigVectors)
 
     fqTransformed = np.dot(hEigVectors, fq) #gradient trasnformation    
-    print ("print Internal Coordiantes transformed to Hessien eigen vector basis")
-    print (fqTransformed)
+    print_opt("print Internal Coordiantes transformed to Hessien eigen vector basis\n")
+    print_opt( str(fqTransformed) )
     mu = 1
     maximizeRFO = np.zeros((mu + 1, mu + 1), float)
     minimizeRFO = np.zeros((len(fq) - mu + 1, len(fq) - mu + 1), float)
@@ -403,14 +403,14 @@ def Dq_P_RFO(Molsys, E, fq, H):
         maximizeRFO[i][i] = hEigValues[i]
         maximizeRFO[i, -1] = -fqTransformed[i]
         maximizeRFO[-1, i] = -fqTransformed[i]
-    print ("Maximized RFO")
-    printMat (maximizeRFO)      
+    print_opt("Maximized RFO\n")
+    printMat(maximizeRFO)      
     #consructs RFO matrix to be minimized with eigen values from Hessian and internal coords
     for i in range (0, len(fq) - mu):
         minimizeRFO[i][i] = HDiag[i + mu][i + mu]
         minimizeRFO[i][-1] = -fqTransformed[i + mu]
         minimizeRFO[-1][i] = -fqTransformed[i + mu]
-    print ("Minimized RFO mat")     
+    print_opt("Minimized RFO mat\n")
     printMat(minimizeRFO) 
     RFOMaxEValues, RFOMaxEVectors = symmMatEig(maximizeRFO)
     RFOMinEValues, RFOMinEVectors = symmMatEig(minimizeRFO)
@@ -420,22 +420,22 @@ def Dq_P_RFO(Molsys, E, fq, H):
     VectorP = RFOMaxEVectors[-1]
     VectorN = RFOMinEVectors[0]
 
-    print ("RFOMaxEVectors")
+    print_opt("RFOMaxEVectors\n")
     printMat(RFOMaxEVectors)
 
-    print ("RFOMinEVectors")
+    print_opt("RFOMinEVectors\n")
     printMat(RFOMinEVectors)
 
     for i in range (0, len(VectorP)):
         VectorP[i] = VectorP[i]/VectorP[-1]
-    print ("Normalized RFO Max eigen Vector")
-    print (VectorP)
+    print_opt("Normalized RFO Max eigen Vector\n")
+    print_opt( str(VectorP) )
 
     for i in range(len(VectorN)):
         VectorN[i] = VectorN[i]/VectorN[-1]
 
-    print ("Normalized RFO Min eigen Vector")
-    print (VectorN)
+    print_opt("Normalized RFO Min eigen Vector\n")
+    print_opt( str(VectorN) )
 
     #Combines the eignvectors from RFOmax and min without the added row from addition of the gradient
     #to the Hessian matrix
@@ -443,36 +443,36 @@ def Dq_P_RFO(Molsys, E, fq, H):
     PRFOEVector[:len(VectorP) - 1] = VectorP[:len(VectorP) - 1]
     PRFOEVector[len(VectorP) - 1:] = VectorN[:len(VectorN) - 1]
 
-    print ("RFO step in Hessian Eigen Vector Basis")
-    print (PRFOEVector)
+    print_opt("RFO step in Hessian Eigen Vector Basis\n")
+    print_opt( str(PRFOEVector) )
 
     converged = False
 
     PRFOStep = np.dot(hEigVectors, PRFOEVector)
-    print ("RFO step in original Basis")
-    print (PRFOStep)
+    print_opt("RFO step in original Basis\n")
+    print_opt( str(PRFOStep) )
     dq = PRFOStep
         
     #if not converged or Params.simple_step_scaling:
     applyIntrafragStepScaling(dq)
 
     if Params.print_lvl >= 3:
-        print "\tFinal scaled step dq:"
+        print_opt("\tFinal scaled step dq:\n")
         printArray(dq)
 
     # Get norm |dq|, unit vector, gradient and hessian in step direction
     # TODO double check Hevects[i] here instead of H ? as for NR
     rfo_dqnorm = sqrt( np.dot(dq,dq) )
-    print "\tNorm of target step-size %15.10f" % rfo_dqnorm
+    print_opt("\tNorm of target step-size %15.10f\n" % rfo_dqnorm)
     rfo_u = dq.copy() / rfo_dqnorm
     rfo_g = -1 * np.dot(fq, rfo_u)
     rfo_h = np.dot( rfo_u, np.dot(H, rfo_u) )
     DEprojected = DE_projected('RFO', rfo_dqnorm, rfo_g, rfo_h)
     if Params.print_lvl > 1:
-       print '\t|RFO target step|: %15.10f' % rfo_dqnorm
-       print '\tRFO_gradient       : %15.10f' % rfo_g
-       print '\tRFO_hessian        : %15.10f' % rfo_h
-    print "\tProjected energy change by RFO approximation: %20.10lf" % DEprojected
+       print_opt('\t|RFO target step|  : %15.10f\n' % rfo_dqnorm)
+       print_opt('\tRFO_gradient       : %15.10f\n' % rfo_g)
+       print_opt('\tRFO_hessian        : %15.10f\n' % rfo_h)
+    print_opt("\tProjected energy change by RFO approximation: %20.10lf\n" % DEprojected)
 
     # Scale fq into aJ for printing
     fq_aJ = qShowForces(Molsys.intcos, fq)
@@ -484,7 +484,7 @@ def Dq_P_RFO(Molsys, E, fq, H):
     # For now, saving RFO unit vector and using it in projection to match C++ code,
     # could use actual Dq instead. 
     dqnorm_actual = sqrt( np.dot(dq,dq) )
-    print "\tNorm of achieved step-size %15.10f" % dqnorm_actual
+    print_opt("\tNorm of achieved step-size %15.10f\n" % dqnorm_actual)
         
     History.appendRecord(DEprojected, dq, rfo_u, rfo_g, rfo_h)
 
