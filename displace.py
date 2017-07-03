@@ -12,6 +12,10 @@ from printTools import print_opt
 #   Reduce step size as necessary until back-transformation converges.
 
 def displace(intcos, geom, dq, fq, atom_offset=0, ensure_convergence=False):
+<<<<<<< HEAD
+    print (dq)
+=======
+>>>>>>> 2a4182a4e07959a66e8c9ba8145135f99fb3538a
     if not len(intcos) or not len(geom) or not len(dq):
         dq[:] = 0
         return
