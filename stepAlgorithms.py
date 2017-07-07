@@ -197,46 +197,44 @@ def Dq_RFO(Molsys, E, fq, H):
         # If its the first iteration, then do the same.  In subsequent steps, overlaps will be checked.
         if not rfo_follow_root or len(History.steps) < 2:
 
-            rfo_root = Params.rfo_root
+            # Determine root only once at beginning ?
             if alphaIter == 0:
                 print_opt("\tChecking RFO solution %d.\n" % (rfo_root+1))
 
-            for i in range(rfo_root, dim+1):
-                # Check symmetry of root.
-                dq[:] = SRFOevects[i,0:dim]
-                if not Params.accept_symmetry_breaking:
-                    symm_rfo_step = isDqSymmetric(Molsys.intcos, Molsys.geom, dq)
-    
-                    if not symm_rfo_step:  # Root is assymmetric so reject it.
-                        if alphaIter == 0:
+                for i in range(rfo_root, dim+1):
+                    # Check symmetry of root.
+                    dq[:] = SRFOevects[i,0:dim]
+                    if not Params.accept_symmetry_breaking:
+                        symm_rfo_step = isDqSymmetric(Molsys.intcos, Molsys.geom, dq)
+        
+                        if not symm_rfo_step:  # Root is assymmetric so reject it.
                             print_opt("\tRejecting RFO root %d because it breaks the molecular point group.\n"\
-                                    % (rfo_root+1))
-                        continue
+                                        % (rfo_root+1))
+                            continue
                
-                # Check normalizability of root.
-                if fabs(SRFOevects[i][dim]) < 1.0e-10:  # don't even try to divide
-                    if alphaIter == 0:
+                    # Check normalizability of root.
+                    if fabs(SRFOevects[i][dim]) < 1.0e-10:  # don't even try to divide
                         print_opt("\tRejecting RFO root %d because normalization gives large value.\n" % (rfo_root+1))
-                    continue
-                tval = absMax(SRFOevects[rfo_root]/SRFOevects[rfo_root][dim])
-                if tval > Params.rfo_normalization_max: # matching test in code above
-                    if alphaIter == 0:
+                        continue
+                    tval = absMax(SRFOevects[i]/SRFOevects[i][dim])
+                    if tval > Params.rfo_normalization_max: # matching test in code above
                         print_opt("\tRejecting RFO root %d because normalization gives large value.\n" % (rfo_root+1))
-                    continue
+                        continue
+                    rfo_root = i   # This root is acceptable.
+                    break 
+                else:
+                    rfo_root = Params.rfo_root; # no good one found, use the default
 
-                rfo_root = i   # This root is acceptable.
-                break 
-            else:
-                rfo_root = Params.rfo_root; # no good one found, use the default
-
-            # Save initial root.
-            # 'Follow' during the RS-RFO iterations.
-            rfo_follow_root = True
+                # Save initial root. 'Follow' during the RS-RFO iterations.
+                rfo_follow_root = True
 
         else: # Do root following.
             # Find maximum overlap. Dot only within H block.
             dots = np.array ( [v3d.dot(SRFOevects[i], last_iter_evect, dim) for i in range(dim)], float)
-            rfo_root = np.argmax(dots)
+            bestfit = np.argmax(dots)
+            if bestfit != rfo_root:
+                print_opt("Root-following has changed rfo_root value to %d." % (bestfit+1))
+                rfo_root = bestfit
 
         if alphaIter == 0:
             print_opt("\tUsing RFO solution %d.\n" % (rfo_root+1))
@@ -367,98 +365,127 @@ def Dq_RFO(Molsys, E, fq, H):
 
     return dq
 
+
 def Dq_P_RFO(Molsys, E, fq, H):
+    dim = len(fq)
+    trust = Params.intrafrag_trust   # maximum step size
+    follow_root = Params.rfo_follow_root # whether to follow root
+    print_lvl = Params.print_lvl
 
-    dq = np.zeros(len(fq), float) 
-    trust = Params.intrafrag_trust  # maximum step size
-    max_projected_rfo_iter = 25          # max. # of iterations to try to converge RS-RFO
-    rfo_follow_root = Params.rfo_follow_root  # whether to follow root
-    rfo_root = Params.rfo_root  # if following, which root to follow
-    HDiag = np.zeros((len(fq), len(fq)), float)
-    Hessian = np.zeros((len(fq), len(fq)), float)
-    Hessian[:,:] = H
+    if print_lvl > 2:
+        print_opt("Hessian matrix\n")
+        printMat(H)
     
-    hEigValues, hEigVectors = symmMatEig(Hessian)
+    # Diagonalize H (technically only have to semi-diagonalize)
+    hEigValues, hEigVectors = symmMatEig(H)
 
-    for i in range (0, len(hEigValues)):
-        Hessian[i] = hEigVectors[i]
-        print_opt( str(hEigVectors[i]) )
+    if print_lvl > 3:
+        print_opt("Eigenvalues of Hessian\n")
+        printArray(hEigVectors)
+        print_opt("Eigenvectors of Hessian (rows)\n")
+        printMat(hEigVectors)
 
-    for i in range (0, len(hEigValues)):
+    # Construct diagonalized Hessian with evals on diagonal
+    HDiag = np.zeros((dim,dim), float)
+    for i in range(dim):
         HDiag[i,i] = hEigValues[i]
 
-    print_opt("Printing Internal Coordinates in Au\n")
-    printArray(fq)
-    print_opt("Testing Transpose\n")
-    printMat(hEigVectors)
+    if print_lvl > 2:
+        print_opt("H diagonal")
+        printMat(HDiag)
 
-    fqTransformed = np.dot(hEigVectors, fq) #gradient trasnformation    
-    print_opt("print Internal Coordiantes transformed to Hessien eigen vector basis\n")
-    print_opt( str(fqTransformed) )
+    if not rfo_follow_root or len(History.steps) < 2:
+        rfo_root = Params.rfo_root
+        print_opt("\tMaximizing along %d lowest eigenvalue of Hessian.\n" %(rfo_root+1))
+    else:
+        last_iter_evect = history[-1].Dq
+        dots = np.array([v3d.dot(hEigVectors[i],last_iter_evect,dim) for i in range(dim)], float)
+        rfo_root = np.argmax(dots)
+        print_opt("\tOverlaps with previous step checked for root-following.\n")
+        print_opt("\tMaximizing along %d lowest eigenvalue of Hessian.\n" %(rfo_root+1))
+
+    # number of degrees along which to maximize; assume 1 for now
     mu = 1
+    print_opt("Maximizing along %d lowest eigenvalue of Hessian.\n", rfo_root+1)
+
+    print_opt("\tInternal forces in au:\n")
+    printArray(fq)
+
+    fqTransformed = np.dot(hEigVectors, fq) #gradient transformation    
+    print_opt("\tInternal forces in au, in Hevect basis:\n")
+    printArray(fq)
+
+    # Build RFO max
     maximizeRFO = np.zeros((mu + 1, mu + 1), float)
-    minimizeRFO = np.zeros((len(fq) - mu + 1, len(fq) - mu + 1), float)
-    #constructs RFO matrix to be maximized with eigen values from Hessian and internal coords
-    for i in range (0, mu):
-        maximizeRFO[i][i] = hEigValues[i]
+    for i in range(mu):
+        maximizeRFO[i,i] = hEigValues[i]
         maximizeRFO[i, -1] = -fqTransformed[i]
         maximizeRFO[-1, i] = -fqTransformed[i]
-    print_opt("Maximized RFO\n")
-    printMat(maximizeRFO)      
-    #consructs RFO matrix to be minimized with eigen values from Hessian and internal coords
-    for i in range (0, len(fq) - mu):
-        minimizeRFO[i][i] = HDiag[i + mu][i + mu]
-        minimizeRFO[i][-1] = -fqTransformed[i + mu]
-        minimizeRFO[-1][i] = -fqTransformed[i + mu]
-    print_opt("Minimized RFO mat\n")
-    printMat(minimizeRFO) 
+    if print_lvl > 2:
+        print_opt("RFO max\n")
+        printMat(maximizeRFO)      
+
+    # Build RFO min
+    minimizeRFO = np.zeros((dim - mu + 1, dim - mu + 1), float)
+    for i in range (0, dim - mu):
+        minimizeRFO[i,i] = HDiag[i + mu,i + mu]
+        minimizeRFO[i,-1] = -fqTransformed[i + mu]
+        minimizeRFO[-1,i] = -fqTransformed[i + mu]
+    if print_lvl > 2:
+        print_opt("RFO min\n")
+        printMat(minimizeRFO) 
+
     RFOMaxEValues, RFOMaxEVectors = symmMatEig(maximizeRFO)
     RFOMinEValues, RFOMinEVectors = symmMatEig(minimizeRFO)
-    
-    LambdaP = RFOMaxEValues[-1] #Smallest EigenValue for the matrix being maximized
-    LambdaN = RFOMinEValues[0] #Smallest EigenValue for the matrix being miminized
-    VectorP = RFOMaxEVectors[-1]
-    VectorN = RFOMinEVectors[0]
 
-    print_opt("RFOMaxEVectors\n")
-    printMat(RFOMaxEVectors)
+    if print_lvl > 2:
+        print_opt("RFO min eigenvectors (rows) before normalization:\n")
+        printMat(RFOMinEVectors)
+        print_opt("RFO max eigenvectors (rows) before normalization:\n")
+        printMat(RFOMaxEVectors)
 
-    print_opt("RFOMinEVectors\n")
-    printMat(RFOMinEVectors)
+    print_opt("RFO min eigenvalues:\n")
+    printArray(RFOMinEValues)
+    print_opt("RFO max eigenvalues:\n")
+    printArray(RFOMaxEValues)
 
-    for i in range (0, len(VectorP)):
-        VectorP[i] = VectorP[i]/VectorP[-1]
-    print_opt("Normalized RFO Max eigen Vector\n")
-    print_opt( str(VectorP) )
+    # Normalize max and min eigenvectors
+    for i in range(mu+1):
+        tval = abs( absMax(RFOMaxEVectors[i,0:mu]) / RFOMaxEVectors[i,mu])
+        if fabs(tval) < Params.rfo_normalization_max:
+            RFOMaxEVectors[i] /= rfo_max[i,mu]
+    if print_lvl > 2:
+        print_opt("RFO max eigenvectors (rows):\n")
+        printMat(RFOMaxEVectors)
 
-    for i in range(len(VectorN)):
-        VectorN[i] = VectorN[i]/VectorN[-1]
+    for i in range(dim-mu+1):
+        tval = abs( absMax(RFOMinEVectors[i,Nintco-mu]) / RFOMinEVectors[i,Nintco-mu])
+        if fabs(tval) < Params.rfo_normalization_max:
+            RFOMinEVectors[i] /= rfo_min[i,mu]
+    if print_lvl > 2:
+        print_opt("RFO min eigenvectors (rows):\n")
+        printMat(RFOMinEVectors)
 
-    print_opt("Normalized RFO Min eigen Vector\n")
-    print_opt( str(VectorN) )
+    VectorP = RFOMaxEvectors[mu,0:mu]
+    VectorN = RFOMinEvectors[rfo_root,0:len(fq)-mu]
 
-    #Combines the eignvectors from RFOmax and min without the added row from addition of the gradient
-    #to the Hessian matrix
+    # Combines the eignvectors from RFO max and min
     PRFOEVector = np.zeros(len(fq), float)
-    PRFOEVector[:len(VectorP) - 1] = VectorP[:len(VectorP) - 1]
-    PRFOEVector[len(VectorP) - 1:] = VectorN[:len(VectorN) - 1]
-
-    print_opt("RFO step in Hessian Eigen Vector Basis\n")
-    print_opt( str(PRFOEVector) )
-
-    converged = False
+    PRFOEVector[0:len(VectorP)-1] = VectorP
+    PRFOEVector[len(VectorN)-1:] = VectorN
 
     PRFOStep = np.dot(hEigVectors, PRFOEVector)
-    print_opt("RFO step in original Basis\n")
-    print_opt( str(PRFOStep) )
+
+    if print_lvl > 1:
+        print_opt("RFO step in Hessian Eigenvector Basis\n")
+        printArray(PRFOEVector)
+        print_opt("RFO step in original Basis\n")
+        printArray(PRFOStep)
+
     dq = PRFOStep
         
     #if not converged or Params.simple_step_scaling:
     applyIntrafragStepScaling(dq)
-
-    if Params.print_lvl >= 3:
-        print_opt("\tFinal scaled step dq:\n")
-        printArray(dq)
 
     # Get norm |dq|, unit vector, gradient and hessian in step direction
     # TODO double check Hevects[i] here instead of H ? as for NR
