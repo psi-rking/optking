@@ -23,9 +23,11 @@ class FRAG():
         s += printMatString(self._geom)
         s += "Masses\n"
         s += printArrayString(self._masses)
-        if (self._intcos): s += 'Intco Values (Angstroms and degrees)\n'
-        for intco in self._intcos:
-            s += '\t%-20s%15.5f\n' % (intco, intco.qShow(self._geom))
+
+        s += "\t - Coordinate -           - BOHR/RAD -       - ANG/DEG -\n"
+        for x in self._intcos:
+            s += "\t%-18s=%17.6f%19.6f\n" % (x, x.q(self._geom), x.qShow(self._geom))
+        s += "\n"
         return s
 
     @classmethod
@@ -66,9 +68,11 @@ class FRAG():
         return self._intcos
 
     def printIntcos(self):
-        print_opt('Intco Values (Angstroms and degrees)\n')
+        print_opt("\tInternal Coordinate Values\n")
+        print_opt("\t - Coordinate -           - BOHR/RAD -       - ANG/DEG -\n")
         for coord in self._intcos:
-            print_opt('\t%-15s%20.6f\n' % (coord, coord.qShow(self._geom)))
+            print_opt('\t%-18s=%17.6f%19.6f\n' % (coord, coord.q(self._geom), coord.qShow(self._geom)))
+        print_opt("\n")
         return
 
     def connectivityFromDistances(self):

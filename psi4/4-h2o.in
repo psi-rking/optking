@@ -16,11 +16,10 @@ set {
   scf_type pk
 }
 
-#import Psi4Opt
-#Psi4Opt.calcName = 'hf'
-#thisenergy = Psi4Opt.Psi4Opt()
-optimize('hf')
-
+import Psi4Opt
+Psi4Opt.calcName = 'hf'
+thisenergy = Psi4Opt.Psi4Opt()
+#optimize('hf')
 compare_values(nucenergy, h2o.nuclear_repulsion_energy(), 3, "Nuclear repulsion energy")    #TEST
 compare_values(refenergy, thisenergy, 6, "Reference energy")                                #TEST
 

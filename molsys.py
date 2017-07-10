@@ -7,7 +7,7 @@ import physconst as pc
 import covRadii
 import v3d
 
-class MOLSYS():
+class MOLSYS(object): # new-style classes required for getter/setters
     def __init__(self, fragments, fb_fragments=None, intcos=None):
         # ordinary fragments with internal structure
         self._fragments = []
@@ -105,6 +105,12 @@ class MOLSYS():
             row   = self.frag_1st_atom(iF)
             geom[row:(row+F.Natom),:] = F.geom
         return geom
+
+    @geom.setter
+    def geom(self, newgeom):
+        for iF, F in enumerate(self._fragments):
+            row   = self.frag_1st_atom(iF)
+            F.geom[:] = newgeom[row:(row+F.Natom),:]
 
     @property
     def masses(self):

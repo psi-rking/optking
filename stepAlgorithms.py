@@ -321,8 +321,8 @@ def Dq_RFO(Molsys, E, fq, H):
     DEprojected = DE_projected('RFO', rfo_dqnorm, rfo_g, rfo_h)
     if Params.print_lvl > 1:
        print_opt('\t|RFO target step|  : %15.10f\n' % rfo_dqnorm)
-       print_opt('\tRFO_gradient       : %15.10f\n' % rfo_g)
-       print_opt('\tRFO_hessian        : %15.10f\n' % rfo_h)
+       print_opt('\tRFO gradient       : %15.10f\n' % rfo_g)
+       print_opt('\tRFO hessian        : %15.10f\n' % rfo_h)
     print_opt("\tProjected energy change by RFO approximation: %20.10lf\n" % DEprojected)
 
     # Scale fq into aJ for printing
@@ -367,9 +367,9 @@ def Dq_RFO(Molsys, E, fq, H):
 
 
 def Dq_P_RFO(Molsys, E, fq, H):
-    dim = len(fq)
+    Hdim = len(fq) # size of Hessian
     trust = Params.intrafrag_trust   # maximum step size
-    follow_root = Params.rfo_follow_root # whether to follow root
+    rfo_follow_root = Params.rfo_follow_root # whether to follow root
     print_lvl = Params.print_lvl
 
     if print_lvl > 2:
@@ -379,41 +379,46 @@ def Dq_P_RFO(Molsys, E, fq, H):
     # Diagonalize H (technically only have to semi-diagonalize)
     hEigValues, hEigVectors = symmMatEig(H)
 
-    if print_lvl > 3:
+    if print_lvl > 2:
         print_opt("Eigenvalues of Hessian\n")
-        printArray(hEigVectors)
+        printArray(hEigValues)
         print_opt("Eigenvectors of Hessian (rows)\n")
         printMat(hEigVectors)
 
     # Construct diagonalized Hessian with evals on diagonal
-    HDiag = np.zeros((dim,dim), float)
-    for i in range(dim):
+    HDiag = np.zeros((Hdim,Hdim), float)
+    for i in range(Hdim):
         HDiag[i,i] = hEigValues[i]
 
     if print_lvl > 2:
-        print_opt("H diagonal")
+        print_opt("H diagonal\n")
         printMat(HDiag)
 
+    print_opt("\tFor P-RFO, assuming rfo_root=1, maximizing along lowest eigenvalue of Hessian.\n")
+    print_opt("\tLarger values of rfo_root are not yet supported.\n")
+    rfo_root = 0
+
+    """  TODO: use rfo_root to decide which eigenvectors are moved into the max/mu space.
     if not rfo_follow_root or len(History.steps) < 2:
         rfo_root = Params.rfo_root
-        print_opt("\tMaximizing along %d lowest eigenvalue of Hessian.\n" %(rfo_root+1))
+        print_opt("\tMaximizing along %d lowest eigenvalue of Hessian.\n" % (rfo_root+1) )
     else:
         last_iter_evect = history[-1].Dq
-        dots = np.array([v3d.dot(hEigVectors[i],last_iter_evect,dim) for i in range(dim)], float)
+        dots = np.array([v3d.dot(hEigVectors[i],last_iter_evect,Hdim) for i in range(Hdim)], float)
         rfo_root = np.argmax(dots)
         print_opt("\tOverlaps with previous step checked for root-following.\n")
-        print_opt("\tMaximizing along %d lowest eigenvalue of Hessian.\n" %(rfo_root+1))
+        print_opt("\tMaximizing along %d lowest eigenvalue of Hessian.\n" % (rfo_root+1) )
+    """
 
     # number of degrees along which to maximize; assume 1 for now
     mu = 1
-    print_opt("Maximizing along %d lowest eigenvalue of Hessian.\n", rfo_root+1)
 
     print_opt("\tInternal forces in au:\n")
     printArray(fq)
 
     fqTransformed = np.dot(hEigVectors, fq) #gradient transformation    
     print_opt("\tInternal forces in au, in Hevect basis:\n")
-    printArray(fq)
+    printArray(fqTransformed)
 
     # Build RFO max
     maximizeRFO = np.zeros((mu + 1, mu + 1), float)
@@ -426,8 +431,8 @@ def Dq_P_RFO(Molsys, E, fq, H):
         printMat(maximizeRFO)      
 
     # Build RFO min
-    minimizeRFO = np.zeros((dim - mu + 1, dim - mu + 1), float)
-    for i in range (0, dim - mu):
+    minimizeRFO = np.zeros((Hdim - mu + 1, Hdim - mu + 1), float)
+    for i in range (0, Hdim - mu):
         minimizeRFO[i,i] = HDiag[i + mu,i + mu]
         minimizeRFO[i,-1] = -fqTransformed[i + mu]
         minimizeRFO[-1,i] = -fqTransformed[i + mu]
@@ -438,43 +443,49 @@ def Dq_P_RFO(Molsys, E, fq, H):
     RFOMaxEValues, RFOMaxEVectors = symmMatEig(maximizeRFO)
     RFOMinEValues, RFOMinEVectors = symmMatEig(minimizeRFO)
 
+    print_opt("RFO min eigenvalues:\n")
+    printArray(RFOMinEValues)
+    print_opt("RFO max eigenvalues:\n")
+    printArray(RFOMaxEValues)
+
     if print_lvl > 2:
         print_opt("RFO min eigenvectors (rows) before normalization:\n")
         printMat(RFOMinEVectors)
         print_opt("RFO max eigenvectors (rows) before normalization:\n")
         printMat(RFOMaxEVectors)
 
-    print_opt("RFO min eigenvalues:\n")
-    printArray(RFOMinEValues)
-    print_opt("RFO max eigenvalues:\n")
-    printArray(RFOMaxEValues)
-
     # Normalize max and min eigenvectors
     for i in range(mu+1):
-        tval = abs( absMax(RFOMaxEVectors[i,0:mu]) / RFOMaxEVectors[i,mu])
-        if fabs(tval) < Params.rfo_normalization_max:
-            RFOMaxEVectors[i] /= rfo_max[i,mu]
+        if abs(RFOMaxEVectors[i,mu]) > 1.0e-10:
+            tval = abs( absMax(RFOMaxEVectors[i,0:mu]) / RFOMaxEVectors[i,mu])
+            if fabs(tval) < Params.rfo_normalization_max:
+                RFOMaxEVectors[i] /= RFOMaxEVectors[i,mu]
     if print_lvl > 2:
         print_opt("RFO max eigenvectors (rows):\n")
         printMat(RFOMaxEVectors)
 
-    for i in range(dim-mu+1):
-        tval = abs( absMax(RFOMinEVectors[i,Nintco-mu]) / RFOMinEVectors[i,Nintco-mu])
-        if fabs(tval) < Params.rfo_normalization_max:
-            RFOMinEVectors[i] /= rfo_min[i,mu]
+    for i in range(Hdim-mu+1):
+        if abs(RFOMinEVectors[i][Hdim-mu]) > 1.0e-10:
+            tval = abs( absMax(RFOMinEVectors[i,0:Hdim-mu]) / RFOMinEVectors[i,Hdim-mu])
+            if fabs(tval) < Params.rfo_normalization_max:
+                RFOMinEVectors[i] /= RFOMinEVectors[i,Hdim-mu]
     if print_lvl > 2:
         print_opt("RFO min eigenvectors (rows):\n")
         printMat(RFOMinEVectors)
 
-    VectorP = RFOMaxEvectors[mu,0:mu]
-    VectorN = RFOMinEvectors[rfo_root,0:len(fq)-mu]
+    VectorP = RFOMaxEVectors[mu,0:mu]
+    VectorN = RFOMinEVectors[rfo_root,0:Hdim-mu]
+    print_opt("Vector P\n")
+    print_opt( str(VectorP)+'\n' )
+    print_opt("Vector N\n")
+    print_opt( str(VectorN)+'\n' )
 
     # Combines the eignvectors from RFO max and min
-    PRFOEVector = np.zeros(len(fq), float)
-    PRFOEVector[0:len(VectorP)-1] = VectorP
-    PRFOEVector[len(VectorN)-1:] = VectorN
+    PRFOEVector = np.zeros(Hdim, float)
+    PRFOEVector[0:len(VectorP)] = VectorP
+    PRFOEVector[len(VectorP):] = VectorN
 
-    PRFOStep = np.dot(hEigVectors, PRFOEVector)
+    PRFOStep = np.dot(hEigVectors.transpose(), PRFOEVector)
 
     if print_lvl > 1:
         print_opt("RFO step in Hessian Eigenvector Basis\n")
@@ -497,9 +508,9 @@ def Dq_P_RFO(Molsys, E, fq, H):
     DEprojected = DE_projected('RFO', rfo_dqnorm, rfo_g, rfo_h)
     if Params.print_lvl > 1:
        print_opt('\t|RFO target step|  : %15.10f\n' % rfo_dqnorm)
-       print_opt('\tRFO_gradient       : %15.10f\n' % rfo_g)
-       print_opt('\tRFO_hessian        : %15.10f\n' % rfo_h)
-    print_opt("\tProjected energy change by RFO approximation: %20.10lf\n" % DEprojected)
+       print_opt('\tRFO gradient       : %15.10f\n' % rfo_g)
+       print_opt('\tRFO hessian        : %15.10f\n' % rfo_h)
+    print_opt("\tProjected Delta(E) : %15.10f\n\n" % DEprojected)
 
     # Scale fq into aJ for printing
     fq_aJ = qShowForces(Molsys.intcos, fq)
