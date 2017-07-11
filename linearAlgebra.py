@@ -66,4 +66,22 @@ def symmMatInv(A, redundant=False, redundant_eval_tol=1.0e-10):
     AInv = np.dot(evects.T, tmpMat)
     return AInv
 
-
+def symmMatRoot(A, Inverse = False):
+    evals, evects = np.linalg.eigh(A)
+    rootMatrix = np.zeros((len(evals), len(evals)), float)
+    if (Inverse):
+        for i in range (0,len(evals)):
+            evals[i] = 1 / evals[i]
+    
+    Q = np.zeros((len(evals), len(evals)), float)
+    for i in range (len(evals)):
+        for j in range (len(evects)):
+            Q[j][i] = evects[j]
+                
+    for i in range (0, len(evals)):
+        rootMatrix[i][i] = sqrt(evals[i]) 
+    
+    A = np.dot(Q, np.dot(rootMatrix, Q.T))        
+    
+    return A        
+          

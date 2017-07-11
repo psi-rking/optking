@@ -32,7 +32,9 @@ def Dq(Molsys, E, qForces, H, stepType=None):
     elif stepType == 'BACKSTEP':
         return Dq_BACKSTEP(Molsys)
     elif stepType == 'P_RFO':
-        return Dq_P_RFO(Molsys, E, qForces, H) 
+        return Dq_P_RFO(Molsys, E, qForces, H)
+    elif opt_type == 'IRC':
+        return Dq_IRC(Molsys, E, qForces, H)  
     else:
         raise ValueError('Dq: step type not yet implemented')
 
@@ -614,3 +616,19 @@ def Dq_BACKSTEP(Molsys):
         raise INTCO_EXCEPT("New linear angles", linearList)
 
     return dq
+
+def Dq_IRC (Molsys, intcos, geom, E, qForces, H, B): #if this method requires additinal parameters, calls to Dq will also need additional info
+    #Call Hessian convert to internals, or pass in H already in internals when dq called. Hessian will be calculated from psi4
+    Hq = intcosMisc.convertHessianToInternals(B, H, qForces, Molsys)
+    #Compute G in mass weighted internals, can be performed using intcosMisc.Gmat(intcos, geom, True) returns matrix
+    Gm = intcosMisc.Gmat(intcos, geom, True)
+    #Compute gradient from psi4 
+    #q omputed in mass weighted coordinates
+    # Hessian transformed into mass weighted by H_m = (G^1/2)H(G^1/2) where G is calculated from dq in massweighted internals
+    #Solve for N using G N = (g^t * Gg)^-1/2
+    #q*k+1 = qk - s/2 * NGg
+    #length of all vectors = 1/2 s
+    #need to scan radius of 1/2 step size from pivot point to find qk+1 
+    #for this do I simply need to scan all points at 1/2 s away from the pivot point?
+    #Need to solve Ggk+1 = Gg'k+1 + GHq (qk+1 - q'k+1) #question remains how to find q'k+1 I think I can just find
+    #some point at a set angle from the pivot point and calc the dq from this random poin  

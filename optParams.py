@@ -312,12 +312,12 @@ class OPT_PARAMS(object):
                 P.hess_update = 'BOFILL'
 #
         ## Make trajectory file printing the default for IRC.
-        #if P.opt_type == 'IRC' and 'PRINT_TRAJECTORY_XYZ_FILE' not in uod:
-            #P.print_trajectory_xyz_file = True
+        if P.opt_type == 'IRC' and 'PRINT_TRAJECTORY_XYZ_FILE' not in uod:
+            P.print_trajectory_xyz_file = True
 #
         ## Read cartesian Hessian by default for IRC.
-        #if P.opt_type == 'IRC' and 'CART_HESS_READ' not in uod:
-            #P.read_cartesian_H = True
+        if P.opt_type == 'IRC' and 'CART_HESS_READ' not in uod:
+            P.read_cartesian_H = True
 #
         #if P.generate_intcos_exit:
             #P.keep_intcos = True
