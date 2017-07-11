@@ -24,17 +24,19 @@ Molsys = optking.molsys.MOLSYS.fromPsi4Molecule(mol)
 
 # Define a function for optking that takes a Cartesian, numpy geometry, and
 #  puts it in place for subsequent gradient computations.  This function
-#  may move COM or reorient; changes argument to match such geometry.
+#  may move COM or reorient; will return possible changed cartesian geometry.
 def setGeometry_func( newGeom ):
     psi_geom = core.Matrix.from_array( newGeom )
     mol.set_geometry( psi_geom )
     mol.update_geometry()
-    newGeom[:] = np.array( mol.geometry() )
+    return np.array( mol.geometry() )
+#    newGeom[:] = np.array( mol.geometry() )
 
 calcName = 0
 # Define a function for optking that returns an energy and cartesian
 #  gradient in numpy array format.
-def gradient_func(printResults=True):
+def gradient_func(xyz, printResults=True):
+    xyz[:] = setGeometry_func(xyz)
     psi4gradientMatrix, wfn = driver.gradient(calcName, molecule=mol, return_wfn=True)
     gradientMatrix = np.array( psi4gradientMatrix )
     E = wfn.energy()

@@ -73,7 +73,9 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
             Molsys.printIntcos();
         
             for stepNumber in range(op.Params.geom_maxiter): 
-                E, g_x = fGradient()
+                xyz = Molsys.geom.copy()
+                E, g_x = fGradient(xyz, printResults=False)
+                Molsys.geom = xyz # use setter function to save data in fragments
                 printGeomGrad(Molsys.geom, g_x)
                 energies.append( E )
             
@@ -127,11 +129,11 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
 
                 print_opt("\tStructure for next step (au):\n")
                 Molsys.printGeom()
-                fSetGeometry(Molsys.geom)
+                #fSetGeometry(Molsys.geom)
             
                 if converged:
                     print_opt("\tConverged in %d steps!\n" % (stepNumber+1))
-                    fSetGeometry(Molsys.geom)
+                    #fSetGeometry(Molsys.geom)
                     break
 
             else: # executes if too many steps

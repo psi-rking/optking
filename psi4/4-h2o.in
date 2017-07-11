@@ -22,7 +22,13 @@ set {
 import Psi4Opt
 Psi4Opt.calcName = 'hf'
 thisenergy = Psi4Opt.Psi4Opt()
+<<<<<<< HEAD
 hessian('hf')
 #compare_values(nucenergy, h2o.nuclear_repulsion_energy(), 3, "Nuclear repulsion energy")    #TEST
 #compare_values(refenergy, thisenergy, 6, "Reference energy")                                #TEST
+=======
+#optimize('hf')
+compare_values(nucenergy, h2o.nuclear_repulsion_energy(), 3, "Nuclear repulsion energy")    #TEST
+compare_values(refenergy, thisenergy, 6, "Reference energy")                                #TEST
+>>>>>>> 89f5012e9c6775cef6e05268f00615ed7f088cfe
 
