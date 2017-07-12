@@ -1,13 +1,12 @@
 #! SCF CC-PVTZ geometry optimzation, with Z-matrix input
 
-nucenergy =   9.3537237781                                                                     #TEST
-refenergy = -76.057769702                                                                    #TEST
+nucenergy =   9.3537237781   #TEST
+refenergy = -76.057769702    #TEST
 
 molecule h2o {
  O
- H 1 0.94060
- H 1 0.94060 2 106.00159
- noreorient
+ H 1 1.0
+ H 1 1.0 2 104.5
 }
 
 set {
@@ -15,20 +14,12 @@ set {
   e_convergence 10
   d_convergence 10
   scf_type pk
-  print 5
-  g_convergence GAU_verytight
 }
 
 import Psi4Opt
 Psi4Opt.calcName = 'hf'
 thisenergy = Psi4Opt.Psi4Opt()
-<<<<<<< HEAD
-hessian('hf')
-#compare_values(nucenergy, h2o.nuclear_repulsion_energy(), 3, "Nuclear repulsion energy")    #TEST
-#compare_values(refenergy, thisenergy, 6, "Reference energy")                                #TEST
-=======
 #optimize('hf')
 compare_values(nucenergy, h2o.nuclear_repulsion_energy(), 3, "Nuclear repulsion energy")    #TEST
 compare_values(refenergy, thisenergy, 6, "Reference energy")                                #TEST
->>>>>>> 89f5012e9c6775cef6e05268f00615ed7f088cfe
 

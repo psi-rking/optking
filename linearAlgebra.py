@@ -84,4 +84,4 @@ def symmMatRoot(A, Inverse = False):
     A = np.dot(Q, np.dot(rootMatrix, Q.T))        
     
     return A        
-          
+

@@ -655,6 +655,7 @@ def Dq_BACKSTEP(Molsys):
 
     return dq
 
+"""
 def Dq_IRC (Molsys, intcos, geom, E, qForces, H, B): #if this method requires additinal parameters, calls to Dq will also need additional info
     #Call Hessian convert to internals, or pass in H already in internals when dq called. Hessian will be calculated from psi4
     Hq = intcosMisc.convertHessianToInternals(B, H, qForces, Molsys)
@@ -670,3 +671,5 @@ def Dq_IRC (Molsys, intcos, geom, E, qForces, H, B): #if this method requires ad
     #for this do I simply need to scan all points at 1/2 s away from the pivot point?
     #Need to solve Ggk+1 = Gg'k+1 + GHq (qk+1 - q'k+1) #question remains how to find q'k+1 I think I can just find
     #some point at a set angle from the pivot point and calc the dq from this random poin  
+"""
+

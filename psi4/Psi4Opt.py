@@ -47,13 +47,15 @@ def gradient_func(xyz, printResults=True):
         print_out( "\n")
     return E, np.reshape(gradientMatrix, (gradientMatrix.size))
 
-def hessian_func(printResults=True):
+def hessian_func(xyz, printResults=False):
+    xyz[:] = setGeometry_func(xyz)
     H = driver.hessian(calcName, molecule=mol)
     if printResults:
-        print_out( '\t Hessian\n')
-        print_out( str(H) )
+        print_out( 'Hessian\n')
+        H.print_out()
         print_out( "\n")
-    return H
+    Hnp = np.array( H )
+    return Hnp
 
 #  This function only matters for special purposes like 1D line searching.
 # The energy is usually obtained from the gradient function.

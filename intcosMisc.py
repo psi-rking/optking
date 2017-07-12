@@ -43,7 +43,7 @@ def unfixBendAxes(intcos):
             intco.unfixBendAxes()
     return
 
-def Bmat(intcos, geom):
+def Bmat(intcos, geom, masses=None):
     Nint = len(intcos)
     Ncart = geom.size
 
@@ -51,18 +51,25 @@ def Bmat(intcos, geom):
     for i,intco in enumerate(intcos):
         intco.DqDx(geom, B[i])
 
+    if masses is not None:
+        print_opt("mass weighting B matrix\n")
+        for i in range(len(intcos)):
+            for a in range(len(geom)):
+                for xyz in range(3):
+                    B[i, 3*a + xyz] /= sqrt(masses[a]);
+
     return B
 
-#def dBmat(intcos, geom)
-    
 def Gmat(intcos, geom, masses=None):
-    B = Bmat(intcos, geom)
+    B = Bmat(intcos, geom, masses)
 
+    """
     if masses:
         for i in range(len(intcos)):
             for a in range(len(geom)):
                 for xyz in range(3):
-                    B[i][3*a+xyz] /= math.sqrt(masses[a]);
+                    B[i][3*a+xyz] /= sqrt(masses[a]);
+    """
 
     return np.dot(B, B.T)
         
@@ -170,7 +177,9 @@ def applyFixedForces(Molsys, fq, H, stepNumber):
                   H[j][location] = H[location][j] = 0
 
     return
-def massWeightedUMatrixCart(nAtom): 
+
+"""
+def massWeightedUMatrixCart(masses): 
     atom = 1 
     masses = [15.9994, 1.00794, 1.00794]
     U = np.zeros((3 * nAtom, 3 * nAtom), float)
@@ -179,34 +188,39 @@ def massWeightedUMatrixCart(nAtom):
         if (i % 3 == 0):
             nAtom += 1
     return U
+"""
 
-def convertHessianToInternals(Bmat, H, nAtom):
-    print ("Converting Hessian into internals")
-    print ("This method works only at a stationary point")
-    #U = massWeightedUMatrixCart(nAtom)
-    U = np.zeros((3 * nAtom, 3 * nAtom), float)
-    for i in range (3 * nAtom)
-        U[i][i] = 1
+def convertHessianToInternals(H, intcos, geom, masses=None, fx=None):
+    print_opt("Converting Hessian from cartesians to internals.\n")
+    print_opt("This implementation only correct at stationary points.\n")
 
-    BUB = np.dot (Bmat, U)
-    BUB = np.dot (BUB, Bmat.T)
-    BUBinv = symmMatInv(BUB)
+    #U = massWeightedUMatrixCart(masses)
+    #U = np.zeros((3 * nAtom, 3 * nAtom), float)
+    #for i in range (3 * nAtom):
+    #    U[i][i] = 1
 
-    Atranspose = np.dot(BUBinv, np.dot(Bmat, U))
+    G = Gmat(intcos, geom, masses)
+    #G = Gmat(intcos, geom)
+    Ginv = symmMatInv(G)
+    print_opt("G inverse\n")
+    printMat(Ginv)
 
-    Hq = np.dot(Atranspose, np.dot (H, Atranspose.T))
+    B = Bmat(intcos, geom, masses)
+    #B = Bmat(intcos, geom,)
+    print_opt("B matrix\n")
+    printMat(B)
+    Atranspose = np.dot(Ginv, B)
+    print_opt("Atranspose\n")
+    printMat(Atranspose)
+
+    Hq = np.dot(Atranspose, np.dot(H, Atranspose.T))
     return Hq
 
-def convertHessianToCartesian(Bmat, intcoH, nAtom, fq):
-    print ("Converting Hessian into certesians...")
-    print ("This method works only at a stationary point") 
-    masses = [15.9994, 1.00794, 1.00794]
+def convertHessianToCartesians(Hint, intcos, geom, masses=None, fq=None):
+    print_opt("Converting Hessian from internals to cartesians.\n")
+    print_opt("This implementation only correct at stationary points.\n") 
 
-    U = np.zeros((len(fq), len(fq)), float)
-    for i in range(0,3):
-        U[i][i] = sqrt(masses[i])
-    print (U)
-    Hx = np.dot (Bmat.T, U)
-    Hx = np.dot (Hx, intcoH)
-    Hx = np.dot (Hx, U)
-    return np.dot (Hx, Bmat) 
+    B = Bmat(intcos, geom, masses)
+    Hx = np.dot(B.T, np.dot(Hint, B))
+    return Hx
+

@@ -52,25 +52,24 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
 
             addIntcos.addFrozenAndFixedIntcos(Molsys)
 
-            """
-            # Read in frozen coordinates
-            if op.Params.frozen_distance:
-                addIntcos.freezeStretchesFromInputAtomList(op.Params.frozen_distance, Molsys)
-            if op.Params.frozen_bend:
-                addIntcos.freezeBendsFromInputAtomList(op.Params.frozen_bend, Molsys)
-            if op.Params.frozen_dihedral:
-                addIntcos.freezeTorsionsFromInputAtomList(op.Params.frozen_dihedral, Molsys)
+            Molsys.printIntcos()
 
-            # Read in fixed coordinates
-            if op.Params.fixed_distance:
-                addIntcos.fixStretchesFromInputList(op.Params.fixed_distance, Molsys)
-            if op.Params.fixed_bend:
-                addIntcos.fixBendsFromInputList(op.Params.fixed_bend, Molsys)
-            if op.Params.fixed_dihedral:
-                addIntcos.fixTorsionsFromInputList(op.Params.fixed_dihedral, Molsys)
+            # test Hessian transformations
+            """ # code will convert to internals, then cartesians, back to same internals
+            xyz = Molsys.geom.copy()
+            Hcart = fHessian(xyz, printResults=True)
+            print_opt("Geometry returned from hessian function.\n")
+            printMat(xyz)
+            Hint = intcosMisc.convertHessianToInternals(Hcart, Molsys.intcos, Molsys.geom, masses=None)
+            print_opt("Internal Hessian\n")
+            printMat(Hint)
+            Hcart2 = intcosMisc.convertHessianToCartesians(Hint, Molsys.intcos, Molsys.geom, masses=None)
+            print_opt("Cartesian Hessian from internals\n")
+            printMat(Hcart2)
+            Hint2 = intcosMisc.convertHessianToInternals(Hcart2, Molsys.intcos, Molsys.geom, masses=None)
+            print_opt("Internal Hessian from Cartesian\n")
+            printMat(Hint2)
             """
-            
-            Molsys.printIntcos();
         
             for stepNumber in range(op.Params.geom_maxiter): 
                 xyz = Molsys.geom.copy()
