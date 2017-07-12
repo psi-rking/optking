@@ -114,7 +114,7 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
         
                 try:
                     # displaces and adds step to history
-                    Dq = stepAlgorithms.Dq(Molsys, E, fq, H)
+                    Dq = stepAlgorithms.Dq(Molsys, E, fq, H, op.Params.step_type)
                 except optExceptions.BAD_STEP_EXCEPT:
                     if history.History.consecutiveBacksteps < op.Params.consecutiveBackstepsAllowed:
                         print_opt("Taking backward step.\n")
@@ -126,14 +126,15 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
         
                 converged = convCheck.convCheck(stepNumber, Molsys.intcos, Dq, fq, energies)
 
-                print_opt("\tStructure for next step (au):\n")
-                Molsys.printGeom()
-                #fSetGeometry(Molsys.geom)
-            
                 if converged:
                     print_opt("\tConverged in %d steps!\n" % (stepNumber+1))
-                    #fSetGeometry(Molsys.geom)
+                    print_opt("\tFinal energy is %20.13f\n" % E)
+                    print_opt("\tFinal structure (Angstroms):\n")
+                    Molsys.showGeom()
                     break
+
+                print_opt("\tStructure for next step (au):\n")
+                Molsys.printGeom()
 
             else: # executes if too many steps
                 print_opt("Number of steps (%d) has reached value of GEOM_MAXITER.\n" % (stepNumber+1))

@@ -162,12 +162,12 @@ class MOLSYS(object): # new-style classes required for getter/setters
     def printGeom(self):
         for iF, F in enumerate(self._fragments):
             print_opt("Fragment %d\n" % (iF+1))
-            print_opt( str(F) )
+            F.printGeom()
 
     def showGeom(self):
         for iF, F in enumerate(self._fragments):
             print_opt("Fragment %d\n" % (iF+1))
-            print_opt( str(F) )
+            F.showGeom()
 
     def consolidateFragments(self):
         if self.Nfragments == 1:

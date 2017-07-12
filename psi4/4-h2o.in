@@ -1,7 +1,6 @@
 #! SCF CC-PVTZ geometry optimzation, with Z-matrix input
 
-nucenergy =   9.3537237781   #TEST
-refenergy = -76.057769702    #TEST
+finalEnergy = -76.05776970 #TEST
 
 molecule h2o {
  O
@@ -16,10 +15,34 @@ set {
   scf_type pk
 }
 
+set optking step_type rfo
 import Psi4Opt
 Psi4Opt.calcName = 'hf'
-thisenergy = Psi4Opt.Psi4Opt()
-#optimize('hf')
-compare_values(nucenergy, h2o.nuclear_repulsion_energy(), 3, "Nuclear repulsion energy")    #TEST
-compare_values(refenergy, thisenergy, 6, "Reference energy")                                #TEST
+E = Psi4Opt.Psi4Opt()
+compare_values(finalEnergy, E, 6, "RFO Step Final Energy")                                #TEST
+
+molecule h2o {
+ O
+ H 1 1.0
+ H 1 1.0 2 104.5
+}
+
+set optking step_type NR
+reload(Psi4Opt)
+Psi4Opt.calcName = 'hf'
+E = Psi4Opt.Psi4Opt()
+compare_values(finalEnergy, E, 6, "NR Step Final Energy")                                #TEST
+
+molecule h2o {
+ O
+ H 1 1.0
+ H 1 1.0 2 104.5
+}
+
+set optking step_type SD
+reload(Psi4Opt)
+Psi4Opt.calcName = 'hf'
+E = Psi4Opt.Psi4Opt()
+compare_values(finalEnergy, E, 6, "SD Step Final Energy")                                #TEST
+
 

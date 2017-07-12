@@ -3,6 +3,7 @@ import misc
 import addIntcos
 import physconst
 from printTools import printArrayString, printMatString,print_opt
+import atomData
 
 # Geometry is 2D object (atom,xyz)
 
@@ -87,13 +88,14 @@ class FRAG():
     def printGeom(self):
         for i in range(self._geom.shape[0]):
             print_opt("\t%5s%15.10f%15.10f%15.10f\n" % \
-            (self._Z[i], self._geom[i,0], self._geom[i,1], self._geom[i,2]))
+            (atomData.Z_to_symbol[self._Z[i]], self._geom[i,0], self._geom[i,1], self._geom[i,2]))
         print_opt("\n")
 
     def showGeom(self):
         Ang = self._geom * physconst.bohr2angstroms
         for i in range(self._geom.shape[0]):
-            print_opt("\t%5s%15.10f%15.10f%15.10f\n" % (self._Z[i], Ang[i,0], Ang[i,1], Ang[i,2]))
+            print_opt("\t%5s%15.10f%15.10f%15.10f\n" % \
+            (atomData.Z_to_symbol[self._Z[i]], Ang[i,0], Ang[i,1], Ang[i,2]))
         print_opt("\n")
 
 
