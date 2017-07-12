@@ -100,9 +100,28 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
             
                 if stepNumber == 0:
                     C = addIntcos.connectivityFromDistances(Molsys.geom, Molsys.Z)
-                    H = hessian.guess(Molsys.intcos, Molsys.geom, Molsys.Z, C, op.Params.intrafrag_hess)
-                else:
-                    history.History.hessianUpdate(H, Molsys.intcos)
+
+                if stepNumber == 0:
+                    if op.Params.full_hess_every > -1:
+                        xyz = Molsys.geom.copy()
+                        Hcart = fHessian(xyz, printResults=False) # it's possible function moves geometry
+                        H = intcosMisc.convertHessianToInternals(Hcart, Molsys.intcos, xyz, masses=None)
+                        print "compute hessian"
+                    else:
+                        H = hessian.guess(Molsys.intcos, Molsys.geom, Molsys.Z, C, op.Params.intrafrag_hess)
+                        print "guess hessian"
+                else:  # not first step
+                    if op.Params.full_hess_every < 1: # compute hessian never or only once
+                        history.History.hessianUpdate(H, Molsys.intcos)
+                        print "update hessian"
+                    elif stepNumber % op.Params.full_hess_every == 0:
+                        xyz = Molsys.geom.copy()
+                        Hcart = fHessian(xyz, printResults=False) # it's possible function moves geometry
+                        H = intcosMisc.convertHessianToInternals(Hcart, Molsys.intcos, xyz, masses=None)
+                        print "compute hessian"
+                    else:
+                        history.History.hessianUpdate(H, Molsys.intcos)
+                        print "update hessian"
             
                 print_opt("Hessian (in au) is:\n")
                 printMat(H)
@@ -166,6 +185,7 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
         del f._intcos[:]
         del f
     del history.History[:]
+    del op.Params
 
     return energy
 

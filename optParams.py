@@ -203,7 +203,7 @@ class OPT_PARAMS(object):
         ## of a geometry optimization. 0 means to compute the initial Hessian only,
         ## 1 means recompute every step, and N means recompute every N steps. The
         ## default (-1) is to never compute the full Hessian.
-        #P.full_hess_every = uod.get('FULL_HESS_EVERY', -1)
+        P.full_hess_every = uod.get('FULL_HESS_EVERY', -1)
         # Model Hessian to guess intrafragment force constants
         P.intrafrag_hess = uod.get('INTRAFRAG_HESS', 'SCHLEGEL')
         ## Re-estimate the Hessian at every step, i.e., ignore the currently stored Hessian.

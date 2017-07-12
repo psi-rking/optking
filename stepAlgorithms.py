@@ -1,7 +1,8 @@
 # Functions for step algorithms: Newton-Raphson, Rational Function Optimization,
 # Steepest Descent. 
 import numpy as np
-from optParams import Params
+#from optParams import Params # this will not cause changes in trust to persist
+import optParams as op
 from displace import displace
 from intcosMisc import qShowForces
 from addIntcos import linearBendCheck
@@ -21,7 +22,7 @@ def Dq(Molsys, E, qForces, H, stepType=None):
     if len(H) == 0 or len(qForces) == 0: return np.zeros( (0), float)
 
     if not stepType:
-      stepType = Params.step_type
+      stepType = op.Params.step_type
 
     if stepType == 'NR':
         return Dq_NR(Molsys, E, qForces, H)
@@ -40,7 +41,7 @@ def Dq(Molsys, E, qForces, H, stepType=None):
 
 # Apply crude maximum step limit by scaling.
 def applyIntrafragStepScaling(dq):
-    trust = Params.intrafrag_trust
+    trust = op.Params.intrafrag_trust
     if sqrt(np.dot(dq,dq)) > trust:
         scale = trust / sqrt(np.dot(dq,dq))
         print_opt("\tStep length exceeds trust radius of %10.5f.\n" % trust)
@@ -78,7 +79,7 @@ def Dq_NR(Molsys, E, fq, H):
     nr_g = -1 * np.dot(fq, nr_u) # gradient, not force
     nr_h = np.dot( nr_u, np.dot(H, nr_u) )
 
-    if Params.print_lvl > 1:
+    if op.Params.print_lvl > 1:
        print_opt('\t|NR target step|: %15.10f\n' % nr_dqnorm)
        print_opt('\tNR_gradient     : %15.10f\n' % nr_g)
        print_opt('\tNR_hessian      : %15.10f\n' % nr_h)
@@ -111,10 +112,10 @@ def Dq_RFO(Molsys, E, fq, H):
     print_opt("\tTaking RFO optimization step.\n")
     dim = len(fq)
     dq = np.zeros( (dim), float)         # To be determined and returned.
-    trust = Params.intrafrag_trust  # maximum step size
+    trust = op.Params.intrafrag_trust  # maximum step size
     max_projected_rfo_iter = 25          # max. # of iterations to try to converge RS-RFO
-    rfo_follow_root = Params.rfo_follow_root  # whether to follow root
-    rfo_root = Params.rfo_root  # if following, which root to follow
+    rfo_follow_root = op.Params.rfo_follow_root  # whether to follow root
+    rfo_root = op.Params.rfo_root  # if following, which root to follow
 
     # Determine the eigenvectors/eigenvalues of H.
     Hevals, Hevects = symmMatEig(H)
@@ -126,7 +127,7 @@ def Dq_RFO(Molsys, E, fq, H):
             RFOmat[i,j] = H[i,j]
         RFOmat[i,dim]= RFOmat[dim,i] = -fq[i]
 
-    if Params.print_lvl >= 4:
+    if op.Params.print_lvl >= 4:
         print_opt("Original, unscaled RFO matrix:\n")
         printMat(RFOmat)
 
@@ -150,7 +151,7 @@ def Dq_RFO(Molsys, E, fq, H):
         if alphaIter == max_projected_rfo_iter:
             print_opt("\tFailed to converge alpha. Doing simple step-scaling instead.\n")
             alpha = 1.0
-        elif Params.simple_step_scaling:
+        elif op.Params.simple_step_scaling:
             # Simple_step_scaling is on, not an iterative method.
             # Proceed through loop with alpha == 1, and then continue
             alphaIter = max_projected_rfo_iter
@@ -161,18 +162,18 @@ def Dq_RFO(Molsys, E, fq, H):
                 SRFOmat[j,i] = RFOmat[j,i] / alpha
             SRFOmat[dim,i] = RFOmat[dim,i]
 
-        if Params.print_lvl >= 4:
+        if op.Params.print_lvl >= 4:
             print_opt("\nScaled RFO matrix.\n")
             printMat(SRFOmat)
 
         # Find the eigenvectors and eigenvalues of RFO matrix.
         SRFOevals, SRFOevects = asymmMatEig(SRFOmat)
 
-        if Params.print_lvl >= 4:
+        if op.Params.print_lvl >= 4:
             print_opt("Eigenvectors of scaled RFO matrix.\n")
             printMat(SRFOevects)
 
-        if Params.print_lvl >= 2:
+        if op.Params.print_lvl >= 2:
             print_opt("Eigenvalues of scaled RFO matrix.\n")
             printArray(SRFOevals)
             print_opt("First eigenvector (unnormalized) of scaled RFO matrix.\n")
@@ -186,11 +187,11 @@ def Dq_RFO(Molsys, E, fq, H):
             # Same check occurs below for acceptability.
             if fabs(SRFOevects[i][dim]) > 1.0e-10:
                 tval = absMax(SRFOevects[i]/ SRFOevects[i][dim])
-                if tval < Params.rfo_normalization_max:
+                if tval < op.Params.rfo_normalization_max:
                     for j in range(dim+1):
                         SRFOevects[i,j] /= SRFOevects[i,dim]
 
-        if Params.print_lvl >= 4:
+        if op.Params.print_lvl >= 4:
             print_opt("All scaled RFO eigenvectors (rows).\n")
             printMat(SRFOevects)
 
@@ -206,7 +207,7 @@ def Dq_RFO(Molsys, E, fq, H):
                 for i in range(rfo_root, dim+1):
                     # Check symmetry of root.
                     dq[:] = SRFOevects[i,0:dim]
-                    if not Params.accept_symmetry_breaking:
+                    if not op.Params.accept_symmetry_breaking:
                         symm_rfo_step = isDqSymmetric(Molsys.intcos, Molsys.geom, dq)
         
                         if not symm_rfo_step:  # Root is assymmetric so reject it.
@@ -219,13 +220,13 @@ def Dq_RFO(Molsys, E, fq, H):
                         print_opt("\tRejecting RFO root %d because normalization gives large value.\n" % (rfo_root+1))
                         continue
                     tval = absMax(SRFOevects[i]/SRFOevects[i][dim])
-                    if tval > Params.rfo_normalization_max: # matching test in code above
+                    if tval > op.Params.rfo_normalization_max: # matching test in code above
                         print_opt("\tRejecting RFO root %d because normalization gives large value.\n" % (rfo_root+1))
                         continue
                     rfo_root = i   # This root is acceptable.
                     break 
                 else:
-                    rfo_root = Params.rfo_root; # no good one found, use the default
+                    rfo_root = op.Params.rfo_root; # no good one found, use the default
 
                 # Save initial root. 'Follow' during the RS-RFO iterations.
                 rfo_follow_root = True
@@ -243,7 +244,7 @@ def Dq_RFO(Molsys, E, fq, H):
         last_iter_evect[:] = SRFOevects[rfo_root][0:dim]  # omit last column on right
 
         # Print only the lowest eigenvalues/eigenvectors
-        if Params.print_lvl >= 2:
+        if op.Params.print_lvl >= 2:
             print_opt("\trfo_root is %d\n" % (rfo_root+1))
             for i in range(dim+1):
                 if SRFOevals[i] < -1e-6 or i < rfo_root:
@@ -260,13 +261,13 @@ def Dq_RFO(Molsys, E, fq, H):
 
         dqtdq = np.dot(dq,dq)
         # If alpha explodes, give up on iterative scheme
-        if fabs(alpha) > Params.rsrfo_alpha_max:
+        if fabs(alpha) > op.Params.rsrfo_alpha_max:
             converged = False
             alphaIter = max_projected_rfo_iter - 1
         elif sqrt(dqtdq) < (trust+1e-5):
             converged = True
 
-        if alphaIter == 0 and not Params.simple_step_scaling:
+        if alphaIter == 0 and not op.Params.simple_step_scaling:
             print_opt("\n\tDetermining step-restricting scale parameter for RS-RFO.\n")
 
         if alphaIter == 0:
@@ -275,12 +276,12 @@ def Dq_RFO(Molsys, E, fq, H):
             print_opt("\t------------------------------------------------\n")
             print_opt("\t%5d%12.5lf%14.5lf%12d\n" % (alphaIter+1, sqrt(dqtdq), alpha, rfo_root+1))
 
-        elif alphaIter > 0 and not Params.simple_step_scaling:
+        elif alphaIter > 0 and not op.Params.simple_step_scaling:
             print_opt("\t%5d%12.5lf%14.5lf%12d\n" % (alphaIter+1, sqrt(dqtdq), alpha, rfo_root+1))
 
         # Find the analytical derivative, d(norm step squared) / d(alpha)
         Lambda = -1 * v3d.dot(fq, dq, dim)
-        if Params.print_lvl >= 2:
+        if op.Params.print_lvl >= 2:
             print_opt("dq:\n")
             printArray(dq, dim)
             print_opt("fq:\n")
@@ -294,7 +295,7 @@ def Dq_RFO(Molsys, E, fq, H):
             tval += ( pow(v3d.dot(Hevects[i], fq, dim),2) ) / ( pow(( Hevals[i]-Lambda*alpha ),3) )
 
         analyticDerivative = 2*Lambda / (1 + alpha * dqtdq ) * tval
-        if Params.print_lvl >= 2:
+        if op.Params.print_lvl >= 2:
             print_opt("\tAnalytic derivative d(norm)/d(alpha) = %20.10lf\n" % analyticDerivative)
 
         # Calculate new scaling alpha value.
@@ -306,10 +307,10 @@ def Dq_RFO(Molsys, E, fq, H):
     print_opt("\t------------------------------------------------\n")
 
     # Crude/old way to limit step size if RS-RFO iterations
-    #if not converged or Params.simple_step_scaling:
-    applyIntrafragStepScaling(dq)
+    if not converged or op.Params.simple_step_scaling:
+        applyIntrafragStepScaling(dq)
 
-    if Params.print_lvl >= 3:
+    if op.Params.print_lvl >= 3:
         print_opt("\tFinal scaled step dq:\n")
         printArray(dq)
 
@@ -321,7 +322,7 @@ def Dq_RFO(Molsys, E, fq, H):
     rfo_g = -1 * np.dot(fq, rfo_u)
     rfo_h = np.dot( rfo_u, np.dot(H, rfo_u) )
     DEprojected = DE_projected('RFO', rfo_dqnorm, rfo_g, rfo_h)
-    if Params.print_lvl > 1:
+    if op.Params.print_lvl > 1:
        print_opt('\t|RFO target step|  : %15.10f\n' % rfo_dqnorm)
        print_opt('\tRFO gradient       : %15.10f\n' % rfo_g)
        print_opt('\tRFO hessian        : %15.10f\n' % rfo_h)
@@ -370,9 +371,9 @@ def Dq_RFO(Molsys, E, fq, H):
 
 def Dq_P_RFO(Molsys, E, fq, H):
     Hdim = len(fq) # size of Hessian
-    trust = Params.intrafrag_trust   # maximum step size
-    rfo_follow_root = Params.rfo_follow_root # whether to follow root
-    print_lvl = Params.print_lvl
+    trust = op.Params.intrafrag_trust   # maximum step size
+    rfo_follow_root = op.Params.rfo_follow_root # whether to follow root
+    print_lvl = op.Params.print_lvl
 
     if print_lvl > 2:
         print_opt("Hessian matrix\n")
@@ -402,7 +403,7 @@ def Dq_P_RFO(Molsys, E, fq, H):
 
     """  TODO: use rfo_root to decide which eigenvectors are moved into the max/mu space.
     if not rfo_follow_root or len(History.steps) < 2:
-        rfo_root = Params.rfo_root
+        rfo_root = op.Params.rfo_root
         print_opt("\tMaximizing along %d lowest eigenvalue of Hessian.\n" % (rfo_root+1) )
     else:
         last_iter_evect = history[-1].Dq
@@ -460,7 +461,7 @@ def Dq_P_RFO(Molsys, E, fq, H):
     for i in range(mu+1):
         if abs(RFOMaxEVectors[i,mu]) > 1.0e-10:
             tval = abs( absMax(RFOMaxEVectors[i,0:mu]) / RFOMaxEVectors[i,mu])
-            if fabs(tval) < Params.rfo_normalization_max:
+            if fabs(tval) < op.Params.rfo_normalization_max:
                 RFOMaxEVectors[i] /= RFOMaxEVectors[i,mu]
     if print_lvl > 2:
         print_opt("RFO max eigenvectors (rows):\n")
@@ -469,7 +470,7 @@ def Dq_P_RFO(Molsys, E, fq, H):
     for i in range(Hdim-mu+1):
         if abs(RFOMinEVectors[i][Hdim-mu]) > 1.0e-10:
             tval = abs( absMax(RFOMinEVectors[i,0:Hdim-mu]) / RFOMinEVectors[i,Hdim-mu])
-            if fabs(tval) < Params.rfo_normalization_max:
+            if fabs(tval) < op.Params.rfo_normalization_max:
                 RFOMinEVectors[i] /= RFOMinEVectors[i,Hdim-mu]
     if print_lvl > 2:
         print_opt("RFO min eigenvectors (rows):\n")
@@ -497,7 +498,7 @@ def Dq_P_RFO(Molsys, E, fq, H):
 
     dq = PRFOStep
         
-    #if not converged or Params.simple_step_scaling:
+    #if not converged or op.Params.simple_step_scaling:
     applyIntrafragStepScaling(dq)
 
     # Get norm |dq|, unit vector, gradient and hessian in step direction
@@ -508,7 +509,7 @@ def Dq_P_RFO(Molsys, E, fq, H):
     rfo_g = -1 * np.dot(fq, rfo_u)
     rfo_h = np.dot( rfo_u, np.dot(H, rfo_u) )
     DEprojected = DE_projected('RFO', rfo_dqnorm, rfo_g, rfo_h)
-    if Params.print_lvl > 1:
+    if op.Params.print_lvl > 1:
        print_opt('\t|RFO target step|  : %15.10f\n' % rfo_dqnorm)
        print_opt('\tRFO gradient       : %15.10f\n' % rfo_g)
        print_opt('\tRFO hessian        : %15.10f\n' % rfo_h)
@@ -543,7 +544,7 @@ def Dq_P_RFO(Molsys, E, fq, H):
 def Dq_SD(Molsys, E, fq):
     print_opt("\tTaking SD optimization step.\n")
     dim = len(fq)
-    sd_h = Params.sd_hessian # default value
+    sd_h = op.Params.sd_hessian # default value
 
     if len(History.steps) > 1:
         previous_forces = History.steps[-2].forces
@@ -632,7 +633,7 @@ def Dq_BACKSTEP(Molsys):
     print_opt("\tNorm of target step-size %10.5f\n" % dqNorm)
 
     # Compute new Delta(E) projection.
-    if Params.step_type == 'RFO':
+    if op.Params.step_type == 'RFO':
         DEprojected = DE_projected('RFO', dqNorm, oneDgradient, oneDhessian)
     else:
         DEprojected = DE_projected('NR', dqNorm, oneDgradient, oneDhessian)

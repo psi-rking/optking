@@ -4,7 +4,7 @@ import optParams as op
 import intcosMisc
 from math import fabs
 from linearAlgebra import absMax,rms,signOfDouble
-from printTools import printMat,printMatString,printArrayString,print_opt
+from printTools import printMat,printMatString,printArrayString,print_opt,printArray
 
 class STEP(object):
     def __init__(self,geom,E,forces):
@@ -152,12 +152,13 @@ class HISTORY(object):
         Nintco = len(intcos) # working dimension
 
         f = np.zeros(Nintco,float)
-        x = np.zeros(self.steps[-1].geom.shape,float)
+        #x = np.zeros(self.steps[-1].geom.shape,float)
         q = np.zeros(Nintco, float)
 
         currentStep = self.steps[-1]
         f[:] = currentStep.forces
-        x[:] = currentStep.geom
+        #x[:] = currentStep.geom
+        x = currentStep.geom
         q[:] = intcosMisc.qValues(intcos,x)
 
         # Fix configuration of torsions and out-of-plane angles,
