@@ -57,15 +57,15 @@ def testB(intcos, geom):
                 max_error_intco = i
   
     print_opt("\t\tMaximum difference is %.1e for internal coordinate %d.\n" % (max_error, max_error_intco+1))
-    print_opt("\t\tThis coordinate is %s", str(intcos[max_error_intco]))
+    print_opt("\t\tThis coordinate is %s" % str(intcos[max_error_intco]))
 
     if max_error > MAX_ERROR:
-       print_opt("\tB-matrix could be in error. However, numerical tests may fail for\n")
-       print_opt("\ttorsions at 180 degrees, and slightly for linear bond angles. This is OK.\n")
-       return False
+        print_opt("\tB-matrix could be in error. However, numerical tests may fail for\n")
+        print_opt("\ttorsions at 180 degrees, and slightly for linear bond angles. This is OK.\n")
+        return False
     else:
-       print_opt("\t...Passed.\n")
-       return True
+        print_opt("\t...Passed.\n")
+        return True
   
 
 # Test the analytic derivative B matrix (d2q/dx2) via finite differences
@@ -144,6 +144,8 @@ def testDerivativeB(intcos, geom_in):
         print_opt("\tIf discontinuities are interfering with a geometry optimization,\n")
         print_opt("\ttry restarting your optimization at an updated geometry, and/or\n")
         print_opt("\tremove angular coordinates that are fixed by symmetry.\n")
-
-    return
+        return False
+    else:
+        print_opt("\t...Passed.\n")
+        return True
 

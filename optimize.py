@@ -1,5 +1,4 @@
-#!/usr/bin/python
-# Calling program provides user-specified options.
+
 def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
     
     import caseInsensitiveDict
@@ -54,21 +53,30 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
 
             Molsys.printIntcos()
 
-            # test Hessian transformations
-            """ # code will convert to internals, then cartesians, back to same internals
+            # Test Hessian transformations.  cartesians -> internals -> cartesians -> internals
+            # Cartesians do not satisy constraints such as frozen COM (undetermined problem)
+            """
             xyz = Molsys.geom.copy()
-            Hcart = fHessian(xyz, printResults=True)
-            print_opt("Geometry returned from hessian function.\n")
-            printMat(xyz)
-            Hint = intcosMisc.convertHessianToInternals(Hcart, Molsys.intcos, Molsys.geom, masses=None)
+            E, grad = fGradient(xyz, printResults=True)
+            Molsys.geom = xyz # use setter function to save data in fragments
+            Hcart = fHessian(xyz, printResults=False)  # assuming geometry doesn't change
+            Hint = intcosMisc.convertHessianToInternals(Hcart, Molsys.intcos, Molsys.geom, masses=None, g_x=grad)
             print_opt("Internal Hessian\n")
             printMat(Hint)
-            Hcart2 = intcosMisc.convertHessianToCartesians(Hint, Molsys.intcos, Molsys.geom, masses=None)
+            G = intcosMisc.Gmat(Molsys.intcos, Molsys.geom, masses=None)
+            import linearAlgebra
+            Ginv = linearAlgebra.symmMatInv(G)
+            B = intcosMisc.Bmat(Molsys.intcos, Molsys.geom, masses=None)
+            import numpy as np
+            Atranspose = np.dot(Ginv, B)
+            q_grad = np.dot(Atranspose, grad)
+            Hcart2 = intcosMisc.convertHessianToCartesians(Hint, Molsys.intcos, Molsys.geom, masses=None, g_q=q_grad)
             print_opt("Cartesian Hessian from internals\n")
             printMat(Hcart2)
-            Hint2 = intcosMisc.convertHessianToInternals(Hcart2, Molsys.intcos, Molsys.geom, masses=None)
+            Hint2 = intcosMisc.convertHessianToInternals(Hcart2, Molsys.intcos, Molsys.geom, masses=None, g_x=grad)
             print_opt("Internal Hessian from Cartesian\n")
             printMat(Hint2)
+            quit()
             """
         
             for stepNumber in range(op.Params.geom_maxiter): 
