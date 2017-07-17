@@ -33,9 +33,7 @@ def Dq(Molsys, E, qForces, H, stepType=None):
     elif stepType == 'BACKSTEP':
         return Dq_BACKSTEP(Molsys)
     elif stepType == 'P_RFO':
-        return Dq_P_RFO(Molsys, E, qForces, H)
-    elif opt_type == 'IRC':
-        return Dq_IRC(Molsys, E, qForces, H)  
+        return Dq_P_RFO(Molsys, E, qForces, H)  
     else:
         raise ValueError('Dq: step type not yet implemented')
 

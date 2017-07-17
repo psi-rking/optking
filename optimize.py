@@ -97,10 +97,10 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
                 history.History.append(Molsys.geom, E, fq); # Save initial step info.
             
                 history.History.currentStepReport()
-            
+
                 if stepNumber == 0:
                     C = addIntcos.connectivityFromDistances(Molsys.geom, Molsys.Z)
-
+                            
                 if stepNumber == 0:
                     if op.Params.full_hess_every > -1:
                         xyz = Molsys.geom.copy()
@@ -132,6 +132,9 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
                 intcosMisc.projectRedundanciesAndConstraints(Molsys.intcos, Molsys.geom, fq, H)
         
                 try:
+                    if (op.Params.opt_type == 'IRC'):
+                        Dq = IRCFollowing.Dq_IRC(Molsys, intcos, geom E, g, H, B, s, op.Params.irc_direction, stepNumber, fgradient)
+                    else:
                     # displaces and adds step to history
                     Dq = stepAlgorithms.Dq(Molsys, E, fq, H, op.Params.step_type)
                 except optExceptions.BAD_STEP_EXCEPT:

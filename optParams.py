@@ -47,7 +47,7 @@ class OPT_PARAMS(object):
     opt_type        = stringOption( 'opt_type' )
     step_type       = stringOption( 'step_type' )
     opt_coordinates = stringOption( 'opt_coordinates' )
-    #irc_direction   = stringOption( 'irc_direction' )
+    irc_direction   = stringOption( 'irc_direction' )
     #irc_stop        = stringOption( 'irc_step' )
     g_convergence   = stringOption( 'g_convergence' )
     hess_update     = stringOption( 'hess_update' )
@@ -321,6 +321,10 @@ class OPT_PARAMS(object):
 #
         #if P.generate_intcos_exit:
             #P.keep_intcos = True
+#
+        ## Set full_hess_every to 1 if zero
+        if P.opt_type == 'IRC' and P.full_hess_every < 0:
+            P.full_hess_every = 0
 #
         ## if steepest-descent, then make much larger default
         #if P.step_type = 'SD' and 'CONSECUTIVE_BACKSTEPS' not in uod:
