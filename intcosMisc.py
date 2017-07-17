@@ -190,37 +190,56 @@ def massWeightedUMatrixCart(masses):
     return U
 """
 
-def convertHessianToInternals(H, intcos, geom, masses=None, fx=None):
+def convertHessianToInternals(H, intcos, geom, masses=None, g_x=None):
     print_opt("Converting Hessian from cartesians to internals.\n")
-    print_opt("This implementation only correct at stationary points.\n")
-
-    #U = massWeightedUMatrixCart(masses)
-    #U = np.zeros((3 * nAtom, 3 * nAtom), float)
-    #for i in range (3 * nAtom):
-    #    U[i][i] = 1
 
     G = Gmat(intcos, geom, masses)
-    #G = Gmat(intcos, geom)
     Ginv = symmMatInv(G)
-    print_opt("G inverse\n")
-    printMat(Ginv)
-
     B = Bmat(intcos, geom, masses)
-    #B = Bmat(intcos, geom,)
-    print_opt("B matrix\n")
-    printMat(B)
     Atranspose = np.dot(Ginv, B)
-    print_opt("Atranspose\n")
-    printMat(Atranspose)
 
-    Hq = np.dot(Atranspose, np.dot(H, Atranspose.T))
+    if g_x is None:  # A^t Hxy A
+        print_opt("Neglecting force/B-matrix derivative term, only correct at stationary points.\n")
+        Hworking = H
+    else:           # A^t (Hxy - Kxy) A;    K_xy = sum_q ( grad_q[I] d^2(q_I)/(dx dy) )
+        print_opt("Including force/B-matrix derivative term.\n")
+        Hworking = H.copy()
+
+        g_q = np.dot(Atranspose, g_x)
+        Ncart = 3*len(geom)
+        dq2dx2 = np.zeros((Ncart,Ncart), float)  # should be cart x cart for fragment ?
+
+        for I, q in enumerate(intcos):
+            dq2dx2[:] = 0
+            q.Dq2Dx2(geom, dq2dx2)   # d^2(q_I)/ dx_i dx_j
+
+            for a in range(Ncart):
+                for b in range(Ncart):
+                    Hworking[a,b] -= g_q[I] * dq2dx2[a,b] # adjust indices for multiple fragments
+
+    Hq = np.dot(Atranspose, np.dot(Hworking, Atranspose.T))
     return Hq
 
-def convertHessianToCartesians(Hint, intcos, geom, masses=None, fq=None):
+def convertHessianToCartesians(Hint, intcos, geom, masses=None, g_q=None):
     print_opt("Converting Hessian from internals to cartesians.\n")
-    print_opt("This implementation only correct at stationary points.\n") 
 
     B = Bmat(intcos, geom, masses)
-    Hx = np.dot(B.T, np.dot(Hint, B))
-    return Hx
+    Hxy = np.dot(B.T, np.dot(Hint, B))
+
+    if g_q is None:  # Hxy =  B^t Hij B
+        print_opt("Neglecting force/B-matrix derivative term, only correct at stationary points.\n")
+    else:            # Hxy += dE/dq_I d2(q_I)/dxdy
+        print_opt("Including force/B-matrix derivative term.\n")
+        Ncart = 3 * len(geom)
+
+        dq2dx2 = np.zeros((Ncart, Ncart), float)  # should be cart x cart for fragment ?
+        for I, q in enumerate(intcos):
+            dq2dx2[:] = 0
+            q.Dq2Dx2(geom, dq2dx2);
+
+            for a in range(Ncart):
+                for b in range(Ncart):
+                    Hxy[a, b] += g_q[I] * dq2dx2[a,b]
+
+    return Hxy
 
