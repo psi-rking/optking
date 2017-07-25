@@ -99,9 +99,9 @@ class OPT_PARAMS(object):
         else:
             P.dynamic_level_max = uod.get('DYNAMIC_LEVEL_MAX', 8) #7 level currently defined
         ## IRC step size in bohr(amu)\ $^{1/2}$.
-        #P.irc_step_size = uod.get('IRC_STEP_SIZE', 0.2)
+        P.irc_step_size = uod.get('IRC_STEP_SIZE', 0.2)
         ## IRC mapping direction
-        #P.irc_direction = uod.get('IRC_DIRECTION', 'FORWARD')
+        P.irc_direction = uod.get('IRC_DIRECTION', 'FORWARD')
         ## Decide when to stop IRC calculations
         #P.irc_stop = uod.get('IRC_STOP', 'STOP')
 #
@@ -322,7 +322,7 @@ class OPT_PARAMS(object):
         #if P.generate_intcos_exit:
             #P.keep_intcos = True
 #
-        ## Set full_hess_every to 1 if zero
+        ## Set full_hess_every to 0 if -1
         if P.opt_type == 'IRC' and P.full_hess_every < 0:
             P.full_hess_every = 0
 #

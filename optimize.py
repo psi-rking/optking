@@ -25,6 +25,7 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
     import convCheck
     import testB
     converged = False
+    ircNumber = 0
 
     # Loop over a variety of algorithms
     while (converged == False) and (op.Params.dynamic_level < op.Params.dynamic_level_max):
@@ -52,7 +53,13 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
             addIntcos.addFrozenAndFixedIntcos(Molsys)
 
             Molsys.printIntcos()
-
+            
+            if (Op.Params.opt_type = 'IRC' && IRCNumber = 0):
+                xyz = Molsys.geom.copy()
+                H = fHessian(xyz, printResults = False) 
+                qPivot, qPrime, Dq = takeHessianHalfStep(Molsys.intcos, Molsys.geom, H, B, s)
+        
+    
             # Test Hessian transformations.  cartesians -> internals -> cartesians -> internals
             # Cartesians do not satisy constraints such as frozen COM (undetermined problem)
             """
@@ -141,10 +148,10 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
         
                 try:
                     if (op.Params.opt_type == 'IRC'):
-                        Dq = IRCFollowing.Dq_IRC(Molsys, intcos, geom E, g, H, B, s, op.Params.irc_direction, stepNumber, fgradient)
+                        Dq = IRCFollowing.Dq(Molsys.intcos, Molsys.geom, g, E, H, B, s, qPrime, qPivot)
                     else:
                     # displaces and adds step to history
-                    Dq = stepAlgorithms.Dq(Molsys, E, fq, H, op.Params.step_type)
+                        Dq = stepAlgorithms.Dq(Molsys, E, fq, H, op.Params.step_type)
                 except optExceptions.BAD_STEP_EXCEPT:
                     if history.History.consecutiveBacksteps < op.Params.consecutiveBackstepsAllowed:
                         print_opt("Taking backward step.\n")
@@ -156,7 +163,12 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
         
                 converged = convCheck.convCheck(stepNumber, Molsys.intcos, Dq, fq, energies)
 
-                if converged:
+                if (converged && opt_type == 'IRC'):
+                    converged = False
+                    if (atMinimum):
+                        converged = True
+                        break
+                elif converged:
                     print_opt("\tConverged in %d steps!\n" % (stepNumber+1))
                     print_opt("\tFinal energy is %20.13f\n" % E)
                     print_opt("\tFinal structure (Angstroms):\n")
@@ -165,6 +177,15 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
 
                 print_opt("\tStructure for next step (au):\n")
                 Molsys.printGeom()
+
+            #This should be called at the end of each iteration of the for loop, 
+            #if at the minimum converged = True and the for Loop will have been broken out of 
+            if (opt_type == 'IRC')
+                xyz = Molsys.geom.copy()
+                history.History.hessianUpdate(H, Molsys.intcos)
+                E, fX = fGradient(xyz, printResults = False)
+                qPivot, qPrime, Dq = IRCFollowing.takeGradientHalfStep(Molsys.intcos, Molsys.geom, E, H, B, s, gX)
+                IRCNumber = 1
 
             else: # executes if too many steps
                 print_opt("Number of steps (%d) has reached value of GEOM_MAXITER.\n" % (stepNumber+1))
