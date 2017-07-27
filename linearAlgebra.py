@@ -1,4 +1,4 @@
-from math import fabs
+from math import fabs, sqrt
 import numpy as np
 
 ### Linear algebra routines.
@@ -66,7 +66,7 @@ def symmMatInv(A, redundant=False, redundant_eval_tol=1.0e-10):
     AInv = np.dot(evects.T, tmpMat)
     return AInv
 
-def symmMatRoot(A, Inverse = False):
+def symmMatRoot(A, Inverse = None):
     evals, evects = np.linalg.eigh(A)
     rootMatrix = np.zeros((len(evals), len(evals)), float)
     if (Inverse):
@@ -76,7 +76,7 @@ def symmMatRoot(A, Inverse = False):
     Q = np.zeros((len(evals), len(evals)), float)
     for i in range (len(evals)):
         for j in range (len(evects)):
-            Q[j][i] = evects[j]
+            Q[j][i] = evects[i][j]
                 
     for i in range (0, len(evals)):
         rootMatrix[i][i] = sqrt(evals[i]) 

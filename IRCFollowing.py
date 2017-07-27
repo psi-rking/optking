@@ -1,5 +1,5 @@
-from dispalce import displace
-from intcosMisc import convertHessianToInternals, qValues
+from displace import displace
+import intcosMisc
 from addIntcos import linearBendCheck
 from math import sqrt, fabs
 from printTools import printArray, printMat, print_opt
@@ -9,14 +9,14 @@ import numpy as np
 
 #Takes a half step from starting geometry along the gradient, then takes an additional half step as a guess
 #returns dq
-def takeHessianHalfStep(intcos, geom, H, B, s, direction = 'forward'):
+def takeHessianHalfStep(Molsys, H, B, s, direction = 'forward'):
     #Calculate G, G^-1/2 and G-1/2
-    Gm = intcosMisc.Gmat(intcos, geom, True)
-    GmInv = symmMatInt(Gm)
+    Gm = intcosMisc.Gmat(Molsys.intcos, Molsys.geom, Molsys.masses)
+    GmInv = symmMatInv(Gm)
     GmRoot = symmMatRoot(Gm)
     GmRootInv = symmMatInv(GmRoot)
 
-    Hq = convertHessianToInternals(H, intcos, geom)
+    Hq = intcosMisc.convertHessianToInternals(H, Molsys.intcos, Molsys.geom)
     HEigVals, HEigVects = symmMatEig(Hq)
     
     #get gradient from Psi4 in cartesian geom
@@ -24,37 +24,39 @@ def takeHessianHalfStep(intcos, geom, H, B, s, direction = 'forward'):
     #gq = np.dot(GmInv, np.dot(B, gx))
     
     #initial internal coordinates from intcosMisc
-    qZero = qValues(intcos, geom)
+    qZero = intcosMisc.qValues(Molsys.intcos, Molsys.geom)
 
-    #symmMatEig returns the Eigen Vector as a row in order of increasing eigen value
+    #symmMatEig returns the Eigen Vectors as rows in order of increasing eigen values
     #first step from TS will be along the smallest eigenvector
-    gk = np.zeros(Molsys.nAtom, float):
-    if (stepNumber == 0):
-        for col in range (Molsys.Natom):
-            gk[col] = HEigVects[0, col]
+    gk = np.zeros(len(HEigVects[0]), float)
 
-        if (direction == 'backward'):
-            for i in range (len(gk)):
-                gk[i] = -1 * gk[i]
+    for col in range (len(HEigVects[0])):
+        gk[col] = HEigVects[0, col]
+
+    if (direction == 'backward'):
+        for i in range (len(gk)):
+            gk[i] = -1 * gk[i]
 
     #To solve N = (gk^t * G * gk)    
-    N = symmMatRoot(np.dot(gk.T, np.dot(Gm, gk)), True)
+    N = np.dot(gk.T, np.dot(Gm, gk))
+    N = 1/sqrt(N)
 
     #g*k+1 = qk - 1/2 * s * (N*G*gk)
     #N*G*gk
-    qPivot = np.dot(N, np.dot(G, gk))
+    qPivot = np.dot(N, np.dot(Gm, gk))
 
     #applying weight 1/2 s to product (N*G*gk)
     #then applies vector addition q -  1/2 * s* (N*G*gk)
     for i in range (len(gk)):
         qPivot[i] = 0.5 * s * qPivot[i]
-        qPivot[i] = qZero[i] - qPivot[i]
+        qPivot = np.subtract(qZero, qPivot)
+    
+    #displaceIRCStep(Molsys.intcos, Molsys.geom, np.subtract(qPivot, qZero), H, g)
 
     #To-Do add cartesian coordinate for pivot point 
     #qPrime = np.dot (N, np.dot(G, gQ))
     for i in range (len(gk)):
-        qPrime[i] = 0.5 * s * qPrime[i]
-        qPrime[i] = qPivot[i] - qPrime[i]
+        qPrime = np.dot(2, np.subtract(qPivot[i], qZero[i]))
     
     dq = np.subtract(qPrime, qZero)
     dq = sqrt(np.dot(dq, dq))
@@ -62,14 +64,14 @@ def takeHessianHalfStep(intcos, geom, H, B, s, direction = 'forward'):
 
 #Takes a half step from starting geometry along the gradient, then takes an additional half step as a guess
 #returns dq
-def takeGradientHalfStep(intcos, geom, H, B, s, gX): 
+def takeGradientHalfStep(Molsys, H, B, s, gX): 
     #Calculate G, G^-1/2 and G-1/2
-    Gm = intcosMisc.Gmat(intcos, geom, True)
+    Gm = intcosMisc.Gmat(Molsys.intcos, Molsys.geom, Molsys.masses)
     GmInv = symmMatInt(Gm)
     GmRoot = symmMatRoot(Gm)
     GmRootInv = symmMatInv(GmRoot)
 
-    qZero = qValues(intcos, geom)
+    qZero = intcosMisc.qValues(Molsys.intcos, Molsys.geom)
 
     #convert gradient to Internals  
     gQ = np.dot(GmInv, np.dot(B, gX))
@@ -85,13 +87,16 @@ def takeGradientHalfStep(intcos, geom, H, B, s, gX):
     #then applies vector addition q -  1/2 * s* (N*G*gk)
     for i in range (len(gQ)):
         qPivot[i] = 0.5 * s * qPivot[i]
-        qPivot[i] = qZero[i] - qPivot[i]
- 
+        qPivot = np.subtract(qZero, qPivot)
+     
+    #displaceIRCStep(Molsys.intcos, Molsys.geom, np.subtract(qPivot, qZero), H, g)
+     
     qPrime = np.dot (N, np.dot(G, gQ))
     for i in range (len(gQ)):
         qPrime[i] = 0.5 * s * qPrime[i]
         qPrime[i] = qPivot[i] - qPrime[i]   
-    
+   
+     
     dq = np.subtract(qPrime, qZero) 
     dq = sqrt(np.dot(dq, dq))
     
@@ -99,18 +104,18 @@ def takeGradientHalfStep(intcos, geom, H, B, s, gX):
     
 #Before Dq_IRC is called, the goemetry must be updated to the guess point    
 #Returns Dq from qk+1 to gprime.
-def Dq(intcos, geom, E, Hq, B, s, g, qPrime, qPivot):
+def Dq(Molsys, E, Hq, B, s, g, qPrime, qPivot):
 
-    GPrime = intcosMisc.Gmat(intcos, geom, True) 
+    GPrime = intcosMisc.Gmat(Molsys.intcos, Molsys.geom, Molsys.masses) 
     GPrimeRoot = symmMatRoot(GPrime)
     GPrimeRootInv = symmMatRoot(GPrime, True)
     
     #vectors nessecary to solve for Lambda, naming is taken from Gonzalez and Schlegel
     deltaQM = 0
     pPrime = np.subtract(qPrime, qPivot)
-    gm = np.dot(GPrimeRoot, gPrime)
+    gM = np.dot(GPrimeRoot, g)
     HM = np.dot(GPrimeRoot, np.dot(Hq, GPrimeRoot))
-    pm = np.dot(GPrimeRootInv, pPrime) 
+    pM = np.dot(GPrimeRootInv, pPrime) 
     HMEigValues, HMEigVects = symmMatEig(HM)
     
     #Variables for solving lagrangian function
@@ -126,16 +131,16 @@ def Dq(intcos, geom, E, Hq, B, s, g, qPrime, qPivot):
     #Solves F(L) = Sum[(bj*pj - gj)/(bj-L)]^2 - 1/2s = 0
     #coarse search
     lagIter = 0
-    while(prevLagrangian * lagrangian !< 0 && lagIter < 1000)
+    while((prevLagrangian * lagrangian > 0) and lagIter < 1000):
         prevLagrangian = lagrangian
         Lambda -= 1
         lagrangian = calcLagrangian(Lambda, len(intcos), 0) 
         
-        if (lagrangian < 0 && fabs(lagrangian) < fabs(lowerBLagrangian)):
+        if (lagrangian < 0 and fabs(lagrangian) < fabs(lowerBLagrangian)):
             lowerBLagrangian = lagrangian
             lowerBLambda = Lambda
         
-        if (lagrangian > 0 && fabs(lagrangian) < fabs(upperBLagrangian)):
+        if (lagrangian > 0 and fabs(lagrangian) < fabs(upperBLagrangian)):
             upperBLagrangian = lagrangian
             upperBLambda = Lambda
         lagIter += 1
@@ -146,18 +151,19 @@ def Dq(intcos, geom, E, Hq, B, s, g, qPrime, qPivot):
 
     dLagrangian = np.array([2, 6, 24, 120]) #array of lagrangian derivatives to solve Householder method with weights to solve derivative
     lagIter = 0
-    while(Lagrangian - prevLagrangian < 1*10^-16 )
+
+    while(Lagrangian - prevLagrangian > 10**-16):
         prevLagrangian = Lagrangian
         for i in range (4):
             dLagrangian[i] *= calcLagrangian(Lambda, len(intcos), i + 1)
     
         h_f = -lagrangian/ dLagrangian[1] #I dont know what this is in terms of the solution of the householder method
                
-        if (lagrangian < 0 && fabs(lagrangian) < fabs(lowerBLagrangian)):
+        if (lagrangian < 0 and fabs(lagrangian) < fabs(lowerBLagrangian)):
             lowerBLagrangian = lagrangian
             lowerBLambda = Lambda        
         
-        elif (lagrangian > 0 && fabs(lagrangian) < fabs(upperBLagrangian)):
+        elif (lagrangian > 0 and fabs(lagrangian) < fabs(upperBLagrangian)):
             upperBLagrangian = lagrangian
             upperBLambda = Lambda
     
@@ -166,40 +172,43 @@ def Dq(intcos, geom, E, Hq, B, s, g, qPrime, qPivot):
             #Lagrangian found    
         else:
             prevLambda = Lambda
-            Lambda += h_f * (24*dLagrangian[0] * 24*dLagrangian[1] 8 h_f + 4 *dLagrangian[2] 8 h_f**2) / (24*dLagrangian[0] + 36*h_f *dLagrangian[1] + 6 * (dlagrangian[1] ** 2/ dLagrangian[0]) 8 h_f**2 + 8 * dLagrangian[2] * h_f**2 + dLagrangian[3] * h_f**3) 
+            Lambda += h_f * (24*dLagrangian[0] * 24*dLagrangian[1] * 8 * h_f + 4 *dLagrangian[2] * 8 * h_f**2) / (24*dLagrangian[0] + 36*h_f *dLagrangian[1] \
+                + 6 * (dlagrangian[1] ** 2/ dLagrangian[0]) * 8 * h_f**2 + 8 * dLagrangian[2] * h_f**2 + dLagrangian[3] * h_f**3) 
         lagIter += 1
 
         if (lagIter > 50):
             prevLambda = Lambda
             Lambda = (lb_Lambda + ub_Lambda) / 2
         
-        if (lagIter > 200)
+        if (lagIter > 200):
+            print("Exception should have been thrown")
             #needs to throw failure to converge exception
             
     #constructing Lambda * intcosxintcosI
     LambdaI = np.zeroes((len(fq), len(fq)), float)
-        for i in range (len(fq)):
+
+    for i in range(len(fq)):
         LambdaI[i][i] = 1 * Lambda
  
     deltaQM = symmMatInv(-np.subtract(HM, LambdaI))  
-    deltaQM = np.dot(deltaQM, np.subtract(gm, np.multiply(Lambda, pm)))    
+    deltaQM = np.dot(deltaQM, np.subtract(gM, np.multiply(Lambda, pM)))    
     
     dq = np.dot(GPrimeRoot, deltaQM)
     dq = sqrt(np.dot(dq, dq))
 
-    displaceIRCHistory(Molsys.intcos, Molsys.geom, dq, H, fq)
+    displaceIRCHistory(Molsys.intcos, Molsys.geom, dq, H, g)
      
     # save values in step data
-    History.appendRecord(DEprojected, dq, ircU, ircG, ircH)
+    #History.appendRecord(DEprojected, dq, ircU, ircG, ircH)
 
     return dq    
 
 # calculates Lagrangian function of Lambda
 # returns value of lagrangian function
-def calcLagrangian(Lambda, dim, derivativeOrder, HMEigValues, HMEigVects, gm, pm):
+def calcLagrangian(Lambda, dim, derivativeOrder, HMEigValues, HMEigVects, gM, pM):
 
     for i in range (dim):
-        numerator = np.subtract(np.dot(HMEigValues[i], np.dot(pm.T, HMEigVects[i])), np.dot(gm.T, HMEigValues))
+        numerator = np.subtract(np.dot(HMEigValues[i], np.dot(pM.T, HMEigVects[i])), np.dot(gM.T, HMEigValues))
         denominator = HMEigValues - Lambda
         lagrangian += numerator/(denominator**(i+1))
     lagrangian *= lagrangian
@@ -209,14 +218,14 @@ def calcLagrangian(Lambda, dim, derivativeOrder, HMEigValues, HMEigVects, gm, pm
 
 #displaces an atom with the dq from the IRC data
 #returns void
-def displaceIRCStep(intcos, geom, dq, H, fq):
+def displaceIRCStep(intcos, geom, dq, H, gq):
     # get norm |q| and unit vector in the step direction
     ircDqNorm = sqrt(np.dot(dq,dq))
     ircU = dq.copy() / ircDqNorm
     print_opt("\tNorm of target step-size %15.10f\n" % ircDqNorm)
 
     # get gradient and hessian in step direction
-    ircG = -1 * np.dot(fq, ircU) # gradient, not force
+    ircG = np.dot(gq, ircU) # gradient, not force
     ircH = np.dot( ircU, np.dot(H, ircU) )
 
     if op.Params.print_lvl > 1:
