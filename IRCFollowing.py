@@ -9,14 +9,14 @@ import numpy as np
 
 #Takes a half step from starting geometry along the gradient, then takes an additional half step as a guess
 #returns dq
-def takeHessianHalfStep(Molsys, H, B, s, direction = 'forward'):
+def takeHessianHalfStep(Molsys, Hq, B, s, direction = 'forward'):
     #Calculate G, G^-1/2 and G-1/2
     Gm = intcosMisc.Gmat(Molsys.intcos, Molsys.geom, Molsys.masses)
     GmInv = symmMatInv(Gm)
     GmRoot = symmMatRoot(Gm)
     GmRootInv = symmMatInv(GmRoot)
 
-    Hq = intcosMisc.convertHessianToInternals(H, Molsys.intcos, Molsys.geom)
+    #Hq = intcosMisc.convertHessianToInternals(H, Molsys.intcos, Molsys.geom)
     HEigVals, HEigVects = symmMatEig(Hq)
     
     #get gradient from Psi4 in cartesian geom
@@ -104,26 +104,26 @@ def takeGradientHalfStep(Molsys, H, B, s, gX):
     
 #Before Dq_IRC is called, the goemetry must be updated to the guess point    
 #Returns Dq from qk+1 to gprime.
-def Dq(Molsys, E, Hq, B, s, g, qPrime, qPivot):
+def Dq(Molsys, g, E, Hq, B, s, qPrime, qPivot):
 
     GPrime = intcosMisc.Gmat(Molsys.intcos, Molsys.geom, Molsys.masses) 
     GPrimeRoot = symmMatRoot(GPrime)
     GPrimeRootInv = symmMatRoot(GPrime, True)
-    
+    #Hq = intcosMisc.convertHessianToInternals(Hq, Molsys.intcos, Molsys.geom)
+    #Hq = intcosMisc.convertHessianToInternals(H, Molsys.intcos, Molsys.geom)
     #vectors nessecary to solve for Lambda, naming is taken from Gonzalez and Schlegel
     deltaQM = 0
     pPrime = np.subtract(qPrime, qPivot)
     gM = np.dot(GPrimeRoot, g)
     HM = np.dot(GPrimeRoot, np.dot(Hq, GPrimeRoot))
     pM = np.dot(GPrimeRootInv, pPrime) 
-    HMEigValues, HMEigVects = symmMatEig(HM)
-    
+    HMEigValues, HMEigVects = symmMatEig(HM) 
     #Variables for solving lagrangian function
     lowerBLagrangian = -100
     upperBLagrangian = 100
-    lowerBLambda
-    upperBLambda
-    Lambda = 0.5 * HMEigValues[i]
+    lowerBLambda = 0.5 * HMEigValues[0]
+    upperBLambda = 0.5 * HMEigValues[0]
+    Lambda = 0.5 * HMEigValues[0]
     prevLambda = Lambda
     prevLagrangian = 1
     lagrangian = 1
@@ -134,8 +134,11 @@ def Dq(Molsys, E, Hq, B, s, g, qPrime, qPivot):
     while((prevLagrangian * lagrangian > 0) and lagIter < 1000):
         prevLagrangian = lagrangian
         Lambda -= 1
-        lagrangian = calcLagrangian(Lambda, len(intcos), 0) 
-        
+        lagrangian = calcLagrangian(Lambda, HMEigValues, HMEigVects, gM, pM, s)
+        print ("Lagrangian")
+        print (lagrangian)
+        print ("Lower bound") 
+        print (lowerBLagrangian) 
         if (lagrangian < 0 and fabs(lagrangian) < fabs(lowerBLagrangian)):
             lowerBLagrangian = lagrangian
             lowerBLambda = Lambda
@@ -152,14 +155,14 @@ def Dq(Molsys, E, Hq, B, s, g, qPrime, qPivot):
     dLagrangian = np.array([2, 6, 24, 120]) #array of lagrangian derivatives to solve Householder method with weights to solve derivative
     lagIter = 0
 
-    while(Lagrangian - prevLagrangian > 10**-16):
-        prevLagrangian = Lagrangian
+    while(lagrangian - prevLagrangian > 10**-16):
+        prevLagrangian = lagrangian
         for i in range (4):
-            dLagrangian[i] *= calcLagrangian(Lambda, len(intcos), i + 1)
+            dLagrangian[i] *= calcLagrangian(Lambda, HMEigValues, HMEigVects, gM, pM, s)
     
-        h_f = -lagrangian/ dLagrangian[1] #I dont know what this is in terms of the solution of the householder method
+        h_f = -lagrangian/ dLagrangian[1]
                
-        if (lagrangian < 0 and fabs(lagrangian) < fabs(lowerBLagrangian)):
+        if lagrangian < 0 and (fabs(lagrangian) < fabs(lowerBLagrangian)):
             lowerBLagrangian = lagrangian
             lowerBLambda = Lambda        
         
@@ -205,12 +208,13 @@ def Dq(Molsys, E, Hq, B, s, g, qPrime, qPivot):
 
 # calculates Lagrangian function of Lambda
 # returns value of lagrangian function
-def calcLagrangian(Lambda, dim, derivativeOrder, HMEigValues, HMEigVects, gM, pM):
-
-    for i in range (dim):
-        numerator = np.subtract(np.dot(HMEigValues[i], np.dot(pM.T, HMEigVects[i])), np.dot(gM.T, HMEigValues))
+def calcLagrangian(Lambda, HMEigValues, HMEigVects, gM, pM, s):
+    lagrangian = 0
+    for i in range (len(HMEigValues)):
+        numerator = (HMEigValues[i] * np.dot(pM.T, HMEigVects[i])) - (np.dot(gM.T, HMEigVects[i]))
+        print numerator
         denominator = HMEigValues - Lambda
-        lagrangian += numerator/(denominator**(i+1))
+        lagrangian += numerator/(denominator)
     lagrangian *= lagrangian
     lagrangian -= (0.5*s)**2
 

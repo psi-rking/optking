@@ -63,13 +63,11 @@ def Bmat(intcos, geom, masses=None):
 def Gmat(intcos, geom, masses=None):
     B = Bmat(intcos, geom, masses)
 
-    """
-    if masses:
+    if masses is not None:
         for i in range(len(intcos)):
             for a in range(len(geom)):
                 for xyz in range(3):
-                    B[i][3*a+xyz] /= sqrt(masses[a]);
-    """
+                    B[i][3*a+xyz] /= sqrt(masses[a])
 
     return np.dot(B, B.T)
         
