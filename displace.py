@@ -123,9 +123,9 @@ def displace(intcos, geom, dq, fq, atom_offset=0, ensure_convergence=False):
 
 def stepIter(intcos, geom, dq, bt_dx_conv=None, bt_dx_rms_change_conv=None, bt_max_iter=None):
     dx_rms_last = -1
-    if not bt_dx_conv:            bt_dx_conv  = op.Params.bt_dx_conv
-    if not bt_dx_rms_change_conv: bt_dx_rms_change_conv = op.Params.bt_dx_rms_change_conv
-    if not bt_max_iter:           bt_max_iter = op.Params.bt_max_iter
+    if bt_dx_conv == None:            bt_dx_conv  = op.Params.bt_dx_conv
+    if bt_dx_rms_change_conv == None: bt_dx_rms_change_conv = op.Params.bt_dx_rms_change_conv
+    if bt_max_iter == None:           bt_max_iter = op.Params.bt_max_iter
     print_lvl = op.Params.print_lvl
 
     q_orig = intcosMisc.qValues(intcos, geom)

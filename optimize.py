@@ -52,17 +52,15 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
                 Molsys.addCartesianIntcos()
 
             addIntcos.addFrozenAndFixedIntcos(Molsys)
-
-            Molsys.printIntcos()
             
+            Molsys.printIntcos()
             if op.Params.opt_type == 'IRC' and ircNumber == 0:
                 ircStepList = []
                 xyz = Molsys.geom.copy()
-                H = fHessian(xyz, printResults = False)
-                Hq = intcosMisc.convertHessianToInternals(H, Molsys.intcos, xyz)
+                Hcart = fHessian(xyz, printResults = False)
+                Hq = intcosMisc.convertHessianToInternals(Hcart, Molsys.intcos, xyz)
                 B = intcosMisc.Bmat(Molsys.intcos, Molsys.geom, Molsys.masses) 
-                qPivot, qPrime, Dq = IRCFollowing.takeHessianHalfStep(Molsys, H, B, op.Params.irc_step_size)
-    
+                qPivot, qPrime, Dq = IRCFollowing.takeHessianHalfStep(Molsys, Hq, B, op.Params.irc_step_size)
             # Test Hessian transformations.  cartesians -> internals -> cartesians -> internals
             # Cartesians do not satisy constraints such as frozen COM (undetermined problem)
             """
@@ -115,32 +113,31 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
                 history.History.append(Molsys.geom, E, fq); # Save initial step info.
             
                 history.History.currentStepReport()
-
-                if (op.Params.opt_type not 'IRC'):  #Prevents the hessian from being updated or recalculated at every point in hypersphere search
-                    if stepNumber == 0:
-                        C = addIntcos.connectivityFromDistances(Molsys.geom, Molsys.Z)
+               
+                if stepNumber == 0:
+                    C = addIntcos.connectivityFromDistances(Molsys.geom, Molsys.Z)
                             
-                    if stepNumber == 0:
-                        if op.Params.full_hess_every > -1:
-                            xyz = Molsys.geom.copy()
-                            Hcart = fHessian(xyz, printResults=False) # it's possible function moves geometry
-                            H = intcosMisc.convertHessianToInternals(Hcart, Molsys.intcos, xyz, Molsys.masses)
-                            print "compute hessian"
-                        else:
-                            H = hessian.guess(Molsys.intcos, Molsys.geom, Molsys.Z, C, op.Params.intrafrag_hess)
-                            print "guess hessian"
-                    else:  # not first step
-                        if op.Params.full_hess_every < 1: # compute hessian never or only once
-                            history.History.hessianUpdate(H, Molsys.intcos)
-                            print "update hessian"
-                        elif stepNumber % op.Params.full_hess_every == 0:
-                            xyz = Molsys.geom.copy()
-                            Hcart = fHessian(xyz, printResults=False) # it's possible function moves geometry
-                            H = intcosMisc.convertHessianToInternals(Hcart, Molsys.intcos, xyz, masses=None)
-                            print "compute hessian"
-                        else:
-                            history.History.hessianUpdate(H, Molsys.intcos)
-                            print "update hessian"
+                if stepNumber == 0:
+                    if op.Params.full_hess_every > -1:
+                        xyz = Molsys.geom.copy()
+                        Hcart = fHessian(xyz, printResults=False) # it's possible function moves geometry
+                        H = intcosMisc.convertHessianToInternals(Hcart, Molsys.intcos, xyz, Molsys.masses)
+                        print "compute hessian"
+                    else:
+                        H = hessian.guess(Molsys.intcos, Molsys.geom, Molsys.Z, C, op.Params.intrafrag_hess)
+                        print "guess hessian"
+                else:  # not first step
+                    if op.Params.full_hess_every < 1: # compute hessian never or only once
+                        history.History.hessianUpdate(H, Molsys.intcos)
+                        print "update hessian"
+                    elif stepNumber % op.Params.full_hess_every == 0:
+                        xyz = Molsys.geom.copy()
+                        Hcart = fHessian(xyz, printResults=False) # it's possible function moves geometry
+                        H = intcosMisc.convertHessianToInternals(Hcart, Molsys.intcos, xyz, masses=None)
+                        print "compute hessian"
+                    else:
+                        history.History.hessianUpdate(H, Molsys.intcos)
+                        print "update hessian"
             
                     print_opt("Hessian (in au) is:\n")
                     printMat(H)
@@ -154,7 +151,9 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
                     if (op.Params.opt_type == 'IRC'):
                         xyz = Molsys.geom.copy()
                         g, E = fGradient(xyz, False)
-                        Dq = IRCFollowing.Dq(Molsys, g, E, H, B, op.Params.irc_step_size, qPrime, qPivot)
+                        print ("Hessian before second use")
+                        print (Hq)
+                        Dq = IRCFollowing.Dq(Molsys, g, E, Hq, B, op.Params.irc_step_size, qPrime, qPivot)
                     else:
                     # displaces and adds step to history
                         Dq = stepAlgorithms.Dq(Molsys, E, fq, H, op.Params.step_type)
@@ -190,11 +189,12 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
             if (op.Params.opt_type == 'IRC' and not atMinimum):
                 ircNumber += 1   
                 xyz = Molsys.geom.copy() 
-                ircStepsList.append(ircStep.IRCStep(qPivot, xyz, ircNumber)    
+                ircStepsList.append(ircStep.IRCStep(qPivot, xyz, ircNumber))    
                 history.History.hessianUpdate(H, Molsys.intcos)
+                Hq = H
                 E, gX = fGradient(xyz, printResults = False)
                 B = intcosMisc.Bmat(Molsys.intcos, Molsys.geom, Molsys.masses)
-                qPivot, qPrime, Dq = IRCFollowing.takeGradientHalfStep(Molsys, E, H, B, op.Params.irc_step_size, gX)
+                qPivot, qPrime, Dq = IRCFollowing.takeGradientHalfStep(Molsys, E, Hq, B, op.Params.irc_step_size, gX)
 
             else: # executes if too many steps
                 print_opt("Number of steps (%d) has reached value of GEOM_MAXITER.\n" % (stepNumber+1))
