@@ -59,7 +59,7 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
                 xyz = Molsys.geom.copy()
                 Hcart = fHessian(xyz, printResults = False)
                 Hq = intcosMisc.convertHessianToInternals(Hcart, Molsys.intcos, xyz)
-                B = intcosMisc.Bmat(Molsys.intcos, Molsys.geom, Molsys.masses) 
+                B = intcosMisc.Bmat(Molsys.intcos, Molsys.geom, Molsys.masses)
                 qPivot, qPrime, Dq = IRCFollowing.takeHessianHalfStep(Molsys, Hq, B, op.Params.irc_step_size)
             # Test Hessian transformations.  cartesians -> internals -> cartesians -> internals
             # Cartesians do not satisy constraints such as frozen COM (undetermined problem)
@@ -150,7 +150,7 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
                 try:
                     if (op.Params.opt_type == 'IRC'):
                         xyz = Molsys.geom.copy()
-                        g, E = fGradient(xyz, False)
+                        E, g = fGradient(xyz, False)
                         print ("Hessian before second use")
                         print (Hq)
                         Dq = IRCFollowing.Dq(Molsys, g, E, Hq, B, op.Params.irc_step_size, qPrime, qPivot)
@@ -166,7 +166,7 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
                         print_opt("Re-raising BAD_STEP exception.\n")
                         raise optExceptions.BAD_STEP_EXCEPT()
         
-                converged = convCheck.convCheck(stepNumber, Molsys.intcos, Dq, fq, energies)
+                converged = convCheck.convCheck(stepNumber, Molsys.intcos, Molsys.geom, Dq, fq, energies)
 
                 if (converged and op.Params.opt_type == 'IRC'):
                     converged = False

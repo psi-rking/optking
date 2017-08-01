@@ -185,8 +185,8 @@ def stepIter(intcos, geom, dq, bt_dx_conv=None, bt_dx_rms_change_conv=None, bt_m
         print_opt("\tBest geometry has RMS(Delta(q)) = %8.2e\n" % best_dq_rms)
         geom[:] = best_geom
 
-    if op.Params.opt_type == "IRC" and not bt_converged:
-        raise INTCO_EXCEPTION("Could not take constrained step in an IRC computation.")
+    #if op.Params.opt_type == "IRC" and not bt_converged:
+        #raise INTCO_EXCEPTION("Could not take constrained step in an IRC computation.")
 
     return bt_converged
 

@@ -14,12 +14,12 @@ import numpy as np
 import optParams as op
 from math import fabs
 from linearAlgebra import absMax, rms
-
+from intcosMisc import Gmat
 # Check convergence criteria and print status to output file.
 # return True, if geometry is optimized
 # By default, checks maximum force and (Delta(E) or maximum disp)
 
-def convCheck(iterNum, intcos, dq, f, energies, masses=None):
+def convCheck(iterNum, intcos, geom, dq, f, energies, masses=None):
     max_disp = absMax(dq)
     rms_disp = rms(dq)
     Nintcos = len(intcos)
@@ -44,7 +44,7 @@ def convCheck(iterNum, intcos, dq, f, energies, masses=None):
                 f[i] = 0
 
     if op.Params.opt_type == 'IRC':
-        G = Gmat(masses)
+        G = Gmat(intcos, geom, masses)
         Ginv = np.linalg.inv(G)
 
         # compute p_m, mass-weighted hypersphere vector
