@@ -11,7 +11,7 @@ import stepAlgorithms
 
 #Takes a half step from starting geometry along the gradient, then takes an additional half step as a guess
 #returns dq
-def takeHessianHalfStep(Molsys, Hq, B, s, direction = 'forward'):
+def takeHessianHalfStep(Molsys, Hq, B, fq, s, direction = 'forward'):
     print_opt ("==================================================================================\n")
     print_opt ("Taking Hessian IRC HalfStep and Guess Step\n")
     #Calculate G, G^-1/2 and G-1/2
@@ -27,8 +27,6 @@ def takeHessianHalfStep(Molsys, Hq, B, s, direction = 'forward'):
     printMat(GmRoot)
     print_opt("Hesian in Internals\n") 
     printMat(Hq)
-    
-
     #Hq = intcosMisc.convertHessianToInternals(H, Molsys.intcos, Molsys.geom)
     HEigVals, HEigVects = symmMatEig(Hq)    
     #get gradient from Psi4 in cartesian geom
@@ -55,33 +53,27 @@ def takeHessianHalfStep(Molsys, Hq, B, s, direction = 'forward'):
 
     #g*k+1 = qk - 1/2 * s * (N*G*gk)
     #N*G*gk
-    qPivot = np.dot(N, np.dot(Gm, gk))
+    dqPivot = np.dot(N, np.dot(Gm, gk))
 
     #applying weight 1/2 s to product (N*G*gk)
     #then applies vector addition q -  1/2 * s* (N*G*gk)
-    for i in range (len(gk)):
-        qPivot[i] = 0.5 * s * qPivot[i]
-        qPivot = np.subtract(qZero, qPivot)
-    
-    #displaceIRCStep(Molsys.intcos, Molsys.geom, np.subtract(qPivot, qZero), H, g)
-
+    dqPivot = np.dot(0.5, np.dot(s, dqPivot))
+    qPivot = np.add(qZero, dqPivot)
     #To-Do add cartesian coordinate for pivot point 
     #qPrime = np.dot (N, np.dot(G, gQ))
-    for i in range (len(gk)):
-        qPrime = np.dot(2, np.subtract(qPivot[i], qZero[i]))
-    
-    dq = np.subtract(qPrime, qZero)
+    dqPrime = np.dot(2, dqPivot)
+    qPrime = np.add(dqPrime, qZero)
+    displaceIRCStep(Molsys, dqPrime, Hq, fq)
 
-    print_opt("Dq to next geometry\n ")
-    print(dq)
-    dq = sqrt(np.dot(dq, dq)) 
-    print_opt("Pivot Point\n")
-    printArray(qPivot)
-    print_opt("Guess Point\n")
+    print_opt("next geometry\n ")
     print(qPrime)
+    print_opt("Dq to Pivot Point\n")
+    printArray(dqPivot)
+    print_opt("Dq to Guess Point\n")
+    print(dqPrime)
     print_opt("===================================================================================\n")
 
-    return qPivot, qPrime, dq
+    return dqPivot, qPivot, qPrime
 
 #Takes a half step from starting geometry along the gradient, then takes an additional half step as a guess
 #returns dq
@@ -125,8 +117,9 @@ def takeGradientHalfStep(Molsys, H, B, s, gX):
     
 #Before Dq_IRC is called, the goemetry must be updated to the guess point    
 #Returns Dq from qk+1 to gprime.
-def Dq(Molsys, g, E, Hq, B, s, qPrime, qPivot):
-
+def Dq(Molsys, g, E, Hq, B, s, qPrime, dqPrime):
+    print_opt("======================================================================================================\n")
+    print_opt("Starting constrained optimization\n")
     GPrime = intcosMisc.Gmat(Molsys.intcos, Molsys.geom, Molsys.masses)
     GPrimeInv = symmMatInv(GPrime) 
     GPrimeRoot = symmMatRoot(GPrime)
@@ -135,7 +128,7 @@ def Dq(Molsys, g, E, Hq, B, s, qPrime, qPivot):
     #Hq = intcosMisc.convertHessianToInternals(H, Molsys.intcos, Molsys.geom)
     #vectors nessecary to solve for Lambda, naming is taken from Gonzalez and Schlegel
     deltaQM = 0
-    pPrime = np.subtract(qPrime, qPivot)
+    pPrime = dqPrime
     #print_opt ("G prime root matrix")
     #printMat (GPrimeRoot)
     #print_opt ("gradient")
@@ -143,12 +136,12 @@ def Dq(Molsys, g, E, Hq, B, s, qPrime, qPivot):
     #print_opt ("Hessian in Internals")
     #printMat (Hq)
     
-
-    u = np.zeros((Molsys.Natom * 3, Molsys.Natom*3), float)
-    for i in range (Molsys.Natom * 3):
-        u[i][i] = 1
-
+    u = np.identity(Molsys.Natom * 3)
+    print_opt("Cartesian Gradient\n")
+    printArray(g)
     g = np.dot(GPrimeInv, np.dot(B, np.dot(u, g)))
+    print_opt("Internal Gradient\n")
+    printArray(g)
     gM = np.dot(GPrimeRoot, g)
     #print ("gM")
     #print (gM)
@@ -157,7 +150,7 @@ def Dq(Molsys, g, E, Hq, B, s, qPrime, qPivot):
     HMEigValues, HMEigVects = symmMatEig(HM) 
     #Variables for solving lagrangian function
     lowerBLagrangian = -100
-    upperBLagrangian = 100
+    upperBLagraan = 100
     lowerBLambda = 0.5 * HMEigValues[0]
     upperBLambda = 0.5 * HMEigValues[0]
     Lambda = 0.5 * HMEigValues[0]
@@ -228,12 +221,18 @@ def Dq(Molsys, g, E, Hq, B, s, qPrime, qPivot):
  
     deltaQM = symmMatInv(-np.subtract(HM, LambdaI))  
     deltaQM = np.dot(deltaQM, np.subtract(gM, np.multiply(Lambda, pM)))    
-    
+    print_opt("initial geometry\n")
+    printArray(qPrime)
     dq = np.dot(GPrimeRoot, deltaQM)
-    print_opt("dq to next geometry")
+    print_opt("dq to next geometry\n")
     printArray(dq)
-    displaceIRCStep(Molsys, dq, Hq, g)
-     
+    displaceIRCStep(Molsys, dq, Hq, np.dot(-1,g))
+    print_opt("New internal coordinates\n")
+    qNew = np.add(qPrime, dq)
+    printArray(qNew)
+
+    print_opt("Constrained optimization finished\n")
+    print_opt("======================================================================================================\n") 
     # save values in step data
     #History.appendRecord(DEprojected, dq, ircU, ircG, ircH)
 
@@ -254,14 +253,14 @@ def calcLagrangian(Lambda, HMEigValues, HMEigVects, gM, pM, s):
 
 #displaces an atom with the dq from the IRC data
 #returns void
-def displaceIRCStep(Molsys, dq, H, gq):
+def displaceIRCStep(Molsys, dq, H, fq):
     # get norm |q| and unit vector in the step direction
     ircDqNorm = sqrt(np.dot(dq,dq))
     ircU = dq / ircDqNorm
     print_opt("\tNorm of target step-size %15.10f\n" % ircDqNorm)
 
     # get gradient and hessian in step direction
-    ircG = np.dot(gq, ircU) # gradient, not force
+    ircG = np.dot(-1, np.dot(fq, ircU)) # gradient, not force
     ircH = np.dot( ircU, np.dot(H, ircU) )
 
     #if op.Params.print_lvl > 1:
@@ -272,7 +271,7 @@ def displaceIRCStep(Molsys, dq, H, gq):
     #print_opt("\tProjected energy change by quadratic approximation: %20.10lf\n" % DEprojected)
 
     # Scale fq into aJ for printing
-    fq_aJ = intcosMisc.qShowForces(Molsys.intcos, np.dot(-1, gq))
+    fq_aJ = intcosMisc.qShowForces(Molsys.intcos, fq)
     #print ("------------------------------")   
     #print (Molsys._fragments[0].intcos)
     #print (Molsys._fragments[0].geom)

@@ -55,12 +55,19 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
             
             Molsys.printIntcos()
             if op.Params.opt_type == 'IRC' and ircNumber == 0:
-                ircStepList = []
+                ircStepList = [] #Holds data points for IRC steps
                 xyz = Molsys.geom.copy()
+                print_opt("Cartesian Geom")
+                printMat(xyz)
+                qZero = intcosMisc.qValues(Molsys.intcos, Molsys.geom)
+                print("Initial internal coordinates")
+                print(qZero)
                 Hcart = fHessian(xyz, printResults = False)
+                e, gX = fGradient(xyz)
+                fq = intcosMisc.qForces(Molsys.intcos, Molsys.geom, gX) 
                 Hq = intcosMisc.convertHessianToInternals(Hcart, Molsys.intcos, xyz)
                 B = intcosMisc.Bmat(Molsys.intcos, Molsys.geom, Molsys.masses)
-                qPivot, qPrime, Dq = IRCFollowing.takeHessianHalfStep(Molsys, Hq, B, op.Params.irc_step_size)
+                dqPrime, qPivot, qPrime = IRCFollowing.takeHessianHalfStep(Molsys, Hq, B, fq, op.Params.irc_step_size)
             # Test Hessian transformations.  cartesians -> internals -> cartesians -> internals
             # Cartesians do not satisy constraints such as frozen COM (undetermined problem)
             """
@@ -151,9 +158,7 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
                     if (op.Params.opt_type == 'IRC'):
                         xyz = Molsys.geom.copy()
                         E, g = fGradient(xyz, False)
-                        print ("Hessian before second use")
-                        print (Hq)
-                        Dq = IRCFollowing.Dq(Molsys, g, E, Hq, B, op.Params.irc_step_size, qPrime, qPivot)
+                        Dq = IRCFollowing.Dq(Molsys, g, E, Hq, B, op.Params.irc_step_size, qPrime, dqPrime)
                     else:
                     # displaces and adds step to history
                         Dq = stepAlgorithms.Dq(Molsys, E, fq, H, op.Params.step_type)
@@ -165,8 +170,8 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
                         print_opt("Maximum number of backsteps has been attempted.\n")
                         print_opt("Re-raising BAD_STEP exception.\n")
                         raise optExceptions.BAD_STEP_EXCEPT()
-        
-                converged = convCheck.convCheck(stepNumber, Molsys.intcos, Molsys.geom, Dq, fq, energies)
+                intcosMisc.qShowValues(Molsys.intcos, Molsys.geom)        
+                converged = convCheck.convCheck(stepNumber, Molsys, Dq, fq, energies, qPivot)
 
                 if (converged and op.Params.opt_type == 'IRC'):
                     converged = False

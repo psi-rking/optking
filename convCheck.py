@@ -9,21 +9,21 @@ P.rms_disp_g_convergence = uod.get('RMS_DISP_G_CONVERGENCE', 1.2e-3)
 P.flexible_g_convergence = uod.get('FLEXIBLE_G_CONVERGENCE', False)
 """
 
-from printTools import print_opt
+from printTools import print_opt, printArray, printMat
 import numpy as np
 import optParams as op
 from math import fabs
 from linearAlgebra import absMax, rms
-from intcosMisc import Gmat
+from intcosMisc import Gmat, Bmat, qValues
 # Check convergence criteria and print status to output file.
 # return True, if geometry is optimized
 # By default, checks maximum force and (Delta(E) or maximum disp)
 
-def convCheck(iterNum, intcos, geom, dq, f, energies, masses=None):
+def convCheck(iterNum, Molsys, dq, f, energies, qPivot=None, masses=None):
     max_disp = absMax(dq)
     rms_disp = rms(dq)
-    Nintcos = len(intcos)
-    has_fixed = any([ints.fixedEqVal for ints in intcos])
+    Nintco = len(Molsys.intcos)
+    has_fixed = any([ints.fixedEqVal for ints in Molsys.intcos])
     energy = energies[-1]
     last_energy = energies[-2] if len(energies)>1 else 0.0
 
@@ -44,30 +44,40 @@ def convCheck(iterNum, intcos, geom, dq, f, energies, masses=None):
                 f[i] = 0
 
     if op.Params.opt_type == 'IRC':
-        G = Gmat(intcos, geom, masses)
+        G = Gmat(Molsys.intcos, Molsys.geom, masses)
+        B = Bmat(Molsys.intcos, Molsys.geom, masses)
         Ginv = np.linalg.inv(G)
 
         # compute p_m, mass-weighted hypersphere vector
-        q_pivot = irc_data.g_q_pivot();
-        q = mol.coord_values();
-        p = np.array( Nintco, float)
-        p[:] = q - q_pivot
+        q_pivot = qPivot
+        x = Molsys.geom
+        print ("B matrix")
+        print (B)
+        print ("geom")
+        print (x)
+        q = qValues(Molsys.intcos, Molsys.geom)
+        #q = np.dot(Ginv, np.dot(B, np.dot(np.identity(Molsys.Natom * 3), x)))
+        print ("q")
+        print (q)
+        print ("q-pivot")
+        print (q_pivot)
+        p = np.subtract(q, q_pivot)
 
         # gradient perpendicular to p and tangent to hypersphere is:
         # g_m' = g_m - (g_m^t p_m / p_m^t p_m) p_m, or
         # g'   = g   - (g^t p / (p^t G^-1 p)) G^-1 p
-        Ginv_p = np.array(Nintco, float)
+        #Ginv_p = np.array(Nintco, float)
         for i in range(Nintco):
-            Ginv_p[i] = np.dot(Ginv[i], p)
+            Ginv_p = np.dot(Ginv, p)
 
         overlap = np.dot(f, p) / np.dot(p, Ginv_p)
 
         for i in range(Nintco):
             f[i] -= overlap * Ginv_p[i];
 
-        if op.Params.print_level > 1:
+        if op.Params.print_lvl > 1:
             print_opt("Forces perpendicular to hypersphere.\n")
-            misc.printArray(f)
+            printArray(f)
 
     # Compute forces after projection and removal above.
     max_force = absMax(f)
