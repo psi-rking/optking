@@ -8,6 +8,8 @@ def cleanPrint(arg):
     print(arg, file=stdout, end='')
     return
 
+#print_opt = cleanPrint
+
 def printInit(printFunction=None):
     global print_opt
     if not printFunction:
