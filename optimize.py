@@ -27,6 +27,7 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
     import IRCFollowing
     converged = False
     ircNumber = 0
+    qPivot = None # Dummy argument for non-IRC
 
     # Loop over a variety of algorithms
     while (converged == False) and (op.Params.dynamic_level < op.Params.dynamic_level_max):
@@ -57,15 +58,19 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
             if op.Params.opt_type == 'IRC' and ircNumber == 0:
                 ircStepList = [] #Holds data points for IRC steps
                 xyz = Molsys.geom.copy()
-                print_opt("Cartesian Geom")
+                print_opt("Initial Cartesian Geom")
                 printMat(xyz)
                 qZero = intcosMisc.qValues(Molsys.intcos, Molsys.geom)
-                print("Initial internal coordinates")
-                print(qZero)
+                print_opt("Initial internal coordinates\n")
+                printArray(qZero)
                 Hcart = fHessian(xyz, printResults = False)
                 e, gX = fGradient(xyz)
                 fq = intcosMisc.qForces(Molsys.intcos, Molsys.geom, gX) 
                 Hq = intcosMisc.convertHessianToInternals(Hcart, Molsys.intcos, xyz)
+                print_opt("Internal Forces\n")
+                printArray(fq)
+                print_opt("Internal Hessian\n")
+                printMat(Hq)
                 B = intcosMisc.Bmat(Molsys.intcos, Molsys.geom, Molsys.masses)
                 dqPrime, qPivot, qPrime = IRCFollowing.takeHessianHalfStep(Molsys, Hq, B, fq, op.Params.irc_step_size)
             # Test Hessian transformations.  cartesians -> internals -> cartesians -> internals
@@ -161,7 +166,7 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
                         Dq = IRCFollowing.Dq(Molsys, g, E, Hq, B, op.Params.irc_step_size, qPrime, dqPrime)
                     else:
                     # displaces and adds step to history
-                        Dq = stepAlgorithms.Dq(Molsys, E, fq, H, op.Params.step_type)
+                        Dq = stepAlgorithms.Dq(Molsys, E, fq, H, op.Params.step_type, fEnergy)
                 except optExceptions.BAD_STEP_EXCEPT:
                     if history.History.consecutiveBacksteps < op.Params.consecutiveBackstepsAllowed:
                         print_opt("Taking backward step.\n")

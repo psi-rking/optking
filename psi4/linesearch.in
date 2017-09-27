@@ -1,0 +1,25 @@
+#! SCF CC-PVTZ geometry optimzation, with Z-matrix input
+
+finalEnergy = -76.05776970 #TEST
+
+molecule h2o {
+ O
+ H 1 1.0
+ H 1 1.0 2 104.5
+}
+
+set {
+  basis cc-pvdz
+  e_convergence 10
+  d_convergence 10
+  scf_type pk
+  geom_maxiter 10
+}
+
+set optking step_type linesearch
+
+import Psi4Opt
+Psi4Opt.calcName = 'hf'
+E = Psi4Opt.Psi4Opt()
+compare_values(finalEnergy, E, 6, "LINESEARCH Step Final Energy")                                #TEST
+
