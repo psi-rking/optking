@@ -221,14 +221,14 @@ class MOLSYS(object): # new-style classes required for getter/setters
 
     # Supplements a connectivity matrix to connect all fragments.  Assumes the
     # definition of the fragments has ALREADY been determined before function called.
-    #FixThis	
     def augmentConnectivityToSingleFragment(self, C):
         print_opt('\tAugmenting connectivity matrix to join fragments.\n')
         fragAtoms = []
+        geom = self.geom
         for iF, F in enumerate(self._fragments):
             fragAtoms.append(range(self.frag_1st_atom(iF), self.frag_1st_atom(iF) + F.Natom))
 
-        # which fragments are connected?
+        # Which fragments are connected?
         nF = self.Nfragments
         frag_connectivity = np.zeros((nF,nF))
         for iF in range(nF):
@@ -236,7 +236,7 @@ class MOLSYS(object): # new-style classes required for getter/setters
 
         Z = self.Z
 
-        scale_dist = 1.3 # Params.interfragment_connect
+        scale_dist = 1.3
         all_connected = False
         while not all_connected:
             for f2 in range(nF):
@@ -245,60 +245,44 @@ class MOLSYS(object): # new-style classes required for getter/setters
                       continue # already connected
                   minVal = 1.0e12
       
-                  # Find closest 2 atoms between fragments
+                  # Find closest 2 atoms between fragments.
                   for f1_atom in fragAtoms[f1]:
                     for f2_atom in fragAtoms[f2]:
-                      tval = v3d.dist(geom[fragAtoms[f1][f1_atom]], geom[fragAtoms[f2][f2_atom]])
+                      tval = v3d.dist(geom[f1_atom], geom[f2_atom])
                       if tval < minVal:
                         minVal = tval
-                        i = fragAtoms[f1][f1_atom]
-                        j = fragAtoms[f2][f2_atom]
+                        i = f1_atom
+                        j = f2_atom
         
                   Rij = v3d.dist(geom[i], geom[j])
                   R_i = covRadii.R[ int(Z[i]) ] / pc.bohr2angstroms
                   R_j = covRadii.R[ int(Z[j]) ] / pc.bohr2angstroms
                   if (Rij > scale_dist * (R_i + R_j)):
-                    continue  # ignore this as too far - for starters
+                    continue  # ignore this as too far - for starters.  may have A-B-C situation.
       
                   print_opt("\tConnecting fragments with atoms %d and %d\n" % (i+1, j+1))
                   C[i][j] = C[j][i] = True
                   frag_connectivity[f1][f2] = frag_connectivity[f2][f1] = True
+
                   # Now check for possibly symmetry-related atoms which are just as close
                   # We need them all to avoid symmetry breaking.
                   for f1_atom in fragAtoms[f1]:
                     for f2_atom in fragAtoms[f2]:
-                      tval = v3d.dist(geom[fragAtoms[f1][f1_atom]], geom[fragAtoms[f2][f2_atom]])
-                      if (fabs(tval - minVal) < 1.0e-14): 
-                        i = fragAtoms[f1][f1_atom]
-                        j = fragAtoms[f2][f2_atom]
-                        print_opt("\tConnecting fragments with atoms %d and %d\n" % (i+1, j+1))
+                      if f1_atom == i and f2_atom == j: # already have this one
+                        continue
+                      tval = v3d.dist(geom[f1_atom], geom[f2_atom])
+                      if (np.fabs(tval - minVal) < 1.0e-10): 
+                        i = f1_atom
+                        j = f2_atom
+                        print_opt("\tAlso, with atoms %d and %d\n" % (i+1, j+1))
                         C[i][j] = C[j][i] = True
 
-            all_connected = True
-"""
-                  # Test whether all frags are connected using current distance threshold
-                  set_label = np.zeros( nF, bool)
-                  for i in range(nF):
-                    set_label[i] = i
-            
-                  for i in range(nF):
-                    for j in range(nF):
-                      if frag_connectivity[i][j]:
-                        ii = set_label[i]
-                        jj = set_label[j]
-                        if ii > jj:
-                          set_label[i] = jj
-                        else if jj > ii:
-                          set_label[j] = ii
-
-                  all_connected = True
-                  for i in range(1,nF):
-                    if set_label[i] != 0:
-                      all_connected = False
-
-            if not all_connected:
-                scale_dist += 0.4
+            # Test whether all frags are connected using current distance threshold
+            if np.sum(frag_connectivity[0]) == nF:
+                print_opt("\tAll fragments are connected in connectivity matrix.\n")
+                all_connected = True
+            else:
+                scale_dist += 0.2
                 print_opt("\tIncreasing scaling to %6.3f to connect fragments.\n" % (scale_dist))
-
-"""
+        return
 

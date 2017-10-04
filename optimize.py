@@ -36,12 +36,18 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
             print_opt( str(Molsys) )
             energies = []
         
-            # Construct connectivity.
+            # Construct connectivity matrix.
             C = addIntcos.connectivityFromDistances(Molsys.geom, Molsys.Z)
         
             if op.Params.frag_mode == 'SINGLE':
-                #Add to connectivity to make sure all fragments connected.
+                # Splits existing fragments if they are not connected by distance criteria.
+                Molsys.splitFragmentsByConnectivity()
+                #print Molsys
+                # Add to connectivity to make sure all fragments connected.
                 Molsys.augmentConnectivityToSingleFragment(C)
+                print_opt("Connectivity\n")
+                printMat(C)
+                # Bring fragments together into one.
                 Molsys.consolidateFragments();
             elif op.Params.frag_mode == 'MULTI':
                 # should do nothing if fragments are already split by calling program/constructor.
@@ -167,6 +173,7 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
                     else:
                     # displaces and adds step to history
                         Dq = stepAlgorithms.Dq(Molsys, E, fq, H, op.Params.step_type, fEnergy)
+
                 except optExceptions.BAD_STEP_EXCEPT:
                     if history.History.consecutiveBacksteps < op.Params.consecutiveBackstepsAllowed:
                         print_opt("Taking backward step.\n")
@@ -175,7 +182,10 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
                         print_opt("Maximum number of backsteps has been attempted.\n")
                         print_opt("Re-raising BAD_STEP exception.\n")
                         raise optExceptions.BAD_STEP_EXCEPT()
+
                 intcosMisc.qShowValues(Molsys.intcos, Molsys.geom)        
+                #print_opt("Dq")
+                #printArray(Dq)
                 converged = convCheck.convCheck(stepNumber, Molsys, Dq, fq, energies, qPivot)
 
                 if (converged and op.Params.opt_type == 'IRC'):
@@ -194,6 +204,10 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
                 print_opt("\tStructure for next step (au):\n")
                 Molsys.printGeom()
 
+            else: # executes if too many steps
+                print_opt("Number of steps (%d) has reached value of GEOM_MAXITER.\n" % (stepNumber+1))
+                raise optExceptions.BAD_STEP_EXCEPT()
+
             #This should be called at the end of each iteration of the for loop, 
             #if at the minimum converged = True and the for Loop will have been broken out of 
             if (op.Params.opt_type == 'IRC' and not atMinimum):
@@ -206,10 +220,6 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
                 B = intcosMisc.Bmat(Molsys.intcos, Molsys.geom, Molsys.masses)
                 qPivot, qPrime, Dq = IRCFollowing.takeGradientHalfStep(Molsys, E, Hq, B, op.Params.irc_step_size, gX)
 
-            else: # executes if too many steps
-                print_opt("Number of steps (%d) has reached value of GEOM_MAXITER.\n" % (stepNumber+1))
-                raise optExceptions.BAD_STEP_EXCEPT()
-        
         except optExceptions.BAD_STEP_EXCEPT:
             print_opt("optimize.py: Caught bad step exception.\n")   
             op.Params.dynamic_level += 1

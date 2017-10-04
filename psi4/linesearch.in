@@ -2,18 +2,24 @@
 
 finalEnergy = -76.05776970 #TEST
 
-molecule h2o {
- O
- H 1 1.0
- H 1 1.0 2 104.5
+molecule dimer {
+ Ar
+ Ar 1 4.0
 }
+
+#molecule h2o {
+# O
+# H 1 1.0
+# H 1 1.0 2 104.5
+#}
 
 set {
   basis cc-pvdz
   e_convergence 10
   d_convergence 10
   scf_type pk
-  geom_maxiter 10
+  geom_maxiter 20
+  g_convergence = gau_tight
 }
 
 set optking step_type linesearch
