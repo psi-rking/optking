@@ -26,7 +26,7 @@ set {
 frequencies('scf', dertype=1)
 
 # Lower point group from C2v to C2
-h2o2.reset_point_group('c2')
+#h2o2.reset_point_group('c2')
 
 import Psi4Opt
 Psi4Opt.calcName = 'scf'

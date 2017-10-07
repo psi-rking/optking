@@ -53,6 +53,7 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
 
             addIntcos.addFrozenAndFixedIntcos(Molsys)
             
+            qPivot = None; #Vector to pivot point used in convCheck 
             Molsys.printIntcos()
             if op.Params.opt_type == 'IRC' and ircNumber == 0:
                 ircStepList = [] #Holds data points for IRC steps
@@ -159,6 +160,14 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
                         xyz = Molsys.geom.copy()
                         E, g = fGradient(xyz, False)
                         Dq = IRCFollowing.Dq(Molsys, g, E, Hq, B, op.Params.irc_step_size, qPrime, dqPrime)
+                        print_opt ("IRC Step Data" + StepNumber)
+                        print_opt ("Energy")
+                        printArray(E)
+                        print_opt ("Gradient")
+                        printArray(g)
+                        print_opt("Dq")
+                        printArray(Dq)
+                        
                     else:
                     # displaces and adds step to history
                         Dq = stepAlgorithms.Dq(Molsys, E, fq, H, op.Params.step_type)
@@ -170,7 +179,8 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
                         print_opt("Maximum number of backsteps has been attempted.\n")
                         print_opt("Re-raising BAD_STEP exception.\n")
                         raise optExceptions.BAD_STEP_EXCEPT()
-                intcosMisc.qShowValues(Molsys.intcos, Molsys.geom)        
+                
+                intcosMisc.qShowValues(Molsys.intcos, Molsys.geom)
                 converged = convCheck.convCheck(stepNumber, Molsys, Dq, fq, energies, qPivot)
 
                 if (converged and op.Params.opt_type == 'IRC'):

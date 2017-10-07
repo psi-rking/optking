@@ -15,7 +15,7 @@ set {
   basis cc-pvdz
   geom_maxiter 10
   opt_type TS
-  hess_update BOFILL
+#  hess_update BOFILL
   docc = [ 5 , 4 ]
   intrafrag_step_limit 0.1
   # loose convergence criteria due to scf convergence problems as c2h structure is approached
