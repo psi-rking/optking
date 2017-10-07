@@ -24,7 +24,7 @@ def stringOption(storage_name):
 # The keys on the left here should be lower-case, as should the storage name of the property.
 allowedStringOptions = {
  'opt_type'        : ('MIN','TS','IRC'),
- 'step_type'       : ('RFO', 'P_RFO', 'NR', 'SD', 'LINESEARCH_STATIC'),
+ 'step_type'       : ('RFO', 'P_RFO', 'NR', 'SD', 'LINESEARCH'),
  'opt_coordinates' : ('REDUNDANT', 'INTERNAL', 'DELOCALIZED', 'NATURAL', 'CARTESIAN', 'BOTH'),
  'irc_direction'   : ('FORWARD', 'BACKWARD'),
  'irc_stop'        : ('ASK', 'STOP', 'GO'),
@@ -266,14 +266,7 @@ class OPT_PARAMS(object):
         ## equilibrium values, this is the initial force constant (in au) used to apply an
         ## additional force to each coordinate.
         P.fixed_coord_force_constant = uod.get('FIXED_COORD_FORCE_CONSTANT', 0.5)
-        ## If doing a static line search, scan this many points.
-        #P.linesearch_static_N = uod.get('LINESEARCH_STATIC_N', 8)
-        ## If doing a static line search, this fixes the shortest step, whose largest
-        ## change in an internal coordinate is set to this value (in au)
-        #P.linesearch_static_min = uod.get('LINESEARCH_STATIC_MIN', 0.001)
-        ## If doing a static line search, this fixes the largest step, whose largest
-        ## change in an internal coordinate is set to this value (in au) 
-        #P.linesearch_static_max = uod.get('LINESEARCH_STATIC_MAX', 0.100)
+        P.linesearch_step = uod.get('LINESEARCH_STEP', 0.100)
         # Guess at Hessian in steepest-descent direction.
         P.sd_hessian = uod.get('SD_HESSIAN', 1.0)
 #

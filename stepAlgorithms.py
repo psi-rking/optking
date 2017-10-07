@@ -18,7 +18,7 @@ import optExceptions
 # 1. Computes Dq, the step in internal coordinates.
 # 2. Calls displace and attempts to take the step.
 # 3. Updates history with results.
-def Dq(Molsys, E, qForces, H, stepType=None):
+def Dq(Molsys, E, qForces, H, stepType=None, energy_function=None):
     if len(H) == 0 or len(qForces) == 0: return np.zeros( (0), float)
 
     if not stepType:
@@ -34,6 +34,8 @@ def Dq(Molsys, E, qForces, H, stepType=None):
         return Dq_BACKSTEP(Molsys)
     elif stepType == 'P_RFO':
         return Dq_P_RFO(Molsys, E, qForces, H)  
+    elif stepType == 'LINESEARCH':
+        return Dq_LINESEARCH(Molsys, E, qForces, H, energy_function)  
     else:
         raise ValueError('Dq: step type not yet implemented')
 
@@ -100,7 +102,7 @@ def Dq_NR(Molsys, E, fq, H):
     # Can check full geometry, but returned indices will correspond then to that.
     linearList = linearBendCheck(Molsys.intcos, Molsys.geom, dq)
     if linearList:
-        raise INTCO_EXCEPT("New linear angles", linearList)
+        raise optExceptions.INTCO_EXCEPT("New linear angles", linearList)
 
     return dq
 
@@ -357,7 +359,7 @@ def Dq_RFO(Molsys, E, fq, H):
 
     linearList = linearBendCheck(Molsys.intcos, Molsys.geom, dq)
     if linearList:
-        raise INTCO_EXCEPT("New linear angles", linearList)
+        raise optExceptions.INTCO_EXCEPT("New linear angles", linearList)
 
     # Before quitting, make sure step is reasonable.  It should only be
     # screwball if we are using the "First Guess" after the back-transformation failed.
@@ -529,7 +531,7 @@ def Dq_P_RFO(Molsys, E, fq, H):
 
     linearList = linearBendCheck(Molsys.intcos, Molsys.geom, dq)
     if linearList:
-        raise INTCO_EXCEPT("New linear angles", linearList)
+        raise optExceptions.INTCO_EXCEPT("New linear angles", linearList)
 
     # Before quitting, make sure step is reasonable.  It should only be
     # screwball if we are using the "First Guess" after the back-transformation failed.
@@ -590,7 +592,7 @@ def Dq_SD(Molsys, E, fq):
 
     linearList = linearBendCheck(Molsys.intcos, Molsys.geom, dq)
     if linearList:
-        raise INTCO_EXCEPT("New linear angles", linearList)
+        raise optExceptions.INTCO_EXCEPT("New linear angles", linearList)
 
     return dq
 
@@ -650,25 +652,134 @@ def Dq_BACKSTEP(Molsys):
 
     linearList = linearBendCheck(Molsys.intcos, Molsys.geom, dq)
     if linearList:
-        raise INTCO_EXCEPT("New linear angles", linearList)
+        raise optExceptions.INTCO_EXCEPT("New linear angles", linearList)
 
     return dq
 
-"""
-def Dq_IRC (Molsys, intcos, geom, E, qForces, H, B): #if this method requires additinal parameters, calls to Dq will also need additional info
-    #Call Hessian convert to internals, or pass in H already in internals when dq called. Hessian will be calculated from psi4
-    Hq = intcosMisc.convertHessianToInternals(B, H, qForces, Molsys)
-    #Compute G in mass weighted internals, can be performed using intcosMisc.Gmat(intcos, geom, True) returns matrix
-    Gm = intcosMisc.Gmat(intcos, geom, True)
-    #Compute gradient from psi4 
-    #q omputed in mass weighted coordinates
-    # Hessian transformed into mass weighted by H_m = (G^1/2)H(G^1/2) where G is calculated from dq in massweighted internals
-    #Solve for N using G N = (g^t * Gg)^-1/2
-    #q*k+1 = qk - s/2 * NGg
-    #length of all vectors = 1/2 s
-    #need to scan radius of 1/2 step size from pivot point to find qk+1 
-    #for this do I simply need to scan all points at 1/2 s away from the pivot point?
-    #Need to solve Ggk+1 = Gg'k+1 + GHq (qk+1 - q'k+1) #question remains how to find q'k+1 I think I can just find
-    #some point at a set angle from the pivot point and calc the dq from this random poin  
-"""
+# Take Rational Function Optimization step
+def Dq_LINESEARCH(Molsys, E, fq, H, energy_function):
+    s = op.Params.linesearch_step
+    print_opt("\n\tTaking LINESEARCH optimization step.\n")
+    print_opt("\tUnit vector in gradient direction.\n")
+    fq_unit = fq / sqrt(np.dot(fq, fq))
+    printArray(fq_unit)
+    Ea = E
+    geomA = Molsys.geom # get copy of original geometry
+    Eb = Ec = 0
+    bounded = False
+    ls_iter = 0
+
+    # Iterate until we find 3 points bounding minimum.
+    while ls_iter < 10 and not bounded:
+        ls_iter += 1
+
+        if Eb == 0:
+            print_opt("\n\tStepping along forces distance %10.5f\n" % s)
+            dq = s * fq_unit
+            fq_aJ = qShowForces(Molsys.intcos, fq)
+            displace(Molsys._fragments[0].intcos, Molsys._fragments[0].geom, dq, fq_aJ)
+            xyz = Molsys.geom
+            print_opt("\tComputing energy at this point now.\n")
+            Eb = energy_function(xyz)
+            Molsys.geom = geomA  # reset geometry to point A
+
+        if Ec == 0:
+            print_opt("\n\tStepping along forces distance %10.5f\n" % (2*s))
+            dq = (2*s) * fq_unit
+            fq_aJ = qShowForces(Molsys.intcos, fq)
+            displace(Molsys._fragments[0].intcos, Molsys._fragments[0].geom, dq, fq_aJ)
+            xyz = Molsys.geom
+            print_opt("\tComputing energy at this point now.\n")
+            Ec = energy_function(xyz)
+            Molsys.geom = geomA  # reset geometry to point A
+ 
+        print_opt("\n\t Current linesearch bounds.\n")
+        print_opt("\t s=%5.3f, Ea=%15.10f\n" % (0, Ea))
+        print_opt("\t s=%5.3f, Eb=%15.10f\n" % (s, Eb))
+        print_opt("\t s=%5.3f, Ec=%15.10f\n" % (2*s, Ec))
+
+        if Eb < Ea and Eb < Ec:
+            # second point is lowest do projection
+            print_opt("\tMiddle point is lowest energy. Good. Projecting minimum.\n")
+            Sa = 0.0
+            Sb = s
+            Sc = 2*s
+
+            A = np.zeros( (2,2), float)
+            A[0,0] = Sc*Sc - Sb*Sb
+            A[0,1] = Sc - Sb
+            A[1,0] = Sb*Sb - Sa*Sa
+            A[1,1] = Sb - Sa
+            B = np.zeros( (2), float)
+            B[0] = Ec-Eb
+            B[1] = Eb-Ea
+            x = np.linalg.solve(A,B)
+            Xmin = - x[1] / (2*x[0])
+
+            print_opt("\tParabolic fit ax^2 + bx + c along gradient.\n")
+            print_opt("\t *a = %15.10f\n" % x[0])
+            print_opt("\t *b = %15.10f\n" % x[1])
+            print_opt("\t *c = %15.10f\n" % Ea)
+            Emin_projected = x[0]*Xmin*Xmin + x[1]*Xmin + Ea
+            dq = Xmin * fq_unit
+            print_opt("\tProjected step size to minimum is %12.6f\n" % Xmin)
+            displace(Molsys._fragments[0].intcos, Molsys._fragments[0].geom, dq, fq_aJ)
+            xyz = Molsys.geom
+            print_opt("\tComputing energy at projected point.\n")
+            Emin = energy_function(xyz)
+            print_opt("\tProjected energy along line: %15.10f\n" % Emin_projected) 
+            print_opt("\t   Actual energy along line: %15.10f\n" % Emin)
+
+            bounded = True
+
+        elif Ec < Eb and Ec < Ea: 
+            # unbounded.  increase step size
+            print_opt("\tSearching with larger step beyond 3rd point.\n")
+            s *= 2
+            Eb = Ec
+            Ec = 0
+
+        else:
+            print_opt("\tSearching with smaller step between first 2 points.\n")
+            s *= 0.5
+            Ec = Eb
+            Eb = 0
+
+    # get norm |q| and unit vector in the step direction
+    ls_dqnorm = sqrt( np.dot(dq,dq) )
+    ls_u = dq.copy() / ls_dqnorm
+
+    # get gradient and hessian in step direction
+    ls_g = -1 * np.dot(fq, ls_u) # should be unchanged
+    ls_h = np.dot( ls_u, np.dot(H, ls_u) )
+
+    print_opt("\n")
+
+    if op.Params.print_lvl > 1:
+       print_opt('\t|target step|: %15.10f\n'    % ls_dqnorm)
+       print_opt('\tLS_gradient     : %15.10f\n' % ls_g)
+       print_opt('\tLS_hessian      : %15.10f\n' % ls_h)
+
+    DEprojected = DE_projected('NR', ls_dqnorm, ls_g, ls_h)
+    print_opt("\tProjected quadratic energy change using full Hessian: %15.10f\n" % DEprojected)
+
+    # Scale fq into aJ for printing
+    #fq_aJ = qShowForces(Molsys.intcos, fq)
+    #displace(Molsys._fragments[0].intcos, Molsys._fragments[0].geom, dq, fq_aJ)
+
+    dq_actual = sqrt( np.dot(dq,dq) )
+    print_opt("\tNorm of achieved step-size %15.10f\n" % dq_actual)
+
+    # Symmetrize the geometry for next step
+    # symmetrize_geom()
+
+    # save values in step data
+    History.appendRecord(DEprojected, dq, ls_u, ls_g, ls_h)
+
+    # Can check full geometry, but returned indices will correspond then to that.
+    linearList = linearBendCheck(Molsys.intcos, Molsys.geom, dq)
+    if linearList:
+        raise optExceptions.INTCO_EXCEPT("New linear angles", linearList)
+
+    return dq
 

@@ -59,7 +59,8 @@ def hessian_func(xyz, printResults=False):
 
 #  This function only matters for special purposes like 1D line searching.
 # The energy is usually obtained from the gradient function.
-def energy_func(printResults=True):
+def energy_func(xyz, printResults=True):
+    xyz[:] = setGeometry_func(xyz)
     E, wfn = driver.energy(calcName, molecule=mol, return_wfn=True)
     if printResults:
         print_out('\tEnergy: %15.10f\n' % E)

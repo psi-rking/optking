@@ -1,9 +1,7 @@
 #! Compute the IRC for HOOH torsional rotation at the RHF/DZP level of theory. 
-# Print
-# the path to a trajectory file for visualization
-# in Jmol.
-# grep '@IRC' on the output to see a nice printout
-# of the progress of your IRC computation.
+# Print the path to a trajectory file for visualization in Jmol.
+# grep '@IRC' on the output to see a nice printout of the progress of your
+#  IRC computation.
 
 molecule h2o2 {
   H     0.0000000000   0.9803530335  -0.8498671785
@@ -20,7 +18,7 @@ set {
   opt_type                   irc
   geom_maxiter               50
   irc_direction              backward
-  print                      5
+  #print                      5
 }
 
 frequencies('scf', dertype=1)
