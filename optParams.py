@@ -126,6 +126,10 @@ class OPT_PARAMS(object):
         P.rfo_normalization_max = uod.get('RFO_NORMALIZATION_MAX', 100)
         # Absolute maximum value of RS-RFO.
         P.rsrfo_alpha_max = uod.get('RSRFO_ALPHA_MAX', 1e8)
+        # New in python version
+        P.trajectory = uod.get('TRAJECTORY', False)
+
+
         ## Specify distances between atoms to be frozen (unchanged)
         # P.frozen_distance = uod.get('FROZEN_DISTANCE','')
         frozen = uod.get('FROZEN_DISTANCE','')

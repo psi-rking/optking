@@ -9,7 +9,7 @@ from addIntcos import linearBendCheck
 from math import sqrt, fabs
 from printTools import printArray, printMat, print_opt
 from misc import symmetrizeXYZ, isDqSymmetric
-from linearAlgebra import absMax, symmMatEig, asymmMatEig, symmMatInv
+from linearAlgebra import absMax, symmMatEig, asymmMatEig, symmMatInv, norm
 import v3d
 from history import History
 import optExceptions
@@ -660,6 +660,11 @@ def Dq_BACKSTEP(Molsys):
 # Take Rational Function Optimization step
 def Dq_LINESEARCH(Molsys, E, fq, H, energy_function):
     s = op.Params.linesearch_step
+
+    if len(History.steps) > 1:
+        s = norm( History.steps[-2].Dq ) / 2
+        print_opt( "\tModifying linesearch s to %10.6f\n" % s)
+
     print_opt("\n\tTaking LINESEARCH optimization step.\n")
     print_opt("\tUnit vector in gradient direction.\n")
     fq_unit = fq / sqrt(np.dot(fq, fq))
@@ -669,6 +674,7 @@ def Dq_LINESEARCH(Molsys, E, fq, H, energy_function):
     Eb = Ec = 0
     bounded = False
     ls_iter = 0
+    stepScale = 2
 
     # Iterate until we find 3 points bounding minimum.
     while ls_iter < 10 and not bounded:
@@ -685,8 +691,8 @@ def Dq_LINESEARCH(Molsys, E, fq, H, energy_function):
             Molsys.geom = geomA  # reset geometry to point A
 
         if Ec == 0:
-            print_opt("\n\tStepping along forces distance %10.5f\n" % (2*s))
-            dq = (2*s) * fq_unit
+            print_opt("\n\tStepping along forces distance %10.5f\n" % (stepScale*s))
+            dq = (stepScale*s) * fq_unit
             fq_aJ = qShowForces(Molsys.intcos, fq)
             displace(Molsys._fragments[0].intcos, Molsys._fragments[0].geom, dq, fq_aJ)
             xyz = Molsys.geom
@@ -697,14 +703,14 @@ def Dq_LINESEARCH(Molsys, E, fq, H, energy_function):
         print_opt("\n\tCurrent linesearch bounds.\n")
         print_opt("\t s=%7.5f, Ea=%17.12f\n" % (0, Ea))
         print_opt("\t s=%7.5f, Eb=%17.12f\n" % (s, Eb))
-        print_opt("\t s=%7.5f, Ec=%17.12f\n" % (2*s, Ec))
+        print_opt("\t s=%7.5f, Ec=%17.12f\n" % (stepScale*s, Ec))
 
         if Eb < Ea and Eb < Ec:
             # second point is lowest do projection
             print_opt("\tMiddle point is lowest energy. Good. Projecting minimum.\n")
             Sa = 0.0
             Sb = s
-            Sc = 2*s
+            Sc = stepScale*s
 
             A = np.zeros( (2,2), float)
             A[0,0] = Sc*Sc - Sb*Sb
@@ -736,7 +742,7 @@ def Dq_LINESEARCH(Molsys, E, fq, H, energy_function):
         elif Ec < Eb and Ec < Ea: 
             # unbounded.  increase step size
             print_opt("\tSearching with larger step beyond 3rd point.\n")
-            s *= 2
+            s *= stepScale
             Eb = Ec
             Ec = 0
 

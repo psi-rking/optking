@@ -68,9 +68,10 @@ def energy_func(xyz, printResults=True):
 
 # Also send python printing function. Otherwise print to stdout will be done
 
+# Returns energy; or (energy, trajectory) if trajectory==True
 def Psi4Opt():
-    thisenergy = optking.optimize( Molsys, optking_user_options, setGeometry_func, gradient_func, \
+    returnVal = optking.optimize( Molsys, optking_user_options, setGeometry_func, gradient_func, \
                     hessian_func, energy_func)
-    return thisenergy
+    return returnVal
 
 

@@ -2,6 +2,9 @@ from math import fabs, sqrt
 import numpy as np
 import optExceptions
 
+def norm(V):
+    return np.linalg.norm(V)
+
 ### Linear algebra routines.
 def absMax(V):
     return max(abs(elem) for elem in V)

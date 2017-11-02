@@ -230,7 +230,12 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
     
     # print summary
     history.History.summary()
-    energy = history.History[-1].E
+
+    if op.Params.trajectory:
+        # history doesn't contain atomic numbers so pass them in
+        returnVal = history.History.trajectory(Molsys.Z)
+    else:
+        returnVal = history.History[-1].E
 
     # clean up
     del H
@@ -240,7 +245,7 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
     del history.History[:]
     del op.Params
 
-    return energy
+    return returnVal
 
     
 def welcome():

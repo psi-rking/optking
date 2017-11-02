@@ -77,6 +77,14 @@ class HISTORY(object):
     def appendRecord(self, projectedDE, Dq, followedUnitVector, oneDgradient,oneDhessian):
         self.steps[-1].record(projectedDE, Dq, followedUnitVector, oneDgradient, oneDhessian)
 
+    def trajectory(self,Zs):
+        import atomData
+        t = []
+        Zstring = [ atomData.Z_to_symbol[i] for i in Zs ]
+        for iS, S in enumerate(self.steps):
+            t.append( (S.E, list(Zstring), S.geom.copy()) )
+        return t
+
     def summary(self):
         print_opt("\n  ==> Optimization Summary <==\n\n")
         print_opt("  Measures of convergence in internal coordinates in au.\n")

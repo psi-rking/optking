@@ -1,46 +1,44 @@
-#! SCF CC-PVTZ geometry optimzation, with Z-matrix input
-
+#! Linesearch tests
 memory 8gb
-finalEnergy = -76.05776970 #TEST
 
-molecule methaneDimer {
-H       -0.000000     -0.400064     -0.773367
-C       -0.000000     -0.400064      0.322633
-H        1.033319     -0.400064      0.687966
-H       -0.516660     -1.294945      0.687966
-H       -0.516660      0.494816      0.687966
-H       -0.000000     -7.403491     -1.251485
-C       -0.000000     -7.403491     -0.155485
-H        1.033319     -7.403491      0.209849
-H       -0.516660     -8.298372      0.209848
-H       -0.516660     -6.508611      0.209848
+#molecule methaneDimer {
+#H       -0.000000     -0.400064     -0.773367
+#C       -0.000000     -0.400064      0.322633
+#H        1.033319     -0.400064      0.687966
+#H       -0.516660     -1.294945      0.687966
+#H       -0.516660      0.494816      0.687966
+#H       -0.000000     -7.403491     -1.251485
+#C       -0.000000     -7.403491     -0.155485
+#H        1.033319     -7.403491      0.209849
+#H       -0.516660     -8.298372      0.209848
+#H       -0.516660     -6.508611      0.209848
+#}
+
+molecule dimer {
+  Ar
+  Ar 1 4.0
 }
 
-#molecule dimer {
-# Ar
-# Ar 1 4.0
-#}
+set {
+  basis cc-pvdz
+  d_convergence 10
+#  scf_type pk
+#  mp2_type conv
+  geom_maxiter 20
+  g_convergence = gau_tight
+}
+
+
+set optking step_type linesearch
+
+import Psi4Opt
+#Psi4Opt.calcName = 'b3lyp-d'
+Psi4Opt.calcName = 'mp2'
+E = Psi4Opt.Psi4Opt()
+
 #molecule h2o {
 # O
 # H 1 1.0
 # H 1 1.0 2 104.5
 #}
-
-set {
-  basis cc-pvdz
-#  e_convergence 10
-#  d_convergence 10
-#  scf_type pk
-  geom_maxiter 200
-  g_convergence = gau_tight
-#  h_update_den_tol = 1e-10
-  hess_update_use_last = 8
-}
-
-#set optking step_type linesearch
-
-import Psi4Opt
-Psi4Opt.calcName = 'mp2'
-E = Psi4Opt.Psi4Opt()
-compare_values(finalEnergy, E, 6, "LINESEARCH Step Final Energy")                                #TEST
 
