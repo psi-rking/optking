@@ -39,7 +39,7 @@ def convCheck(iterNum, Molsys, dq, f, energies, qPivot=None, masses=None):
     # Remove arbitrary forces for user-specified equilibrium values. 
     if has_fixed:
         print_opt("\tForces used to impose fixed constraints are not included in convergence check.\n")
-        for i,ints in enumerate(intcos):
+        for i,ints in enumerate(Molsys.intcos):
             if ints.fixedEqVal:
                 f[i] = 0
 

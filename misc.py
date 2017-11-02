@@ -1,6 +1,7 @@
 from math import fabs
 import numpy as np
 from printTools import print_opt
+import optExceptions
 
 def delta(i, j):
     if i == j:
@@ -86,7 +87,7 @@ def intList(inList):
 
 def intIntFloatList(inList):
     if len(inList) % 3 != 0:
-        raise ValueError("List is not comprised of int-int-float elements")
+        raise optExceptions.OPT_FAIL("List is not comprised of int-int-float elements")
     outList = []
     for i in range(0,len(inList),3):
         outList.append( int(inList[i+0]) )
@@ -96,7 +97,7 @@ def intIntFloatList(inList):
 
 def intIntIntFloatList(inList):
     if len(inList) % 4 != 0:
-        raise ValueError("List is not comprised of int-int-int-float elements")
+        raise optExceptions.OPT_FAIL("List is not comprised of int-int-int-float elements")
     outList = []
     for i in range(0,len(inList),4):
         outList.append( int(inList[i+0]) )
@@ -107,7 +108,7 @@ def intIntIntFloatList(inList):
 
 def intIntIntIntFloatList(inList):
     if len(inList) % 5 != 0:
-        raise ValueError("List is not comprised of int-int-int-int-float elements")
+        raise optExceptions.OPT_FAIL("List is not comprised of int-int-int-int-float elements")
     outList = []
     for i in range(0,len(inList),5):
         outList.append( int(inList[i+0]) )

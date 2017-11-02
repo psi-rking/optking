@@ -7,6 +7,7 @@
 
 from printTools import print_opt
 Params = 0
+import optExceptions
 
 # Class for enumerated string options.
 def stringOption(storage_name):
@@ -17,7 +18,7 @@ def stringOption(storage_name):
         if value.upper() in allowedStringOptions[storage_name]:
             instance.__dict__[storage_name] = value.upper()
         else:
-            raise ValueError('Invalid value for ' + storage_name)
+            raise optExceptions.OPT_FAIL('Invalid value for ' + storage_name)
     return property(stringOption_getter, stringOption_setter)
 
 
@@ -562,7 +563,7 @@ class OPT_PARAMS(object):
             P.intrafrag_trust_max = 0.1
             print_opt("Moving to run_level 6: XYZ, SD, 1 backstep, smaller trust, smaller step.\n")
         else:
-            raise ValueError("Unknown value of run_level")
+            raise optExceptions.OPT_FAIL("Unknown value of run_level")
 
 
 def welcome():

@@ -1,4 +1,5 @@
 import physconst as pc  # has physical constants
+import optExceptions
 
 from simple import *
 
@@ -42,7 +43,7 @@ class CART(SIMPLE):
         elif setval in [2,'z','Z']:
             self._xyz = 2
         else:
-            raise ValueError("Cartesian coordinate must be set to 0-2 or X-Z")
+            raise optExceptions.OPT_FAIL("Cartesian coordinate must be set to 0-2 or X-Z")
 
     def q(self, geom):
         return geom[self.A,self._xyz]

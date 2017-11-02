@@ -18,7 +18,9 @@ def printInit(printFunction=None):
         print_opt = printFunction
     return
 
-def printMat(M, Ncol=7):
+def printMat(M, Ncol=7, title=None):
+    if title:
+       print_opt(title+'\n')
     for row in range(M.shape[0]):
        tab = 0
        for col in range(M.shape[1]):
@@ -30,7 +32,9 @@ def printMat(M, Ncol=7):
        print_opt("\n")
     return
 
-def printMatString(M,Ncol=7):
+def printMatString(M,Ncol=7,title=None):
+    if title:
+       print_opt(title+'\n')
     s = ''
     for row in range(M.shape[0]):
        tab = 0
@@ -43,7 +47,9 @@ def printMatString(M,Ncol=7):
        s += '\n'
     return s
 
-def printArray(M, Ncol=7):
+def printArray(M, Ncol=7, title=None):
+    if title:
+        print_opt(title+'\n')
     tab = 0
     for col, entry in enumerate(M):
         tab += 1
@@ -54,7 +60,9 @@ def printArray(M, Ncol=7):
     print_opt("\n")
     return
 
-def printArrayString(M, Ncol=7):
+def printArrayString(M, Ncol=7, title=None):
+    if title:
+       print_opt(title+'\n')
     tab = 0
     s = ''
     for i, entry in enumerate(M):
@@ -72,6 +80,7 @@ def printGeomGrad(geom, grad):
 
     for i in range(Natom):
         print_opt("\t%20.10f%20.10f%20.10f\n" % (geom[i,0], geom[i,1], geom[i,2]))
+    print_opt("\n")
     for i in range(Natom):
         print_opt("\t%20.10f%20.10f%20.10f\n" % (grad[3*i+0], grad[3*i+1], grad[3*i+2]))
 

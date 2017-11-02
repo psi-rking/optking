@@ -1,6 +1,7 @@
 # Test the analytic B matrix (dq/dx) via finite differences
 # The 5-point formula should be good to DISP_SIZE^4 -
-#  a few unfortunates will be slightly worse
+#  a few unfortunates will be slightly worse.
+# Returns True or False, doesn't raise exceptions
 import numpy as np
 import intcosMisc
 from printTools import printMat, print_opt

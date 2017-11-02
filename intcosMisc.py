@@ -241,3 +241,27 @@ def convertHessianToCartesians(Hint, intcos, geom, masses=None, g_q=None):
 
     return Hxy
 
+# For given [A,B,C], remove any regular bends as well as any torsions
+# which contain it
+import bend
+import tors
+
+def torsContainsBend(b, t):
+    if (b.atoms in [t.atoms[0:3], list(reversed(t.atoms[0:3])),
+        t.atoms[1:4], list(reversed(t.atoms[1:4]))]):
+        return True
+    return False
+
+def removeOldNowLinearBend( atoms, intcos):
+    b = bend.BEND(atoms[0], atoms[1], atoms[2])
+    print_opt( str(b)+'\n')
+    intcos[:] = [I for I in intcos if not (I == b)]
+    intcos[:] = [I for I in intcos if not (isinstance(I, tors.TORS) and torsContainsBend(b,I))]
+    #    if b == Coord:
+    #        del intcos[iCoord]
+    #    if isinstance(Coord, tors.TORS):
+    #        if (atoms in [Coord.atoms[0:3], list(reversed(Coord.atoms[0:3])),
+    #                      Coord.atoms[1:4], list(reversed(Coord.atoms[1:4]))]):
+    #            del intcos[iCoord]
+    return
+

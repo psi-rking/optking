@@ -5,6 +5,7 @@ import physconst as pc  # has physical constants
 from math import sqrt, cos, sin, tan
 import optParams as op
 from printTools import print_opt
+import optExceptions
 
 # Class for out-of-plane angle.  Definition (A,B,C,D) means angle AB with respect
 # to the CBD plane; canonical order is C < D
@@ -63,7 +64,7 @@ class OOFP(SIMPLE):
     def q(self, geom):
         check, tau = v3d.oofp(geom[self.A], geom[self.B], geom[self.C], geom[self.D])
         if not check:
-            raise INTCO_EXCEPT("OOFP::compute.q: unable to compute out-of-plane value")
+            raise optExceptions.ALG_FAIL("OOFP::compute.q: unable to compute out-of-plane value")
 
         # Extend domain of out-of-plane angles to beyond pi
         if self._near180 == -1 and tau > op.Params.fix_val_near_pi:
@@ -118,7 +119,7 @@ class OOFP(SIMPLE):
         return
 
     def Dq2Dx2(self, geom, dqdx):
-        raise NotImplemented
+        raise optExceptions.ALG_FAIL('no derivative B matrices for out-of-plane angles')
 
     def diagonalHessianGuess(self, geom, Z, guess = "SIMPLE"):
         """ Generates diagonal empirical Hessians in a.u. such as 

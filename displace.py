@@ -2,7 +2,8 @@ import numpy as np
 import optParams as op
 import intcosMisc
 from linearAlgebra import absMax,rms,symmMatInv
-from printTools import print_opt
+from printTools import print_opt,printArray, printMat
+import optExceptions
 
 # dq : displacements in internal coordinates to be performed.
 #      On exit, overridden to actual displacements performed.
@@ -185,8 +186,8 @@ def stepIter(intcos, geom, dq, bt_dx_conv=None, bt_dx_rms_change_conv=None, bt_m
         print_opt("\tBest geometry has RMS(Delta(q)) = %8.2e\n" % best_dq_rms)
         geom[:] = best_geom
 
-    #if op.Params.opt_type == "IRC" and not bt_converged:
-        #raise INTCO_EXCEPTION("Could not take constrained step in an IRC computation.")
+    if op.Params.opt_type == "IRC" and not bt_converged:
+        raise optExceptions.OPT_FAIL("Could not take constrained step in an IRC computation.")
 
     return bt_converged
 
@@ -205,11 +206,14 @@ def oneStep(intcos, geom, dq, printDetails=False):
     dx            = np.zeros( geom.shape[0]*geom.shape[1], float)  # dx is 1D here
 
     dx[:]         = np.dot(B.T, tmp_v_Nint)
-    if printDetails: qOld = intcosMisc.qValues(intcos, geom)
+    if printDetails:
+        qOld = intcosMisc.qValues(intcos, geom)
     geom          += dx.reshape(geom.shape)
 
     if printDetails:
+        qNew = intcosMisc.qValues(intcos, geom)
         dq_achieved = intcosMisc.qValues(intcos, geom) - qOld
+        printArray(dq_achieved)
         print_opt("\t      Report of Single-step\n")
         print_opt("\t  int       dq_achieved        dq_error\n")
         for i in range(len(intcos)):

@@ -1,3 +1,7 @@
+# Functions to compute properties of 3d vectors, including angles,
+# torsions, out-of-plane angles.  Several return False if the operation
+# cannot be completed numerically, as for example a torsion in which 3
+# points are collinear.
 import numpy as np
 from math import sqrt, fabs, sin, acos, asin, fsum
 import optParams as op
@@ -101,7 +105,6 @@ def tors(A, B, C, D):
 
     if not check1 or not check2 or not check3:
         return False, 0.0
-    #    raise INTCO_EXCEPT("v3d.tors: distances are not reasonably normalized for e vectors.")
 
     # Compute bond angles
     check1, phi_123 = angle(A, B, C)
@@ -109,7 +112,6 @@ def tors(A, B, C, D):
 
     if not check1 or not check2:
         return False, 0.0
-    #    raise INTCO_EXCEPT("v3d.tors: cannot compute angles in torsion.")
 
     if phi_123 < phi_lim or phi_123 > (acos(-1) - phi_lim) or \
        phi_234 < phi_lim or phi_234 > (acos(-1) - phi_lim):
@@ -143,17 +145,14 @@ def oofp(A, B, C, D):
     check3, eBD = eAB(B,D)
     if not check1 or not check2 or not check3:
         return False, 0.0
-    #    raise INTCO_EXCEPT("v3d.oofp: distances are not reasonably normalized for e vector")
 
     check1, phi_CBD = angle(C, B, D)
     if not check1:
         return False, 0.0
-    #    raise INTCO_EXCEPT("v3d.oofp: could not compute C-B-D angle.")
  
     # This shouldn't happen unless angle B-C-D -> 0, 
     if sin(phi_CBD) < op.Params.v3d_tors_cos_tol: #reusing parameter
         return False, 0.0
-    #    raise INTCO_EXCEPT("v3d.oofp: C-B-D angle is too close to 0 or pi.")
 
     dotprod = dot( cross(eBC, eBD), eBA) / sin(phi_CBD)
 

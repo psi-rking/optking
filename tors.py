@@ -8,6 +8,7 @@ from physconst import bohr2angstroms
 from misc import HguessLindhRho
 import covRadii
 from printTools import print_opt
+import optExceptions
 
 class TORS(SIMPLE):
 
@@ -71,7 +72,7 @@ class TORS(SIMPLE):
     def q(self, geom):
         check, tau = v3d.tors(geom[self.A], geom[self.B], geom[self.C], geom[self.D])
         if not check:
-            raise INTCO_EXCEPT("TORS.q: unable to compute torsion value")
+            raise optExceptions.ALG_FAIL("TORS.q: unable to compute torsion value")
 
         # Extend values domain of torsion angles beyond pi or -pi, so that
         # delta(values) can be calculated
@@ -240,7 +241,7 @@ class TORS(SIMPLE):
 
         elif guessType == "SCHLEGEL":
             R_BC = v3d.dist(geom[self.B],geom[self.C])
-            Rcov = (covRadii.R[Z[self.B]]+covRadii.R[Z[self.C]])/bohr2angstroms
+            Rcov = (covRadii.R[ int(Z[self.B]) ] + covRadii.R[ int(Z[self.C]) ])/bohr2angstroms
             a = 0.0023
             b = 0.07
             if R_BC > (Rcov + a/b):
@@ -249,7 +250,7 @@ class TORS(SIMPLE):
 
         elif guessType == "FISCHER":
             R = v3d.dist(geom[self.B],geom[self.C])
-            Rcov = (covRadii.R[Z[self.B]]+covRadii.R[Z[self.C]])/bohr2angstroms
+            Rcov = (covRadii.R[ int(Z[self.B]) ] + covRadii.R[ int(Z[self.C]) ])/bohr2angstroms
             a = 0.0015
             b = 14.0
             c = 2.85

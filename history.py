@@ -110,8 +110,6 @@ class HISTORY(object):
         if len(self.steps) < 2:
             return True
   
-        dontBackupYet = True if len(self.steps) < 5 else False
-
         energyChange    = self.steps[-1].E - self.steps[-2].E
         projectedChange = self.steps[-2].projectedDE
       
@@ -130,13 +128,9 @@ class HISTORY(object):
                 return True
             # Actual step is  up.
             elif energyChange > 0:
-                # Throw exception if bad step and not too close to start.
-                if (op.Params.dynamic_level != 0) and not dontBackupYet:
-                    raise BAD_STEP_EXCEPT("Energy has increased in a minimization.")
-                # Not dynamic.  Do limited backsteps only upon request.  Otherwise, keep going.
-                elif HISTORY.consecutiveBacksteps < op.Params.consecutiveBackstepsAllowed:
-                    raise BAD_STEP_EXCEPT("Energy has increased in a minimization.")
+                print_opt("\tEnergy has increased in a minimization.\n")
                 op.Params.decreaseTrustRadius()
+                return False
             # Predicted down.  Actual down.
             elif Energy_ratio < 0.25:
                 op.Params.decreaseTrustRadius()

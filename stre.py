@@ -7,6 +7,7 @@ from misc import delta, ZtoPeriod, HguessLindhRho
 import numpy as np
 from physconst import bohr2angstroms
 from printTools import print_opt
+import optExceptions
 
 class STRE(SIMPLE):
 
@@ -64,7 +65,7 @@ class STRE(SIMPLE):
     def DqDx(self, geom, dqdx, mini=False):
         check, eAB = v3d.eAB(geom[self.A], geom[self.B]) # A->B
         if not check:
-            raise INTCO_EXCEPT("STRE.DqDx: could not normalize s vector")
+            raise optExceptions.ALG_FAIL("STRE.DqDx: could not normalize s vector")
 
         if mini:
             startA = 0
@@ -87,7 +88,7 @@ class STRE(SIMPLE):
     def Dq2Dx2(self, geom, dq2dx2):
         check, eAB = v3d.eAB(geom[self.A], geom[self.B]) # A->B
         if not check:
-            raise INTCO_EXCEPT("STRE.Dq2Dx2: could not normalize s vector")
+            raise optExceptions.ALG_FAIL("STRE.Dq2Dx2: could not normalize s vector")
 
         if not self._inverse:
             length = self.q(geom)

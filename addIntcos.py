@@ -3,6 +3,7 @@ from itertools import combinations,permutations
 import numpy as np
 import sys
 import optParams as op
+import optExceptions
 
 import physconst as pc
 from intcosMisc import qValues
@@ -160,7 +161,7 @@ def addCartesianIntcos(intcos, geom):
     return len(intcos) - Norig
 
 
-# Identify linear angles and add them if necessary.
+# Identify linear angles, return them.
 def linearBendCheck(intcos, geom, dq):
     linearBends = []
 
@@ -185,16 +186,16 @@ def linearBendCheck(intcos, geom, dq):
                 linearBends.append( bend.BEND(A,B,C,bendType="COMPLEMENT") )
 
     linearBendsMissing = []
-    for ib, b in enumerate(linearBends):
-        if ib == 0:
-            print_opt("\tThe following linear bends should be present.\n")
-        print_opt(b)
+    if linearBends:
+        print_opt("\n\tThe following linear bends should be present:\n")
+        for b in linearBends:
+            print_opt('\t'+str(b))
 
-        if b in intcos:
-            print_opt(": already present.\n")
-        else:
-            print_opt(": missing.\n")
-            linearBendsMissing.append(b)
+            if b in intcos:
+                print_opt(", already present.\n")
+            else:
+                print_opt(", missing.\n")
+                linearBendsMissing.append(b)
 
     return linearBendsMissing
 
@@ -204,7 +205,7 @@ def linearBendCheck(intcos, geom, dq):
 ####
 def freezeStretchesFromInputAtomList(frozenStreList, Molsys):
     if len(frozenStreList) % 2 != 0:
-        raise ValueError("Number of atoms in frozen stretch list not divisible by 2.")
+        raise optExceptions.OPT_FAIL("Number of atoms in frozen stretch list not divisible by 2.")
 
     for i in range (0, len(frozenStreList), 2):
         stretch = stre.STRE(frozenStreList[i]-1, frozenStreList[i+1]-1, frozen=True)
@@ -223,7 +224,7 @@ def freezeStretchesFromInputAtomList(frozenStreList, Molsys):
 ####
 def freezeBendsFromInputAtomList(frozenBendList, Molsys):
     if len(frozenBendList) % 3 != 0:
-        raise ValueError("Number of atoms in frozen bend list not divisible by 3.")
+        raise optExceptions.OPT_FAIL("Number of atoms in frozen bend list not divisible by 3.")
 
     for i in range (0, len(frozenBendList), 3):
         bendFroz = bend.BEND(frozenBendList[i]-1, frozenBendList[i+1]-1, \
@@ -243,7 +244,7 @@ def freezeBendsFromInputAtomList(frozenBendList, Molsys):
 ####
 def freezeTorsionsFromInputAtomList(frozenTorsList, Molsys):
     if len(frozenTorsList) % 4 != 0:
-        raise ValueError("Number of atoms in frozen torsion list not divisible by 4.")
+        raise optExceptions.OPT_FAIL("Number of atoms in frozen torsion list not divisible by 4.")
 
     for i in range (0, len(frozenTorsList), 4):
         torsAngle = tors.TORS(frozenTorsList[i]-1, frozenTorsList[i+1]-1,  \
@@ -264,7 +265,7 @@ def checkFragment(atomList, Molsys):
     fragList = Molsys.atomList2uniqueFragList(atomList)
     if len(fragList) != 1:
         print_opt("Coordinate contains atoms in different fragments. Not currently supported.\n")
-        raise ValueError("Atom list contains multiple fragments.")
+        raise optExceptions.OPT_FAIL("Atom list contains multiple fragments.")
     return fragList[0]
 
 # Length mod 3 should be checked in optParams

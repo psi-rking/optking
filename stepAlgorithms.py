@@ -37,7 +37,7 @@ def Dq(Molsys, E, qForces, H, stepType=None, energy_function=None):
     elif stepType == 'LINESEARCH':
         return Dq_LINESEARCH(Molsys, E, qForces, H, energy_function)  
     else:
-        raise ValueError('Dq: step type not yet implemented')
+        raise optExceptions.OPT_FAIL('Dq: step type not yet implemented')
 
 # Apply crude maximum step limit by scaling.
 def applyIntrafragStepScaling(dq):
@@ -56,7 +56,7 @@ def DE_projected(model, step, grad, hess):
     elif model == 'RFO':
         return (step * grad + 0.5 * step * step * hess)/(1 + step*step)
     else:
-        raise ValueError("DE_projected does not recognize model.")
+        raise optExceptions.OPT_FAIL("DE_projected does not recognize model.")
 
 # geometry and E are just for passing
 # at present we are not storing the ACTUAL dq but the attempted
@@ -102,7 +102,7 @@ def Dq_NR(Molsys, E, fq, H):
     # Can check full geometry, but returned indices will correspond then to that.
     linearList = linearBendCheck(Molsys.intcos, Molsys.geom, dq)
     if linearList:
-        raise optExceptions.INTCO_EXCEPT("New linear angles", linearList)
+        raise optExceptions.ALG_FAIL("New linear angles", newLinearBends=linearList)
 
     return dq
 
@@ -359,12 +359,12 @@ def Dq_RFO(Molsys, E, fq, H):
 
     linearList = linearBendCheck(Molsys.intcos, Molsys.geom, dq)
     if linearList:
-        raise optExceptions.INTCO_EXCEPT("New linear angles", linearList)
+        raise optExceptions.ALG_FAIL("New linear angles", newLinearBends=linearList)
 
     # Before quitting, make sure step is reasonable.  It should only be
     # screwball if we are using the "First Guess" after the back-transformation failed.
     if sqrt(np.dot(dq, dq)) > 10 * trust:
-        raise optExceptions.BAD_STEP_EXCEPT("opt.py: Step is far too large.")
+        raise optExceptions.ALG_FAIL("opt.py: Step is far too large.")
 
     return dq
 
@@ -531,12 +531,12 @@ def Dq_P_RFO(Molsys, E, fq, H):
 
     linearList = linearBendCheck(Molsys.intcos, Molsys.geom, dq)
     if linearList:
-        raise optExceptions.INTCO_EXCEPT("New linear angles", linearList)
+        raise optExceptions.ALG_FAIL("New linear angles", newLinearBends=linearList)
 
     # Before quitting, make sure step is reasonable.  It should only be
     # screwball if we are using the "First Guess" after the back-transformation failed.
     if sqrt(np.dot(dq, dq)) > 10 * trust:
-        raise optExceptions.BAD_STEP_EXCEPT("opt.py: Step is far too large.")
+        raise optExceptions.ALG_FAIL("opt.py: Step is far too large.")
     
     return dq
 
@@ -592,7 +592,7 @@ def Dq_SD(Molsys, E, fq):
 
     linearList = linearBendCheck(Molsys.intcos, Molsys.geom, dq)
     if linearList:
-        raise optExceptions.INTCO_EXCEPT("New linear angles", linearList)
+        raise optExceptions.ALG_FAIL("New linear angles", newLinearBends=linearList)
 
     return dq
 
@@ -610,8 +610,9 @@ def Dq_SD(Molsys, E, fq):
 def Dq_BACKSTEP(Molsys):
     print_opt("\tRe-doing last optimization step - smaller this time.\n")
 
+    # Calling function shouldn't let this happen; this is a check for developer
     if len(History.steps) < 2:
-        raise Exception("Backstep called, but no history is available.")
+        raise optExceptions.OPT_FAIL("Backstep called, but no history is available.")
 
     History.consecutiveBacksteps += 1
     print_opt("\tConsecutive backstep number %d.\n" % (History.consecutiveBacksteps))
@@ -652,7 +653,7 @@ def Dq_BACKSTEP(Molsys):
 
     linearList = linearBendCheck(Molsys.intcos, Molsys.geom, dq)
     if linearList:
-        raise optExceptions.INTCO_EXCEPT("New linear angles", linearList)
+        raise optExceptions.ALG_FAIL("New linear angles", newLinearBends=linearList)
 
     return dq
 
@@ -693,10 +694,10 @@ def Dq_LINESEARCH(Molsys, E, fq, H, energy_function):
             Ec = energy_function(xyz)
             Molsys.geom = geomA  # reset geometry to point A
  
-        print_opt("\n\t Current linesearch bounds.\n")
-        print_opt("\t s=%5.3f, Ea=%15.10f\n" % (0, Ea))
-        print_opt("\t s=%5.3f, Eb=%15.10f\n" % (s, Eb))
-        print_opt("\t s=%5.3f, Ec=%15.10f\n" % (2*s, Ec))
+        print_opt("\n\tCurrent linesearch bounds.\n")
+        print_opt("\t s=%7.5f, Ea=%17.12f\n" % (0, Ea))
+        print_opt("\t s=%7.5f, Eb=%17.12f\n" % (s, Eb))
+        print_opt("\t s=%7.5f, Ec=%17.12f\n" % (2*s, Ec))
 
         if Eb < Ea and Eb < Ec:
             # second point is lowest do projection
@@ -779,7 +780,7 @@ def Dq_LINESEARCH(Molsys, E, fq, H, energy_function):
     # Can check full geometry, but returned indices will correspond then to that.
     linearList = linearBendCheck(Molsys.intcos, Molsys.geom, dq)
     if linearList:
-        raise optExceptions.INTCO_EXCEPT("New linear angles", linearList)
+        raise optExceptions.ALG_FAIL("New linear angles", newLinearBends=linearList)
 
     return dq
 

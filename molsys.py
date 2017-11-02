@@ -6,6 +6,7 @@ from printTools import printMat, print_opt
 import physconst as pc
 import covRadii
 import v3d
+import optExceptions
 
 class MOLSYS(object): # new-style classes required for getter/setters
     def __init__(self, fragments, fb_fragments=None, intcos=None):
@@ -87,7 +88,7 @@ class MOLSYS(object): # new-style classes required for getter/setters
         for iF,F in enumerate(self._fragments):
            if atom_index in self.frag_atom_range(iF):
                return iF
-        raise ValueError("atom_index impossibly large")
+        raise optExceptions.OPT_FAIL("atom2frag_index: atom_index impossibly large")
 
     # Given a list of atoms, return all the fragments to which they belong
     def atomList2uniqueFragList(self, atomList):

@@ -77,7 +77,7 @@ class FRAG():
         return
 
     def connectivityFromDistances(self):
-        return addIntcos.connectivityFromDistances(F._geom, F._Z)
+        return addIntcos.connectivityFromDistances(self._geom, self._Z)
 
     def addIntcosFromConnectivity(self, connectivity):
         addIntcos.addIntcosFromConnectivity(connectivity, self._intcos, self._geom)

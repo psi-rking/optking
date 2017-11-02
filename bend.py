@@ -7,6 +7,7 @@ from misc import delta, ZtoPeriod, HguessLindhRho
 from physconst import bohr2angstroms
 import covRadii
 from printTools import print_opt
+import optExceptions
 
 class BEND(SIMPLE):
 
@@ -53,7 +54,7 @@ class BEND(SIMPLE):
         if intype in ("REGULAR" "LINEAR" "COMPLEMENT"):
             self._bendType = intype
         else:
-            raise ValueError("BEND.bendType must be REGULAR, LINEAR, or COMPLEMENT")
+            raise optExceptions.OPT_FAIL("BEND.bendType must be REGULAR, LINEAR, or COMPLEMENT")
 
     def compute_axes(self, geom):
         check, u = v3d.eAB(geom[self.B], geom[self.A]) # B->A
@@ -116,11 +117,11 @@ class BEND(SIMPLE):
         origin = np.zeros( 3, float)
         check, phi = v3d.angle(u, origin, self._x)
         if not check:
-            raise INTCO_EXCEPT("BEND.q could not compute linear bend")
+            raise optExceptions.ALG_FAIL("BEND.q could not compute linear bend")
 
         check, phi2 = v3d.angle(self._x, origin, v)
         if not check:
-            raise INTCO_EXCEPT("BEND.q could not compute linear bend")
+            raise optExceptios.ALG_FAIL("BEND.q could not compute linear bend")
         phi += phi2;
         return phi
 

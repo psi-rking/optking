@@ -1,5 +1,6 @@
 from math import fabs, sqrt
 import numpy as np
+import optExceptions
 
 ### Linear algebra routines.
 def absMax(V):
@@ -18,14 +19,23 @@ def signOfDouble(d):
 
 # Returns eigenvectors as rows?
 def symmMatEig(mat):
-    evals, evects = np.linalg.eigh(mat)
+    try:
+        evals, evects = np.linalg.eigh(mat)
+    except:
+        raise optExceptions.OPT_FAIL("symmMatEig: could not compute eigenvectors")
+        # could be ALG_FAIL ?
     evects = evects.T
     return evals, evects
 
 import operator
 # returns eigenvectors as rows; orders evals
 def asymmMatEig(mat):
-    evals, evects = np.linalg.eig(mat)
+    try:
+        evals, evects = np.linalg.eig(mat)
+    except:
+        raise optExceptions.OPT_FAIL("asymmMatEig: could not compute eigenvectors")
+        # could be ALG_FAIL ?
+
     evects = evects.T
     evalsSorted, evectsSorted = zip(*sorted(zip(evals,evects),key=operator.itemgetter(0)))
     # convert from tuple to array
@@ -43,13 +53,15 @@ def symmMatInv(A, redundant=False, redundant_eval_tol=1.0e-10):
     try:
         evals, evects = symmMatEig(A)
     except:
-        raise INTCO_EXCEPT("symmMatrixInv could not diagonalize")
+        raise optExceptions.OPT_FAIL("symmMatrixInv: could not compute eigenvectors")
+        # could be ALG_FAIL ?
 
     for i in range(dim):
         det *= evals[i]
 
     if not redundant and fabs(det) < 1E-10:
-        raise INTCO_EXCEPT("symmMatrixInv non-generalized inverse of matrix failed")
+        raise optExceptions.OPT_FAIL("symmMatrixInv: non-generalized inverse failed; very small determinant")
+        # could be ALG_FAIL ?
 
     diagInv = np.zeros( (dim,dim), float)
 
@@ -67,7 +79,12 @@ def symmMatInv(A, redundant=False, redundant_eval_tol=1.0e-10):
     return AInv
 
 def symmMatRoot(A, Inverse = None):
-    evals, evects = np.linalg.eigh(A)
+    try:
+        evals, evects = np.linalg.eigh(A)
+    except:
+        raise optExceptions.OPT_FAIL("symmMatRoot: could not compute eigenvectors")
+        # could be ALG_FAIL ?
+
     rootMatrix = np.zeros((len(evals), len(evals)), float)
     if (Inverse):
         for i in range (0,len(evals)):

@@ -1,9 +1,9 @@
 #! Various constrained energy minimizations of HOOH with cc-pvdz RHF
 #! Internal-coordinate constraints in internal-coordinate optimizations.
 
-OH_frozen_stre_rhf       = -150.781122585018   #TEST
-OOH_frozen_bend_rhf      = -150.786370678734   #TEST
-HOOH_frozen_dihedral_rhf = -150.786766848345   #TEST
+OH_frozen_stre_rhf       = -150.781130357 #TEST
+OOH_frozen_bend_rhf      = -150.786372411 #TEST
+HOOH_frozen_dihedral_rhf = -150.786766848 #TEST
 
 set {
   diis false

@@ -3,12 +3,11 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
     
     import caseInsensitiveDict
     userOptions = caseInsensitiveDict.CaseInsensitiveDict( options_in )
-    # Save copy of original user options.
-    origOptions = userOptions.copy()
+    origOptions = userOptions.copy() # Save copy of original user options.
 
     from printTools import printGeomGrad,printMat,printArray,print_opt
 
-    # Create full list of parameters from defaults plus user options.
+    # Create full list of parameters from user options plus defaults.
     import optParams as op
     op.welcome()  # print header
     print_opt("\tProcessing user input options...\n")
@@ -26,41 +25,44 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
     import testB
     import IRCFollowing
     converged = False
+
+    # For IRC computations:
     ircNumber = 0
     qPivot = None # Dummy argument for non-IRC
 
-    # Loop over a variety of algorithms
-    while (converged == False) and (op.Params.dynamic_level < op.Params.dynamic_level_max):
+    while not converged: # may contain multiple algorithms
 
         try:
+            print_opt("Starting optimization algorithm.\n")
             print_opt( str(Molsys) )
-            energies = []
         
-            # Construct connectivity matrix.
-            C = addIntcos.connectivityFromDistances(Molsys.geom, Molsys.Z)
+            # Set internal or cartesian coordinates.
+            if not Molsys.intcos:
+                C = addIntcos.connectivityFromDistances(Molsys.geom, Molsys.Z)
         
-            if op.Params.frag_mode == 'SINGLE':
-                # Splits existing fragments if they are not connected by distance criteria.
-                Molsys.splitFragmentsByConnectivity()
-                #print Molsys
-                # Add to connectivity to make sure all fragments connected.
-                Molsys.augmentConnectivityToSingleFragment(C)
-                print_opt("Connectivity\n")
-                printMat(C)
-                # Bring fragments together into one.
-                Molsys.consolidateFragments();
-            elif op.Params.frag_mode == 'MULTI':
-                # should do nothing if fragments are already split by calling program/constructor.
-                Molsys.splitFragmentsByConnectivity()
-        
-            if op.Params.opt_coordinates in ['REDUNDANT','BOTH']:
-                Molsys.addIntcosFromConnectivity(C)
-            if op.Params.opt_coordinates in ['CARTESIAN','BOTH']:
-                Molsys.addCartesianIntcos()
-
-            addIntcos.addFrozenAndFixedIntcos(Molsys)
+                if op.Params.frag_mode == 'SINGLE':
+                    # Splits existing fragments if they are not connected.
+                    Molsys.splitFragmentsByConnectivity()
+                    # Add to connectivity to make sure all fragments connected.
+                    Molsys.augmentConnectivityToSingleFragment(C)
+                    #print_opt("Connectivity\n")
+                    #printMat(C)
+                    # Bring fragments together into one.
+                    Molsys.consolidateFragments();
+                elif op.Params.frag_mode == 'MULTI':
+                    # should do nothing if fragments are already split by calling program/constructor.
+                    Molsys.splitFragmentsByConnectivity()
             
-            Molsys.printIntcos()
+                if op.Params.opt_coordinates in ['REDUNDANT','BOTH']:
+                    Molsys.addIntcosFromConnectivity(C)
+
+                if op.Params.opt_coordinates in ['CARTESIAN','BOTH']:
+                    Molsys.addCartesianIntcos()
+
+                addIntcos.addFrozenAndFixedIntcos(Molsys)
+                Molsys.printIntcos()
+
+            # Special code for first step of IRC.  Compute Hessian and take step along eigenvector.
             if op.Params.opt_type == 'IRC' and ircNumber == 0:
                 ircStepList = [] #Holds data points for IRC steps
                 xyz = Molsys.geom.copy()
@@ -73,45 +75,18 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
                 e, gX = fGradient(xyz)
                 fq = intcosMisc.qForces(Molsys.intcos, Molsys.geom, gX) 
                 Hq = intcosMisc.convertHessianToInternals(Hcart, Molsys.intcos, xyz)
-                #print_opt("Internal Forces\n")
-                #printArray(fq)
-                #print_opt("Internal Hessian\n")
-                #printMat(Hq)
                 B = intcosMisc.Bmat(Molsys.intcos, Molsys.geom, Molsys.masses)
                 dqPrime, qPivot, qPrime = IRCFollowing.takeHessianHalfStep(Molsys, Hq, B, fq, op.Params.irc_step_size)
-            # Test Hessian transformations.  cartesians -> internals -> cartesians -> internals
-            # Cartesians do not satisy constraints such as frozen COM (undetermined problem)
-            """
-            xyz = Molsys.geom.copy()
-            E, grad = fGradient(xyz, printResults=True)
-            Molsys.geom = xyz # use setter function to save data in fragments
-            Hcart = fHessian(xyz, printResults=False)  # assuming geometry doesn't change
-            Hint = intcosMisc.convertHessianToInternals(Hcart, Molsys.intcos, Molsys.geom, masses=None, g_x=grad)
-            print_opt("Internal Hessian\n")
-            printMat(Hint)
-            G = intcosMisc.Gmat(Molsys.intcos, Molsys.geom, masses=None)
-            import linearAlgebra
-            Ginv = linearAlgebra.symmMatInv(G)
-            B = intcosMisc.Bmat(Molsys.intcos, Molsys.geom, masses=None)
-            import numpy as np
-            Atranspose = np.dot(Ginv, B)
-            q_grad = np.dot(Atranspose, grad)
-            Hcart2 = intcosMisc.convertHessianToCartesians(Hint, Molsys.intcos, Molsys.geom, masses=None, g_q=q_grad)
-            print_opt("Cartesian Hessian from internals\n")
-            printMat(Hcart2)
-            Hint2 = intcosMisc.convertHessianToInternals(Hcart2, Molsys.intcos, Molsys.geom, masses=None, g_x=grad)
-            print_opt("Internal Hessian from Cartesian\n")
-            printMat(Hint2)
-            quit()
-            """
-        
+
+            # Loop over geometry steps.
+            energies = []  # should be moved into history
             for stepNumber in range(op.Params.geom_maxiter): 
+                # compute energy and gradient
                 xyz = Molsys.geom.copy()
                 E, g_x = fGradient(xyz, printResults=False)
                 Molsys.geom = xyz # use setter function to save data in fragments
                 printGeomGrad(Molsys.geom, g_x)
                 energies.append( E )
-            
             
                 if op.Params.test_B:
                     testB.testB(Molsys.intcos, Molsys.geom)
@@ -120,78 +95,73 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
             
                 if op.Params.print_lvl > 3:
                     B = intcosMisc.Bmat(Molsys.intcos, Molsys.geom)
-                    print_opt("B matrix:\n")
-                    printMat(B)
+                    printMat(B, title="B matrix")
         
                 fq = intcosMisc.qForces(Molsys.intcos, Molsys.geom, g_x)
-                if (op.Params.print_lvl > 1):
-                    print_opt("Internal forces in au\n")
-                    printArray(fq)
+                if op.Params.print_lvl > 1:
+                    printArray(fq, title="Internal forces in au")
             
                 history.History.append(Molsys.geom, E, fq); # Save initial step info.
             
-                history.History.currentStepReport()
+                # Analyze previous step performance; adjust trust radius accordingly.
+                # Returns true on first step (no history)
+                lastStepOK = history.History.currentStepReport()
+
+                # If step was bad, take backstep here or raise exception.
+                if lastStepOK:
+                    history.HISTORY.consecutiveBacksteps = 0
+                else:
+                    # Don't go backwards until we've gone a few iterations.
+                    if len(history.History.steps) < 5:
+                        print_opt("\tNear start of optimization, so ignoring bad step.\n")
+                    elif history.HISTORY.consecutiveBacksteps < op.Params.consecutiveBackstepsAllowed:
+                        print_opt("\tTaking backward step.\n")
+                        Dq = stepAlgorithms.Dq(Molsys.intcos, Molsys.geom, E, fq, H, stepType="BACKSTEP")
+                        history.HISTORY.consecutiveBacksteps += 1
+                        continue
+                    else:
+                        raise optExceptions.ALG_FAIL("Bad step, and no more backsteps allowed.")
                
-                if stepNumber == 0:
-                    C = addIntcos.connectivityFromDistances(Molsys.geom, Molsys.Z)
-                            
+                # Produce guess Hessian or update existing Hessian..
                 if stepNumber == 0:
                     if op.Params.full_hess_every > -1:
                         xyz = Molsys.geom.copy()
-                        Hcart = fHessian(xyz, printResults=False) # it's possible function moves geometry
+                        Hcart = fHessian(xyz, printResults=False) # don't let function move geometry
                         H = intcosMisc.convertHessianToInternals(Hcart, Molsys.intcos, xyz, Molsys.masses)
-                        print "compute hessian"
                     else:
                         H = hessian.guess(Molsys.intcos, Molsys.geom, Molsys.Z, C, op.Params.intrafrag_hess)
-                        print "guess hessian"
-                else:  # not first step
-                    if op.Params.full_hess_every < 1: # compute hessian never or only once
+                else:
+                    if op.Params.full_hess_every < 1: # that is, compute hessian never or only once.
                         history.History.hessianUpdate(H, Molsys.intcos)
-                        print "update hessian"
                     elif stepNumber % op.Params.full_hess_every == 0:
                         xyz = Molsys.geom.copy()
                         Hcart = fHessian(xyz, printResults=False) # it's possible function moves geometry
                         H = intcosMisc.convertHessianToInternals(Hcart, Molsys.intcos, xyz, masses=None)
-                        print "compute hessian"
                     else:
                         history.History.hessianUpdate(H, Molsys.intcos)
-                        print "update hessian"
-            
-                    print_opt("Hessian (in au) is:\n")
-                    printMat(H)
-                    print_opt("Hessian in aJ/Ang^2 or aJ/deg^2\n")
-                    hessian.show(H, Molsys.intcos)
+                    #print_opt("Hessian (in au) is:\n")
+                    #printMat(H)
+                    #print_opt("Hessian in aJ/Ang^2 or aJ/deg^2\n")
+                    #hessian.show(H, Molsys.intcos)
         
-                    intcosMisc.applyFixedForces(Molsys, fq, H, stepNumber)
-                    intcosMisc.projectRedundanciesAndConstraints(Molsys.intcos, Molsys.geom, fq, H)
-        
-                try:
-                    if (op.Params.opt_type == 'IRC'):
-                        xyz = Molsys.geom.copy()
-                        E, g = fGradient(xyz, False)
-                        Dq = IRCFollowing.Dq(Molsys, g, E, Hq, B, op.Params.irc_step_size, qPrime, dqPrime)
-                    else:
-                    # displaces and adds step to history
-                        Dq = stepAlgorithms.Dq(Molsys, E, fq, H, op.Params.step_type, fEnergy)
-
-                except optExceptions.BAD_STEP_EXCEPT:
-                    if history.History.consecutiveBacksteps < op.Params.consecutiveBackstepsAllowed:
-                        print_opt("Taking backward step.\n")
-                        Dq = stepAlgorithms.Dq(Molsys.intcos, Molsys.geom, E, fq, H, stepType="BACKSTEP")
-                    else:
-                        print_opt("Maximum number of backsteps has been attempted.\n")
-                        print_opt("Re-raising BAD_STEP exception.\n")
-                        raise optExceptions.BAD_STEP_EXCEPT()
-
+                # handle user defined forces, redundances and constraints
+                intcosMisc.applyFixedForces(Molsys, fq, H, stepNumber)
+                intcosMisc.projectRedundanciesAndConstraints(Molsys.intcos, Molsys.geom, fq, H)
                 intcosMisc.qShowValues(Molsys.intcos, Molsys.geom)        
-                #print_opt("Dq")
-                #printArray(Dq)
+
+                if (op.Params.opt_type == 'IRC'):
+                    xyz = Molsys.geom.copy()
+                    E, g = fGradient(xyz, False)
+                    Dq = IRCFollowing.Dq(Molsys, g, E, Hq, B, op.Params.irc_step_size, qPrime, dqPrime)
+                else: # Displaces and adds step to history.
+                    Dq = stepAlgorithms.Dq(Molsys, E, fq, H, op.Params.step_type, fEnergy)
+
                 converged = convCheck.convCheck(stepNumber, Molsys, Dq, fq, energies, qPivot)
 
-                if (converged and op.Params.opt_type == 'IRC'):
+                if converged and (op.Params.opt_type == 'IRC'):
                     converged = False
                     #add check for minimum
-                    if (atMinimum):
+                    if atMinimum:
                         converged = True
                         break
                 elif converged:
@@ -204,13 +174,13 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
                 print_opt("\tStructure for next step (au):\n")
                 Molsys.printGeom()
 
-            else: # executes if too many steps
-                print_opt("Number of steps (%d) has reached value of GEOM_MAXITER.\n" % (stepNumber+1))
-                raise optExceptions.BAD_STEP_EXCEPT()
+            else: # executes if step limit is reached 
+                print_opt("Number of steps (%d) exceeds maximum allowed (%d).\n" %
+                    (stepNumber+1,op.Params.geom_maxiter))
+                raise optExceptions.ALG_FAIL("Maximum number of steps exceeded.")
 
             #This should be called at the end of each iteration of the for loop, 
-            #if at the minimum converged = True and the for Loop will have been broken out of 
-            if (op.Params.opt_type == 'IRC' and not atMinimum):
+            if (op.Params.opt_type == 'IRC') and (not atMinimum):
                 ircNumber += 1   
                 xyz = Molsys.geom.copy() 
                 ircStepsList.append(ircStep.IRCStep(qPivot, xyz, ircNumber))    
@@ -220,21 +190,43 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
                 B = intcosMisc.Bmat(Molsys.intcos, Molsys.geom, Molsys.masses)
                 qPivot, qPrime, Dq = IRCFollowing.takeGradientHalfStep(Molsys, E, Hq, B, op.Params.irc_step_size, gX)
 
-        except optExceptions.BAD_STEP_EXCEPT:
-            print_opt("optimize.py: Caught bad step exception.\n")   
-            op.Params.dynamic_level += 1
-            if op.Params.dynamic_level == op.Params.dynamic_level_max:
-                print_opt("dynamic_level (%d) may not be further increased.\n" % (op.Params.dynamic_level-1))
-            else:   # keep going
-                print_opt("increasing dynamic_level.\n")
-                print_opt("Erasing old history, hessian, intcos.\n")
-                del H 
+        except optExceptions.ALG_FAIL as AF:
+            print_opt("\tCaught ALG_FAIL exception\n")
+            eraseHistory = False
+            eraseIntcos = False
+
+            if AF.linearBends: # New linear bends detected; Add them, and continue at current level.
+                import bend
+                for l in AF.linearBends:
+                    if l.bendType == "LINEAR": # no need to repeat this code for "COMPLEMENT"
+                       F = addIntcos.checkFragment(l.atoms, Molsys)
+                       intcosMisc.removeOldNowLinearBend(l.atoms, Molsys._fragments[F].intcos)
+                Molsys.addIntcosFromConnectivity()
+                eraseHistory = True
+            elif op.Params.dynamic_level >= (op.Params.dynamic_level_max-1):
+                print_opt("\t Current approach/dynamic_level is %d.\n" % op.Params.dynamic_level)
+                print_opt("\t Alternative approaches are not available or turned on.\n")
+                raise optExceptions.OPT_FAIL("Maximum dynamic_level exceeded.")
+            else:
+                op.Params.dynamic_level += 1
+                print_opt("\t Increasing dynamic_level algorithm to %d.\n" % op.Params.dynamic_level)
+                print_opt("\t Erasing old history, hessian, intcos.\n")
+                eraseIntcos = True
+                eraseHistory = True
+                op.Params.updateDynamicLevelParameters(op.Params.dynamic_level)
+
+            if eraseIntcos:
+                print_opt("\t Erasing coordinates.\n")
                 for f in Molsys._fragments:
                     del f._intcos[:]
+
+            if eraseHistory:
+                print_opt("\t Erasing history.\n")
+                stepNumber = 0
+                del H
                 del history.History[:] # delete steps in history
                 history.History.stepsSinceLastHessian = 0
                 history.History.consecutiveBacksteps = 0
-                op.Params.updateDynamicLevelParameters(op.Params.dynamic_level)
     
     # print summary
     history.History.summary()
@@ -249,7 +241,6 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
     del op.Params
 
     return energy
-
 
     
 def welcome():

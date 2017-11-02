@@ -10,6 +10,7 @@ def show(H, intcos):
     for i, row in enumerate(intcos):
         for j, col in enumerate(intcos):
             Hscaled[i,j] = H[i,j] * pc.hartree2aJ / row.qShowFactor / col.qShowFactor
+    print_opt("Hessian in aJ/Ang^2, etc.\n")
     printMat(Hscaled)
 
 def guess(intcos, geom, Z, connectivity = False, guessType="SIMPLE"):
