@@ -15,9 +15,11 @@ from . import optParams as op
 from math import fabs
 from .linearAlgebra import absMax, rms
 from .intcosMisc import Gmat, Bmat, qValues
+
 # Check convergence criteria and print status to output file.
 # return True, if geometry is optimized
 # By default, checks maximum force and (Delta(E) or maximum disp)
+
 
 def convCheck(iterNum, Molsys, dq, f, energies, qPivot=None, masses=None):
     max_disp = absMax(dq)
@@ -25,10 +27,10 @@ def convCheck(iterNum, Molsys, dq, f, energies, qPivot=None, masses=None):
     Nintco = len(Molsys.intcos)
     has_fixed = any([ints.fixedEqVal for ints in Molsys.intcos])
     energy = energies[-1]
-    last_energy = energies[-2] if len(energies)>1 else 0.0
+    last_energy = energies[-2] if len(energies) > 1 else 0.0
 
-#   if op.Params.opt_type == 'IRC'
-#       if ircData.go:  return True
+    #   if op.Params.opt_type == 'IRC'
+    #       if ircData.go:  return True
 
     # Save original forces and put back in below.
     if op.Params.opt_type == 'IRC' or has_fixed:
@@ -36,10 +38,11 @@ def convCheck(iterNum, Molsys, dq, f, energies, qPivot=None, masses=None):
 
     DE = energy - last_energy
 
-    # Remove arbitrary forces for user-specified equilibrium values. 
+    # Remove arbitrary forces for user-specified equilibrium values.
     if has_fixed:
-        print_opt("\tForces used to impose fixed constraints are not included in convergence check.\n")
-        for i,ints in enumerate(Molsys.intcos):
+        print_opt(
+            "\tForces used to impose fixed constraints are not included in convergence check.\n")
+        for i, ints in enumerate(Molsys.intcos):
             if ints.fixedEqVal:
                 f[i] = 0
 
@@ -51,16 +54,16 @@ def convCheck(iterNum, Molsys, dq, f, energies, qPivot=None, masses=None):
         # compute p_m, mass-weighted hypersphere vector
         q_pivot = qPivot
         x = Molsys.geom
-        print ("B matrix")
-        print (B)
-        print ("geom")
-        print (x)
+        print("B matrix")
+        print(B)
+        print("geom")
+        print(x)
         q = qValues(Molsys.intcos, Molsys.geom)
         #q = np.dot(Ginv, np.dot(B, np.dot(np.identity(Molsys.Natom * 3), x)))
-        print ("q")
-        print (q)
-        print ("q-pivot")
-        print (q_pivot)
+        print("q")
+        print(q)
+        print("q-pivot")
+        print(q_pivot)
         p = np.subtract(q, q_pivot)
 
         # gradient perpendicular to p and tangent to hypersphere is:
@@ -87,41 +90,57 @@ def convCheck(iterNum, Molsys, dq, f, energies, qPivot=None, masses=None):
         print_opt("\n  ==> Convergence Check <==\n\n")
         print_opt("  Measures of convergence in internal coordinates in au.\n")
         print_opt("  Criteria marked as inactive (o), active & met (*), and active & unmet ( ).\n")
-        print_opt("  ---------------------------------------------------------------------------------------------")
+        print_opt(
+            "  ---------------------------------------------------------------------------------------------"
+        )
         if iterNum == 0: print_opt(" ~\n")
         else: print_opt("\n")
-        print_opt("   Step     Total Energy     Delta E     MAX Force     RMS Force      MAX Disp      RMS Disp   ")
+        print_opt(
+            "   Step     Total Energy     Delta E     MAX Force     RMS Force      MAX Disp      RMS Disp   "
+        )
         if iterNum == 0: print_opt(" ~\n")
         else: print_opt("\n")
-        print_opt("  ---------------------------------------------------------------------------------------------")
+        print_opt(
+            "  ---------------------------------------------------------------------------------------------"
+        )
         if iterNum == 0: print_opt(" ~\n")
         else: print_opt("\n")
         print_opt("    Convergence Criteria")
-        if op.Params.i_max_DE   : print_opt("  %10.2e %1s" % (op.Params.conv_max_DE,    "*"))
+        if op.Params.i_max_DE: print_opt("  %10.2e %1s" % (op.Params.conv_max_DE, "*"))
         else: print_opt("             %1s" % "o")
         if op.Params.i_max_force: print_opt("  %10.2e %1s" % (op.Params.conv_max_force, "*"))
         else: print_opt("             %1s" % "o")
         if op.Params.i_rms_force: print_opt("  %10.2e %1s" % (op.Params.conv_rms_force, "*"))
         else: print_opt("             %1s" % "o")
-        if op.Params.i_max_disp : print_opt("  %10.2e %1s" % (op.Params.conv_max_disp,  "*"))
+        if op.Params.i_max_disp: print_opt("  %10.2e %1s" % (op.Params.conv_max_disp, "*"))
         else: print_opt("             %1s" % "o")
-        if op.Params.i_rms_disp : print_opt("  %10.2e %1s" % (op.Params.conv_rms_disp,  "*"))
+        if op.Params.i_rms_disp: print_opt("  %10.2e %1s" % (op.Params.conv_rms_disp, "*"))
         else: print_opt("             %1s" % "o")
         if iterNum == 0: print_opt("  ~\n")
         else: print_opt("\n")
-        print_opt("  ---------------------------------------------------------------------------------------------")
+        print_opt(
+            "  ---------------------------------------------------------------------------------------------"
+        )
         if iterNum == 0: print_opt(" ~\n")
         else: print_opt("\n")
-        print_opt("   %4d %16.8f  %10.2e %1s  %10.2e %1s  %10.2e %1s  %10.2e %1s  %10.2e %1s  ~\n" % (iterNum+1, energy,
-          DE,        ('*' if fabs(DE)       < op.Params.conv_max_DE    else "") if op.Params.i_max_DE    else 'o',
-          max_force, ('*' if fabs(max_force)< op.Params.conv_max_force else "") if op.Params.i_max_force else 'o',
-          rms_force, ('*' if fabs(rms_force)< op.Params.conv_rms_force else "") if op.Params.i_rms_force else 'o',
-          max_disp,  ('*' if fabs(max_disp) < op.Params.conv_max_disp  else "") if op.Params.i_max_disp  else 'o',
-          rms_disp,  ('*' if fabs(rms_disp) < op.Params.conv_rms_disp  else "") if op.Params.i_rms_disp  else 'o' ))
-        print_opt("  ---------------------------------------------------------------------------------------------\n\n")
+        print_opt("   %4d %16.8f  %10.2e %1s  %10.2e %1s  %10.2e %1s  %10.2e %1s  %10.2e %1s  ~\n" %
+                  (iterNum + 1, energy, DE, ('*' if fabs(DE) < op.Params.conv_max_DE else "")
+                   if op.Params.i_max_DE else 'o', max_force,
+                   ('*' if fabs(max_force) < op.Params.conv_max_force else "")
+                   if op.Params.i_max_force else 'o', rms_force,
+                   ('*' if fabs(rms_force) < op.Params.conv_rms_force else "")
+                   if op.Params.i_rms_force else 'o', max_disp,
+                   ('*' if fabs(max_disp) < op.Params.conv_max_disp else "")
+                   if op.Params.i_max_disp else 'o', rms_disp,
+                   ('*' if fabs(rms_disp) < op.Params.conv_rms_disp else "")
+                   if op.Params.i_rms_disp else 'o'))
+        print_opt(
+            "  ---------------------------------------------------------------------------------------------\n\n"
+        )
+
 #
-  
-    # Return forces to what they were when conv_check was called
+
+# Return forces to what they were when conv_check was called
     if op.Params.opt_type == 'IRC' or has_fixed:
         f[:] = f_backup
 
@@ -132,7 +151,7 @@ def convCheck(iterNum, Molsys, dq, f, energies, qPivot=None, masses=None):
        ( op.Params.g_convergence == 'QCHEM' or op.Params.g_convergence == "MOLPRO" ) and \
        max_force < op.Params.conv_max_force and  \
        ( fabs(DE) < op.Params.conv_max_DE or max_disp < op.Params.conv_max_disp):
-           return True
+        return True
 
     # if max/rms forces/disp met or flat potential forces met, convergence!
     if op.Params.i_untampered and \
@@ -143,7 +162,7 @@ def convCheck(iterNum, Molsys, dq, f, energies, qPivot=None, masses=None):
                  max_disp  < op.Params.conv_max_disp  and
                  rms_disp  < op.Params.conv_rms_disp) or
                     100 * rms_force < op.Params.conv_rms_force):
-           return True
+        return True
 
     # if criterion not active or criterion met, convergence!
     if (not op.Params.i_max_DE    or fabs(DE)  < op.Params.conv_max_DE) and \
@@ -151,12 +170,12 @@ def convCheck(iterNum, Molsys, dq, f, energies, qPivot=None, masses=None):
        (not op.Params.i_rms_force or rms_force < op.Params.conv_rms_force) and \
        (not op.Params.i_max_disp  or max_disp  < op.Params.conv_max_disp) and \
        (not op.Params.i_rms_disp  or rms_disp  < op.Params.conv_rms_disp) :
-           return True
+        return True
 
     if op.Params.opt_type == 'IRC' and \
        (not op.Params.i_max_DE   or fabs(DE) < op.Params.conv_max_DE)   and \
        (not op.Params.i_max_disp or max_disp < op.Params.conv_max_disp) and \
        (not op.Params.i_rms_disp or rms_disp < op.Params.conv_rms_disp):
-           return True
-  
+        return True
+
     return False

@@ -9,7 +9,7 @@ from .addIntcos import connectivityFromDistances, addCartesianIntcos
 from .printTools import print_opt
 
 
-class MOLSYS(object): # new-style classes required for getter/setters
+class MOLSYS(object):    # new-style classes required for getter/setters
     def __init__(self, fragments, fb_fragments=None, intcos=None):
         # ordinary fragments with internal structure
         self._fragments = []
@@ -39,32 +39,32 @@ class MOLSYS(object): # new-style classes required for getter/setters
         frags = []
 
         for iF in range(NF):
-            fragMol = mol.extract_subsets(iF+1)
+            fragMol = mol.extract_subsets(iF + 1)
 
             fragNatom = fragMol.natom()
-            print_opt("\tCreating fragment %d with %d atoms\n" % (iF+1,fragNatom))
+            print_opt("\tCreating fragment %d with %d atoms\n" % (iF + 1, fragNatom))
 
-            fragGeom = np.zeros( (fragNatom,3), float)
+            fragGeom = np.zeros((fragNatom, 3), float)
             fragGeom[:] = fragMol.geometry()
-         
+
             #fragZ = np.zeros( fragNatom, int)
-            fragZ= []
+            fragZ = []
             for i in range(fragNatom):
-                fragZ.append( int(fragMol.Z(i)) )
+                fragZ.append(int(fragMol.Z(i)))
                 #fragZ[i] = fragMol.Z(i)
-         
-            fragMasses = np.zeros( fragNatom, float)
+
+            fragMasses = np.zeros(fragNatom, float)
             for i in range(fragNatom):
                 fragMasses[i] = fragMol.mass(i)
 
-            frags.append( frag.FRAG(fragZ, fragGeom, fragMasses) )
-        return cls( frags )
+            frags.append(frag.FRAG(fragZ, fragGeom, fragMasses))
+        return cls(frags)
 
     @property
     def Natom(self):
         s = 0
         for F in self._fragments:
-            s += F.Natom 
+            s += F.Natom
         return s
 
     @property
@@ -76,7 +76,7 @@ class MOLSYS(object): # new-style classes required for getter/setters
         if iF >= len(self._fragments):
             return ValueError()
         start = 0
-        for i in range(0,iF):
+        for i in range(0, iF):
             start += self._fragments[i].Natom
         return start
 
@@ -86,9 +86,9 @@ class MOLSYS(object): # new-style classes required for getter/setters
 
     # accepts absolute atom index, returns fragment index
     def atom2frag_index(self, atom_index):
-        for iF,F in enumerate(self._fragments):
-           if atom_index in self.frag_atom_range(iF):
-               return iF
+        for iF, F in enumerate(self._fragments):
+            if atom_index in self.frag_atom_range(iF):
+                return iF
         raise optExceptions.OPT_FAIL("atom2frag_index: atom_index impossibly large")
 
     # Given a list of atoms, return all the fragments to which they belong
@@ -102,24 +102,24 @@ class MOLSYS(object): # new-style classes required for getter/setters
 
     @property
     def geom(self):
-        geom = np.zeros( (self.Natom,3), float)
+        geom = np.zeros((self.Natom, 3), float)
         for iF, F in enumerate(self._fragments):
-            row   = self.frag_1st_atom(iF)
-            geom[row:(row+F.Natom),:] = F.geom
+            row = self.frag_1st_atom(iF)
+            geom[row:(row + F.Natom), :] = F.geom
         return geom
 
     @geom.setter
     def geom(self, newgeom):
         for iF, F in enumerate(self._fragments):
-            row   = self.frag_1st_atom(iF)
-            F.geom[:] = newgeom[row:(row+F.Natom),:]
+            row = self.frag_1st_atom(iF)
+            F.geom[:] = newgeom[row:(row + F.Natom), :]
 
     @property
     def masses(self):
-        m = np.zeros( self.Natom, float )
+        m = np.zeros(self.Natom, float)
         for iF, F in enumerate(self._fragments):
             start = self.frag_1st_atom(iF)
-            m[start:(start+F.Natom)] = F.masses
+            m[start:(start + F.Natom)] = F.masses
         return m
 
     @property
@@ -127,27 +127,27 @@ class MOLSYS(object): # new-style classes required for getter/setters
         z = [0 for i in range(self.Natom)]
         for iF, F in enumerate(self._fragments):
             first = self.frag_1st_atom(iF)
-            z[first:(first+F.Natom)] = F.Z
+            z[first:(first + F.Natom)] = F.Z
         return z
 
     @property
     def intcos(self):
         _intcos = []
         for F in self._fragments:
-           _intcos += F.intcos
+            _intcos += F.intcos
         return _intcos
 
     def frag_1st_intco(self, iF):
         if iF >= len(self._fragments):
             return ValueError()
         start = 0
-        for i in range(0,iF):
+        for i in range(0, iF):
             start += len(self._fragments[i]._intcos)
         return start
 
     def printIntcos(self):
         for iF, F in enumerate(self._fragments):
-            print_opt("Fragment %d\n" % (iF+1))
+            print_opt("Fragment %d\n" % (iF + 1))
             F.printIntcos()
         return
 
@@ -163,12 +163,12 @@ class MOLSYS(object): # new-style classes required for getter/setters
 
     def printGeom(self):
         for iF, F in enumerate(self._fragments):
-            print_opt("Fragment %d\n" % (iF+1))
+            print_opt("Fragment %d\n" % (iF + 1))
             F.printGeom()
 
     def showGeom(self):
         for iF, F in enumerate(self._fragments):
-            print_opt("Fragment %d\n" % (iF+1))
+            print_opt("Fragment %d\n" % (iF + 1))
             F.showGeom()
 
     def consolidateFragments(self):
@@ -177,12 +177,12 @@ class MOLSYS(object): # new-style classes required for getter/setters
         print_opt("Consolidating multiple fragments into one for optimization.\n")
         consolidatedFrag = frag.FRAG(self.Z, self.geom, self.masses)
         del self._fragments[:]
-        self._fragments.append( consolidatedFrag )
+        self._fragments.append(consolidatedFrag)
 
     # Split any fragment not connected by bond connectivity.
     def splitFragmentsByConnectivity(self):
-        tempZ      = np.copy(self.Z)
-        tempGeom   = np.copy(self.geom)
+        tempZ = np.copy(self.Z)
+        tempGeom = np.copy(self.geom)
         tempMasses = np.copy(self.masses)
 
         newFragments = []
@@ -191,7 +191,7 @@ class MOLSYS(object): # new-style classes required for getter/setters
             atomsToAllocate = list(reversed(range(F.Natom)))
 
             while atomsToAllocate:
-                frag_atoms = [ atomsToAllocate.pop() ]
+                frag_atoms = [atomsToAllocate.pop()]
 
                 more_found = True
                 while more_found:
@@ -199,7 +199,7 @@ class MOLSYS(object): # new-style classes required for getter/setters
                     addAtoms = []
                     for A in frag_atoms:
                         for B in atomsToAllocate:
-                            if C[A, B]: 
+                            if C[A, B]:
                                 addAtoms.append(B)
                                 more_found = True
 
@@ -209,14 +209,14 @@ class MOLSYS(object): # new-style classes required for getter/setters
 
                 frag_atoms.sort()
                 subNatom = len(frag_atoms)
-                subZ      = np.zeros(subNatom, float)
-                subGeom   = np.zeros( (subNatom,3), float)
+                subZ = np.zeros(subNatom, float)
+                subGeom = np.zeros((subNatom, 3), float)
                 subMasses = np.zeros(subNatom, float)
                 for i, I in enumerate(frag_atoms):
-                    subZ[i]        = tempZ[I]
-                    subGeom[i,0:3] = tempGeom[I,0:3]
-                    subMasses[i]   = tempMasses[I]
-                newFragments.append( frag.FRAG(subZ, subGeom, subMasses) )
+                    subZ[i] = tempZ[I]
+                    subGeom[i, 0:3] = tempGeom[I, 0:3]
+                    subMasses[i] = tempMasses[I]
+                newFragments.append(frag.FRAG(subZ, subGeom, subMasses))
 
         del self._fragments[:]
         self._fragments = newFragments
@@ -232,9 +232,9 @@ class MOLSYS(object): # new-style classes required for getter/setters
 
         # Which fragments are connected?
         nF = self.Nfragments
-        frag_connectivity = np.zeros((nF,nF))
+        frag_connectivity = np.zeros((nF, nF))
         for iF in range(nF):
-            frag_connectivity[iF,iF] = 1
+            frag_connectivity[iF, iF] = 1
 
         Z = self.Z
 
@@ -242,42 +242,42 @@ class MOLSYS(object): # new-style classes required for getter/setters
         all_connected = False
         while not all_connected:
             for f2 in range(nF):
-              for f1 in range(f2):
-                  if frag_connectivity[f1][f2]:
-                      continue # already connected
-                  minVal = 1.0e12
-      
-                  # Find closest 2 atoms between fragments.
-                  for f1_atom in fragAtoms[f1]:
-                    for f2_atom in fragAtoms[f2]:
-                      tval = v3d.dist(geom[f1_atom], geom[f2_atom])
-                      if tval < minVal:
-                        minVal = tval
-                        i = f1_atom
-                        j = f2_atom
-        
-                  Rij = v3d.dist(geom[i], geom[j])
-                  R_i = covRadii.R[ int(Z[i]) ] / pc.bohr2angstroms
-                  R_j = covRadii.R[ int(Z[j]) ] / pc.bohr2angstroms
-                  if Rij > scale_dist * (R_i + R_j):
-                    continue  # ignore this as too far - for starters.  may have A-B-C situation.
-      
-                  print_opt("\tConnecting fragments with atoms %d and %d\n" % (i+1, j+1))
-                  C[i][j] = C[j][i] = True
-                  frag_connectivity[f1][f2] = frag_connectivity[f2][f1] = True
+                for f1 in range(f2):
+                    if frag_connectivity[f1][f2]:
+                        continue    # already connected
+                    minVal = 1.0e12
 
-                  # Now check for possibly symmetry-related atoms which are just as close
-                  # We need them all to avoid symmetry breaking.
-                  for f1_atom in fragAtoms[f1]:
-                    for f2_atom in fragAtoms[f2]:
-                      if f1_atom == i and f2_atom == j: # already have this one
-                        continue
-                      tval = v3d.dist(geom[f1_atom], geom[f2_atom])
-                      if np.fabs(tval - minVal) < 1.0e-10:
-                        i = f1_atom
-                        j = f2_atom
-                        print_opt("\tAlso, with atoms %d and %d\n" % (i+1, j+1))
-                        C[i][j] = C[j][i] = True
+                    # Find closest 2 atoms between fragments.
+                    for f1_atom in fragAtoms[f1]:
+                        for f2_atom in fragAtoms[f2]:
+                            tval = v3d.dist(geom[f1_atom], geom[f2_atom])
+                            if tval < minVal:
+                                minVal = tval
+                                i = f1_atom
+                                j = f2_atom
+
+                    Rij = v3d.dist(geom[i], geom[j])
+                    R_i = covRadii.R[int(Z[i])] / pc.bohr2angstroms
+                    R_j = covRadii.R[int(Z[j])] / pc.bohr2angstroms
+                    if Rij > scale_dist * (R_i + R_j):
+                        continue    # ignore this as too far - for starters.  may have A-B-C situation.
+
+                    print_opt("\tConnecting fragments with atoms %d and %d\n" % (i + 1, j + 1))
+                    C[i][j] = C[j][i] = True
+                    frag_connectivity[f1][f2] = frag_connectivity[f2][f1] = True
+
+                    # Now check for possibly symmetry-related atoms which are just as close
+                    # We need them all to avoid symmetry breaking.
+                    for f1_atom in fragAtoms[f1]:
+                        for f2_atom in fragAtoms[f2]:
+                            if f1_atom == i and f2_atom == j:    # already have this one
+                                continue
+                            tval = v3d.dist(geom[f1_atom], geom[f2_atom])
+                            if np.fabs(tval - minVal) < 1.0e-10:
+                                i = f1_atom
+                                j = f2_atom
+                                print_opt("\tAlso, with atoms %d and %d\n" % (i + 1, j + 1))
+                                C[i][j] = C[j][i] = True
 
             # Test whether all frags are connected using current distance threshold
             if np.sum(frag_connectivity[0]) == nF:
@@ -287,4 +287,3 @@ class MOLSYS(object): # new-style classes required for getter/setters
                 scale_dist += 0.2
                 print_opt("\tIncreasing scaling to %6.3f to connect fragments.\n" % scale_dist)
         return
-

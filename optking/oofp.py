@@ -2,38 +2,37 @@ from math import cos, sin, tan
 
 from . import optExceptions
 from . import optParams as op
-from . import physconst as pc  # has physical constants
+from . import physconst as pc    # has physical constants
 from . import v3d
 from .printTools import print_opt
 from .simple import *
 
-
 # Class for out-of-plane angle.  Definition (A,B,C,D) means angle AB with respect
 # to the CBD plane; canonical order is C < D
 
-class OOFP(SIMPLE):
 
+class OOFP(SIMPLE):
     def __init__(self, a, b, c, d, frozen=False, fixedEqVal=None):
 
-        if c < d:   atoms = (a, b, c, d)
-        else:       atoms = (a, b, d, c)
+        if c < d: atoms = (a, b, c, d)
+        else: atoms = (a, b, d, c)
         self._near180 = 0
         SIMPLE.__init__(self, atoms, frozen, fixedEqVal)
 
     def __str__(self):
         if self.frozen: s = '*'
-        else:           s = ' '
+        else: s = ' '
 
         s += "O"
 
-        s += "(%d,%d,%d,%d)" % (self.A+1, self.B+1, self.C+1, self.D+1)
+        s += "(%d,%d,%d,%d)" % (self.A + 1, self.B + 1, self.C + 1, self.D + 1)
         if self.fixedEqVal:
             s += "[%.4f]" % self.fixedEqVal
         return s
 
     def __eq__(self, other):
         if self.atoms != other.atoms: return False
-        elif not isinstance(other,OOFP): return False
+        elif not isinstance(other, OOFP): return False
         else: return True
 
     @property
@@ -42,9 +41,9 @@ class OOFP(SIMPLE):
 
     def updateOrientation(self, geom):
         tval = self.q(geom)
-        if   tval > op.Params.fix_val_near_pi:
+        if tval > op.Params.fix_val_near_pi:
             self._near180 = +1
-        elif tval < -1*op.Params.fix_val_near_pi:
+        elif tval < -1 * op.Params.fix_val_near_pi:
             self._near180 = -1
         else:
             self._near180 = 0
@@ -54,7 +53,7 @@ class OOFP(SIMPLE):
     def qShowFactor(self):
         return 180.0 / pc.pi
 
-    def qShow(self, geom):  # return in degrees
+    def qShow(self, geom):    # return in degrees
         return self.q(geom) * self.qShowFactor
 
     @property
@@ -70,7 +69,7 @@ class OOFP(SIMPLE):
         # Extend domain of out-of-plane angles to beyond pi
         if self._near180 == -1 and tau > op.Params.fix_val_near_pi:
             return tau - 2.0 * pc.pi
-        elif self._near180 == +1 and tau < -1*op.Params.fix_val_near_pi:
+        elif self._near180 == +1 and tau < -1 * op.Params.fix_val_near_pi:
             return tau + 2.0 * pc.pi
         else:
             return tau
@@ -84,9 +83,9 @@ class OOFP(SIMPLE):
         rBA = v3d.norm(eBA)
         rBC = v3d.norm(eBC)
         rBD = v3d.norm(eBD)
-        eBA *= 1.0/rBA
-        eBC *= 1.0/rBC
-        eBD *= 1.0/rBD
+        eBA *= 1.0 / rBA
+        eBC *= 1.0 / rBC
+        eBD *= 1.0 / rBD
 
         # compute out-of-plane value, C-B-D angle
         val = self.q(geom)
@@ -96,7 +95,7 @@ class OOFP(SIMPLE):
         tmp = v3d.cross(eBC, eBD)
         tmp /= cos(val) * sin(phi_CBD)
         tmp2 = tan(val) * eBA
-        dqdx[3*self.A:3*self.A+3] = (tmp - tmp2) / rBA
+        dqdx[3 * self.A:3 * self.A + 3] = (tmp - tmp2) / rBA
 
         # S vector for C
         tmp = v3d.cross(eBD, eBA)
@@ -104,7 +103,7 @@ class OOFP(SIMPLE):
         tmp2 = cos(phi_CBD) * eBD
         tmp3 = -1.0 * tmp2 + eBC
         tmp3 *= tan(val) / (sin(phi_CBD) * sin(phi_CBD))
-        dqdx[3*self.C:3*self.C+3] = (tmp - tmp3) / rBC
+        dqdx[3 * self.C:3 * self.C + 3] = (tmp - tmp3) / rBC
 
         # S vector for D
         tmp = v3d.cross(eBA, eBC)
@@ -112,7 +111,7 @@ class OOFP(SIMPLE):
         tmp2 = cos(phi_CBD) * eBC
         tmp3 = -1.0 * tmp2 + eBD
         tmp3 *= tan(val) / (sin(phi_CBD) * sin(phi_CBD))
-        dqdx[3*self.D:3*self.D+3] = (tmp - tmp3) / rBD
+        dqdx[3 * self.D:3 * self.D + 3] = (tmp - tmp3) / rBD
 
         # S vector for B
         dqdx[3*self.B:3*self.B+3] = -1.0 * dqdx[3*self.A:3*self.A+3] \
@@ -122,7 +121,7 @@ class OOFP(SIMPLE):
     def Dq2Dx2(self, geom, dqdx):
         raise optExceptions.ALG_FAIL('no derivative B matrices for out-of-plane angles')
 
-    def diagonalHessianGuess(self, geom, Z, guess = "SIMPLE"):
+    def diagonalHessianGuess(self, geom, Z, guess="SIMPLE"):
         """ Generates diagonal empirical Hessians in a.u. such as 
           Schlegel, Theor. Chim. Acta, 66, 333 (1984) and
           Fischer and Almlof, J. Phys. Chem., 96, 9770 (1992).
@@ -132,5 +131,3 @@ class OOFP(SIMPLE):
         else:
             print_opt("Warning: Hessian guess encountered unknown coordinate type.\n")
             return 1.0
-
-

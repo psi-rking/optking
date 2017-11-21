@@ -5,8 +5,8 @@ from . import atomData
 from . import physconst
 from .printTools import printArrayString, printMatString, print_opt
 
-
 # Geometry is 2D object (atom,xyz)
+
 
 class FRAG:
     def __init__(self, Z, geom, masses, intcos=None):
@@ -35,19 +35,19 @@ class FRAG:
     @classmethod
     def fromPsi4Molecule(cls, mol):
         mol.update_geometry()
-        geom = np.array( mol.geometry() )
+        geom = np.array(mol.geometry())
         Natom = mol.natom()
-         
+
         #Z = np.zeros( Natom, int)
         Z = []
         for i in range(Natom):
-            Z.append( int(mol.Z(i)) )
-         
-        masses = np.zeros( Natom, float)
+            Z.append(int(mol.Z(i)))
+
+        masses = np.zeros(Natom, float)
         for i in range(Natom):
             masses[i] = mol.mass(i)
-         
-        return cls(Z,geom,masses)
+
+        return cls(Z, geom, masses)
 
     @property
     def Natom(self):
@@ -73,7 +73,8 @@ class FRAG:
         print_opt("\tInternal Coordinate Values\n")
         print_opt("\t - Coordinate -           - BOHR/RAD -       - ANG/DEG -\n")
         for coord in self._intcos:
-            print_opt('\t%-18s=%17.6f%19.6f\n' % (coord, coord.q(self._geom), coord.qShow(self._geom)))
+            print_opt('\t%-18s=%17.6f%19.6f\n' % (coord, coord.q(self._geom),
+                                                  coord.qShow(self._geom)))
         print_opt("\n")
         return
 
@@ -98,5 +99,3 @@ class FRAG:
             print_opt("\t%5s%15.10f%15.10f%15.10f\n" % \
             (atomData.Z_to_symbol[self._Z[i]], Ang[i,0], Ang[i,1], Ang[i,2]))
         print_opt("\n")
-
-

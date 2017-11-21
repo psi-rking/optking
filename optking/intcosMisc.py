@@ -7,24 +7,26 @@ from . import optParams as op
 from .linearAlgebra import symmMatInv
 from .printTools import printMat, printArray, print_opt
 
-
 # Simple operations on internal :148
 #coordinate sets.  For example,
 # return values, Bmatrix or fix orientation.
 
+
 # q    -> qValues
 # DqDx -> Bmat
 def qValues(intcos, geom):
-    q  = np.zeros( (len(intcos)), float)
+    q = np.zeros((len(intcos)), float)
     for i, intco in enumerate(intcos):
         q[i] = intco.q(geom)
     return q
 
+
 def qShowValues(intcos, geom):
-    q  = np.zeros( (len(intcos)), float)
+    q = np.zeros((len(intcos)), float)
     for i, intco in enumerate(intcos):
         q[i] = intco.qShow(geom)
     return q
+
 
 def updateDihedralOrientations(intcos, geom):
     for intco in intcos:
@@ -32,11 +34,13 @@ def updateDihedralOrientations(intcos, geom):
             intco.updateOrientation(geom)
     return
 
+
 def fixBendAxes(intcos, geom):
     for intco in intcos:
         if isinstance(intco, bend.BEND):
             intco.fixBendAxes(geom)
     return
+
 
 def unfixBendAxes(intcos):
     for intco in intcos:
@@ -44,12 +48,13 @@ def unfixBendAxes(intcos):
             intco.unfixBendAxes()
     return
 
+
 def Bmat(intcos, geom, masses=None):
     Nint = len(intcos)
     Ncart = geom.size
 
-    B = np.zeros( (Nint,Ncart), float)
-    for i,intco in enumerate(intcos):
+    B = np.zeros((Nint, Ncart), float)
+    for i, intco in enumerate(intcos):
         intco.DqDx(geom, B[i])
 
     if masses is not None:
@@ -57,9 +62,10 @@ def Bmat(intcos, geom, masses=None):
         for i in range(len(intcos)):
             for a in range(len(geom)):
                 for xyz in range(3):
-                    B[i, 3*a + xyz] /= sqrt(masses[a])
+                    B[i, 3 * a + xyz] /= sqrt(masses[a])
 
     return B
+
 
 def Gmat(intcos, geom, masses=None):
     B = Bmat(intcos, geom, masses)
@@ -68,26 +74,28 @@ def Gmat(intcos, geom, masses=None):
         for i in range(len(intcos)):
             for a in range(len(geom)):
                 for xyz in range(3):
-                    B[i][3*a+xyz] /= sqrt(masses[a])
+                    B[i][3 * a + xyz] /= sqrt(masses[a])
 
     return np.dot(B, B.T)
-        
+
+
 # Compute forces in internal coordinates in au, f_q = G_inv B u f_x
 # if u is unit matrix, f_q = (BB^T)^(-1) * B f_x
 def qForces(intcos, geom, gradient_x):
     if len(intcos) == 0 or len(geom) == 0: return np.zeros(0, float)
     B = Bmat(intcos, geom)
-    fx = -1.0 * gradient_x     # gradient -> forces
-    temp_arr = np.dot(B,fx.T)
+    fx = -1.0 * gradient_x    # gradient -> forces
+    temp_arr = np.dot(B, fx.T)
     del fx
 
-    G    = np.dot(B, B.T)  
+    G = np.dot(B, B.T)
     del B
-    Ginv = symmMatInv(G,redundant=True)
+    Ginv = symmMatInv(G, redundant=True)
     del G
 
-    fq = np.dot(Ginv,temp_arr.T)
+    fq = np.dot(Ginv, temp_arr.T)
     return fq
+
 
 # Prints them, but does not recompute them.
 def qShowForces(intcos, forces):
@@ -96,14 +104,16 @@ def qShowForces(intcos, forces):
         qaJ[i] *= intco.fShowFactor
     return qaJ
 
+
 def constraint_matrix(intcos):
-    if not any( [coord.frozen for coord in intcos ]):
+    if not any([coord.frozen for coord in intcos]):
         return None
-    C = np.zeros((len(intcos),len(intcos)), float)
-    for i,coord in enumerate(intcos):
+    C = np.zeros((len(intcos), len(intcos)), float)
+    for i, coord in enumerate(intcos):
         if coord.frozen:
-            C[i,i] = 1.0
+            C[i, i] = 1.0
     return C
+
 
 # Project redundancies and constraints out of forces and Hessian.
 def projectRedundanciesAndConstraints(intcos, geom, fq, H):
@@ -112,7 +122,7 @@ def projectRedundanciesAndConstraints(intcos, geom, fq, H):
     # compute projection matrix = G G^-1
     G = Gmat(intcos, geom)
     G_inv = symmMatInv(G, redundant=True)
-    Pprime = np.dot(G, G_inv) 
+    Pprime = np.dot(G, G_inv)
     if op.Params.print_lvl >= 3:
         print_opt("\tProjection matrix for redundancies.\n")
         printMat(Pprime)
@@ -123,24 +133,25 @@ def projectRedundanciesAndConstraints(intcos, geom, fq, H):
     if C is not None:
         print_opt("Adding constraints for projection.\n")
         printMat(C)
-        P= np.zeros((len(intcos), len(intcos)), float)
+        P = np.zeros((len(intcos), len(intcos)), float)
         #print_opt(np.dot(C, np.dot(Pprime, C)))
-        CPC = np.zeros((len(intcos), len(intcos)), float) 
-        CPC[:,:] = np.dot(C, np.dot(Pprime, C))
-        CPC = symmMatInv(CPC, redundant = True)  
-        P[:,:] = Pprime - np.dot(Pprime, np.dot(C, np.dot(CPC, np.dot(C, Pprime))))
+        CPC = np.zeros((len(intcos), len(intcos)), float)
+        CPC[:, :] = np.dot(C, np.dot(Pprime, C))
+        CPC = symmMatInv(CPC, redundant=True)
+        P[:, :] = Pprime - np.dot(Pprime, np.dot(C, np.dot(CPC, np.dot(C, Pprime))))
         # Project redundancies out of forces.
         # fq~ = P fq
         fq[:] = np.dot(P, fq.T)
 
         if op.Params.print_lvl >= 3:
-            print_opt("\tInternal forces in au, after projection of redundancies and constraints.\n")
+            print_opt(
+                "\tInternal forces in au, after projection of redundancies and constraints.\n")
             printArray(fq)
         # Project redundancies out of Hessian matrix.
         # Peng, Ayala, Schlegel, JCC 1996 give H -> PHP + 1000(1-P)
         # The second term appears unnecessary and sometimes messes up Hessian updating.
         tempMat = np.dot(H, P)
-        H[:,:] = np.dot(P, tempMat)
+        H[:, :] = np.dot(P, tempMat)
         #for i in range(dim)
         #    H[i,i] += 1000 * (1.0 - P[i,i])
         #for i in range(dim)
@@ -150,32 +161,36 @@ def projectRedundanciesAndConstraints(intcos, geom, fq, H):
             print_opt("Projected (PHP) Hessian matrix\n")
             printMat(H)
 
+
 def applyFixedForces(Molsys, fq, H, stepNumber):
     x = Molsys.geom
-    for iF,F in enumerate(Molsys._fragments):
+    for iF, F in enumerate(Molsys._fragments):
         for i, intco in enumerate(F.intcos):
             if intco.fixed:
-              location = Molsys.frag_1st_intco(iF) + i
-              val   = intco.q(x)
-              eqVal = intco.fixedEqVal
+                location = Molsys.frag_1st_intco(iF) + i
+                val = intco.q(x)
+                eqVal = intco.fixedEqVal
 
-              # Increase force constant by 5% of initial value per iteration
-              k = (1 + 0.05 * stepNumber) * op.Params.fixed_coord_force_constant
-              force = k * (eqVal - val)
-              H[location][location] = k
+                # Increase force constant by 5% of initial value per iteration
+                k = (1 + 0.05 * stepNumber) * op.Params.fixed_coord_force_constant
+                force = k * (eqVal - val)
+                H[location][location] = k
 
-              print_opt("\n\tAdding user-defined constraint: Fragment %d; Coordinate %d:\n" % (iF+1, i+1))
-              print_opt("\t\tValue = %12.6f; Fixed value    = %12.6f" % (val, eqVal))
-              print_opt("\t\tForce = %12.6f; Force constant = %12.6f" % (force, k))
-              fq[location] = force
+                print_opt("\n\tAdding user-defined constraint: Fragment %d; Coordinate %d:\n" %
+                          (iF + 1, i + 1))
+                print_opt("\t\tValue = %12.6f; Fixed value    = %12.6f" % (val, eqVal))
+                print_opt("\t\tForce = %12.6f; Force constant = %12.6f" % (force, k))
+                fq[location] = force
 
-              # Delete coupling between this coordinate and others.
-              print_opt("\t\tRemoving off-diagonal coupling between coordinate %d and others." % (location+1))
-              for j in range(len(H)): # gives first dimension length
-                if j != location:
-                  H[j][location] = H[location][j] = 0
+                # Delete coupling between this coordinate and others.
+                print_opt("\t\tRemoving off-diagonal coupling between coordinate %d and others." %
+                          (location + 1))
+                for j in range(len(H)):    # gives first dimension length
+                    if j != location:
+                        H[j][location] = H[location][j] = 0
 
     return
+
 
 """
 def massWeightedUMatrixCart(masses): 
@@ -189,6 +204,7 @@ def massWeightedUMatrixCart(masses):
     return U
 """
 
+
 def convertHessianToInternals(H, intcos, geom, masses=None, g_x=None):
     print_opt("Converting Hessian from .cartesians to internals.\n")
 
@@ -197,27 +213,29 @@ def convertHessianToInternals(H, intcos, geom, masses=None, g_x=None):
     B = Bmat(intcos, geom, masses)
     Atranspose = np.dot(Ginv, B)
 
-    if g_x is None:  # A^t Hxy A
+    if g_x is None:    # A^t Hxy A
         print_opt("Neglecting force/B-matrix derivative term, only correct at stationary points.\n")
         Hworking = H
-    else:           # A^t (Hxy - Kxy) A;    K_xy = sum_q ( grad_q[I] d^2(q_I)/(dx dy) )
+    else:    # A^t (Hxy - Kxy) A;    K_xy = sum_q ( grad_q[I] d^2(q_I)/(dx dy) )
         print_opt("Including force/B-matrix derivative term.\n")
         Hworking = H.copy()
 
         g_q = np.dot(Atranspose, g_x)
-        Ncart = 3*len(geom)
-        dq2dx2 = np.zeros((Ncart,Ncart), float)  # should be cart x cart for fragment ?
+        Ncart = 3 * len(geom)
+        dq2dx2 = np.zeros((Ncart, Ncart), float)    # should be cart x cart for fragment ?
 
         for I, q in enumerate(intcos):
             dq2dx2[:] = 0
-            q.Dq2Dx2(geom, dq2dx2)   # d^2(q_I)/ dx_i dx_j
+            q.Dq2Dx2(geom, dq2dx2)    # d^2(q_I)/ dx_i dx_j
 
             for a in range(Ncart):
                 for b in range(Ncart):
-                    Hworking[a,b] -= g_q[I] * dq2dx2[a,b] # adjust indices for multiple fragments
+                    Hworking[a, b] -= g_q[I] * dq2dx2[a,
+                                                      b]    # adjust indices for multiple fragments
 
     Hq = np.dot(Atranspose, np.dot(Hworking, Atranspose.T))
     return Hq
+
 
 def convertHessianToCartesians(Hint, intcos, geom, masses=None, g_q=None):
     print_opt("Converting Hessian from internals to cartesians.\n")
@@ -225,39 +243,45 @@ def convertHessianToCartesians(Hint, intcos, geom, masses=None, g_q=None):
     B = Bmat(intcos, geom, masses)
     Hxy = np.dot(B.T, np.dot(Hint, B))
 
-    if g_q is None:  # Hxy =  B^t Hij B
+    if g_q is None:    # Hxy =  B^t Hij B
         print_opt("Neglecting force/B-matrix derivative term, only correct at stationary points.\n")
-    else:            # Hxy += dE/dq_I d2(q_I)/dxdy
+    else:    # Hxy += dE/dq_I d2(q_I)/dxdy
         print_opt("Including force/B-matrix derivative term.\n")
         Ncart = 3 * len(geom)
 
-        dq2dx2 = np.zeros((Ncart, Ncart), float)  # should be cart x cart for fragment ?
+        dq2dx2 = np.zeros((Ncart, Ncart), float)    # should be cart x cart for fragment ?
         for I, q in enumerate(intcos):
             dq2dx2[:] = 0
             q.Dq2Dx2(geom, dq2dx2)
 
             for a in range(Ncart):
                 for b in range(Ncart):
-                    Hxy[a, b] += g_q[I] * dq2dx2[a,b]
+                    Hxy[a, b] += g_q[I] * dq2dx2[a, b]
 
     return Hxy
+
 
 # For given [A,B,C], remove any regular bends as well as any torsions
 # which contain it
 from . import bend
 from . import tors
 
+
 def torsContainsBend(b, t):
-    if (b.atoms in [t.atoms[0:3], list(reversed(t.atoms[0:3])),
-        t.atoms[1:4], list(reversed(t.atoms[1:4]))]):
+    if (b.atoms in [
+            t.atoms[0:3],
+            list(reversed(t.atoms[0:3])), t.atoms[1:4],
+            list(reversed(t.atoms[1:4]))
+    ]):
         return True
     return False
 
-def removeOldNowLinearBend( atoms, intcos):
+
+def removeOldNowLinearBend(atoms, intcos):
     b = bend.BEND(atoms[0], atoms[1], atoms[2])
-    print_opt( str(b)+'\n')
+    print_opt(str(b) + '\n')
     intcos[:] = [I for I in intcos if not (I == b)]
-    intcos[:] = [I for I in intcos if not (isinstance(I, tors.TORS) and torsContainsBend(b,I))]
+    intcos[:] = [I for I in intcos if not (isinstance(I, tors.TORS) and torsContainsBend(b, I))]
     #    if b == Coord:
     #        del intcos[iCoord]
     #    if isinstance(Coord, tors.TORS):
@@ -265,4 +289,3 @@ def removeOldNowLinearBend( atoms, intcos):
     #                      Coord.atoms[1:4], list(reversed(Coord.atoms[1:4]))]):
     #            del intcos[iCoord]
     return
-

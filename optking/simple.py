@@ -1,14 +1,15 @@
 from abc import ABCMeta, abstractmethod
 from . import optExceptions
 
+
 class SIMPLE(object):
     __metaclass__ = ABCMeta
 
     def __init__(self, atoms, frozen=False, fixedEqVal=None):
         # these lines use the property's and setters below
-        self.atoms = atoms        # atom indices for internal definition
-        self.frozen = frozen      # bool - is internal coordinate frozen?
-        self.fixedEqVal = fixedEqVal # target value if artificial forces are to be added
+        self.atoms = atoms    # atom indices for internal definition
+        self.frozen = frozen    # bool - is internal coordinate frozen?
+        self.fixedEqVal = fixedEqVal    # target value if artificial forces are to be added
 
     @property
     def atoms(self):
@@ -54,45 +55,46 @@ class SIMPLE(object):
 
     @property
     def A(self):
-        try:   
+        try:
             return self.atoms[0]
         except:
             raise optExceptions.OPT_FAIL("A() called but atoms[0] does not exist")
 
     @property
     def B(self):
-        try:   
+        try:
             return self.atoms[1]
         except:
             raise optExceptions.OPT_FAIL("B() called but atoms[1] does not exist")
 
     @property
     def C(self):
-        try:   
+        try:
             return self.atoms[2]
         except:
             raise optExceptions.OPT_FAIL("C() called but atoms[2] does not exist")
+
     @property
     def D(self):
-        try:   
+        try:
             return self.atoms[3]
         except:
             raise optExceptions.OPT_FAIL("D() called but atoms[3] does not exist")
 
     # ** constructor + 7 abstract methods are currently required **
-    @abstractmethod  # Given geometry, return value in Bohr or radians
+    @abstractmethod    # Given geometry, return value in Bohr or radians
     def q(self, geom):
         pass
 
-    @abstractmethod  # Given geometry, return Value in Angstroms or degrees.
+    @abstractmethod    # Given geometry, return Value in Angstroms or degrees.
     def qShow(self, geom):
         pass
 
-    @abstractmethod  # Return the scalar needed to convert value in au to Ang or Deg
+    @abstractmethod    # Return the scalar needed to convert value in au to Ang or Deg
     def qShowFactor(self):
         pass
 
-    @abstractmethod  # Return the scalar needed to convert force in au to aJ/(Ang or Deg)
+    @abstractmethod    # Return the scalar needed to convert force in au to aJ/(Ang or Deg)
     def fShowFactor(self):
         pass
 
@@ -111,12 +113,10 @@ class SIMPLE(object):
     #  i.e., provide derivative B matrix for coordinate.
     # dimension of dq2dx2 is 3*len(self._atoms)x3*len(self._atoms), or
     # cartesian by cartesian - of minimum size.
-    @abstractmethod  # Derivative of value wrt cartesians, i.e., B-matrix elements.
+    @abstractmethod    # Derivative of value wrt cartesians, i.e., B-matrix elements.
     def Dq2Dx2(self, geom, dq2dx2):
         raise optExceptions.ALG_FAIL('no Dq2Dx2 for this coordinate')
 
-    @abstractmethod  # Diagonal hessian guess
+    @abstractmethod    # Diagonal hessian guess
     def diagonalHessianGuess(geom, Z, connectivity, guessType):
         raise optExceptions.ALG_FAIL('no hessian guess for this coordinate')
-
-

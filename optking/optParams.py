@@ -9,6 +9,7 @@ from .printTools import print_opt
 Params = 0
 from . import optExceptions
 
+
 # Class for enumerated string options.
 def stringOption(storage_name):
     def stringOption_getter(instance):
@@ -19,23 +20,24 @@ def stringOption(storage_name):
             instance.__dict__[storage_name] = value.upper()
         else:
             raise optExceptions.OPT_FAIL('Invalid value for ' + storage_name)
+
     return property(stringOption_getter, stringOption_setter)
 
 
 # The keys on the left here should be lower-case, as should the storage name of the property.
 allowedStringOptions = {
- 'opt_type'        : ('MIN','TS','IRC'),
- 'step_type'       : ('RFO', 'P_RFO', 'NR', 'SD', 'LINESEARCH'),
- 'opt_coordinates' : ('REDUNDANT', 'INTERNAL', 'DELOCALIZED', 'NATURAL', 'CARTESIAN', 'BOTH'),
- 'irc_direction'   : ('FORWARD', 'BACKWARD'),
- 'irc_stop'        : ('ASK', 'STOP', 'GO'),
- 'g_convergence'   : ('QCHEM','MOLPRO','GAU','GAU_LOOSE','GAU_TIGHT','GAU_VERYTIGHT',
-                      'TURBOMOLE','CFOUR','NWCHEM_LOOSE'),
- 'hess_update'     : ('NONE', 'BFGS', 'MS', 'POWELL', 'BOFILL'),
- 'intrafrag_hess'  : ('SCHLEGEL', 'FISCHER', 'SCHLEGEL', 'SIMPLE', 'LINDH', 'LINDH_SIMPLE'),
- 'frag_mode'       : ('SINGLE', 'MULTI'),
- 'interfrag_mode'  : ('FIXED', 'PRINCIPAL_AXES'),
- 'interfrag_hess'  : ('DEFAULT', 'FISCHER_LIKE'),
+    'opt_type': ('MIN', 'TS', 'IRC'),
+    'step_type': ('RFO', 'P_RFO', 'NR', 'SD', 'LINESEARCH'),
+    'opt_coordinates': ('REDUNDANT', 'INTERNAL', 'DELOCALIZED', 'NATURAL', 'CARTESIAN', 'BOTH'),
+    'irc_direction': ('FORWARD', 'BACKWARD'),
+    'irc_stop': ('ASK', 'STOP', 'GO'),
+    'g_convergence': ('QCHEM', 'MOLPRO', 'GAU', 'GAU_LOOSE', 'GAU_TIGHT', 'GAU_VERYTIGHT',
+                      'TURBOMOLE', 'CFOUR', 'NWCHEM_LOOSE'),
+    'hess_update': ('NONE', 'BFGS', 'MS', 'POWELL', 'BOFILL'),
+    'intrafrag_hess': ('SCHLEGEL', 'FISCHER', 'SCHLEGEL', 'SIMPLE', 'LINDH', 'LINDH_SIMPLE'),
+    'frag_mode': ('SINGLE', 'MULTI'),
+    'interfrag_mode': ('FIXED', 'PRINCIPAL_AXES'),
+    'interfrag_hess': ('DEFAULT', 'FISCHER_LIKE'),
 }
 
 #def enum_key( enum_type, value):
@@ -43,26 +45,28 @@ allowedStringOptions = {
 
 from .misc import intList, intIntFloatList, intIntIntFloatList, intIntIntIntFloatList, tokenizeInputString
 
+
 class OPT_PARAMS(object):
     # define properties
-    opt_type        = stringOption( 'opt_type' )
-    step_type       = stringOption( 'step_type' )
-    opt_coordinates = stringOption( 'opt_coordinates' )
-    irc_direction   = stringOption( 'irc_direction' )
+    opt_type = stringOption('opt_type')
+    step_type = stringOption('step_type')
+    opt_coordinates = stringOption('opt_coordinates')
+    irc_direction = stringOption('irc_direction')
     #irc_stop        = stringOption( 'irc_step' )
-    g_convergence   = stringOption( 'g_convergence' )
-    hess_update     = stringOption( 'hess_update' )
-    intrafrag_hess  = stringOption( 'intrafrag_hess' )
-    frag_mode       = stringOption( 'frag_mode' )
+    g_convergence = stringOption('g_convergence')
+    hess_update = stringOption('hess_update')
+    intrafrag_hess = stringOption('intrafrag_hess')
+    frag_mode = stringOption('frag_mode')
+
     #interfrag_mode  = stringOption( 'interfrag_mode' )
     #interfrag_hess  = stringOption( 'interfrag_hess' )
 
     def __str__(P):
         s = "\t\t -- Optimization Parameters --\n"
         for attr in dir(P):
-            if not hasattr( getattr(P,attr), '__self__' ): # omit bound methods
-                if '__' not in attr:                       # omit these methods
-                    s += "\t%-30s = %15s\n" %(attr, getattr(P,attr))
+            if not hasattr(getattr(P, attr), '__self__'):    # omit bound methods
+                if '__' not in attr:    # omit these methods
+                    s += "\t%-30s = %15s\n" % (attr, getattr(P, attr))
         s += "\n"
         return s
 
@@ -95,17 +99,17 @@ class OPT_PARAMS(object):
         P.accept_symmetry_breaking = uod.get('ACCEPT_SYMMETRY_BREAKING', False)
         # Starting level for dynamic optimization (0=nondynamic, higher=>more conservative)
         P.dynamic_level = uod.get('DYNAMIC_LEVEL', 0)
-        if P.dynamic_level == 0:  # don't change parameters
+        if P.dynamic_level == 0:    # don't change parameters
             P.dynamic_level_max = 1
         else:
-            P.dynamic_level_max = uod.get('DYNAMIC_LEVEL_MAX', 8) #7 level currently defined
+            P.dynamic_level_max = uod.get('DYNAMIC_LEVEL_MAX', 8)    #7 level currently defined
         ## IRC step size in bohr(amu)\ $^{1/2}$.
         P.irc_step_size = uod.get('IRC_STEP_SIZE', 0.2)
         ## IRC mapping direction
         P.irc_direction = uod.get('IRC_DIRECTION', 'FORWARD')
         ## Decide when to stop IRC calculations
         #P.irc_stop = uod.get('IRC_STOP', 'STOP')
-#
+        #
         # Initial maximum step size in bohr or radian along an internal coordinate
         P.intrafrag_trust = uod.get('INTRAFRAG_STEP_LIMIT', 0.5)
         # Lower bound for dynamic trust radius [au]
@@ -129,47 +133,46 @@ class OPT_PARAMS(object):
         # New in python version
         P.trajectory = uod.get('TRAJECTORY', False)
 
-
         ## Specify distances between atoms to be frozen (unchanged)
         # P.frozen_distance = uod.get('FROZEN_DISTANCE','')
-        frozen = uod.get('FROZEN_DISTANCE','')
-        P.frozen_distance = intList( tokenizeInputString(frozen) )
+        frozen = uod.get('FROZEN_DISTANCE', '')
+        P.frozen_distance = intList(tokenizeInputString(frozen))
         ## Specify angles between atoms to be frozen (unchanged)
         #P.frozen_bend = uod.get('FROZEN_BEND','')
-        frozen = uod.get('FROZEN_BEND','')
-        P.frozen_bend = intList( tokenizeInputString(frozen) )
+        frozen = uod.get('FROZEN_BEND', '')
+        P.frozen_bend = intList(tokenizeInputString(frozen))
         ## Specify dihedral angles between atoms to be frozen (unchanged)
         #P.frozen_dihedral = uod.get('FROZEN_DIHEDRAL','')
-        frozen = uod.get('FROZEN_DIHEDRAL','')
-        P.frozen_dihedral = intList( tokenizeInputString(frozen) )
+        frozen = uod.get('FROZEN_DIHEDRAL', '')
+        P.frozen_dihedral = intList(tokenizeInputString(frozen))
         ## Specify atom and X, XY, XYZ, ... to be frozen (unchanged)
-        P.frozen_cartesian = uod.get('FROZEN_CARTESIAN','')
+        P.frozen_cartesian = uod.get('FROZEN_CARTESIAN', '')
         # Specify distances between atoms to be fixed (eq. value specified)
         #P.fixed_distance = uod.get("FIXED_DISTANCE", "")
         fixed = uod.get("FIXED_DISTANCE", "")
-        P.fixed_distance = intIntFloatList( tokenizeInputString(fixed) )
+        P.fixed_distance = intIntFloatList(tokenizeInputString(fixed))
         # Specify angles between atoms to be fixed (eq. value specified)
         #P.fixed_bend    = uod.get("FIXED_BEND", "")
         fixed = uod.get("FIXED_BEND", "")
-        P.fixed_bend    = intIntIntFloatList( tokenizeInputString(fixed) )
+        P.fixed_bend = intIntIntFloatList(tokenizeInputString(fixed))
         # Specify dihedral angles between atoms to be fixed (eq. value specified)
         #P.fixed_dihedral = uod.get("FIXED_DIHEDRAL","")
-        fixed = uod.get("FIXED_DIHEDRAL","")
-        P.fixed_dihedral = intIntIntIntFloatList( tokenizeInputString(fixed) )
-#
+        fixed = uod.get("FIXED_DIHEDRAL", "")
+        P.fixed_dihedral = intIntIntIntFloatList(tokenizeInputString(fixed))
+        #
         ## Should an xyz trajectory file be kept (useful for visualization)?
         #P.print_trajectory_xyz = uod.get('PRINT_TRAJECTORY_XYZ', False)
         ## Symmetry tolerance for testing whether a mode is symmetric.
         #P.symm_tol("SYMM_TOL", 0.05)
-#
+        #
         # SUBSECTION Convergence Control.
         # Set of optimization criteria. Specification of any MAX_*_G_CONVERGENCE
         # RMS_*_G_CONVERGENCE options will append to overwrite the criteria set here
-        # |optking__flexible_g_convergence| is also on.      
+        # |optking__flexible_g_convergence| is also on.
         # See Table :ref:`Geometry Convergence <table:optkingconv>` for details.
         P.g_convergence = uod.get('G_CONVERGENCE', 'QCHEM')
         # Convergence criterion for geometry optmization: maximum force (internal coordinates, au)
-        P.max_force_g_convergence =  uod.get('MAX_FORCE_G_CONVERGENCE', 3.0e-4)
+        P.max_force_g_convergence = uod.get('MAX_FORCE_G_CONVERGENCE', 3.0e-4)
         # Convergence criterion for geometry optmization: rms force  (internal coordinates, au)
         P.rms_force_g_convergence = uod.get('RMS_FORCE_G_CONVERGENCE', 3.0e-4)
         # Convergence criterion for geometry optmization: maximum energy change
@@ -180,7 +183,7 @@ class OPT_PARAMS(object):
         P.rms_disp_g_convergence = uod.get('RMS_DISP_G_CONVERGENCE', 1.2e-3)
         # Even if a user-defined threshold is set, allow for normal, flexible convergence criteria
         P.flexible_g_convergence = uod.get('FLEXIBLE_G_CONVERGENCE', False)
-#
+        #
         ## SUBSECTION Hessian Update
         # Hessian update scheme
         P.hess_update = uod.get('HESS_UPDATE', 'BFGS')
@@ -196,7 +199,7 @@ class OPT_PARAMS(object):
         P.hess_update_limit_scale = uod.get('HESS_UPDATE_LIMIT_SCALE', 0.50)
         # Denominator check for hessian update.
         P.hess_update_den_tol = uod.get('HESS_UPDATE_DEN_TOL', 1e-7)
-        # Hessian update is avoided if any internal coordinate has changed by 
+        # Hessian update is avoided if any internal coordinate has changed by
         # more than this in radians/au
         P.hess_update_dq_tol = 0.5
 
@@ -215,14 +218,14 @@ class OPT_PARAMS(object):
         #P.h_guess_every = uod.get('H_GUESS_EVERY', False)
 
         P.working_steps_since_last_H = 0
-#
+        #
         ## SUBSECTION Backtransformation to Cartesian Coordinates Control
         P.bt_max_iter = uod.get('bt_max_iter', 25)
         P.bt_dx_conv = uod.get('bt_dx_conv', 1.0e-6)
-        P.bt_dx_rms_change_conv = uod.get('bt_dx_rms_change_conv',1.0e-12)
-#
+        P.bt_dx_rms_change_conv = uod.get('bt_dx_rms_change_conv', 1.0e-12)
+        #
         ## For multi-fragment molecules, treat as single bonded molecule or via interfragment
-        ## coordinates. A primary difference is that in ``MULTI`` mode, the interfragment 
+        ## coordinates. A primary difference is that in ``MULTI`` mode, the interfragment
         ## coordinates are not redundant.
         P.frag_mode = uod.get('FRAG_MODE', 'SINGLE')
         ## Which atoms define the reference points for interfragment coordinates?
@@ -253,8 +256,8 @@ class OPT_PARAMS(object):
         #P.h_bond_connect = uod.get('h_bond_connect', 4.3)
         ## Only generate the internal coordinates and then stop (boolean)
         #P.intcos_generate_exit = uod.get('INTCOS_GENERATE_EXIT', False)
-  #
-  #
+        #
+        #
         ## SUBSECTION Misc.
         ## Do save and print the geometry from the last projected step at the end
         ## of a geometry optimization? Otherwise (and by default), save and print
@@ -274,190 +277,223 @@ class OPT_PARAMS(object):
         P.linesearch_step = uod.get('LINESEARCH_STEP', 0.100)
         # Guess at Hessian in steepest-descent direction.
         P.sd_hessian = uod.get('SD_HESSIAN', 1.0)
-#
+        #
         ## --- Complicated defaults ---
-#
+        #
         ## Assume RFO means P-RFO for transition states.
         if P.opt_type == 'TS':
             if P.step_type == 'RFO' or 'STEP_TYPE' not in uod:
                 P.step_type = 'P_RFO'
 #
-        ## INTERNAL is a synonym
-        #if P.opt_coordinates == 'INTERNAL': P.opt_coordinates = 'REDUNDANT'
+## INTERNAL is a synonym
+#if P.opt_coordinates == 'INTERNAL': P.opt_coordinates = 'REDUNDANT'
 #
-        # Initial Hessian guess for cartesians with coordinates BOTH is stupid, so don't scale
-        #   step size down too much.  Steepest descent has no good hessian either.
+# Initial Hessian guess for cartesians with coordinates BOTH is stupid, so don't scale
+#   step size down too much.  Steepest descent has no good hessian either.
         if 'INTRAFRAG_TRUST_MIN' not in uod:
             if P.opt_coordinates == 'BOTH':
                 P.intrafrag_trust_min = P.intrafrag_trust / 2.0
             elif P.step_type == 'SD':
                 P.intrafrag_trust_min = P.intrafrag_trust
 #
-        ## Original Lindh specification was to redo at every step.
-        #if 'H_GUESS_EVERY' not in uod and P.intrafrag_hess == 'LINDH':
-            #P.h_guess_every = True
+## Original Lindh specification was to redo at every step.
+#if 'H_GUESS_EVERY' not in uod and P.intrafrag_hess == 'LINDH':
+#P.h_guess_every = True
 #
-        ## Default for cartesians: use Lindh force field for initial guess, then BFGS.
+## Default for cartesians: use Lindh force field for initial guess, then BFGS.
         if P.opt_coordinates == 'CARTESIAN':
             if 'INTRAFRAG_HESS' not in uod:
                 P.intrafrag_hess = 'LINDH'
                 #if 'H_GUESS_EVERY' not in uod:
-                    #P.H_guess_every = False;
-#
-        ## Set Bofill as default for TS optimizations.
+            #P.H_guess_every = False;
+            #
+            ## Set Bofill as default for TS optimizations.
         if P.opt_type == 'TS' or P.opt_type == 'IRC':
             if 'HESS_UPDATE' not in uod:
                 P.hess_update = 'BOFILL'
 #
-        ## Make trajectory file printing the default for IRC.
+## Make trajectory file printing the default for IRC.
         if P.opt_type == 'IRC' and 'PRINT_TRAJECTORY_XYZ_FILE' not in uod:
             P.print_trajectory_xyz_file = True
 #
-        ## Read cartesian Hessian by default for IRC.
+## Read cartesian Hessian by default for IRC.
         if P.opt_type == 'IRC' and 'CART_HESS_READ' not in uod:
             P.read_cartesian_H = True
 #
-        #if P.generate_intcos_exit:
-            #P.keep_intcos = True
+#if P.generate_intcos_exit:
+#P.keep_intcos = True
 #
-        ## Set full_hess_every to 0 if -1
+## Set full_hess_every to 0 if -1
         if P.opt_type == 'IRC' and P.full_hess_every < 0:
             P.full_hess_every = 0
 #
-        ## if steepest-descent, then make much larger default
-        #if P.step_type = 'SD' and 'CONSECUTIVE_BACKSTEPS' not in uod:
-            #P.consecutive_backsteps_allowed = 10;
+## if steepest-descent, then make much larger default
+#if P.step_type = 'SD' and 'CONSECUTIVE_BACKSTEPS' not in uod:
+#P.consecutive_backsteps_allowed = 10;
 #
-        ## For RFO step, eigenvectors of augmented Hessian are divided by the last
-        ## element unless it is smaller than this value {double}.  Can be used to
-        ## eliminate asymmetric steps not otherwise detected (e.g. in degenerate
-        ## point groups). For multi-fragment modes, we presume that smaller
-        ##  Delta-E's are possible, and this threshold should be made larger.
-        #if P.fragment_mode == 'MULTI' and 'RFO_NORMALIZATION_MAX' not in uod:
-            #P.rfo_normalization_max = 1.0e5
-        # Arbitrary user forces, so don't shrink stepsize if Delta(E) is poor..
+## For RFO step, eigenvectors of augmented Hessian are divided by the last
+## element unless it is smaller than this value {double}.  Can be used to
+## eliminate asymmetric steps not otherwise detected (e.g. in degenerate
+## point groups). For multi-fragment modes, we presume that smaller
+##  Delta-E's are possible, and this threshold should be made larger.
+#if P.fragment_mode == 'MULTI' and 'RFO_NORMALIZATION_MAX' not in uod:
+#P.rfo_normalization_max = 1.0e5
+# Arbitrary user forces, so don't shrink stepsize if Delta(E) is poor..
         if P.fixed_distance or P.fixed_bend or P.fixed_dihedral:
             if 'INTRAFRAGMENT_TRUST' not in uod:
-                P.intrafrag_trust     = 0.1
+                P.intrafrag_trust = 0.1
             if 'INTRAFRAGMENT_TRUST_MIN' not in uod:
                 P.intrafrag_trust_min = 0.1
             if 'INTRAFRAGMENT_TRUST_MAX' not in uod:
                 P.intrafrag_trust_max = 0.1
 #
-        ## -- Items are below unlikely to need modified
+## -- Items are below unlikely to need modified
 #
-        # Boundary to guess if a torsion or out-of-plane angle has passed through 180
-        # during a step.
-        P.fix_val_near_pi = 1.57 
-#
+# Boundary to guess if a torsion or out-of-plane angle has passed through 180
+# during a step.
+        P.fix_val_near_pi = 1.57
+        #
         ## Only used for determining which atoms in a fragment are acceptable for use
         ## as reference atoms.  We avoid collinear sets.
         ## angle is 0/pi if the bond angle is within this fraction of pi from 0/pi
         #P.interfrag_collinear_tol = 0.01
-#
+        #
         ## Torsional angles will not be computed if the contained bond angles are within
         # this many radians of zero or 180. (< ~1 and > ~179 degrees)
         # only used in v3d.py
         P.v3d_tors_angle_lim = 0.017
-#
+        #
         # cos(torsional angle) must be this close to -1/+1 for angle to count as 0/pi
         # only used in v3d.py
         P.v3d_tors_cos_tol = 1e-10
-#
+        #
         # if bend exceeds this value, then also create linear bend complement
-        P.linear_bend_threshold = 3.05 # about 175 degrees
+        P.linear_bend_threshold = 3.05    # about 175 degrees
         ## If bend is smaller than this value, then never fix its associated vectors
-        ## this allows iterative steps through and near zero degrees. 
+        ## this allows iterative steps through and near zero degrees.
         #P.small_bend_fix_threshold = 0.35
-#
+        #
         ## Threshold for which entries in diagonalized redundant matrix are kept and
         # inverted while computing a generalized inverse of a matrix
         P.redundant_eval_tol = 1.0e-10
-#
+        #
         ## --- SET INTERNAL OPTIMIZATION PARAMETERS ---
         P.i_max_force = False
         P.i_rms_force = False
-        P.i_max_DE    = False
-        P.i_max_disp  = False
-        P.i_rms_disp  = False
+        P.i_max_DE = False
+        P.i_max_disp = False
+        P.i_rms_disp = False
         P.i_untampered = False
-#
+        #
         if P.g_convergence == 'QCHEM':
-            P.i_untampered   = True
-            P.conv_max_force = 3.0e-4 ; P.i_max_force = True
-            P.conv_max_DE    = 1.0e-6 ; P.i_max_DE    = True
-            P.conv_max_disp  = 1.2e-3 ; P.i_max_disp  = True
+            P.i_untampered = True
+            P.conv_max_force = 3.0e-4
+            P.i_max_force = True
+            P.conv_max_DE = 1.0e-6
+            P.i_max_DE = True
+            P.conv_max_disp = 1.2e-3
+            P.i_max_disp = True
         elif P.g_convergence == 'MOLPRO':
-            P.i_untampered   = True
-            P.conv_max_force = 3.0e-4 ; P.i_max_force = True
-            P.conv_max_DE    = 1.0e-6 ; P.i_max_DE    = True
-            P.conv_max_disp  = 3.0e-4 ; P.i_max_disp  = True
+            P.i_untampered = True
+            P.conv_max_force = 3.0e-4
+            P.i_max_force = True
+            P.conv_max_DE = 1.0e-6
+            P.i_max_DE = True
+            P.conv_max_disp = 3.0e-4
+            P.i_max_disp = True
         elif P.g_convergence == 'GAU':
-            P.i_untampered   = True
-            P.conv_max_force = 4.5e-4 ; P.i_max_force = True
-            P.conv_rms_force = 3.0e-4 ; P.i_rms_force = True
-            P.conv_max_disp  = 1.8e-3 ; P.i_max_disp  = True
-            P.conv_rms_disp  = 1.2e-3 ; P.i_rms_disp  = True
+            P.i_untampered = True
+            P.conv_max_force = 4.5e-4
+            P.i_max_force = True
+            P.conv_rms_force = 3.0e-4
+            P.i_rms_force = True
+            P.conv_max_disp = 1.8e-3
+            P.i_max_disp = True
+            P.conv_rms_disp = 1.2e-3
+            P.i_rms_disp = True
         elif P.g_convergence == 'GAU_TIGHT':
-            P.i_untampered   = True
-            P.conv_max_force = 1.5e-5 ; P.i_max_force = True
-            P.conv_rms_force = 1.0e-5 ; P.i_rms_force = True
-            P.conv_max_disp  = 6.0e-5 ; P.i_max_disp  = True
-            P.conv_rms_disp  = 4.0e-5 ; P.i_rms_disp  = True
+            P.i_untampered = True
+            P.conv_max_force = 1.5e-5
+            P.i_max_force = True
+            P.conv_rms_force = 1.0e-5
+            P.i_rms_force = True
+            P.conv_max_disp = 6.0e-5
+            P.i_max_disp = True
+            P.conv_rms_disp = 4.0e-5
+            P.i_rms_disp = True
         elif P.g_convergence == 'GAU_VERYTIGHT':
-            P.i_untampered   = True
-            P.conv_max_force = 2.0e-6 ; P.i_max_force = True
-            P.conv_rms_force = 1.0e-6 ; P.i_rms_force = True
-            P.conv_max_disp  = 6.0e-6 ; P.i_max_disp  = True
-            P.conv_rms_disp  = 4.0e-6 ; P.i_rms_disp  = True
+            P.i_untampered = True
+            P.conv_max_force = 2.0e-6
+            P.i_max_force = True
+            P.conv_rms_force = 1.0e-6
+            P.i_rms_force = True
+            P.conv_max_disp = 6.0e-6
+            P.i_max_disp = True
+            P.conv_rms_disp = 4.0e-6
+            P.i_rms_disp = True
         elif P.g_convergence == 'GAU_LOOSE':
-            P.i_untampered   = True
-            P.conv_max_force = 2.5e-3 ; P.i_max_force = True
-            P.conv_rms_force = 1.7e-3 ; P.i_rms_force = True
-            P.conv_max_disp  = 1.0e-2 ; P.i_max_disp  = True
-            P.conv_rms_disp  = 6.7e-3 ; P.i_rms_disp  = True
+            P.i_untampered = True
+            P.conv_max_force = 2.5e-3
+            P.i_max_force = True
+            P.conv_rms_force = 1.7e-3
+            P.i_rms_force = True
+            P.conv_max_disp = 1.0e-2
+            P.i_max_disp = True
+            P.conv_rms_disp = 6.7e-3
+            P.i_rms_disp = True
         elif P.g_convergence == 'TURBOMOLE':
-            P.i_untampered   = True
-            P.conv_max_force = 1.0e-3 ; P.i_max_force = True
-            P.conv_rms_force = 5.0e-4 ; P.i_rms_force = True
-            P.conv_max_DE    = 1.0e-6 ; P.i_max_DE    = True
-            P.conv_max_disp  = 1.0e-3 ; P.i_max_disp  = True
-            P.conv_rms_disp  = 5.0e-4 ; P.i_rms_disp  = True
+            P.i_untampered = True
+            P.conv_max_force = 1.0e-3
+            P.i_max_force = True
+            P.conv_rms_force = 5.0e-4
+            P.i_rms_force = True
+            P.conv_max_DE = 1.0e-6
+            P.i_max_DE = True
+            P.conv_max_disp = 1.0e-3
+            P.i_max_disp = True
+            P.conv_rms_disp = 5.0e-4
+            P.i_rms_disp = True
         elif P.g_convergence == 'CFOUR':
-            P.i_untampered   = True
-            P.conv_rms_force = 1.0e-4 ; P.i_rms_force = True
+            P.i_untampered = True
+            P.conv_rms_force = 1.0e-4
+            P.i_rms_force = True
         elif P.g_convergence == 'NWCHEM_LOOSE':
-            P.i_untampered   = True
-            P.conv_max_force = 4.5e-3 ; P.i_max_force = True
-            P.conv_rms_force = 3.0e-3 ; P.i_rms_force = True
-            P.conv_max_disp  = 5.4e-3 ; P.i_max_disp  = True
-            P.conv_rms_disp  = 3.6e-3 ; P.i_rms_disp  = True
+            P.i_untampered = True
+            P.conv_max_force = 4.5e-3
+            P.i_max_force = True
+            P.conv_rms_force = 3.0e-3
+            P.i_rms_force = True
+            P.conv_max_disp = 5.4e-3
+            P.i_max_disp = True
+            P.conv_rms_disp = 3.6e-3
+            P.i_rms_disp = True
 #
-        ## ---  Specific optimization criteria
+## ---  Specific optimization criteria
         if 'MAX_FORCE_G_CONVERGENCE' in uod:
-            P.i_untampered   = False
-            P.i_max_force    = True
+            P.i_untampered = False
+            P.i_max_force = True
             P.conv_max_force = P.max_force_g_convergence
         if 'RMS_FORCE_G_CONVERGENCE' in uod:
-            P.i_untampered   = False
-            P.i_rms_force    = True
+            P.i_untampered = False
+            P.i_rms_force = True
             P.conv_rms_force = P.rms_force_g_convergence
         if 'MAX_ENERGY_G_CONVERGENCE' in uod:
-            P.i_untampered   = False
-            P.i_max_DE       = True
-            P.conv_max_DE    = P.max_energy_g_convergence
+            P.i_untampered = False
+            P.i_max_DE = True
+            P.conv_max_DE = P.max_energy_g_convergence
         if 'MAX_DISP_G_CONVERGENCE' in uod:
-            P.i_untampered   = False
-            P.i_max_disp     = True
-            P.conv_max_disp  = P.max_disp_g_convergence
+            P.i_untampered = False
+            P.i_max_disp = True
+            P.conv_max_disp = P.max_disp_g_convergence
         if 'RMS_DISP_G_CONVERGENCE' in uod:
-            P.i_untampered   = False
-            P.i_rms_disp     = True
-            P.conv_rms_disp  = P.rms_disp_g_convergence
+            P.i_untampered = False
+            P.i_rms_disp = True
+            P.conv_rms_disp = P.rms_disp_g_convergence
+
 #
-        # Even if a specific threshold were given, allow for Molpro/Qchem/G03 flex criteria
+# Even if a specific threshold were given, allow for Molpro/Qchem/G03 flex criteria
         if P.flexible_g_convergence:
-            P.i_untampered   = True
+            P.i_untampered = True
 
     def increaseTrustRadius(P):
         maximum = P.intrafrag_trust_max
@@ -488,7 +524,6 @@ class OPT_PARAMS(object):
         return
 
     def updateDynamicLevelParameters(P, run_level):
-
         """
         *dynamic  step   coord   trust      backsteps         criteria
         * run_level                                           for downmove    for upmove
@@ -513,7 +548,8 @@ class OPT_PARAMS(object):
             P.opt_coordinates = 'REDUNDANT'
             P.consecutiveBackstepsAllowed = 0
             P.step_type = 'RFO'
-            print_opt("Going to run_level 1: Red. Int., RFO, no backsteps, default, dynamic trust.\n")
+            print_opt(
+                "Going to run_level 1: Red. Int., RFO, no backsteps, default, dynamic trust.\n")
         elif run_level == 2:
             P.opt_coordinates = 'REDUNDANT'
             P.consecutiveBackstepsAllowed = 1
@@ -572,9 +608,8 @@ class OPT_PARAMS(object):
 
 def welcome():
     print_opt("\n\t\t\t-----------------------------------------\n")
-    print_opt(  "\t\t\t OPTKING 3.0: for geometry optimizations \n")
-    print_opt(  "\t\t\t     By R.A. King, Bethel University     \n")
-    print_opt(  "\t\t\t        with contributions from          \n")
-    print_opt(  "\t\t\t    A.V. Copan, J. Cayton, A. Heide      \n")
-    print_opt(  "\t\t\t-----------------------------------------\n")
-
+    print_opt("\t\t\t OPTKING 3.0: for geometry optimizations \n")
+    print_opt("\t\t\t     By R.A. King, Bethel University     \n")
+    print_opt("\t\t\t        with contributions from          \n")
+    print_opt("\t\t\t    A.V. Copan, J. Cayton, A. Heide      \n")
+    print_opt("\t\t\t-----------------------------------------\n")
