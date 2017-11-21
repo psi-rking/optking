@@ -45,7 +45,7 @@ class TORS(SIMPLE):
 
     # keeps track of orientation
     def updateOrientation(self, geom):
-        tval = self.q(geom);
+        tval = self.q(geom)
         if   tval > op.Params.fix_val_near_pi:
             self._near180 = +1
         elif tval < -1*op.Params.fix_val_near_pi:
@@ -185,22 +185,22 @@ class TORS(SIMPLE):
 
                     if (a==1 and b==1) or (a==2 and b==1) or (a==2 and b==0) or (a==1 and b==0):
                        tval += (TORS.zeta(a,0,1) * TORS.zeta(b,1,2) + TORS.zeta(a,2,1) * TORS.zeta(b,1,0))*\
-                        (uXw[i] * (w[j] - 2*u[j]*cos_u + w[j]*cos_u*cos_u) + \
+                        (uXw[i] * (w[j] - 2*u[j]*cos_u + w[j]*cos_u*cos_u) +
                          uXw[j] * (w[i] - 2*u[i]*cos_u + w[i]*cos_u*cos_u)) / (2*Lu*Lw*sinu4)
 
                     if (a==3 and b==2) or (a==3 and b==1) or (a==2 and b==2) or (a==2 and b==1):
                        tval += (TORS.zeta(a,3,2) * TORS.zeta(b,2,1) + TORS.zeta(a,1,2) * TORS.zeta(b,2,3))*\
-                        (vXw[i] * (w[j] + 2*v[j]*cos_v + w[j]*cos_v*cos_v) + \
+                        (vXw[i] * (w[j] + 2*v[j]*cos_v + w[j]*cos_v*cos_v) +
                          vXw[j] * (w[i] + 2*v[i]*cos_v + w[i]*cos_v*cos_v)) / (2*Lv*Lw*sinv4)
 
                     if (a==1 and b==1) or (a==2 and b==2) or (a==2 and b==1):
                        tval +=  TORS.zeta(a,1,2) * TORS.zeta(b,2,1) * \
-                        (uXw[i]*(u[j] + u[j]*cos_u*cos_u - 3*w[j]*cos_u + w[j]*cosu3) + \
+                        (uXw[i]*(u[j] + u[j]*cos_u*cos_u - 3*w[j]*cos_u + w[j]*cosu3) +
                          uXw[j]*(u[i] + u[i]*cos_u*cos_u - 3*w[i]*cos_u + w[i]*cosu3)) / (2*Lw*Lw*sinu4)
 
                     if (a==2 and b==1) or (a==2 and b==2) or (a==1 and b==1):
                        tval += TORS.zeta(a,2,1) * TORS.zeta(b,1,2) * \
-                        (vXw[i]*(-v[j] - v[j]*cos_v*cos_v - 3*w[j]*cos_v + w[j]*cosv3) + \
+                        (vXw[i]*(-v[j] - v[j]*cos_v*cos_v - 3*w[j]*cos_v + w[j]*cosv3) +
                          vXw[j]*(-v[i] - v[i]*cos_v*cos_v - 3*w[i]*cos_v + w[i]*cosv3)) / (2*Lw*Lw*sinv4)
 
                     if (a != b) and (i != j):

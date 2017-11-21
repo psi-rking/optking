@@ -29,8 +29,8 @@ allowedStringOptions = {
  'opt_coordinates' : ('REDUNDANT', 'INTERNAL', 'DELOCALIZED', 'NATURAL', 'CARTESIAN', 'BOTH'),
  'irc_direction'   : ('FORWARD', 'BACKWARD'),
  'irc_stop'        : ('ASK', 'STOP', 'GO'),
- 'g_convergence'   : ('QCHEM','MOLPRO','GAU','GAU_LOOSE','GAU_TIGHT','GAU_VERYTIGHT', \
-                       'TURBOMOLE','CFOUR','NWCHEM_LOOSE'),
+ 'g_convergence'   : ('QCHEM','MOLPRO','GAU','GAU_LOOSE','GAU_TIGHT','GAU_VERYTIGHT',
+                      'TURBOMOLE','CFOUR','NWCHEM_LOOSE'),
  'hess_update'     : ('NONE', 'BFGS', 'MS', 'POWELL', 'BOFILL'),
  'intrafrag_hess'  : ('SCHLEGEL', 'FISCHER', 'SCHLEGEL', 'SIMPLE', 'LINDH', 'LINDH_SIMPLE'),
  'frag_mode'       : ('SINGLE', 'MULTI'),
@@ -405,7 +405,7 @@ class OPT_PARAMS(object):
             P.conv_max_disp  = 6.0e-5 ; P.i_max_disp  = True
             P.conv_rms_disp  = 4.0e-5 ; P.i_rms_disp  = True
         elif P.g_convergence == 'GAU_VERYTIGHT':
-            P.i_untampered   = True;
+            P.i_untampered   = True
             P.conv_max_force = 2.0e-6 ; P.i_max_force = True
             P.conv_rms_force = 1.0e-6 ; P.i_rms_force = True
             P.conv_max_disp  = 6.0e-6 ; P.i_max_disp  = True

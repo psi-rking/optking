@@ -1,10 +1,10 @@
-'''
+"""
   This header file contains the covalent radii of the atoms in Angstroms from:
   "Covalent radii revisited"  Dalton Trans., 2008, 2832, by
   B. Cordero  V. Gomez, A. E. Platero-Prats, M. Reves, J. Echeverria,
   E. Cremades  F. Barragan and S. Alvarez.  The largest values have
   been chosen for C (sp3) and for Mn  Fe, and Co (high-spin).
-- RAK  May 2008'''
+- RAK  May 2008"""
 
 #define LAST_COV_RADII_INDEX 96
 

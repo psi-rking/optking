@@ -73,7 +73,7 @@ def convCheck(iterNum, Molsys, dq, f, energies, qPivot=None, masses=None):
         overlap = np.dot(f, p) / np.dot(p, Ginv_p)
 
         for i in range(Nintco):
-            f[i] -= overlap * Ginv_p[i];
+            f[i] -= overlap * Ginv_p[i]
 
         if op.Params.print_lvl > 1:
             print_opt("Forces perpendicular to hypersphere.\n")
@@ -138,11 +138,11 @@ def convCheck(iterNum, Molsys, dq, f, energies, qPivot=None, masses=None):
     if op.Params.i_untampered and \
        ( op.Params.g_convergence == "GAU" or op.Params.g_convergence == "GAU_TIGHT" or
        op.Params.g_convergence == 'GAU_VERYTIGHT' or op.Params.g_convergence == 'GAU_LOOSE') and \
-       ((max_force < op.Params.conv_max_force and \
-       rms_force < op.Params.conv_rms_force and \
-       max_disp  < op.Params.conv_max_disp  and \
-       rms_disp  < op.Params.conv_rms_disp) or \
-       100 * rms_force < op.Params.conv_rms_force):
+       ((max_force < op.Params.conv_max_force and
+                 rms_force < op.Params.conv_rms_force and
+                 max_disp  < op.Params.conv_max_disp  and
+                 rms_disp  < op.Params.conv_rms_disp) or
+                    100 * rms_force < op.Params.conv_rms_force):
            return True
 
     # if criterion not active or criterion met, convergence!

@@ -108,8 +108,8 @@ class HISTORY(object):
             max_disp = absMax(Dq)
             rms_disp = rms(Dq)
 
-            print_opt("   %4d %20.12lf  %18.12lf    %12.8lf    %12.8lf    %12.8lf    %12.8lf  ~\n" % ( (i+1), self.steps[i].E, \
-              DE, max_force, rms_force, max_disp, rms_disp))
+            print_opt("   %4d %20.12lf  %18.12lf    %12.8lf    %12.8lf    %12.8lf    %12.8lf  ~\n" % ( (i+1), self.steps[i].E,
+                                                                                                       DE, max_force, rms_force, max_disp, rms_disp))
         print_opt("  --------------------------------------------------------------------------------------------------------------- ~\n\n")
   
     # Report on performance of last step
@@ -272,15 +272,15 @@ class HISTORY(object):
            
                 for i in range(Nintco): # (phi * Powell)
                     for j in range(Nintco):
-                        H_new[i,j] += phi * (-1.0*qz/(qq*qq)*dq[i]*dq[j] + \
+                        H_new[i,j] += phi * (-1.0*qz/(qq*qq)*dq[i]*dq[j] +
                                              (Z[i]*dq[j] + dq[i]*Z[j])/qq)
 
             if op.Params.hess_update_limit: # limit changes in H
                  # Changes to the Hessian from the update scheme are limited to the larger of
                  # (hess_update_limit_scale)*(the previous value) and hess_update_limit_max.
-                 max_limit   = op.Params.hess_update_limit_max;
-                 scale_limit = op.Params.hess_update_limit_scale;
-                
+                 max_limit   = op.Params.hess_update_limit_max
+                 scale_limit = op.Params.hess_update_limit_scale
+
                  # Compute change in Hessian
                  H_new[:,:] = H_new - H
                

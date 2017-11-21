@@ -43,7 +43,7 @@ def takeHessianHalfStep(Molsys, Hq, B, fq, s, direction = 'forward'):
     for col in range (len(HEigVects[0])):
         gk[col] = HEigVects[0, col]
 
-    if (direction == 'backward'):
+    if direction == 'backward':
         for i in range (len(gk)):
             gk[i] = -1 * gk[i]
 
@@ -161,15 +161,15 @@ def Dq(Molsys, g, E, Hq, B, s, qPrime, dqPrime):
     #Solves F(L) = Sum[(bj*pj - gj)/(bj-L)]^2 - 1/2s = 0
     #coarse search
     lagIter = 0
-    while((prevLagrangian * lagrangian > 0) and lagIter < 1000):
+    while (prevLagrangian * lagrangian > 0) and lagIter < 1000:
         prevLagrangian = lagrangian
         Lambda -= 1
         lagrangian = calcLagrangian(Lambda, HMEigValues, HMEigVects, gM, pM, s)
-        if (lagrangian < 0 and fabs(lagrangian) < fabs(lowerBLagrangian)):
+        if lagrangian < 0 and fabs(lagrangian) < fabs(lowerBLagrangian):
             lowerBLagrangian = lagrangian
             lowerBLambda = Lambda
         
-        if (lagrangian > 0 and fabs(lagrangian) < fabs(upperBLagrangian)):
+        if lagrangian > 0 and fabs(lagrangian) < fabs(upperBLagrangian):
             upperBLagrangian = lagrangian
             upperBLambda = Lambda
         lagIter += 1
@@ -181,7 +181,7 @@ def Dq(Molsys, g, E, Hq, B, s, qPrime, dqPrime):
     dLagrangian = np.array([2, 6, 24, 120]) #array of lagrangian derivatives to solve Householder method with weights to solve derivative
     lagIter = 0
 
-    while(lagrangian - prevLagrangian > 10**-16):
+    while lagrangian - prevLagrangian > 10**-16:
         prevLagrangian = lagrangian
         for i in range (4):
             dLagrangian[i] *= calcLagrangian(Lambda, HMEigValues, HMEigVects, gM, pM, s)
@@ -192,24 +192,24 @@ def Dq(Molsys, g, E, Hq, B, s, qPrime, dqPrime):
             lowerBLagrangian = lagrangian
             lowerBLambda = Lambda        
         
-        elif (lagrangian > 0 and fabs(lagrangian) < fabs(upperBLagrangian)):
+        elif lagrangian > 0 and fabs(lagrangian) < fabs(upperBLagrangian):
             upperBLagrangian = lagrangian
             upperBLambda = Lambda
     
-        elif (Lagrangian * prevLagrangian < 0):
+        elif Lagrangian * prevLagrangian < 0:
             Lagrangian = (Lagrangian + prevLagrangian)/2
             #Lagrangian found    
         else:
             prevLambda = Lambda
-            Lambda += h_f * (24*dLagrangian[0] * 24*dLagrangian[1] * 8 * h_f + 4 *dLagrangian[2] * 8 * h_f**2) / (24*dLagrangian[0] + 36*h_f *dLagrangian[1] \
-                + 6 * (dlagrangian[1] ** 2/ dLagrangian[0]) * 8 * h_f**2 + 8 * dLagrangian[2] * h_f**2 + dLagrangian[3] * h_f**3) 
+            Lambda += h_f * (24*dLagrangian[0] * 24*dLagrangian[1] * 8 * h_f + 4 *dLagrangian[2] * 8 * h_f**2) / (24*dLagrangian[0] + 36*h_f *dLagrangian[1]
+                                                                                                                  + 6 * (dlagrangian[1] ** 2/ dLagrangian[0]) * 8 * h_f**2 + 8 * dLagrangian[2] * h_f**2 + dLagrangian[3] * h_f**3)
         lagIter += 1
 
-        if (lagIter > 50):
+        if lagIter > 50:
             prevLambda = Lambda
             Lambda = (lb_Lambda + ub_Lambda) / 2
         
-        if (lagIter > 200):
+        if lagIter > 200:
             print("Exception should have been thrown")
             #needs to throw failure to converge exception
             
@@ -245,7 +245,7 @@ def calcLagrangian(Lambda, HMEigValues, HMEigVects, gM, pM, s):
     for i in range (len(HMEigValues)):
         numerator = (HMEigValues[i] * np.dot(pM.T, HMEigVects[i])) - (np.dot(gM.T, HMEigVects[i]))
         denominator = HMEigValues[i] - Lambda
-        lagrangian += numerator/(denominator)
+        lagrangian += numerator / denominator
     lagrangian *= lagrangian
     lagrangian -= (0.5*s)**2
 

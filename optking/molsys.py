@@ -209,9 +209,9 @@ class MOLSYS(object): # new-style classes required for getter/setters
 
                 frag_atoms.sort()
                 subNatom = len(frag_atoms)
-                subZ      = np.zeros( (subNatom), float)
+                subZ      = np.zeros(subNatom, float)
                 subGeom   = np.zeros( (subNatom,3), float)
-                subMasses = np.zeros( (subNatom), float)
+                subMasses = np.zeros(subNatom, float)
                 for i, I in enumerate(frag_atoms):
                     subZ[i]        = tempZ[I]
                     subGeom[i,0:3] = tempGeom[I,0:3]
@@ -259,7 +259,7 @@ class MOLSYS(object): # new-style classes required for getter/setters
                   Rij = v3d.dist(geom[i], geom[j])
                   R_i = covRadii.R[ int(Z[i]) ] / pc.bohr2angstroms
                   R_j = covRadii.R[ int(Z[j]) ] / pc.bohr2angstroms
-                  if (Rij > scale_dist * (R_i + R_j)):
+                  if Rij > scale_dist * (R_i + R_j):
                     continue  # ignore this as too far - for starters.  may have A-B-C situation.
       
                   print_opt("\tConnecting fragments with atoms %d and %d\n" % (i+1, j+1))
@@ -273,7 +273,7 @@ class MOLSYS(object): # new-style classes required for getter/setters
                       if f1_atom == i and f2_atom == j: # already have this one
                         continue
                       tval = v3d.dist(geom[f1_atom], geom[f2_atom])
-                      if (np.fabs(tval - minVal) < 1.0e-10): 
+                      if np.fabs(tval - minVal) < 1.0e-10:
                         i = f1_atom
                         j = f2_atom
                         print_opt("\tAlso, with atoms %d and %d\n" % (i+1, j+1))
@@ -285,6 +285,6 @@ class MOLSYS(object): # new-style classes required for getter/setters
                 all_connected = True
             else:
                 scale_dist += 0.2
-                print_opt("\tIncreasing scaling to %6.3f to connect fragments.\n" % (scale_dist))
+                print_opt("\tIncreasing scaling to %6.3f to connect fragments.\n" % scale_dist)
         return
 

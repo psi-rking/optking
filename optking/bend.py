@@ -54,7 +54,7 @@ class BEND(SIMPLE):
 
     @bendType.setter
     def bendType(self, intype):
-        if intype in ("REGULAR" "LINEAR" "COMPLEMENT"):
+        if intype in "REGULAR" "LINEAR" "COMPLEMENT":
             self._bendType = intype
         else:
             raise optExceptions.OPT_FAIL("BEND.bendType must be REGULAR, LINEAR, or COMPLEMENT")
@@ -72,7 +72,7 @@ class BEND(SIMPLE):
 
         tv1 = np.array( [1, 0, 0], float) # hope not to create 2 bends that both break
         tv2 = np.array( [0, 1, 1], float) # a symmetry plane, so 2nd is off-axis
-        v3d.normalize(tv2);
+        v3d.normalize(tv2)
 
         # handle both types of linear bends
         if not v3d.are_parallel_or_antiparallel(u,v):
@@ -85,17 +85,17 @@ class BEND(SIMPLE):
         elif not v3d.are_parallel_or_antiparallel(u,tv1)  \
          and not v3d.are_parallel_or_antiparallel(v,tv1): 
             self._w[:] = v3d.cross(u, tv1)
-            v3d.normalize(self._w);
+            v3d.normalize(self._w)
             self._x[:] = v3d.cross(self._w, u)
-            v3d.normalize(self._x);
+            v3d.normalize(self._x)
 
         # u || v but not || to tv2.
         elif not v3d.are_parallel_or_antiparallel(u,tv2) \
          and not v3d.are_parallel_or_antiparallel(v,tv2):
             self._w[:] = v3d.cross(u, tv2)
-            v3d.normalize(self._w);
+            v3d.normalize(self._w)
             self._x[:] = v3d.cross(self._w, u)
-            v3d.normalize(self._x);
+            v3d.normalize(self._x)
 
         if self._bendType == "COMPLEMENT":
             w2 = np.copy(self._w)         # x_normal -> w_complement
@@ -111,7 +111,7 @@ class BEND(SIMPLE):
         #print_opt('Traditional Angle = %15.10f\n', phi)
 
         if not self._axes_fixed:
-            self.compute_axes(geom);
+            self.compute_axes(geom)
 
         check, u = v3d.eAB(geom[self.B], geom[self.A]) # B->A
         check, v = v3d.eAB(geom[self.B], geom[self.C]) # B->C
@@ -125,7 +125,7 @@ class BEND(SIMPLE):
         check, phi2 = v3d.angle(self._x, origin, v)
         if not check:
             raise optExceptios.ALG_FAIL("BEND.q could not compute linear bend")
-        phi += phi2;
+        phi += phi2
         return phi
 
     @property
@@ -190,15 +190,15 @@ class BEND(SIMPLE):
         wXv = v3d.cross(self._w, v)
 
         # packed, or mini dqdx where columns run only over 3 atoms
-        dqdx = np.zeros( (9), float)
+        dqdx = np.zeros(9, float)
         for a in range(3):
             dqdx[3*a : 3*a+3] = BEND.zeta(a,0,1) * uXw[0:3]/Lu + \
                                 BEND.zeta(a,2,1) * wXv[0:3]/Lv
       
-        val = self.q(geom);
-        cos_q = cos(val); # cos_q = v3d_dot(u,v);
+        val = self.q(geom)
+        cos_q = cos(val)  # cos_q = v3d_dot(u,v);
       
-        if (1.0-cos_q*cos_q <= 1.0e-12): # leave 2nd derivatives empty - sin 0 = 0 in denominator
+        if 1.0-cos_q*cos_q <= 1.0e-12: # leave 2nd derivatives empty - sin 0 = 0 in denominator
             return
         sin_q = sqrt(1.0 - cos_q*cos_q)
       

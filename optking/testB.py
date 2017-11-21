@@ -77,7 +77,7 @@ def testDerivativeB(intcos, geom_in):
     Natom = len(geom_in)
     Nintco = len(intcos)
     DISP_SIZE = 0.01
-    MAX_ERROR = 10*DISP_SIZE*DISP_SIZE*DISP_SIZE*DISP_SIZE;
+    MAX_ERROR = 10*DISP_SIZE*DISP_SIZE*DISP_SIZE*DISP_SIZE
 
     dq2dx2_fd       = np.zeros( (3*Natom, 3*Natom), float)
     dq2dx2_analytic = np.zeros( (3*Natom, 3*Natom), float)
@@ -118,7 +118,7 @@ def testDerivativeB(intcos, geom_in):
                 for atom_b in range(Natom):
                     for xyz_b in range(3):
                         dq2dx2_fd[3*atom_a+xyz_a,3*atom_b+xyz_b] = \
-                        (B_m2[i,3*atom_b+xyz_b] - 8*B_m[i,3*atom_b+xyz_b] + \
+                        (B_m2[i,3*atom_b+xyz_b] - 8*B_m[i,3*atom_b+xyz_b] +
                          8*B_p[i,3*atom_b+xyz_b] - B_p2[i][3*atom_b+xyz_b]) / (12.0*DISP_SIZE)
 
 
@@ -126,7 +126,7 @@ def testDerivativeB(intcos, geom_in):
             print_opt("\nNumerical B' (Dq2Dx2) matrix in au, DISP_SIZE = %f\n" % DISP_SIZE)
             printMat(dq2dx2_fd)
 
-        max_error = -1.0;
+        max_error = -1.0
         max_error_xyz = (-1,-1)
         for I in range(3*Natom):
             for J in range(3*Natom):

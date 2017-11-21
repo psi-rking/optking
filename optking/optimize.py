@@ -48,7 +48,7 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
                     #print_opt("Connectivity\n")
                     #printMat(C)
                     # Bring fragments together into one.
-                    Molsys.consolidateFragments();
+                    Molsys.consolidateFragments()
                 elif op.Params.frag_mode == 'MULTI':
                     # should do nothing if fragments are already split by calling program/constructor.
                     Molsys.splitFragmentsByConnectivity()
@@ -101,7 +101,7 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
                 if op.Params.print_lvl > 1:
                     printArray(fq, title="Internal forces in au")
             
-                history.History.append(Molsys.geom, E, fq); # Save initial step info.
+                history.History.append(Molsys.geom, E, fq)  # Save initial step info.
             
                 # Analyze previous step performance; adjust trust radius accordingly.
                 # Returns true on first step (no history)
@@ -149,7 +149,7 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
                 intcosMisc.projectRedundanciesAndConstraints(Molsys.intcos, Molsys.geom, fq, H)
                 intcosMisc.qShowValues(Molsys.intcos, Molsys.geom)        
 
-                if (op.Params.opt_type == 'IRC'):
+                if op.Params.opt_type == 'IRC':
                     xyz = Molsys.geom.copy()
                     E, g = fGradient(xyz, False)
                     Dq = IRCFollowing.Dq(Molsys, g, E, Hq, B, op.Params.irc_step_size, qPrime, dqPrime)

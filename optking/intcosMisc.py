@@ -75,7 +75,7 @@ def Gmat(intcos, geom, masses=None):
 # Compute forces in internal coordinates in au, f_q = G_inv B u f_x
 # if u is unit matrix, f_q = (BB^T)^(-1) * B f_x
 def qForces(intcos, geom, gradient_x):
-    if len(intcos) == 0 or len(geom) == 0: return np.zeros( (0), float)
+    if len(intcos) == 0 or len(geom) == 0: return np.zeros(0, float)
     B = Bmat(intcos, geom)
     fx = -1.0 * gradient_x     # gradient -> forces
     temp_arr = np.dot(B,fx.T)
@@ -234,7 +234,7 @@ def convertHessianToCartesians(Hint, intcos, geom, masses=None, g_q=None):
         dq2dx2 = np.zeros((Ncart, Ncart), float)  # should be cart x cart for fragment ?
         for I, q in enumerate(intcos):
             dq2dx2[:] = 0
-            q.Dq2Dx2(geom, dq2dx2);
+            q.Dq2Dx2(geom, dq2dx2)
 
             for a in range(Ncart):
                 for b in range(Ncart):

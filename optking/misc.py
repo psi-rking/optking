@@ -53,7 +53,7 @@ def AverageRFromPeriods(perA, perB):
 # Return Lindh alpha value from two periods
 def HguessLindhAlpha(perA, perB):
     if perA == 1:
-        if (perB == 1):
+        if perB == 1:
             return 1.000
         else:
             return 0.3949

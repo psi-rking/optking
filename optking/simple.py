@@ -29,7 +29,7 @@ class SIMPLE(object):
 
     @property
     def fixed(self):
-        if self._fixedEqVal == None:
+        if self._fixedEqVal is None:
             return False
         else:
             return True
@@ -45,7 +45,7 @@ class SIMPLE(object):
 
     @fixedEqVal.setter
     def fixedEqVal(self, qTarget=None):
-        if qTarget != None:
+        if qTarget is not None:
             try:
                 float(qTarget)
             except:

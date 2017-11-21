@@ -92,7 +92,7 @@ def symmMatRoot(A, Inverse = None):
         # could be ALG_FAIL ?
 
     rootMatrix = np.zeros((len(evals), len(evals)), float)
-    if (Inverse):
+    if Inverse:
         for i in range (0,len(evals)):
             evals[i] = 1 / evals[i]
     

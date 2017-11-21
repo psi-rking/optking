@@ -13,7 +13,7 @@ class IRCStep(object):
 #Place holder for future way to check whether or not this step is more equivalent
 #previous step may be better to perform this check in terms of internal coordinates
     def __eq__(self, other):
-        if (self.xyzGeom == other.xyzGeom)
+        if self.xyzGeom == other.xyzGeom
             return True
         else 
             return False
@@ -29,5 +29,5 @@ class IRCStep(object):
         print ("Final geometry for step %d is:" (% self.stepNumber))
         print (self.xyzGeom)
     
-        if (op.PrintLevel > 2):
+        if op.PrintLevel > 2:
             print ("IRC step length is: %d"  % self.stepLength)        

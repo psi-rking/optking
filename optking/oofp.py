@@ -41,7 +41,7 @@ class OOFP(SIMPLE):
         return self._near180
 
     def updateOrientation(self, geom):
-        tval = self.q(geom);
+        tval = self.q(geom)
         if   tval > op.Params.fix_val_near_pi:
             self._near180 = +1
         elif tval < -1*op.Params.fix_val_near_pi:

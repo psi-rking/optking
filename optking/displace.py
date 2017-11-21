@@ -25,7 +25,7 @@ def displace(intcos, geom, dq, fq, atom_offset=0, ensure_convergence=False):
     geom_orig    = np.copy(geom)
     dq_orig      = np.copy(dq)
     intcosMisc.unfixBendAxes(intcos)
-    q_orig       = intcosMisc.qValues(intcos, geom_orig);
+    q_orig       = intcosMisc.qValues(intcos, geom_orig)
 
     best_geom    = np.zeros( geom_orig.shape ,float)
 
@@ -37,20 +37,20 @@ def displace(intcos, geom, dq, fq, atom_offset=0, ensure_convergence=False):
         cnt = -1
 
         while not conv:
-            ++cnt;
+            ++cnt
             if cnt > 0:
                 print_opt("Reducing step-size by a factor of %d.\n" % (2*cnt))
                 dq[:] = dq_orig / (2.0*cnt)
 
             intcosMisc.fixBendAxes(intcos, geom)
-            conv = stepIter(intcos, geom, dq);
+            conv = stepIter(intcos, geom, dq)
             intcosMisc.unfixBendAxes(intcos)
 
             if not conv:
                 if cnt == 5:
                     print_opt("\tUnable to back-transform even 1/10th of the desired step rigorously.\n")
                     print_opt("\tContinuing with best (small) step.\n")
-                    break;
+                    break
                 else:
                     geom[:] = geom_orig  # put original geometry back for next try at smaller step.
 
@@ -59,7 +59,7 @@ def displace(intcos, geom, dq, fq, atom_offset=0, ensure_convergence=False):
 
             for j in range(1,2*cnt):
                 print_opt("Mini-step %d of %d.\n", (j+1, 2*cnt))
-                dq[:] = dq_orig / (2*cnt);
+                dq[:] = dq_orig / (2*cnt)
 
                 best_geom[:] = geom
 
@@ -74,7 +74,7 @@ def displace(intcos, geom, dq, fq, atom_offset=0, ensure_convergence=False):
 
     else: # try to back-transform, but continue even if desired dq is not achieved
         intcosMisc.fixBendAxes(intcos, geom)
-        stepIter(intcos, geom, dq);
+        stepIter(intcos, geom, dq)
         intcosMisc.unfixBendAxes(intcos)
 
     # Fix drift/error in any frozen coordinates
@@ -90,8 +90,8 @@ def displace(intcos, geom, dq, fq, atom_offset=0, ensure_convergence=False):
         print_opt("\n\tBack-transformation to cartesian coordinates to adjust frozen coordinates...\n")
 
         intcosMisc.fixBendAxes(intcos, geom)
-        check = stepIter(intcos, geom, dq_adjust_frozen, bt_dx_conv=1.0e-12, \
-                             bt_dx_rms_change_conv=1.0e-12, bt_max_iter=100)
+        check = stepIter(intcos, geom, dq_adjust_frozen, bt_dx_conv=1.0e-12,
+                         bt_dx_rms_change_conv=1.0e-12, bt_max_iter=100)
         intcosMisc.unfixBendAxes(intcos)
 
         if check: print_opt("\tsuccessful.\n")
@@ -113,7 +113,7 @@ def displace(intcos, geom, dq, fq, atom_offset=0, ensure_convergence=False):
     # Set dq to final, total displacement ACHIEVED
     qShow_final = intcosMisc.qShowValues(intcos, geom)
     qShow_orig  = intcosMisc.qShowValues(intcos, geom_orig)
-    dqShow      = qShow_final - qShow_orig;
+    dqShow      = qShow_final - qShow_orig
 
     print_opt("\n\t       --- Internal Coordinate Step in ANG or DEG, aJ/ANG or AJ/DEG ---\n")
     print_opt("\t-----------------------------------------------------------------------------\n")
@@ -126,9 +126,9 @@ def displace(intcos, geom, dq, fq, atom_offset=0, ensure_convergence=False):
 
 def stepIter(intcos, geom, dq, bt_dx_conv=None, bt_dx_rms_change_conv=None, bt_max_iter=None):
     dx_rms_last = -1
-    if bt_dx_conv == None:            bt_dx_conv  = op.Params.bt_dx_conv
-    if bt_dx_rms_change_conv == None: bt_dx_rms_change_conv = op.Params.bt_dx_rms_change_conv
-    if bt_max_iter == None:           bt_max_iter = op.Params.bt_max_iter
+    if bt_dx_conv is None:            bt_dx_conv  = op.Params.bt_dx_conv
+    if bt_dx_rms_change_conv is None: bt_dx_rms_change_conv = op.Params.bt_dx_rms_change_conv
+    if bt_max_iter is None:           bt_max_iter = op.Params.bt_max_iter
     print_lvl = op.Params.print_lvl
 
     q_orig = intcosMisc.qValues(intcos, geom)

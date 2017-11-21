@@ -16,7 +16,7 @@ def norm(v):
     return sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2])
 
 def dot(v1, v2, length=None):
-    if length == None:
+    if length is None:
         return v1[0]*v2[0] + v1[1]*v2[1] + v1[2]*v2[2]
     else:
         return fsum( [v1[i]*v2[i] for i in range(length)] )
@@ -81,14 +81,14 @@ def angle(A, B, C, tol=1.0e-14):
         print_opt("Warning: could not normalize eBC in angle()\n")
         return False, 0.0
     
-    dotprod = dot(eBA,eBC);
+    dotprod = dot(eBA,eBC)
 
     if dotprod   >  1.0 - tol:
-        phi = 0.0;
+        phi = 0.0
     elif dotprod < -1.0 + tol:
-        phi = acos(-1.0);
+        phi = acos(-1.0)
     else:
-        phi = acos(dotprod);
+        phi = acos(dotprod)
 
     return True, phi
 

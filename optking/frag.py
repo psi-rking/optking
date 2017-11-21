@@ -8,7 +8,7 @@ from .printTools import printArrayString, printMatString, print_opt
 
 # Geometry is 2D object (atom,xyz)
 
-class FRAG():
+class FRAG:
     def __init__(self, Z, geom, masses, intcos=None):
         self._Z = Z
         self._geom = geom

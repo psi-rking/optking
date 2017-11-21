@@ -225,7 +225,7 @@ def freezeBendsFromInputAtomList(frozenBendList, Molsys):
         raise optExceptions.OPT_FAIL("Number of atoms in frozen bend list not divisible by 3.")
 
     for i in range (0, len(frozenBendList), 3):
-        bendFroz = bend.BEND(frozenBendList[i]-1, frozenBendList[i+1]-1, \
+        bendFroz = bend.BEND(frozenBendList[i]-1, frozenBendList[i+1]-1,
                              frozenBendList[i+2]-1, frozen=True)
         f = checkFragment(bendFroz.atoms, Molsys)
         try:
@@ -245,7 +245,7 @@ def freezeTorsionsFromInputAtomList(frozenTorsList, Molsys):
         raise optExceptions.OPT_FAIL("Number of atoms in frozen torsion list not divisible by 4.")
 
     for i in range (0, len(frozenTorsList), 4):
-        torsAngle = tors.TORS(frozenTorsList[i]-1, frozenTorsList[i+1]-1,  \
+        torsAngle = tors.TORS(frozenTorsList[i]-1, frozenTorsList[i+1]-1,
                               frozenTorsList[i+2]-1, frozenTorsList[i+3]-1, frozen=True)
         f = checkFragment(torsAngle.atoms, Molsys)
         try:
@@ -283,7 +283,7 @@ def fixStretchesFromInputList(fixedStreList, Molsys):
 
 def fixBendsFromInputList(fixedBendList, Molsys):
     for i in range (0, len(fixedBendList), 4):  # loop over fixed bends
-        one_bend = bend.BEND(fixedBendList[i]-1, fixedBendList[i+1]-1, \
+        one_bend = bend.BEND(fixedBendList[i]-1, fixedBendList[i+1]-1,
                              fixedBendList[i+2]-1)
         val = fixedBendList[i+3] / one_bend.qShowFactor
         one_bend.fixedEqVal = val
@@ -298,7 +298,7 @@ def fixBendsFromInputList(fixedBendList, Molsys):
 
 def fixTorsionsFromInputList(fixedTorsList, Molsys):
     for i in range (0, len(fixedTorsList), 5):  # loop over fixed dihedrals
-        one_tors = tors.TORS(fixedTorsList[i]-1, fixedTorsList[i+1]-1, fixedTorsList[i+2]-1,\
+        one_tors = tors.TORS(fixedTorsList[i]-1, fixedTorsList[i+1]-1, fixedTorsList[i+2]-1,
                              fixedTorsList[i+3]-1)
         val = fixedTorsList[i+4] / one_tors.qShowFactor
         one_tors.fixedEqVal = val
