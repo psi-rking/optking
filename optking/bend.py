@@ -1,13 +1,16 @@
-from simple import *
-import numpy as np
-import v3d
-import physconst as pc  # has physical constants
 from math import sqrt, cos
-from misc import delta, ZtoPeriod, HguessLindhRho
-from physconst import bohr2angstroms
-import covRadii
-from printTools import print_opt
-import optExceptions
+
+import numpy as np
+
+from . import covRadii
+from . import optExceptions
+from . import physconst as pc  # has physical constants
+from . import v3d
+from .misc import delta, HguessLindhRho
+from .physconst import bohr2angstroms
+from .printTools import print_opt
+from .simple import *
+
 
 class BEND(SIMPLE):
 

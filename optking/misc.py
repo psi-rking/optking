@@ -1,7 +1,8 @@
-from math import fabs
 import numpy as np
-from printTools import print_opt
-import optExceptions
+
+from . import optExceptions
+from .printTools import print_opt
+
 
 def delta(i, j):
     if i == j:

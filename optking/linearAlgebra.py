@@ -1,6 +1,9 @@
 from math import fabs, sqrt
+
 import numpy as np
-import optExceptions
+
+from . import optExceptions
+
 
 def norm(V):
     return np.linalg.norm(V)

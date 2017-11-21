@@ -1,11 +1,12 @@
-from printTools import printMat, printArray, print_opt
-import numpy as np
 from math import sqrt
-import bend
-import oofp
-import tors
-from linearAlgebra import symmMatInv
-import optParams as op
+
+import numpy as np
+
+from . import oofp
+from . import optParams as op
+from .linearAlgebra import symmMatInv
+from .printTools import printMat, printArray, print_opt
+
 
 # Simple operations on internal :148
 #coordinate sets.  For example,
@@ -189,7 +190,7 @@ def massWeightedUMatrixCart(masses):
 """
 
 def convertHessianToInternals(H, intcos, geom, masses=None, g_x=None):
-    print_opt("Converting Hessian from cartesians to internals.\n")
+    print_opt("Converting Hessian from .cartesians to internals.\n")
 
     G = Gmat(intcos, geom, masses)
     Ginv = symmMatInv(G)
@@ -243,8 +244,8 @@ def convertHessianToCartesians(Hint, intcos, geom, masses=None, g_q=None):
 
 # For given [A,B,C], remove any regular bends as well as any torsions
 # which contain it
-import bend
-import tors
+from . import bend
+from . import tors
 
 def torsContainsBend(b, t):
     if (b.atoms in [t.atoms[0:3], list(reversed(t.atoms[0:3])),

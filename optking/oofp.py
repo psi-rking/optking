@@ -1,11 +1,12 @@
-from simple import *
-import numpy as np
-import v3d
-import physconst as pc  # has physical constants
-from math import sqrt, cos, sin, tan
-import optParams as op
-from printTools import print_opt
-import optExceptions
+from math import cos, sin, tan
+
+from . import optExceptions
+from . import optParams as op
+from . import physconst as pc  # has physical constants
+from . import v3d
+from .printTools import print_opt
+from .simple import *
+
 
 # Class for out-of-plane angle.  Definition (A,B,C,D) means angle AB with respect
 # to the CBD plane; canonical order is C < D

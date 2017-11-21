@@ -1,13 +1,14 @@
-import physconst as pc
-
-from simple import *
-import v3d
-import covRadii
-from misc import delta, ZtoPeriod, HguessLindhRho
 import numpy as np
-from physconst import bohr2angstroms
-from printTools import print_opt
-import optExceptions
+
+from . import covRadii
+from . import optExceptions
+from . import physconst as pc
+from . import v3d
+from .misc import delta, ZtoPeriod, HguessLindhRho
+from .physconst import bohr2angstroms
+from .printTools import print_opt
+from .simple import *
+
 
 class STRE(SIMPLE):
 

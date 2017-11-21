@@ -1,9 +1,11 @@
 import numpy as np
-import optParams as op
-import intcosMisc
-from linearAlgebra import absMax,rms,symmMatInv
-from printTools import print_opt,printArray, printMat
-import optExceptions
+
+from . import intcosMisc
+from . import optExceptions
+from . import optParams as op
+from .linearAlgebra import absMax, rms, symmMatInv
+from .printTools import print_opt, printArray
+
 
 # dq : displacements in internal coordinates to be performed.
 #      On exit, overridden to actual displacements performed.

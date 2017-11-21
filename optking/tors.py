@@ -1,14 +1,17 @@
-from simple import *
-import numpy as np
-import v3d
-import physconst as pc  # has physical constants
 from math import sqrt, fabs
-import optParams as op
-from physconst import bohr2angstroms
-from misc import HguessLindhRho
-import covRadii
-from printTools import print_opt
-import optExceptions
+
+import numpy as np
+
+from . import covRadii
+from . import optExceptions
+from . import optParams as op
+from . import physconst as pc  # has physical constants
+from . import v3d
+from .misc import HguessLindhRho
+from .physconst import bohr2angstroms
+from .printTools import print_opt
+from .simple import *
+
 
 class TORS(SIMPLE):
 

@@ -1,12 +1,13 @@
 import numpy as np
-import frag
-from optParams import Params
-from addIntcos import connectivityFromDistances, addCartesianIntcos
-from printTools import printMat, print_opt
-import physconst as pc
-import covRadii
-import v3d
-import optExceptions
+
+from . import covRadii
+from . import frag
+from . import optExceptions
+from . import physconst as pc
+from . import v3d
+from .addIntcos import connectivityFromDistances, addCartesianIntcos
+from .printTools import print_opt
+
 
 class MOLSYS(object): # new-style classes required for getter/setters
     def __init__(self, fragments, fb_fragments=None, intcos=None):

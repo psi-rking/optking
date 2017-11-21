@@ -1,29 +1,29 @@
 
 def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
     
-    import caseInsensitiveDict
+    from . import caseInsensitiveDict
     userOptions = caseInsensitiveDict.CaseInsensitiveDict( options_in )
     origOptions = userOptions.copy() # Save copy of original user options.
 
-    from printTools import printGeomGrad,printMat,printArray,print_opt
+    from .printTools import printGeomGrad,printMat,printArray,print_opt
 
     # Create full list of parameters from user options plus defaults.
-    import optParams as op
+    from . import optParams as op
     op.welcome()  # print header
     print_opt("\tProcessing user input options...\n")
     op.Params = op.OPT_PARAMS(userOptions)
     print_opt("\tParameters from optking.optimize\n")
     print_opt( str(op.Params) )
 
-    import addIntcos
-    import optExceptions
-    import history 
-    import stepAlgorithms
-    import intcosMisc
-    import hessian
-    import convCheck
-    import testB
-    import IRCFollowing
+    from . import addIntcos
+    from . import optExceptions
+    from . import history 
+    from . import stepAlgorithms
+    from . import intcosMisc
+    from . import hessian
+    from . import convCheck
+    from . import testB
+    from . import IRCFollowing
     converged = False
 
     # For IRC computations:
@@ -196,7 +196,7 @@ def optimize( Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
             eraseIntcos = False
 
             if AF.linearBends: # New linear bends detected; Add them, and continue at current level.
-                import bend
+                from . import bend
                 for l in AF.linearBends:
                     if l.bendType == "LINEAR": # no need to repeat this code for "COMPLEMENT"
                        F = addIntcos.checkFragment(l.atoms, Molsys)

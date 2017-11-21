@@ -1,10 +1,12 @@
-import misc
-import numpy as np
-import optParams as op
-import intcosMisc
 from math import fabs
-from linearAlgebra import absMax,rms,signOfDouble
-from printTools import printMat,printMatString,printArrayString,print_opt,printArray
+
+import numpy as np
+
+from . import intcosMisc
+from . import optParams as op
+from .linearAlgebra import absMax, rms, signOfDouble
+from .printTools import printMat, printMatString, printArrayString, print_opt
+
 
 class STEP(object):
     def __init__(self,geom,E,forces):
@@ -78,7 +80,7 @@ class HISTORY(object):
         self.steps[-1].record(projectedDE, Dq, followedUnitVector, oneDgradient, oneDhessian)
 
     def trajectory(self,Zs):
-        import atomData
+        from . import atomData
         t = []
         Zstring = [ atomData.Z_to_symbol[i] for i in Zs ]
         for iS, S in enumerate(self.steps):

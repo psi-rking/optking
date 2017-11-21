@@ -1,18 +1,18 @@
 # Functions for step algorithms: Newton-Raphson, Rational Function Optimization,
 # Steepest Descent. 
 import numpy as np
-#from optParams import Params # this will not cause changes in trust to persist
-import optParams as op
-from displace import displace
-from intcosMisc import qShowForces
-from addIntcos import linearBendCheck
+#from .optParams import Params # this will not cause changes in trust to persist
+from . import optParams as op
+from .displace from . import displace
+from .intcosMisc import qShowForces
+from .addIntcos import linearBendCheck
 from math import sqrt, fabs
-from printTools import printArray, printMat, print_opt
-from misc import symmetrizeXYZ, isDqSymmetric
-from linearAlgebra import absMax, symmMatEig, asymmMatEig, symmMatInv, norm
-import v3d
-from history import History
-import optExceptions
+from .printTools import printArray, printMat, print_opt
+from .misc import symmetrizeXYZ, isDqSymmetric
+from .linearAlgebra import absMax, symmMatEig, asymmMatEig, symmMatInv, norm
+from . import v3d
+from .history import History
+from . import optExceptions
 
 # This function and its components:
 # 1. Computes Dq, the step in internal coordinates.

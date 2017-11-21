@@ -1,13 +1,13 @@
-from displace import displace
-import intcosMisc
-from addIntcos import linearBendCheck
 from math import sqrt, fabs
-from printTools import printArray, printMat, print_opt
-from linearAlgebra import absMax, symmMatEig, asymmMatEig, symmMatInv, symmMatRoot
-from history import History
+
 import numpy as np
-import optParams as op
-import stepAlgorithms
+
+from . import displace
+from . import intcosMisc
+from .displace
+from .linearAlgebra import symmMatEig, symmMatInv, symmMatRoot
+from .printTools import printArray, printMat, print_opt
+
 
 #Takes a half step from starting geometry along the gradient, then takes an additional half step as a guess
 #returns dq
@@ -33,7 +33,7 @@ def takeHessianHalfStep(Molsys, Hq, B, fq, s, direction = 'forward'):
     #gx = fgradient(geom)    
     #gq = np.dot(GmInv, np.dot(B, gx))
     
-    #initial internal coordinates from intcosMisc
+    #initial internal coordinates from .intcosMisc
     qZero = intcosMisc.qValues(Molsys.intcos, Molsys.geom)
 
     #symmMatEig returns the Eigen Vectors as rows in order of increasing eigen values

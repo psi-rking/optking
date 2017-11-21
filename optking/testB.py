@@ -3,9 +3,9 @@
 #  a few unfortunates will be slightly worse.
 # Returns True or False, doesn't raise exceptions
 import numpy as np
-import intcosMisc
-from printTools import printMat, print_opt
-import optParams as op
+from . import intcosMisc
+from .printTools import printMat, print_opt
+from . import optParams as op
 from math import fabs
 
 def testB(intcos, geom):

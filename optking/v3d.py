@@ -4,8 +4,8 @@
 # points are collinear.
 import numpy as np
 from math import sqrt, fabs, sin, acos, asin, fsum
-import optParams as op
-from printTools import print_opt
+from . import optParams as op
+from .printTools import print_opt
 # a couple of obscure parameters used in torsion computation:
 #  phi_lim = op.Params.v3d_tors_angle_lim
 #  tors_cos_tol = op.Params.v3d_tors_cos_tol

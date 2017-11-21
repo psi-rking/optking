@@ -1,21 +1,19 @@
-from printTools import printMat,printArray,print_opt
-from itertools import combinations,permutations
-import numpy as np
-import sys
-import optParams as op
-import optExceptions
+from itertools import combinations, permutations
 
-import physconst as pc
-from intcosMisc import qValues
-import molsys
-import frag
-import simple
-import v3d
-import covRadii
-import stre
-import bend
-import tors
-import cart
+import numpy as np
+
+from . import bend
+from . import cart
+from . import covRadii
+from . import optExceptions
+from . import optParams as op
+from . import physconst as pc
+from . import stre
+from . import tors
+from . import v3d
+from .intcosMisc import qValues
+from .printTools import print_opt
+
 
 # returns connectivity matrix.  Matrix is 0 if i==j.
 def connectivityFromDistances(geom, Z):
