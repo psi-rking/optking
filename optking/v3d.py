@@ -133,7 +133,7 @@ def tors(A, B, C, D):
     tmp2 = cross(EBC, ECD)
     tval = dot(tmp, tmp2) / (sin(phi_123) * sin(phi_234))
 
-    if tval >= 1.0 - tors_cos_tol:    # accounts for numerical leaking out of range
+    if tval >= 1.0 - tors_cos_tol:  # accounts for numerical leaking out of range
         tau = 0.0
     elif tval <= -1.0 + tors_cos_tol:
         tau = acos(-1)
@@ -141,7 +141,7 @@ def tors(A, B, C, D):
         tau = acos(tval)
 
     # determine sign of torsion ; this convention matches Wilson, Decius and Cross
-    if tau != acos(-1):    # no torsion will get value of -pi; Range is (-pi,pi].
+    if tau != acos(-1):  # no torsion will get value of -pi; Range is (-pi,pi].
         tmp = cross(EBC, ECD)
         tval = dot(EAB, tmp)
         if tval < 0:
@@ -164,7 +164,7 @@ def oofp(A, B, C, D):
         return False, 0.0
 
     # This shouldn't happen unless angle B-C-D -> 0,
-    if sin(phi_CBD) < op.Params.v3d_tors_cos_tol:    #reusing parameter
+    if sin(phi_CBD) < op.Params.v3d_tors_cos_tol:  #reusing parameter
         return False, 0.0
 
     dotprod = dot(cross(eBC, eBD), eBA) / sin(phi_CBD)

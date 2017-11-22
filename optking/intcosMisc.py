@@ -84,7 +84,7 @@ def Gmat(intcos, geom, masses=None):
 def qForces(intcos, geom, gradient_x):
     if len(intcos) == 0 or len(geom) == 0: return np.zeros(0, float)
     B = Bmat(intcos, geom)
-    fx = -1.0 * gradient_x    # gradient -> forces
+    fx = -1.0 * gradient_x  # gradient -> forces
     temp_arr = np.dot(B, fx.T)
     del fx
 
@@ -145,7 +145,8 @@ def projectRedundanciesAndConstraints(intcos, geom, fq, H):
 
         if op.Params.print_lvl >= 3:
             print_opt(
-                "\tInternal forces in au, after projection of redundancies and constraints.\n")
+                "\tInternal forces in au, after projection of redundancies and constraints.\n"
+            )
             printArray(fq)
         # Project redundancies out of Hessian matrix.
         # Peng, Ayala, Schlegel, JCC 1996 give H -> PHP + 1000(1-P)
@@ -176,16 +177,18 @@ def applyFixedForces(Molsys, fq, H, stepNumber):
                 force = k * (eqVal - val)
                 H[location][location] = k
 
-                print_opt("\n\tAdding user-defined constraint: Fragment %d; Coordinate %d:\n" %
-                          (iF + 1, i + 1))
+                print_opt(
+                    "\n\tAdding user-defined constraint: Fragment %d; Coordinate %d:\n" %
+                    (iF + 1, i + 1))
                 print_opt("\t\tValue = %12.6f; Fixed value    = %12.6f" % (val, eqVal))
                 print_opt("\t\tForce = %12.6f; Force constant = %12.6f" % (force, k))
                 fq[location] = force
 
                 # Delete coupling between this coordinate and others.
-                print_opt("\t\tRemoving off-diagonal coupling between coordinate %d and others." %
-                          (location + 1))
-                for j in range(len(H)):    # gives first dimension length
+                print_opt(
+                    "\t\tRemoving off-diagonal coupling between coordinate %d and others."
+                    % (location + 1))
+                for j in range(len(H)):  # gives first dimension length
                     if j != location:
                         H[j][location] = H[location][j] = 0
 
@@ -213,25 +216,27 @@ def convertHessianToInternals(H, intcos, geom, masses=None, g_x=None):
     B = Bmat(intcos, geom, masses)
     Atranspose = np.dot(Ginv, B)
 
-    if g_x is None:    # A^t Hxy A
-        print_opt("Neglecting force/B-matrix derivative term, only correct at stationary points.\n")
+    if g_x is None:  # A^t Hxy A
+        print_opt(
+            "Neglecting force/B-matrix derivative term, only correct at stationary points.\n"
+        )
         Hworking = H
-    else:    # A^t (Hxy - Kxy) A;    K_xy = sum_q ( grad_q[I] d^2(q_I)/(dx dy) )
+    else:  # A^t (Hxy - Kxy) A;    K_xy = sum_q ( grad_q[I] d^2(q_I)/(dx dy) )
         print_opt("Including force/B-matrix derivative term.\n")
         Hworking = H.copy()
 
         g_q = np.dot(Atranspose, g_x)
         Ncart = 3 * len(geom)
-        dq2dx2 = np.zeros((Ncart, Ncart), float)    # should be cart x cart for fragment ?
+        dq2dx2 = np.zeros((Ncart, Ncart), float)  # should be cart x cart for fragment ?
 
         for I, q in enumerate(intcos):
             dq2dx2[:] = 0
-            q.Dq2Dx2(geom, dq2dx2)    # d^2(q_I)/ dx_i dx_j
+            q.Dq2Dx2(geom, dq2dx2)  # d^2(q_I)/ dx_i dx_j
 
             for a in range(Ncart):
                 for b in range(Ncart):
-                    Hworking[a, b] -= g_q[I] * dq2dx2[a,
-                                                      b]    # adjust indices for multiple fragments
+                    Hworking[a, b] -= g_q[I] * dq2dx2[
+                        a, b]  # adjust indices for multiple fragments
 
     Hq = np.dot(Atranspose, np.dot(Hworking, Atranspose.T))
     return Hq
@@ -243,13 +248,15 @@ def convertHessianToCartesians(Hint, intcos, geom, masses=None, g_q=None):
     B = Bmat(intcos, geom, masses)
     Hxy = np.dot(B.T, np.dot(Hint, B))
 
-    if g_q is None:    # Hxy =  B^t Hij B
-        print_opt("Neglecting force/B-matrix derivative term, only correct at stationary points.\n")
-    else:    # Hxy += dE/dq_I d2(q_I)/dxdy
+    if g_q is None:  # Hxy =  B^t Hij B
+        print_opt(
+            "Neglecting force/B-matrix derivative term, only correct at stationary points.\n"
+        )
+    else:  # Hxy += dE/dq_I d2(q_I)/dxdy
         print_opt("Including force/B-matrix derivative term.\n")
         Ncart = 3 * len(geom)
 
-        dq2dx2 = np.zeros((Ncart, Ncart), float)    # should be cart x cart for fragment ?
+        dq2dx2 = np.zeros((Ncart, Ncart), float)  # should be cart x cart for fragment ?
         for I, q in enumerate(intcos):
             dq2dx2[:] = 0
             q.Dq2Dx2(geom, dq2dx2)
@@ -281,7 +288,9 @@ def removeOldNowLinearBend(atoms, intcos):
     b = bend.BEND(atoms[0], atoms[1], atoms[2])
     print_opt(str(b) + '\n')
     intcos[:] = [I for I in intcos if not (I == b)]
-    intcos[:] = [I for I in intcos if not (isinstance(I, tors.TORS) and torsContainsBend(b, I))]
+    intcos[:] = [
+        I for I in intcos if not (isinstance(I, tors.TORS) and torsContainsBend(b, I))
+    ]
     #    if b == Coord:
     #        del intcos[iCoord]
     #    if isinstance(Coord, tors.TORS):

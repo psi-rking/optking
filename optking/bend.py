@@ -4,7 +4,7 @@ import numpy as np
 
 from . import covRadii
 from . import optExceptions
-from . import physconst as pc    # has physical constants
+from . import physconst as pc  # has physical constants
 from . import v3d
 from .misc import delta, HguessLindhRho
 from .physconst import bohr2angstroms
@@ -56,28 +56,29 @@ class BEND(SIMPLE):
         if intype in "REGULAR" "LINEAR" "COMPLEMENT":
             self._bendType = intype
         else:
-            raise optExceptions.OPT_FAIL("BEND.bendType must be REGULAR, LINEAR, or COMPLEMENT")
+            raise optExceptions.OPT_FAIL(
+                "BEND.bendType must be REGULAR, LINEAR, or COMPLEMENT")
 
     def compute_axes(self, geom):
-        check, u = v3d.eAB(geom[self.B], geom[self.A])    # B->A
-        check, v = v3d.eAB(geom[self.B], geom[self.C])    # B->C
+        check, u = v3d.eAB(geom[self.B], geom[self.A])  # B->A
+        check, v = v3d.eAB(geom[self.B], geom[self.C])  # B->C
 
-        if self._bendType == "REGULAR":    # not a linear-bend type
-            self._w[:] = v3d.cross(u, v)    # orthogonal vector
+        if self._bendType == "REGULAR":  # not a linear-bend type
+            self._w[:] = v3d.cross(u, v)  # orthogonal vector
             v3d.normalize(self._w)
-            self._x[:] = u + v    # angle bisector
+            self._x[:] = u + v  # angle bisector
             v3d.normalize(self._x)
             return
 
-        tv1 = np.array([1, 0, 0], float)    # hope not to create 2 bends that both break
-        tv2 = np.array([0, 1, 1], float)    # a symmetry plane, so 2nd is off-axis
+        tv1 = np.array([1, 0, 0], float)  # hope not to create 2 bends that both break
+        tv2 = np.array([0, 1, 1], float)  # a symmetry plane, so 2nd is off-axis
         v3d.normalize(tv2)
 
         # handle both types of linear bends
         if not v3d.are_parallel_or_antiparallel(u, v):
-            self._w[:] = v3d.cross(u, v)    # orthogonal vector
+            self._w[:] = v3d.cross(u, v)  # orthogonal vector
             v3d.normalize(self._w)
-            self._x[:] = u + v    # angle bisector
+            self._x[:] = u + v  # angle bisector
             v3d.normalize(self._x)
 
         # u || v but not || to tv1.
@@ -97,8 +98,8 @@ class BEND(SIMPLE):
             v3d.normalize(self._x)
 
         if self._bendType == "COMPLEMENT":
-            w2 = np.copy(self._w)    # x_normal -> w_complement
-            self._w[:] = -1.0 * self._x    # -w_normal -> x_complement
+            w2 = np.copy(self._w)  # x_normal -> w_complement
+            self._w[:] = -1.0 * self._x  # -w_normal -> x_complement
             self._x[:] = w2
             del w2
 
@@ -111,8 +112,8 @@ class BEND(SIMPLE):
         if not self._axes_fixed:
             self.compute_axes(geom)
 
-        check, u = v3d.eAB(geom[self.B], geom[self.A])    # B->A
-        check, v = v3d.eAB(geom[self.B], geom[self.C])    # B->C
+        check, u = v3d.eAB(geom[self.B], geom[self.A])  # B->A
+        check, v = v3d.eAB(geom[self.B], geom[self.C])  # B->C
 
         # linear bend is sum of 2 angles, u.x + v.x
         origin = np.zeros(3, float)
@@ -130,7 +131,7 @@ class BEND(SIMPLE):
     def qShowFactor(self):
         return 180.0 / pc.pi
 
-    def qShow(self, geom):    # return in degrees
+    def qShow(self, geom):  # return in degrees
         return self.q(geom) * self.qShowFactor
 
     @property
@@ -155,12 +156,12 @@ class BEND(SIMPLE):
         if not self._axes_fixed:
             self.compute_axes(geom)
 
-        u = geom[self.A] - geom[self.B]    # B->A
-        v = geom[self.C] - geom[self.B]    # B->C
-        Lu = v3d.norm(u)    # RBA
-        Lv = v3d.norm(v)    # RBC
-        u[:] *= 1.0 / Lu    # u = eBA
-        v[:] *= 1.0 / Lv    # v = eBC
+        u = geom[self.A] - geom[self.B]  # B->A
+        v = geom[self.C] - geom[self.B]  # B->C
+        Lu = v3d.norm(u)  # RBA
+        Lv = v3d.norm(v)  # RBC
+        u[:] *= 1.0 / Lu  # u = eBA
+        v[:] *= 1.0 / Lv  # v = eBC
 
         uXw = v3d.cross(u, self._w)
         wXv = v3d.cross(self._w, v)
@@ -177,12 +178,12 @@ class BEND(SIMPLE):
         if not self._axes_fixed:
             self.compute_axes(geom)
 
-        u = geom[self.A] - geom[self.B]    # B->A
-        v = geom[self.C] - geom[self.B]    # B->C
-        Lu = v3d.norm(u)    # RBA
-        Lv = v3d.norm(v)    # RBC
-        u *= 1.0 / Lu    # eBA
-        v *= 1.0 / Lv    # eBC
+        u = geom[self.A] - geom[self.B]  # B->A
+        v = geom[self.C] - geom[self.B]  # B->C
+        Lu = v3d.norm(u)  # RBA
+        Lv = v3d.norm(v)  # RBC
+        u *= 1.0 / Lu  # eBA
+        v *= 1.0 / Lv  # eBC
 
         uXw = v3d.cross(u, self._w)
         wXv = v3d.cross(self._w, v)
@@ -194,16 +195,16 @@ class BEND(SIMPLE):
                                 BEND.zeta(a,2,1) * wXv[0:3]/Lv
 
         val = self.q(geom)
-        cos_q = cos(val)    # cos_q = v3d_dot(u,v);
+        cos_q = cos(val)  # cos_q = v3d_dot(u,v);
 
-        if 1.0 - cos_q * cos_q <= 1.0e-12:    # leave 2nd derivatives empty - sin 0 = 0 in denominator
+        if 1.0 - cos_q * cos_q <= 1.0e-12:  # leave 2nd derivatives empty - sin 0 = 0 in denominator
             return
         sin_q = sqrt(1.0 - cos_q * cos_q)
 
         for a in range(3):
-            for i in range(3):    #i = a_xyz
+            for i in range(3):  #i = a_xyz
                 for b in range(3):
-                    for j in range(3):    #j=b_xyz
+                    for j in range(3):  #j=b_xyz
                         tval =  BEND.zeta(a,0,1) * BEND.zeta(b,0,1) * \
                           (u[i]*v[j]+u[j]*v[i]-3*u[i]*u[j]*cos_q+delta(i,j)*cos_q) / (Lu*Lu*sin_q)
 
@@ -241,12 +242,14 @@ class BEND(SIMPLE):
             b = 0.11
             c = 0.44
             d = -0.42
-            Rcov_AB = (covRadii.R[int(Z[self.A])] + covRadii.R[int(Z[self.B])]) / bohr2angstroms
-            Rcov_BC = (covRadii.R[int(Z[self.C])] + covRadii.R[int(Z[self.B])]) / bohr2angstroms
+            Rcov_AB = (
+                covRadii.R[int(Z[self.A])] + covRadii.R[int(Z[self.B])]) / bohr2angstroms
+            Rcov_BC = (
+                covRadii.R[int(Z[self.C])] + covRadii.R[int(Z[self.B])]) / bohr2angstroms
             R_AB = v3d.dist(geom[self.A], geom[self.B])
             R_BC = v3d.dist(geom[self.B], geom[self.C])
-            return a + b / (np.power(Rcov_AB * Rcov_BC, d)) * np.exp(-c * (
-                R_AB + R_BC - Rcov_AB - Rcov_BC))
+            return a + b / (np.power(Rcov_AB * Rcov_BC, d)) * np.exp(
+                -c * (R_AB + R_BC - Rcov_AB - Rcov_BC))
 
         elif guessType == "LINDH_SIMPLE":
             R_AB = v3d.dist(geom[self.A], geom[self.B])

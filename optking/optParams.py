@@ -28,13 +28,15 @@ def stringOption(storage_name):
 allowedStringOptions = {
     'opt_type': ('MIN', 'TS', 'IRC'),
     'step_type': ('RFO', 'P_RFO', 'NR', 'SD', 'LINESEARCH'),
-    'opt_coordinates': ('REDUNDANT', 'INTERNAL', 'DELOCALIZED', 'NATURAL', 'CARTESIAN', 'BOTH'),
+    'opt_coordinates': ('REDUNDANT', 'INTERNAL', 'DELOCALIZED', 'NATURAL', 'CARTESIAN',
+                        'BOTH'),
     'irc_direction': ('FORWARD', 'BACKWARD'),
     'irc_stop': ('ASK', 'STOP', 'GO'),
     'g_convergence': ('QCHEM', 'MOLPRO', 'GAU', 'GAU_LOOSE', 'GAU_TIGHT', 'GAU_VERYTIGHT',
                       'TURBOMOLE', 'CFOUR', 'NWCHEM_LOOSE'),
     'hess_update': ('NONE', 'BFGS', 'MS', 'POWELL', 'BOFILL'),
-    'intrafrag_hess': ('SCHLEGEL', 'FISCHER', 'SCHLEGEL', 'SIMPLE', 'LINDH', 'LINDH_SIMPLE'),
+    'intrafrag_hess': ('SCHLEGEL', 'FISCHER', 'SCHLEGEL', 'SIMPLE', 'LINDH',
+                       'LINDH_SIMPLE'),
     'frag_mode': ('SINGLE', 'MULTI'),
     'interfrag_mode': ('FIXED', 'PRINCIPAL_AXES'),
     'interfrag_hess': ('DEFAULT', 'FISCHER_LIKE'),
@@ -64,8 +66,8 @@ class OPT_PARAMS(object):
     def __str__(P):
         s = "\t\t -- Optimization Parameters --\n"
         for attr in dir(P):
-            if not hasattr(getattr(P, attr), '__self__'):    # omit bound methods
-                if '__' not in attr:    # omit these methods
+            if not hasattr(getattr(P, attr), '__self__'):  # omit bound methods
+                if '__' not in attr:  # omit these methods
                     s += "\t%-30s = %15s\n" % (attr, getattr(P, attr))
         s += "\n"
         return s
@@ -99,10 +101,11 @@ class OPT_PARAMS(object):
         P.accept_symmetry_breaking = uod.get('ACCEPT_SYMMETRY_BREAKING', False)
         # Starting level for dynamic optimization (0=nondynamic, higher=>more conservative)
         P.dynamic_level = uod.get('DYNAMIC_LEVEL', 0)
-        if P.dynamic_level == 0:    # don't change parameters
+        if P.dynamic_level == 0:  # don't change parameters
             P.dynamic_level_max = 1
         else:
-            P.dynamic_level_max = uod.get('DYNAMIC_LEVEL_MAX', 8)    #7 level currently defined
+            P.dynamic_level_max = uod.get('DYNAMIC_LEVEL_MAX',
+                                          8)  #7 level currently defined
         ## IRC step size in bohr(amu)\ $^{1/2}$.
         P.irc_step_size = uod.get('IRC_STEP_SIZE', 0.2)
         ## IRC mapping direction
@@ -368,7 +371,7 @@ class OPT_PARAMS(object):
         P.v3d_tors_cos_tol = 1e-10
         #
         # if bend exceeds this value, then also create linear bend complement
-        P.linear_bend_threshold = 3.05    # about 175 degrees
+        P.linear_bend_threshold = 3.05  # about 175 degrees
         ## If bend is smaller than this value, then never fix its associated vectors
         ## this allows iterative steps through and near zero degrees.
         #P.small_bend_fix_threshold = 0.35
@@ -490,6 +493,7 @@ class OPT_PARAMS(object):
             P.i_rms_disp = True
             P.conv_rms_disp = P.rms_disp_g_convergence
 
+
 #
 # Even if a specific threshold were given, allow for Molpro/Qchem/G03 flex criteria
         if P.flexible_g_convergence:
@@ -549,7 +553,8 @@ class OPT_PARAMS(object):
             P.consecutiveBackstepsAllowed = 0
             P.step_type = 'RFO'
             print_opt(
-                "Going to run_level 1: Red. Int., RFO, no backsteps, default, dynamic trust.\n")
+                "Going to run_level 1: Red. Int., RFO, no backsteps, default, dynamic trust.\n"
+            )
         elif run_level == 2:
             P.opt_coordinates = 'REDUNDANT'
             P.consecutiveBackstepsAllowed = 1
@@ -557,7 +562,8 @@ class OPT_PARAMS(object):
             P.intrafrag_trust = 0.2
             P.intrafrag_trust_min = 0.2
             P.intrafrag_trust_max = 0.2
-            print_opt("Going to run_level 2: Red. Int., RFO, 1 backstep, smaller trust.\n")
+            print_opt(
+                "Going to run_level 2: Red. Int., RFO, 1 backstep, smaller trust.\n")
         elif run_level == 3:
             P.opt_coordinates = 'BOTH'
             P.consecutiveBackstepsAllowed = 1
@@ -565,7 +571,9 @@ class OPT_PARAMS(object):
             P.intrafrag_trust = 0.1
             P.intrafrag_trust_min = 0.1
             P.intrafrag_trust_max = 0.1
-            print_opt("Going to run_level 3: Red. Int. + XYZ, RFO, 1 backstep, smaller trust.\n")
+            print_opt(
+                "Going to run_level 3: Red. Int. + XYZ, RFO, 1 backstep, smaller trust.\n"
+            )
         elif run_level == 4:
             P.opt_coordinates = 'CARTESIAN'
             P.consecutiveBackstepsAllowed = 1
@@ -601,7 +609,9 @@ class OPT_PARAMS(object):
             P.intrafrag_trust = 0.1
             P.intrafrag_trust_min = 0.1
             P.intrafrag_trust_max = 0.1
-            print_opt("Moving to run_level 6: XYZ, SD, 1 backstep, smaller trust, smaller step.\n")
+            print_opt(
+                "Moving to run_level 6: XYZ, SD, 1 backstep, smaller trust, smaller step.\n"
+            )
         else:
             raise optExceptions.OPT_FAIL("Unknown value of run_level")
 

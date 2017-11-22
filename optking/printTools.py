@@ -91,4 +91,5 @@ def printGeomGrad(geom, grad):
         print_opt("\t%20.10f%20.10f%20.10f\n" % (geom[i, 0], geom[i, 1], geom[i, 2]))
     print_opt("\n")
     for i in range(Natom):
-        print_opt("\t%20.10f%20.10f%20.10f\n" % (grad[3 * i + 0], grad[3 * i + 1], grad[3 * i + 2]))
+        print_opt("\t%20.10f%20.10f%20.10f\n" % (grad[3 * i + 0], grad[3 * i + 1],
+                                                 grad[3 * i + 2]))

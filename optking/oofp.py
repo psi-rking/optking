@@ -2,7 +2,7 @@ from math import cos, sin, tan
 
 from . import optExceptions
 from . import optParams as op
-from . import physconst as pc    # has physical constants
+from . import physconst as pc  # has physical constants
 from . import v3d
 from .printTools import print_opt
 from .simple import *
@@ -53,7 +53,7 @@ class OOFP(SIMPLE):
     def qShowFactor(self):
         return 180.0 / pc.pi
 
-    def qShow(self, geom):    # return in degrees
+    def qShow(self, geom):  # return in degrees
         return self.q(geom) * self.qShowFactor
 
     @property
@@ -64,7 +64,8 @@ class OOFP(SIMPLE):
     def q(self, geom):
         check, tau = v3d.oofp(geom[self.A], geom[self.B], geom[self.C], geom[self.D])
         if not check:
-            raise optExceptions.ALG_FAIL("OOFP::compute.q: unable to compute out-of-plane value")
+            raise optExceptions.ALG_FAIL(
+                "OOFP::compute.q: unable to compute out-of-plane value")
 
         # Extend domain of out-of-plane angles to beyond pi
         if self._near180 == -1 and tau > op.Params.fix_val_near_pi:

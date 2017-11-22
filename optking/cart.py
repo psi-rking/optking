@@ -1,4 +1,4 @@
-from . import physconst as pc    # has physical constants
+from . import physconst as pc  # has physical constants
 
 from .simple import *
 
@@ -6,7 +6,7 @@ from .simple import *
 class CART(SIMPLE):
     def __init__(self, a, xyz_in, frozen=False, fixedEqVal=None):
 
-        self.xyz = xyz_in    # uses setter below
+        self.xyz = xyz_in  # uses setter below
         atoms = (a, )
         SIMPLE.__init__(self, atoms, frozen, fixedEqVal)
 

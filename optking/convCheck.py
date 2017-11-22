@@ -41,7 +41,8 @@ def convCheck(iterNum, Molsys, dq, f, energies, qPivot=None, masses=None):
     # Remove arbitrary forces for user-specified equilibrium values.
     if has_fixed:
         print_opt(
-            "\tForces used to impose fixed constraints are not included in convergence check.\n")
+            "\tForces used to impose fixed constraints are not included in convergence check.\n"
+        )
         for i, ints in enumerate(Molsys.intcos):
             if ints.fixedEqVal:
                 f[i] = 0
@@ -89,7 +90,9 @@ def convCheck(iterNum, Molsys, dq, f, energies, qPivot=None, masses=None):
     if op.Params.opt_type != 'IRC':
         print_opt("\n  ==> Convergence Check <==\n\n")
         print_opt("  Measures of convergence in internal coordinates in au.\n")
-        print_opt("  Criteria marked as inactive (o), active & met (*), and active & unmet ( ).\n")
+        print_opt(
+            "  Criteria marked as inactive (o), active & met (*), and active & unmet ( ).\n"
+        )
         print_opt(
             "  ---------------------------------------------------------------------------------------------"
         )
@@ -108,14 +111,22 @@ def convCheck(iterNum, Molsys, dq, f, energies, qPivot=None, masses=None):
         print_opt("    Convergence Criteria")
         if op.Params.i_max_DE: print_opt("  %10.2e %1s" % (op.Params.conv_max_DE, "*"))
         else: print_opt("             %1s" % "o")
-        if op.Params.i_max_force: print_opt("  %10.2e %1s" % (op.Params.conv_max_force, "*"))
-        else: print_opt("             %1s" % "o")
-        if op.Params.i_rms_force: print_opt("  %10.2e %1s" % (op.Params.conv_rms_force, "*"))
-        else: print_opt("             %1s" % "o")
-        if op.Params.i_max_disp: print_opt("  %10.2e %1s" % (op.Params.conv_max_disp, "*"))
-        else: print_opt("             %1s" % "o")
-        if op.Params.i_rms_disp: print_opt("  %10.2e %1s" % (op.Params.conv_rms_disp, "*"))
-        else: print_opt("             %1s" % "o")
+        if op.Params.i_max_force:
+            print_opt("  %10.2e %1s" % (op.Params.conv_max_force, "*"))
+        else:
+            print_opt("             %1s" % "o")
+        if op.Params.i_rms_force:
+            print_opt("  %10.2e %1s" % (op.Params.conv_rms_force, "*"))
+        else:
+            print_opt("             %1s" % "o")
+        if op.Params.i_max_disp:
+            print_opt("  %10.2e %1s" % (op.Params.conv_max_disp, "*"))
+        else:
+            print_opt("             %1s" % "o")
+        if op.Params.i_rms_disp:
+            print_opt("  %10.2e %1s" % (op.Params.conv_rms_disp, "*"))
+        else:
+            print_opt("             %1s" % "o")
         if iterNum == 0: print_opt("  ~\n")
         else: print_opt("\n")
         print_opt(
@@ -123,20 +134,22 @@ def convCheck(iterNum, Molsys, dq, f, energies, qPivot=None, masses=None):
         )
         if iterNum == 0: print_opt(" ~\n")
         else: print_opt("\n")
-        print_opt("   %4d %16.8f  %10.2e %1s  %10.2e %1s  %10.2e %1s  %10.2e %1s  %10.2e %1s  ~\n" %
-                  (iterNum + 1, energy, DE, ('*' if fabs(DE) < op.Params.conv_max_DE else "")
-                   if op.Params.i_max_DE else 'o', max_force,
-                   ('*' if fabs(max_force) < op.Params.conv_max_force else "")
-                   if op.Params.i_max_force else 'o', rms_force,
-                   ('*' if fabs(rms_force) < op.Params.conv_rms_force else "")
-                   if op.Params.i_rms_force else 'o', max_disp,
-                   ('*' if fabs(max_disp) < op.Params.conv_max_disp else "")
-                   if op.Params.i_max_disp else 'o', rms_disp,
-                   ('*' if fabs(rms_disp) < op.Params.conv_rms_disp else "")
-                   if op.Params.i_rms_disp else 'o'))
+        print_opt(
+            "   %4d %16.8f  %10.2e %1s  %10.2e %1s  %10.2e %1s  %10.2e %1s  %10.2e %1s  ~\n"
+            % (iterNum + 1, energy, DE, ('*' if fabs(DE) < op.Params.conv_max_DE else "")
+               if op.Params.i_max_DE else 'o', max_force,
+               ('*' if fabs(max_force) < op.Params.conv_max_force else "")
+               if op.Params.i_max_force else 'o', rms_force,
+               ('*' if fabs(rms_force) < op.Params.conv_rms_force else "")
+               if op.Params.i_rms_force else 'o', max_disp,
+               ('*' if fabs(max_disp) < op.Params.conv_max_disp else "")
+               if op.Params.i_max_disp else 'o', rms_disp,
+               ('*' if fabs(rms_disp) < op.Params.conv_rms_disp else "")
+               if op.Params.i_rms_disp else 'o'))
         print_opt(
             "  ---------------------------------------------------------------------------------------------\n\n"
         )
+
 
 #
 

@@ -5,7 +5,7 @@ import numpy as np
 from . import covRadii
 from . import optExceptions
 from . import optParams as op
-from . import physconst as pc    # has physical constants
+from . import physconst as pc  # has physical constants
 from . import v3d
 from .misc import HguessLindhRho
 from .physconst import bohr2angstroms
@@ -57,7 +57,7 @@ class TORS(SIMPLE):
     def qShowFactor(self):
         return 180.0 / pc.pi
 
-    def qShow(self, geom):    # return in degrees
+    def qShow(self, geom):  # return in degrees
         return self.q(geom) * self.qShowFactor
 
     @property
@@ -86,15 +86,15 @@ class TORS(SIMPLE):
             return tau
 
     def DqDx(self, geom, dqdx, mini=False):
-        u = geom[self.A] - geom[self.B]    # u=m-o eBA
-        v = geom[self.D] - geom[self.C]    # v=n-p eCD
-        w = geom[self.C] - geom[self.B]    # w=p-o eBC
-        Lu = v3d.norm(u)    # RBA
-        Lv = v3d.norm(v)    # RCD
-        Lw = v3d.norm(w)    # RBC
-        u *= 1.0 / Lu    # eBA
-        v *= 1.0 / Lv    # eCD
-        w *= 1.0 / Lw    # eBC
+        u = geom[self.A] - geom[self.B]  # u=m-o eBA
+        v = geom[self.D] - geom[self.C]  # v=n-p eCD
+        w = geom[self.C] - geom[self.B]  # w=p-o eBC
+        Lu = v3d.norm(u)  # RBA
+        Lv = v3d.norm(v)  # RCD
+        Lw = v3d.norm(w)  # RBC
+        u *= 1.0 / Lu  # eBA
+        v *= 1.0 / Lv  # eCD
+        w *= 1.0 / Lw  # eBC
 
         cos_u = v3d.dot(u, w)
         cos_v = -v3d.dot(v, w)
@@ -110,7 +110,7 @@ class TORS(SIMPLE):
 
         # a = relative index; B = full index of atom
         for a, B in enumerate(self.atoms):
-            for i in range(3):    #i=a_xyz
+            for i in range(3):  #i=a_xyz
                 tval = 0.0
 
                 if a == 0 or a == 1:
@@ -138,15 +138,15 @@ class TORS(SIMPLE):
     # with sin^2 in the denominator are incorrectly given as only sin^1 in the paper.
     # Torsion is m-o-p-n.  -RAK 2010
     def Dq2Dx2(self, geom, dq2dx2):
-        u = geom[self.A] - geom[self.B]    # u=m-o eBA
-        v = geom[self.D] - geom[self.C]    # v=n-p eCD
-        w = geom[self.C] - geom[self.B]    # w=p-o eBC
-        Lu = v3d.norm(u)    # RBA
-        Lv = v3d.norm(v)    # RCD
-        Lw = v3d.norm(w)    # RBC
-        u *= 1.0 / Lu    # eBA
-        v *= 1.0 / Lv    # eCD
-        w *= 1.0 / Lw    # eBC
+        u = geom[self.A] - geom[self.B]  # u=m-o eBA
+        v = geom[self.D] - geom[self.C]  # v=n-p eCD
+        w = geom[self.C] - geom[self.B]  # w=p-o eBC
+        Lu = v3d.norm(u)  # RBA
+        Lv = v3d.norm(v)  # RCD
+        Lw = v3d.norm(w)  # RBC
+        u *= 1.0 / Lu  # eBA
+        v *= 1.0 / Lv  # eCD
+        w *= 1.0 / Lw  # eBC
 
         cos_u = v3d.dot(u, w)
         cos_v = -v3d.dot(v, w)
@@ -168,44 +168,48 @@ class TORS(SIMPLE):
         # int k; // cartesian ; not i or j
         for a in range(4):
             for b in range(a + 1):
-                for i in range(3):    # i = a_xyz
-                    for j in range(3):    # j=b_xyz
+                for i in range(3):  # i = a_xyz
+                    for j in range(3):  # j=b_xyz
                         tval = 0
 
-                        if (a == 0 and b == 0) or (a == 1 and b == 0) or (a == 1 and b == 1):
+                        if (a == 0 and b == 0) or (a == 1 and b == 0) or (a == 1
+                                                                          and b == 1):
                             tval +=  TORS.zeta(a,0,1) * TORS.zeta(b,0,1) * \
                              (uXw[i]*(w[j]*cos_u-u[j]) + uXw[j]*(w[i]*cos_u-u[i]))/(Lu*Lu*sinu4)
 
                         # above under reversal of atom indices, u->v ; w->(-w) ; uXw->(-uXw)
-                        if (a == 3 and b == 3) or (a == 3 and b == 2) or (a == 2 and b == 2):
+                        if (a == 3 and b == 3) or (a == 3 and b == 2) or (a == 2
+                                                                          and b == 2):
                             tval += TORS.zeta(a,3,2) * TORS.zeta(b,3,2) * \
                              (vXw[i]*(w[j]*cos_v+v[j]) + vXw[j]*(w[i]*cos_v+v[i]))/(Lv*Lv*sinv4)
 
-                        if (a == 1 and b == 1) or (a == 2 and b == 1) or (a == 2 and b == 0) or (
-                                a == 1 and b == 0):
+                        if (a == 1 and b == 1) or (a == 2 and b == 1) or (
+                                a == 2 and b == 0) or (a == 1 and b == 0):
                             tval += (TORS.zeta(a,0,1) * TORS.zeta(b,1,2) + TORS.zeta(a,2,1) * TORS.zeta(b,1,0))*\
                              (uXw[i] * (w[j] - 2*u[j]*cos_u + w[j]*cos_u*cos_u) +
                               uXw[j] * (w[i] - 2*u[i]*cos_u + w[i]*cos_u*cos_u)) / (2*Lu*Lw*sinu4)
 
-                        if (a == 3 and b == 2) or (a == 3 and b == 1) or (a == 2 and b == 2) or (
-                                a == 2 and b == 1):
+                        if (a == 3 and b == 2) or (a == 3 and b == 1) or (
+                                a == 2 and b == 2) or (a == 2 and b == 1):
                             tval += (TORS.zeta(a,3,2) * TORS.zeta(b,2,1) + TORS.zeta(a,1,2) * TORS.zeta(b,2,3))*\
                              (vXw[i] * (w[j] + 2*v[j]*cos_v + w[j]*cos_v*cos_v) +
                               vXw[j] * (w[i] + 2*v[i]*cos_v + w[i]*cos_v*cos_v)) / (2*Lv*Lw*sinv4)
 
-                        if (a == 1 and b == 1) or (a == 2 and b == 2) or (a == 2 and b == 1):
+                        if (a == 1 and b == 1) or (a == 2 and b == 2) or (a == 2
+                                                                          and b == 1):
                             tval +=  TORS.zeta(a,1,2) * TORS.zeta(b,2,1) * \
                              (uXw[i]*(u[j] + u[j]*cos_u*cos_u - 3*w[j]*cos_u + w[j]*cosu3) +
                               uXw[j]*(u[i] + u[i]*cos_u*cos_u - 3*w[i]*cos_u + w[i]*cosu3)) / (2*Lw*Lw*sinu4)
 
-                        if (a == 2 and b == 1) or (a == 2 and b == 2) or (a == 1 and b == 1):
+                        if (a == 2 and b == 1) or (a == 2 and b == 2) or (a == 1
+                                                                          and b == 1):
                             tval += TORS.zeta(a,2,1) * TORS.zeta(b,1,2) * \
                              (vXw[i]*(-v[j] - v[j]*cos_v*cos_v - 3*w[j]*cos_v + w[j]*cosv3) +
                               vXw[j]*(-v[i] - v[i]*cos_v*cos_v - 3*w[i]*cos_v + w[i]*cosv3)) / (2*Lw*Lw*sinv4)
 
                         if (a != b) and (i != j):
                             if i != 0 and j != 0:
-                                k = 0    # k is unique coordinate not i or j
+                                k = 0  # k is unique coordinate not i or j
                             elif i != 1 and j != 1:
                                 k = 1
                             else:
@@ -244,7 +248,8 @@ class TORS(SIMPLE):
 
         elif guessType == "SCHLEGEL":
             R_BC = v3d.dist(geom[self.B], geom[self.C])
-            Rcov = (covRadii.R[int(Z[self.B])] + covRadii.R[int(Z[self.C])]) / bohr2angstroms
+            Rcov = (
+                covRadii.R[int(Z[self.B])] + covRadii.R[int(Z[self.C])]) / bohr2angstroms
             a = 0.0023
             b = 0.07
             if R_BC > (Rcov + a / b):
@@ -253,7 +258,8 @@ class TORS(SIMPLE):
 
         elif guessType == "FISCHER":
             R = v3d.dist(geom[self.B], geom[self.C])
-            Rcov = (covRadii.R[int(Z[self.B])] + covRadii.R[int(Z[self.C])]) / bohr2angstroms
+            Rcov = (
+                covRadii.R[int(Z[self.B])] + covRadii.R[int(Z[self.C])]) / bohr2angstroms
             a = 0.0015
             b = 14.0
             c = 2.85
@@ -270,7 +276,8 @@ class TORS(SIMPLE):
                 Cbonds = Cbonds + Crow[i]
             L = Bbonds + Cbonds - 2
             print_opt("Connectivity of central 2 torsional atoms - 2 = L = %d\n" % L)
-            return a + b * (np.power(L, d)) / (np.power(R * Rcov, e)) * (np.exp(-c * (R - Rcov)))
+            return a + b * (np.power(L, d)) / (np.power(R * Rcov, e)) * (
+                np.exp(-c * (R - Rcov)))
 
         elif guessType == "LINDH_SIMPLE":
 

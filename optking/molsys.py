@@ -9,7 +9,7 @@ from .addIntcos import connectivityFromDistances, addCartesianIntcos
 from .printTools import print_opt
 
 
-class MOLSYS(object):    # new-style classes required for getter/setters
+class MOLSYS(object):  # new-style classes required for getter/setters
     def __init__(self, fragments, fb_fragments=None, intcos=None):
         # ordinary fragments with internal structure
         self._fragments = []
@@ -228,7 +228,9 @@ class MOLSYS(object):    # new-style classes required for getter/setters
         fragAtoms = []
         geom = self.geom
         for iF, F in enumerate(self._fragments):
-            fragAtoms.append(range(self.frag_1st_atom(iF), self.frag_1st_atom(iF) + F.Natom))
+            fragAtoms.append(
+                range(self.frag_1st_atom(iF),
+                      self.frag_1st_atom(iF) + F.Natom))
 
         # Which fragments are connected?
         nF = self.Nfragments
@@ -244,7 +246,7 @@ class MOLSYS(object):    # new-style classes required for getter/setters
             for f2 in range(nF):
                 for f1 in range(f2):
                     if frag_connectivity[f1][f2]:
-                        continue    # already connected
+                        continue  # already connected
                     minVal = 1.0e12
 
                     # Find closest 2 atoms between fragments.
@@ -260,9 +262,10 @@ class MOLSYS(object):    # new-style classes required for getter/setters
                     R_i = covRadii.R[int(Z[i])] / pc.bohr2angstroms
                     R_j = covRadii.R[int(Z[j])] / pc.bohr2angstroms
                     if Rij > scale_dist * (R_i + R_j):
-                        continue    # ignore this as too far - for starters.  may have A-B-C situation.
+                        continue  # ignore this as too far - for starters.  may have A-B-C situation.
 
-                    print_opt("\tConnecting fragments with atoms %d and %d\n" % (i + 1, j + 1))
+                    print_opt("\tConnecting fragments with atoms %d and %d\n" % (i + 1,
+                                                                                 j + 1))
                     C[i][j] = C[j][i] = True
                     frag_connectivity[f1][f2] = frag_connectivity[f2][f1] = True
 
@@ -270,13 +273,14 @@ class MOLSYS(object):    # new-style classes required for getter/setters
                     # We need them all to avoid symmetry breaking.
                     for f1_atom in fragAtoms[f1]:
                         for f2_atom in fragAtoms[f2]:
-                            if f1_atom == i and f2_atom == j:    # already have this one
+                            if f1_atom == i and f2_atom == j:  # already have this one
                                 continue
                             tval = v3d.dist(geom[f1_atom], geom[f2_atom])
                             if np.fabs(tval - minVal) < 1.0e-10:
                                 i = f1_atom
                                 j = f2_atom
-                                print_opt("\tAlso, with atoms %d and %d\n" % (i + 1, j + 1))
+                                print_opt("\tAlso, with atoms %d and %d\n" % (i + 1,
+                                                                              j + 1))
                                 C[i][j] = C[j][i] = True
 
             # Test whether all frags are connected using current distance threshold
@@ -285,5 +289,6 @@ class MOLSYS(object):    # new-style classes required for getter/setters
                 all_connected = True
             else:
                 scale_dist += 0.2
-                print_opt("\tIncreasing scaling to %6.3f to connect fragments.\n" % scale_dist)
+                print_opt(
+                    "\tIncreasing scaling to %6.3f to connect fragments.\n" % scale_dist)
         return

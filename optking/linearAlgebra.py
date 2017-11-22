@@ -51,7 +51,8 @@ def asymmMatEig(mat):
         # could be ALG_FAIL ?
 
     evects = evects.T
-    evalsSorted, evectsSorted = zip(*sorted(zip(evals, evects), key=operator.itemgetter(0)))
+    evalsSorted, evectsSorted = zip(*sorted(
+        zip(evals, evects), key=operator.itemgetter(0)))
     # convert from tuple to array
     evalsSorted = np.array(evalsSorted, float)
     evectsSorted = np.array(evectsSorted, float)

@@ -10,7 +10,7 @@ from .printTools import printMat, printMatString, printArrayString, print_opt
 
 class STEP(object):
     def __init__(self, geom, E, forces):
-        self.geom = geom.copy()    # Store as 2D object
+        self.geom = geom.copy()  # Store as 2D object
         self.E = E
         self.forces = forces.copy()
         self.projectedDE = None
@@ -77,8 +77,10 @@ class HISTORY(object):
         HISTORY.stepsSinceLastHessian += 1
 
     # Fill in details of new step.
-    def appendRecord(self, projectedDE, Dq, followedUnitVector, oneDgradient, oneDhessian):
-        self.steps[-1].record(projectedDE, Dq, followedUnitVector, oneDgradient, oneDhessian)
+    def appendRecord(self, projectedDE, Dq, followedUnitVector, oneDgradient,
+                     oneDhessian):
+        self.steps[-1].record(projectedDE, Dq, followedUnitVector, oneDgradient,
+                              oneDhessian)
 
     def trajectory(self, Zs):
         from . import atomData
@@ -115,8 +117,10 @@ class HISTORY(object):
             max_disp = absMax(Dq)
             rms_disp = rms(Dq)
 
-            print_opt("   %4d %20.12lf  %18.12lf    %12.8lf    %12.8lf    %12.8lf    %12.8lf  ~\n" %
-                      ((i + 1), self.steps[i].E, DE, max_force, rms_force, max_disp, rms_disp))
+            print_opt(
+                "   %4d %20.12lf  %18.12lf    %12.8lf    %12.8lf    %12.8lf    %12.8lf  ~\n"
+                % ((i + 1), self.steps[i].E, DE, max_force, rms_force, max_disp,
+                   rms_disp))
         print_opt(
             "  --------------------------------------------------------------------------------------------------------------- ~\n\n"
         )
@@ -162,7 +166,7 @@ class HISTORY(object):
     def hessianUpdate(self, H, intcos):
         if op.Params.hess_update == 'NONE': return
         print_opt("\tPerforming %s update.\n" % op.Params.hess_update)
-        Nintco = len(intcos)    # working dimension
+        Nintco = len(intcos)  # working dimension
 
         f = np.zeros(Nintco, float)
         #x = np.zeros(self.steps[-1].geom.shape,float)
@@ -197,7 +201,7 @@ class HISTORY(object):
             x_old = oldStep.geom
             q_old[:] = intcosMisc.qValues(intcos, x_old)
             dq[:] = q - q_old
-            dg[:] = f_old - f    # gradients -- not forces!
+            dg[:] = f_old - f  # gradients -- not forces!
             gq = np.dot(dq, dg)
             qq = np.dot(dq, dq)
 
@@ -205,7 +209,8 @@ class HISTORY(object):
             if len(use_steps) == 0 and i == (len(self.steps) - 1):
                 use_steps.append(i)
 
-            if fabs(gq) < op.Params.hess_update_den_tol or fabs(qq) < op.Params.hess_update_den_tol:
+            if fabs(gq) < op.Params.hess_update_den_tol or fabs(
+                    qq) < op.Params.hess_update_den_tol:
                 print_opt("\tDenominators (dg)(dq) or (dq)(dq) are very small.\n")
                 print_opt("\t Skipping Hessian update for step %d.\n" % (i + 1))
                 continue
@@ -232,7 +237,7 @@ class HISTORY(object):
             x_old = oldStep.geom
             q_old[:] = intcosMisc.qValues(intcos, x_old)
             dq[:] = q - q_old
-            dg[:] = f_old - f    # gradients -- not forces!
+            dg[:] = f_old - f  # gradients -- not forces!
             gq = np.dot(dq, dg)
             qq = np.dot(dq, dq)
 
@@ -277,16 +282,16 @@ class HISTORY(object):
                 if phi < 0.0: phi = 0.0
                 elif phi > 1.0: phi = 1.0
 
-                for i in range(Nintco):    # (1-phi)*MS
+                for i in range(Nintco):  # (1-phi)*MS
                     for j in range(Nintco):
                         H_new[i, j] = H[i, j] + (1.0 - phi) * Z[i] * Z[j] / qz
 
-                for i in range(Nintco):    # (phi * Powell)
+                for i in range(Nintco):  # (phi * Powell)
                     for j in range(Nintco):
                         H_new[i, j] += phi * (-1.0 * qz / (qq * qq) * dq[i] * dq[j] +
                                               (Z[i] * dq[j] + dq[i] * Z[j]) / qq)
 
-            if op.Params.hess_update_limit:    # limit changes in H
+            if op.Params.hess_update_limit:  # limit changes in H
                 # Changes to the Hessian from the update scheme are limited to the larger of
                 # (hess_update_limit_scale)*(the previous value) and hess_update_limit_max.
                 max_limit = op.Params.hess_update_limit_max
@@ -302,13 +307,13 @@ class HISTORY(object):
 
                         if fabs(H_new[i, j]) < maximum:
                             H[i, j] += H_new[i, j]
-                        else:    # limit change to max
+                        else:  # limit change to max
                             H[i, j] += maximum * signOfDouble(H_new[i, j])
 
-            else:    # only copy H_new into H
+            else:  # only copy H_new into H
                 H[:, :] = H_new
 
-            H_new[:, :] = 0    # zero for next step
+            H_new[:, :] = 0  # zero for next step
             # end loop over old geometries
 
         if op.Params.print_lvl >= 2:

@@ -108,7 +108,8 @@ def intIntFloatList(inList):
 
 def intIntIntFloatList(inList):
     if len(inList) % 4 != 0:
-        raise optExceptions.OPT_FAIL("List is not comprised of int-int-int-float elements")
+        raise optExceptions.OPT_FAIL(
+            "List is not comprised of int-int-int-float elements")
     outList = []
     for i in range(0, len(inList), 4):
         outList.append(int(inList[i + 0]))
@@ -120,7 +121,8 @@ def intIntIntFloatList(inList):
 
 def intIntIntIntFloatList(inList):
     if len(inList) % 5 != 0:
-        raise optExceptions.OPT_FAIL("List is not comprised of int-int-int-int-float elements")
+        raise optExceptions.OPT_FAIL(
+            "List is not comprised of int-int-int-int-float elements")
     outList = []
     for i in range(0, len(inList), 5):
         outList.append(int(inList[i + 0]))
