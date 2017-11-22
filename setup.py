@@ -4,7 +4,7 @@ if __name__ == "__main__":
     setuptools.setup(
         name='OptKing',
         version="0.1",
-        description='A geometry optimized for quantum chemistry.',
+        description='A geometry optimizer for quantum chemistry.',
         author='Rollin King',
         author_email='rking@bethel.edu',
         url="https://github.com/psi-rking/optking",

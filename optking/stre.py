@@ -161,7 +161,7 @@ class STRE(SIMPLE):
 
 	elif guessType == "FISCHER":
 
-		Rcov = (covRadii.R[Z[self.A]]+covRadii.R[Z[self.B]])/bohr2angstroms
+		Rcov = (covRadii.R[int(Z[self.A])]+covRadii.R[int(Z[self.B])])/bohr2angstroms
 			R = v3d.dist(geom[self.A],geom[self.B])
 			AA = 0.3601
 			BB = 1.944

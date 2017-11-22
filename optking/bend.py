@@ -241,8 +241,8 @@ class BEND(SIMPLE):
             b = 0.11
             c = 0.44
             d = -0.42
-            Rcov_AB = (covRadii.R[Z[self.A]] + covRadii.R[Z[self.B]]) / bohr2angstroms
-            Rcov_BC = (covRadii.R[Z[self.C]] + covRadii.R[Z[self.B]]) / bohr2angstroms
+            Rcov_AB = (covRadii.R[int(Z[self.A])] + covRadii.R[int(Z[self.B])]) / bohr2angstroms
+            Rcov_BC = (covRadii.R[int(Z[self.C])] + covRadii.R[int(Z[self.B])]) / bohr2angstroms
             R_AB = v3d.dist(geom[self.A], geom[self.B])
             R_BC = v3d.dist(geom[self.B], geom[self.C])
             return a + b / (np.power(Rcov_AB * Rcov_BC, d)) * np.exp(-c * (

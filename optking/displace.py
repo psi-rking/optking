@@ -37,7 +37,7 @@ def displace(intcos, geom, dq, fq, atom_offset=0, ensure_convergence=False):
         cnt = -1
 
         while not conv:
-            ++cnt
+            cnt = cnt + 1
             if cnt > 0:
                 print_opt("Reducing step-size by a factor of %d.\n" % (2 * cnt))
                 dq[:] = dq_orig / (2.0 * cnt)

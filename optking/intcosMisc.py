@@ -206,7 +206,7 @@ def massWeightedUMatrixCart(masses):
 
 
 def convertHessianToInternals(H, intcos, geom, masses=None, g_x=None):
-    print_opt("Converting Hessian from .cartesians to internals.\n")
+    print_opt("Converting Hessian from cartesians to internals.\n")
 
     G = Gmat(intcos, geom, masses)
     Ginv = symmMatInv(G)
