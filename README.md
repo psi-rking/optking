@@ -1,3 +1,5 @@
+<a href="https://codecov.io/gh/psi-rking/optking"> <img src="https://codecov.io/gh/psi-rking/optking/branch/master/graph/badge.svg" /></a>
+
 # optking
 Python version of the PSI geometry optimization program by R.A. King
 
