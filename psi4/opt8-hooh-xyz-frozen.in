@@ -1,16 +1,34 @@
 #! Various constrained energy minimizations of HOOH with cc-pvdz RHF.
 #! Cartesian-coordinate constrained optimizations of HOOH in Cartesians.
 #! 1. Cartesian optimization.
+#! 2. Cartesian optimization with fixed H's.
+#! 3. Cartesian optimization with fixed O's.
 
-#HOOH_E_fixed_H_xyz = -150.7866490998188      #TEST
-#HOOH_E_fixed_O_xyz = -150.7866389583059      #TEST
-#HOOH_E             = -150.7866739753094      #TEST
-HOOH_E = -150.7866742
+HOOH_E             = -150.7866742 # TEST
+HOOH_E_fixed_H_xyz = -150.7866491 # TEST
+HOOH_E_fixed_O_xyz = -150.7866390 # TEST
 
 set {
   basis cc-pvdz
   opt_coordinates cartesian
 }
+
+# Full optimization
+molecule {
+  H  0.90  0.80  0.5
+  O  0.00  0.70  0.0
+  O  0.00 -0.70  0.0
+  H -0.90 -0.80  0.5
+  no_com
+  no_reorient
+}
+set optking intrafrag_step_limit 0.1
+set optking g_convergence gau_tight
+
+import Psi4Opt
+Psi4Opt.calcName = 'hf'
+thisenergy = Psi4Opt.Psi4Opt()
+compare_values(HOOH_E, thisenergy, 6, "Cart. Coord. RHF opt of HOOH, energy")  #TEST
 
 # Freeze H xyz in HOOH.
 molecule {
@@ -22,23 +40,16 @@ molecule {
   no_reorient
 }
 
-set optking intrafrag_step_limit 0.1
-set optking g_convergence gau_tight
-
-import Psi4Opt
-Psi4Opt.calcName = 'hf'
-thisenergy = Psi4Opt.Psi4Opt()
-compare_values(HOOH_E, thisenergy, 7, "Cart. Coord. RHF opt of HOOH, energy")  #TEST
-
-quit()
-
 freeze_list = """
-  1 xyz
-  4 xyz
+  1 Xyz
+  4 xYz
 """
 set optking frozen_cartesian $freeze_list
-compare_values(HOOH_E, thisenergy, 6, "Cart. Coord. RHF opt of HOOH with H's xyz frozen, energy")  #TEST
 
+reload(Psi4Opt)
+Psi4Opt.calcName = 'hf'
+thisenergy = Psi4Opt.Psi4Opt()
+compare_values(HOOH_E_fixed_H_xyz, thisenergy, 6, "Cart. Coord. RHF opt of HOOH with H's xyz frozen, energy")  #TEST
 
 # Freeze O xyz in HOOH.
 molecule {
@@ -54,12 +65,14 @@ freeze_list = """
   2 xyz
   3 xyz
 """
-
 set optking frozen_cartesian $freeze_list
-thisenergy = optimize('scf')
+
+reload(Psi4Opt)
+Psi4Opt.calcName = 'hf'
+thisenergy = Psi4Opt.Psi4Opt()
 compare_values(HOOH_E_fixed_O_xyz, thisenergy, 6, "Cart. Coord. RHF opt of HOOH with O's xyz frozen, energy")  #TEST
 
-# Full optimization
+# Freeze H xyz with individual input entries in HOOH.
 molecule {
   H  0.90  0.80  0.5
   O  0.00  0.70  0.0
@@ -69,9 +82,18 @@ molecule {
   no_reorient
 }
 
-freeze_list = ""
+freeze_list = """
+  1 x
+  1 y
+  1 Z
+  4 x
+  4 Y
+  4 z
+"""
 set optking frozen_cartesian $freeze_list
-thisenergy = optimize('scf')
-compare_values(HOOH_E, thisenergy, 6, "Cart. Coord. RHF opt of HOOH, energy")  #TEST
 
+reload(Psi4Opt)
+Psi4Opt.calcName = 'hf'
+thisenergy = Psi4Opt.Psi4Opt()
+compare_values(HOOH_E_fixed_H_xyz, thisenergy, 6, "Cart. Coord. RHF opt of HOOH with H's xyz frozen, energy")  #TEST
 

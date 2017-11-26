@@ -45,8 +45,8 @@ allowedStringOptions = {
 #def enum_key( enum_type, value):
 #    print_opt([key for key, val in enum_type.__dir__.items() if val == value][0])
 
-from .misc import intList, intIntFloatList, intIntIntFloatList, intIntIntIntFloatList, tokenizeInputString
-
+from .misc import intList, intIntFloatList, intIntIntFloatList, intIntIntIntFloatList
+from .misc import tokenizeInputString, int_XYZ_list
 
 class OPT_PARAMS(object):
     # define properties
@@ -141,15 +141,14 @@ class OPT_PARAMS(object):
         frozen = uod.get('FROZEN_DISTANCE', '')
         P.frozen_distance = intList(tokenizeInputString(frozen))
         ## Specify angles between atoms to be frozen (unchanged)
-        #P.frozen_bend = uod.get('FROZEN_BEND','')
         frozen = uod.get('FROZEN_BEND', '')
         P.frozen_bend = intList(tokenizeInputString(frozen))
         ## Specify dihedral angles between atoms to be frozen (unchanged)
-        #P.frozen_dihedral = uod.get('FROZEN_DIHEDRAL','')
         frozen = uod.get('FROZEN_DIHEDRAL', '')
         P.frozen_dihedral = intList(tokenizeInputString(frozen))
         ## Specify atom and X, XY, XYZ, ... to be frozen (unchanged)
-        P.frozen_cartesian = uod.get('FROZEN_CARTESIAN', '')
+        frozen = uod.get('FROZEN_CARTESIAN', '')
+        P.frozen_cartesian = int_XYZ_list(tokenizeInputString(frozen))
         # Specify distances between atoms to be fixed (eq. value specified)
         #P.fixed_distance = uod.get("FIXED_DISTANCE", "")
         fixed = uod.get("FIXED_DISTANCE", "")

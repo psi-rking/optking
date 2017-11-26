@@ -204,7 +204,7 @@ def linearBendCheck(intcos, geom, dq):
 
 
 #####
-## params: List of integers correspoding to atoms of distance to be frozen
+## params: List of integers corresponding to atoms of distance to be frozen
 ##	       list of internal coordinates
 ####
 def freezeStretchesFromInputAtomList(frozenStreList, Molsys):
@@ -225,7 +225,7 @@ def freezeStretchesFromInputAtomList(frozenStreList, Molsys):
 
 
 #####
-## params: List of integers correspoding to atoms of bend to be frozen
+## params: List of integers corresponding to atoms of bend to be frozen
 ##	       list of internal coordinates
 ####
 def freezeBendsFromInputAtomList(frozenBendList, Molsys):
@@ -250,7 +250,7 @@ def freezeBendsFromInputAtomList(frozenBendList, Molsys):
 
 
 #####
-## params: List of integers correspoding to atoms of dihedral to be frozen
+## params: List of integers corresponding to atoms of dihedral to be frozen
 ##	       list of internal coordinates
 ####
 def freezeTorsionsFromInputAtomList(frozenTorsList, Molsys):
@@ -272,6 +272,26 @@ def freezeTorsionsFromInputAtomList(frozenTorsList, Molsys):
         except ValueError:
             print_opt("Frozen dihedral not present, so adding it.\n")
             Molsys._fragments[f]._intcos.append(torsAngle)
+    return
+
+
+#####
+## params: List of integers indicating atoms, and then 'x' or 'xy', etc.
+## indicating cartesians to be frozen
+####
+def freeze_cartesians_from_input_list(frozen_cart_list, Molsys):
+
+    for i in range(0, len(frozen_cart_list), 2):
+        at = frozen_cart_list[i] - 1
+        f = Molsys.atom2frag_index(at) # get frag #
+        for xyz in frozen_cart_list[i+1]:
+            newCart = cart.CART(at, xyz, frozen=True)
+            try:
+                I = Molsys._fragments[f]._intcos.index(newCart)
+                Molsys._fragments[f]._intcos[I].frozen = True
+            except ValueError:
+                print_opt("\tFrozen cartesian not present, so adding it.\n")
+                Molsys._fragments[f]._intcos.append(newCart)
     return
 
 
@@ -343,6 +363,8 @@ def addFrozenAndFixedIntcos(Molsys):
         freezeBendsFromInputAtomList(op.Params.frozen_bend, Molsys)
     if op.Params.frozen_dihedral:
         freezeTorsionsFromInputAtomList(op.Params.frozen_dihedral, Molsys)
+    if op.Params.frozen_cartesian:
+        freeze_cartesians_from_input_list(op.Params.frozen_cartesian, Molsys)
 
     if op.Params.fixed_distance:
         fixStretchesFromInputList(op.Params.fixed_distance, Molsys)

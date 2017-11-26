@@ -131,3 +131,20 @@ def intIntIntIntFloatList(inList):
         outList.append(int(inList[i + 3]))
         outList.append(float(inList[i + 4]))
     return outList
+
+def int_XYZ_list(inList):
+    if len(inList) % 2 != 0:
+        raise optExceptions.OPT_FAIL("int-XYZ list does not have even number of entries")
+    outList = []
+    for i in range(0, len(inList), 2):
+        outList.append(int(inList[i + 0]))
+        cart_string = str(inList[i + 1]).upper()
+        if len(cart_string) > 3 or len(cart_string) < 1:
+            raise optExceptions.OPT_FAIL("Could not decipher xyz coordinate string")
+        for c in cart_string:
+            if c not in ('X','Y','Z'):
+                raise optExceptions.OPT_FAIL("Could not decipher xyz coordinate string")
+        cart_string = sorted(cart_string) # x , then y, then z
+        outList.append(cart_string)
+    return outList
+
