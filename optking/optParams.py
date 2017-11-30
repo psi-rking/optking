@@ -127,7 +127,7 @@ class OPT_PARAMS(object):
         # Do simple, linear scaling of internal coordinates to step limit (not RS-RFO)
         P.simple_step_scaling = uod.get('SIMPLE_STEP_SCALING', False)
         # Set number of consecutive backward steps allowed in optimization
-        P.consecutiveBackstepsAllowed = uod.get('CONSECUTIVE_BACKSTEPS_ALLOWED', 0)
+        P.consecutiveBackstepsAllowed = uod.get('CONSECUTIVE_BACKSTEPS', 0)
         P.working_consecutive_backsteps = 0
         # Eigenvectors of RFO matrix whose final column is smaller than this are ignored.
         P.rfo_normalization_max = uod.get('RFO_NORMALIZATION_MAX', 100)

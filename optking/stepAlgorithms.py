@@ -638,19 +638,19 @@ def Dq_BACKSTEP(Molsys):
     if len(History.steps) < 2:
         raise optExceptions.OPT_FAIL("Backstep called, but no history is available.")
 
-    History.consecutiveBacksteps += 1
-    print_opt("\tConsecutive backstep number %d.\n" % (History.consecutiveBacksteps))
-
     # Erase last, partial step data for current step.
     del History.steps[-1]
 
     # Get data from previous step.
-    # Put previous geometry into current working one.
     fq = History.steps[-1].forces
     dq = History.steps[-1].Dq
-    geom[:] = History.steps[-1].geom
     oneDgradient = History.steps[-1].oneDgradient
     oneDhessian = History.steps[-1].oneDhessian
+    # Copy old geometry so displace doesn't change history
+    geom = History.steps[-1].geom.copy()
+
+    #print_opt('test geom old from history\n')
+    #printMat(Molsys.geom)
 
     # Compute new Dq and energy step projection.
     dq /= 2
@@ -665,7 +665,10 @@ def Dq_BACKSTEP(Molsys):
     print_opt("\tProjected energy change : %20.10lf\n" % DEprojected)
 
     fq_aJ = qShowForces(Molsys.intcos, fq)  # for printing
-    displace(Molsys._fragments[0].intcos, Molsys._fragments[0].geom, dq, fq_aJ)
+    # Displace from previous geometry
+    displace(Molsys._fragments[0].intcos, geom, dq, fq_aJ)
+    Molsys.geom = geom # uses setter; writes into all fragments
+
     dqNormActual = np.linalg.norm(dq)
     print_opt("\tNorm of achieved step-size %15.10f\n" % dqNormActual)
     # Symmetrize the geometry for next step

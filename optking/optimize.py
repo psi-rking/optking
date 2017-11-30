@@ -115,11 +115,16 @@ def optimize(Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
                     if len(history.History.steps) < 5:
                         print_opt("\tNear start of optimization, so ignoring bad step.\n")
                     elif history.HISTORY.consecutiveBacksteps < op.Params.consecutiveBackstepsAllowed:
-                        print_opt("\tTaking backward step.\n")
-                        Dq = stepAlgorithms.Dq(
-                            Molsys.intcos, Molsys.geom, E, fq, H, stepType="BACKSTEP")
                         history.HISTORY.consecutiveBacksteps += 1
+                        print_opt("\tCalling for consecutive backstep number %d.\n" %
+                                   history.HISTORY.consecutiveBacksteps)
+                        Dq = stepAlgorithms.Dq(Molsys, E, fq, H, stepType="BACKSTEP")
+                        print_opt("\tStructure for next step (au):\n")
+                        Molsys.printGeom()
                         continue
+                    elif op.Params.dynamic_level == 0: # not using dynamic level, so ignore.
+                        print_opt("\tNo more backsteps allowed.  Dynamic level is off.\n")
+                        pass
                     else:
                         raise optExceptions.ALG_FAIL(
                             "Bad step, and no more backsteps allowed.")
@@ -188,6 +193,7 @@ def optimize(Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
             else:  # executes if step limit is reached
                 print_opt("Number of steps (%d) exceeds maximum allowed (%d).\n" %
                           (stepNumber + 1, op.Params.geom_maxiter))
+                history.History.summary()
                 raise optExceptions.ALG_FAIL("Maximum number of steps exceeded.")
 
             #This should be called at the end of each iteration of the for loop,

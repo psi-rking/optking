@@ -92,7 +92,7 @@ class HISTORY(object):
 
     def summary(self):
         print_opt("\n  ==> Optimization Summary <==\n\n")
-        print_opt("  Measures of convergence in internal coordinates in au.\n")
+        print_opt("  Measures of convergence in internal coordinates in au. (Any backward steps not shown.)\n")
         print_opt(
             "  --------------------------------------------------------------------------------------------------------------- ~\n"
         )
