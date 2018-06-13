@@ -6,7 +6,7 @@
 # The enumerated string types are translated to all upper-case within the parameter object.
 
 from .printTools import print_opt
-Params = 0
+#Params = 0
 from . import optExceptions
 
 
