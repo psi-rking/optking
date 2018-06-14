@@ -3,6 +3,10 @@ import psi4
 #from psi4 import *
 #from psi4.core import *
 import numpy as np
+
+import optking
+optking.printInit(psi4.core.print_out)
+
 #
 ## Collect the user-specified OPTKING keywords in a dict.
 #all_options = p4util.prepare_options_for_modules()
@@ -53,11 +57,11 @@ def gradient_func(xyz, printResults=True):
 def hessian_func(xyz, printResults=False): 
     mol = psi4.core.get_active_molecule()
     xyz[:] = setGeometry_func(xyz)
-    H = driver.hessian(calcName, molecule=mol)
+    H = psi4.driver.hessian(calcName, molecule=mol)
     if printResults:
-        print_out( 'Hessian\n')
+        psi4.core.print_out( 'Hessian\n')
         H.print_out()
-        print_out( "\n")
+        psi4.core.print_out( "\n")
     Hnp = np.array( H )
     return Hnp
 
@@ -75,6 +79,7 @@ def energy_func(xyz, printResults=True):
 
 # Returns energy; or (energy, trajectory) if trajectory==True
 def Psi4Opt():
+    """ Psi4opt now collects all options and gets the molecular system from Psi4 instead of the options and molecular system being global variables"""
 
     #from psi4 import *
     #from psi4.core import *

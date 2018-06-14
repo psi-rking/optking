@@ -29,7 +29,7 @@ molecule hooh {
 }
 
 set optking full_hess_every 0
-reload(Psi4Opt)
+#reload(Psi4Opt)
 Psi4Opt.calcName = 'hf'
 E = Psi4Opt.Psi4Opt()
 compare_values(finalEnergy, E, 8, "Final energy, initial Hessian")                                #TEST
@@ -42,7 +42,7 @@ molecule hooh {
 }
 
 set optking full_hess_every 3
-reload(Psi4Opt)
+#reload(Psi4Opt)
 Psi4Opt.calcName = 'hf'
 E = Psi4Opt.Psi4Opt()
 compare_values(finalEnergy, E, 8, "Final energy, every 3rd step Hessian")                                #TEST
@@ -55,7 +55,7 @@ molecule hooh {
 }
 
 set optking full_hess_every 1
-reload(Psi4Opt)
+#reload(Psi4Opt)
 Psi4Opt.calcName = 'hf'
 E = Psi4Opt.Psi4Opt()
 compare_values(finalEnergy, E, 8, "Final energy, every step Hessian")                                #TEST
