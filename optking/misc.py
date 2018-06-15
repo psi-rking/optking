@@ -86,7 +86,7 @@ def HguessLindhRho(ZA, ZB, RAB):
 ## removes spaces or non integer characters from string of internal coordinates to be frozen
 ####
 def tokenizeInputString(inString):
-    outString = inString.encode('utf-8').replace('(', '').replace(')', '')
+    outString = inString.replace('(', '').replace(')', '')
     return outString.split()
 
 

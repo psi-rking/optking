@@ -195,17 +195,17 @@ def applyFixedForces(Molsys, fq, H, stepNumber):
     return
 
 
-"""
-def massWeightedUMatrixCart(masses): 
-    atom = 1 
-    masses = [15.9994, 1.00794, 1.00794]
-    U = np.zeros((3 * nAtom, 3 * nAtom), float)
-    for i in range (0, (3 * nAtom)):
-        U[i][i] = 1 / sqrt(masses[atom - 1])
-        if (i % 3 == 0):
-            nAtom += 1
-    return U
-"""
+#"""
+#def massWeightedUMatrixCart(masses): 
+#    atom = 1 
+#    masses = [15.9994, 1.00794, 1.00794]
+#    U = np.zeros((3 * nAtom, 3 * nAtom), float)
+#    for i in range (0, (3 * nAtom)):
+#        U[i][i] = 1 / sqrt(masses[atom - 1])
+#        if (i % 3 == 0):
+#            nAtom += 1
+#    return U
+#"""
 
 
 def convertHessianToInternals(H, intcos, geom, masses=None, g_x=None):
