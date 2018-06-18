@@ -40,7 +40,7 @@ before_script:
 
 script:
   - pwd
-  - export PYTHONPATH=../:psi4/
+  - export PYTHONPATH=../:optking/:psi4/
 #  - py.test -v --cov=gau2grid/ --durations=5
   - py.test -v -rws --durations=5 --cov
 
