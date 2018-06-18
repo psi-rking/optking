@@ -45,7 +45,6 @@ def test_opt2_allene():
      H -0.92  0.00    1.8
     """)
     
-    #importlib.reload(Psi4Opt) This reload no longer is nessecary since Psi4Opt no longer contains any global variables
     Psi4Opt.calcName = 'hf'
     thisenergy = Psi4Opt.Psi4Opt()
     

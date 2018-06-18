@@ -56,7 +56,6 @@ def test_hooh_freeze_xyz_Hs():
     freeze_list = """ 1 Xyz 4 xYz """
     
     psi4.set_module_options('Optking', {'frozen_cartesian': freeze_list})
-    #set optking frozen_cartesian $freeze_list
     
     Psi4Opt.calcName = 'hf'
     thisenergy = Psi4Opt.Psi4Opt()
@@ -81,22 +80,13 @@ def test_hooh_freeze_xyz_Os():
      'geom_maxiter': 20,
      'consecutive_backsteps': 1  # TEST backsteps 
     })
-    
-    
-    
+        
     freeze_list = """
       2 xyz
       3 xyz
     """
-    
-    
     psi4.set_module_options('Optking', {'frozen_cartesian': freeze_list})
     
-    #set optking frozen_cartesian $freeze_list
-    #what happens if we just dont set any options right here
-    #if we dont give new options. the old options are still a global variable here.
-    
-    #reload(Psi4Opt)
     Psi4Opt.calcName = 'hf'
     thisenergy = Psi4Opt.Psi4Opt()
     assert psi4.compare_values(HOOH_E_fixed_O_xyz, thisenergy, 6, 
@@ -129,7 +119,6 @@ def test_hooh_individual_freezes_x_y_z():
       4 Y
       4 z
     """
-    #set optking frozen_cartesian $freeze_list
     
     psi4.set_module_options('Optking', {'frozen_cartesian': freeze_list})
     
@@ -160,42 +149,10 @@ def test_hooh_freeze_xyz_change_opt_coord():
      1 xyz 
      4 xyz 
     """
-    #set optking frozen_cartesian $freeze_list
     
     psi4.set_module_options('Optking', {'frozen_cartesian': freeze_list, 'opt_coordinates': 'redundant'})
-    #set optking opt_coordinates redundant
     
     Psi4Opt.calcName = 'hf'
     thisenergy = Psi4Opt.Psi4Opt()
     assert psi4.compare_values(HOOH_E_fixed_H_xyz, thisenergy, 6, "Int. Coord. RHF opt of HOOH with H's xyz frozen, energy")  #TEST
     
-#    # Freeze O xyz in HOOH.
-#    hooh = psi4.geometry("""
-#      H  0.90  0.80  0.5
-#      O  0.00  0.70  0.0
-#      O  0.00 -0.70  0.0
-#      H -0.90 -0.80  0.5
-#      no_com
-#      no_reorient
-#    """)
-#    
-#    psi4.set_options({
-#     'basis': 'cc-pvdz',
-#     'opt_coordinates': 'cartesian',
-#     'g_convergence': 'gau_tight',
-#     'geom_maxiter': 20,
-#     'consecutive_backsteps': 1  # TEST backsteps 
-#    })
-#    
-#    freeze_list = """
-#     2 xyz 
-#     3 xyz 
-#    """
-#    #set optking frozen_cartesian $freeze_list
-#    
-#    psi4.set_module_options('Optking', {'frozen_cartesian': freeze_list})
-#    
-#    Psi4Opt.calcName = 'hf'
-#    thisenergy = Psi4Opt.Psi4Opt()
-#    psi4.compare_values(HOOH_E_fixed_O_xyz, thisenergy, 6, "Int. Coord. RHF opt of HOOH with O's xyz frozen, energy")  #TEST
-#

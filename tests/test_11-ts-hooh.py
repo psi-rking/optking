@@ -47,7 +47,6 @@ def test_hooh_min():
       'docc': [ 5 , 4 ],
     })
     
-    #reload(Psi4Opt)
     Psi4Opt.calcName = 'hf'
     thisenergy = Psi4Opt.Psi4Opt()
     assert psi4.compare_values(ZERO_TORS_ENERGY, thisenergy, 6, "cc-pVDZ RHF transition-state opt. of HOOH (dihedral=0), energy") #TEST

@@ -1,10 +1,9 @@
 def optimize(Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
 
+    from .printTools import printGeomGrad, printMat, printArray, print_opt
     from . import caseInsensitiveDict
     userOptions = caseInsensitiveDict.CaseInsensitiveDict(options_in)
     origOptions = userOptions.copy()  # Save copy of original user options.
-
-    from .printTools import printGeomGrad, printMat, printArray, print_opt
 
     # Create full list of parameters from user options plus defaults.
     from . import optParams as op
@@ -265,7 +264,7 @@ def optimize(Molsys, options_in, fSetGeometry, fGradient, fHessian, fEnergy):
         del f
     del history.History[:]
     del op.Params
-
+    del Molsys
     return returnVal
 
 
