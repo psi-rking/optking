@@ -220,7 +220,7 @@ def stepIter(intcos,
         geom[:] = best_geom
 
     if op.Params.opt_type == "IRC" and not bt_converged:
-        raise optExceptions.OPT_FAIL(
+        raise optExceptions.OptFail(
             "Could not take constrained step in an IRC computation.")
 
     return bt_converged

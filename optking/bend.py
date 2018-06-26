@@ -12,7 +12,7 @@ from .printTools import print_opt
 from .simple import *
 
 
-class BEND(SIMPLE):
+class Bend(Simple):
     def __init__(self, a, b, c, frozen=False, fixedEqVal=None, bendType="REGULAR"):
 
         if a < c: atoms = (a, b, c)
@@ -23,7 +23,7 @@ class BEND(SIMPLE):
         self._x = np.zeros(3, float)
         self._w = np.zeros(3, float)
 
-        SIMPLE.__init__(self, atoms, frozen, fixedEqVal)
+        Simple.__init__(self, atoms, frozen, fixedEqVal)
 
     def __str__(self):
         if self.frozen: s = '*'
@@ -43,7 +43,7 @@ class BEND(SIMPLE):
 
     def __eq__(self, other):
         if self.atoms != other.atoms: return False
-        elif not isinstance(other, BEND): return False
+        elif not isinstance(other, Bend): return False
         elif self.bendType != other.bendType: return False
         else: return True
 
@@ -56,8 +56,8 @@ class BEND(SIMPLE):
         if intype in "REGULAR" "LINEAR" "COMPLEMENT":
             self._bendType = intype
         else:
-            raise optExceptions.OPT_FAIL(
-                "BEND.bendType must be REGULAR, LINEAR, or COMPLEMENT")
+            raise optExceptions.OptFail(
+                "Bend.bendType must be REGULAR, LINEAR, or COMPLEMENT")
 
     def compute_axes(self, geom):
         check, u = v3d.eAB(geom[self.B], geom[self.A])  # B->A
@@ -119,11 +119,11 @@ class BEND(SIMPLE):
         origin = np.zeros(3, float)
         check, phi = v3d.angle(u, origin, self._x)
         if not check:
-            raise optExceptions.ALG_FAIL("BEND.q could not compute linear bend")
+            raise optExceptions.AlgFail("Bend.q could not compute linear bend")
 
         check, phi2 = v3d.angle(self._x, origin, v)
         if not check:
-            raise optExceptios.ALG_FAIL("BEND.q could not compute linear bend")
+            raise optExceptios.AlgFail("Bend.q could not compute linear bend")
         phi += phi2
         return phi
 
@@ -168,8 +168,8 @@ class BEND(SIMPLE):
 
         # B = overall index of atom; a = 0,1,2 relative index for delta's
         for a, B in enumerate(self.atoms):
-            dqdx[3*B : 3*B+3] = BEND.zeta(a,0,1) * uXw[0:3]/Lu + \
-                                BEND.zeta(a,2,1) * wXv[0:3]/Lv
+            dqdx[3*B : 3*B+3] = Bend.zeta(a,0,1) * uXw[0:3]/Lu + \
+                                Bend.zeta(a,2,1) * wXv[0:3]/Lv
         return
 
     # Return derivative B matrix elements.  Matrix is cart X cart and passed in.
@@ -191,8 +191,8 @@ class BEND(SIMPLE):
         # packed, or mini dqdx where columns run only over 3 atoms
         dqdx = np.zeros(9, float)
         for a in range(3):
-            dqdx[3*a : 3*a+3] = BEND.zeta(a,0,1) * uXw[0:3]/Lu + \
-                                BEND.zeta(a,2,1) * wXv[0:3]/Lv
+            dqdx[3*a : 3*a+3] = Bend.zeta(a,0,1) * uXw[0:3]/Lu + \
+                                Bend.zeta(a,2,1) * wXv[0:3]/Lv
 
         val = self.q(geom)
         cos_q = cos(val)  # cos_q = v3d_dot(u,v);
@@ -205,16 +205,16 @@ class BEND(SIMPLE):
             for i in range(3):  #i = a_xyz
                 for b in range(3):
                     for j in range(3):  #j=b_xyz
-                        tval =  BEND.zeta(a,0,1) * BEND.zeta(b,0,1) * \
+                        tval =  Bend.zeta(a,0,1) * Bend.zeta(b,0,1) * \
                           (u[i]*v[j]+u[j]*v[i]-3*u[i]*u[j]*cos_q+delta(i,j)*cos_q) / (Lu*Lu*sin_q)
 
-                        tval += BEND.zeta(a,2,1) * BEND.zeta(b,2,1) * \
+                        tval += Bend.zeta(a,2,1) * Bend.zeta(b,2,1) * \
                           (v[i]*u[j]+v[j]*u[i]-3*v[i]*v[j]*cos_q+delta(i,j)*cos_q) / (Lv*Lv*sin_q)
 
-                        tval += BEND.zeta(a,0,1) * BEND.zeta(b,2,1) * \
+                        tval += Bend.zeta(a,0,1) * Bend.zeta(b,2,1) * \
                           (u[i]*u[j]+v[j]*v[i]-u[i]*v[j]*cos_q-delta(i,j)) / (Lu*Lv*sin_q)
 
-                        tval += BEND.zeta(a,2,1) * BEND.zeta(b,0,1) * \
+                        tval += Bend.zeta(a,2,1) * Bend.zeta(b,0,1) * \
                           (v[i]*v[j]+u[j]*u[i]-v[i]*u[j]*cos_q-delta(i,j)) / (Lu*Lv*sin_q)
 
                         tval -= cos_q / sin_q * dqdx[3 * a + i] * dqdx[3 * b + j]

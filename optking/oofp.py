@@ -11,13 +11,13 @@ from .simple import *
 # to the CBD plane; canonical order is C < D
 
 
-class OOFP(SIMPLE):
+class OOFP(Simple):
     def __init__(self, a, b, c, d, frozen=False, fixedEqVal=None):
 
         if c < d: atoms = (a, b, c, d)
         else: atoms = (a, b, d, c)
         self._near180 = 0
-        SIMPLE.__init__(self, atoms, frozen, fixedEqVal)
+        Simple.__init__(self, atoms, frozen, fixedEqVal)
 
     def __str__(self):
         if self.frozen: s = '*'
@@ -64,7 +64,7 @@ class OOFP(SIMPLE):
     def q(self, geom):
         check, tau = v3d.oofp(geom[self.A], geom[self.B], geom[self.C], geom[self.D])
         if not check:
-            raise optExceptions.ALG_FAIL(
+            raise optExceptions.AlgFail(
                 "OOFP::compute.q: unable to compute out-of-plane value")
 
         # Extend domain of out-of-plane angles to beyond pi
@@ -120,7 +120,7 @@ class OOFP(SIMPLE):
         return
 
     def Dq2Dx2(self, geom, dqdx):
-        raise optExceptions.ALG_FAIL('no derivative B matrices for out-of-plane angles')
+        raise optExceptions.AlgFail('no derivative B matrices for out-of-plane angles')
 
     def diagonalHessianGuess(self, geom, Z, guess="SIMPLE"):
         """ Generates diagonal empirical Hessians in a.u. such as 

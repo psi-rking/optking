@@ -11,7 +11,7 @@ from .printTools import printArray, printMat, print_opt
 from .misc import symmetrizeXYZ, isDqSymmetric
 from .linearAlgebra import absMax, symmMatEig, asymmMatEig, symmMatInv, norm
 from . import v3d
-from .history import History
+from .history import oHistory
 from . import optExceptions
 
 
@@ -19,26 +19,26 @@ from . import optExceptions
 # 1. Computes Dq, the step in internal coordinates.
 # 2. Calls displace and attempts to take the step.
 # 3. Updates history with results.
-def Dq(Molsys, E, qForces, H, stepType=None, energy_function=None):
+def Dq(oMolsys, E, qForces, H, stepType=None, energy_function=None, o_json=None):
     if len(H) == 0 or len(qForces) == 0: return np.zeros((0), float)
 
     if not stepType:
         stepType = op.Params.step_type
 
     if stepType == 'NR':
-        return Dq_NR(Molsys, E, qForces, H)
+        return Dq_NR(oMolsys, E, qForces, H)
     elif stepType == 'RFO':
-        return Dq_RFO(Molsys, E, qForces, H)
+        return Dq_RFO(oMolsys, E, qForces, H)
     elif stepType == 'SD':
-        return Dq_SD(Molsys, E, qForces)
+        return Dq_SD(oMolsys, E, qForces)
     elif stepType == 'BACKSTEP':
-        return Dq_BACKSTEP(Molsys)
+        return Dq_BACKSTEP(oMolsys)
     elif stepType == 'P_RFO':
-        return Dq_P_RFO(Molsys, E, qForces, H)
+        return Dq_P_RFO(oMolsys, E, qForces, H)
     elif stepType == 'LINESEARCH':
-        return Dq_LINESEARCH(Molsys, E, qForces, H, energy_function)
+        return Dq_LINESEARCH(oMolsys, E, qForces, H, energy_function, o_json)
     else:
-        raise optExceptions.OPT_FAIL('Dq: step type not yet implemented')
+        raise optExceptions.OptFail('Dq: step type not yet implemented')
 
 
 # Apply crude maximum step limit by scaling.
@@ -59,12 +59,12 @@ def DE_projected(model, step, grad, hess):
     elif model == 'RFO':
         return (step * grad + 0.5 * step * step * hess) / (1 + step * step)
     else:
-        raise optExceptions.OPT_FAIL("DE_projected does not recognize model.")
+        raise optExceptions.OptFail("DE_projected does not recognize model.")
 
 
 # geometry and E are just for passing
 # at present we are not storing the ACTUAL dq but the attempted
-def Dq_NR(Molsys, E, fq, H):
+def Dq_NR(oMolsys, E, fq, H):
     print_opt("\tTaking NR optimization step.\n")
 
     # Hinv fq = dq
@@ -92,8 +92,8 @@ def Dq_NR(Molsys, E, fq, H):
         "\tProjected energy change by quadratic approximation: %20.10lf\n" % DEprojected)
 
     # Scale fq into aJ for printing
-    fq_aJ = qShowForces(Molsys.intcos, fq)
-    displace(Molsys._fragments[0].intcos, Molsys._fragments[0].geom, dq, fq_aJ)
+    fq_aJ = qShowForces(oMolsys.intcos, fq)
+    displace(oMolsys._fragments[0].intcos, oMolsys._fragments[0].geom, dq, fq_aJ)
 
     dq_actual = sqrt(np.dot(dq, dq))
     print_opt("\tNorm of achieved step-size %15.10f\n" % dq_actual)
@@ -102,18 +102,18 @@ def Dq_NR(Molsys, E, fq, H):
     # symmetrize_geom()
 
     # save values in step data
-    History.appendRecord(DEprojected, dq, nr_u, nr_g, nr_h)
+    oHistory.appendRecord(DEprojected, dq, nr_u, nr_g, nr_h)
 
     # Can check full geometry, but returned indices will correspond then to that.
-    linearList = linearBendCheck(Molsys.intcos, Molsys.geom, dq)
+    linearList = linearBendCheck(oMolsys.intcos, oMolsys.geom, dq)
     if linearList:
-        raise optExceptions.ALG_FAIL("New linear angles", newLinearBends=linearList)
+        raise optExceptions.AlgFail("New linear angles", newLinearBends=linearList)
 
     return dq
 
 
 # Take Rational Function Optimization step
-def Dq_RFO(Molsys, E, fq, H):
+def Dq_RFO(oMolsys, E, fq, H):
     print_opt("\tTaking RFO optimization step.\n")
     dim = len(fq)
     dq = np.zeros((dim), float)  # To be determined and returned.
@@ -143,8 +143,8 @@ def Dq_RFO(Molsys, E, fq, H):
     alpha = 1.0  # scaling factor for RS-RFO, scaling matrix is sI
 
     last_iter_evect = np.zeros((dim), float)
-    if rfo_follow_root and len(History.steps) > 1:
-        last_iter_evect[:] = History.steps[
+    if rfo_follow_root and len(oHistory.steps) > 1:
+        last_iter_evect[:] = oHistory.steps[
             -2].followedUnitVector  # RFO vector from previous geometry step
 
     # Iterative sequence to find alpha
@@ -204,7 +204,7 @@ def Dq_RFO(Molsys, E, fq, H):
         # Use input rfo_root
         # If root-following is turned off, then take the eigenvector with the rfo_root'th lowest eigvenvalue.
         # If its the first iteration, then do the same.  In subsequent steps, overlaps will be checked.
-        if not rfo_follow_root or len(History.steps) < 2:
+        if not rfo_follow_root or len(oHistory.steps) < 2:
 
             # Determine root only once at beginning ?
             if alphaIter == 0:
@@ -214,7 +214,7 @@ def Dq_RFO(Molsys, E, fq, H):
                     # Check symmetry of root.
                     dq[:] = SRFOevects[i, 0:dim]
                     if not op.Params.accept_symmetry_breaking:
-                        symm_rfo_step = isDqSymmetric(Molsys.intcos, Molsys.geom, dq)
+                        symm_rfo_step = isDqSymmetric(oMolsys.intcos, oMolsys.geom, dq)
 
                         if not symm_rfo_step:  # Root is assymmetric so reject it.
                             print_opt("\tRejecting RFO root %d because it breaks the molecular point group.\n"\
@@ -347,10 +347,10 @@ def Dq_RFO(Molsys, E, fq, H):
     print_opt("\tProjected energy change by RFO approximation: %20.10lf\n" % DEprojected)
 
     # Scale fq into aJ for printing
-    fq_aJ = qShowForces(Molsys.intcos, fq)
+    fq_aJ = qShowForces(oMolsys.intcos, fq)
 
     # this won't work for multiple fragments yet until dq and fq get cut up.
-    for F in Molsys._fragments:
+    for F in oMolsys._fragments:
         displace(F.intcos, F.geom, dq, fq_aJ)
 
     # For now, saving RFO unit vector and using it in projection to match C++ code,
@@ -373,21 +373,21 @@ def Dq_RFO(Molsys, E, fq, H):
     #print_opt("\tSymmetrizing new geometry\n")
     #geom = symmetrizeXYZ(geom)
 
-    History.appendRecord(DEprojected, dq, rfo_u, rfo_g, rfo_h)
+    oHistory.appendRecord(DEprojected, dq, rfo_u, rfo_g, rfo_h)
 
-    linearList = linearBendCheck(Molsys.intcos, Molsys.geom, dq)
+    linearList = linearBendCheck(oMolsys.intcos, oMolsys.geom, dq)
     if linearList:
-        raise optExceptions.ALG_FAIL("New linear angles", newLinearBends=linearList)
+        raise optExceptions.AlgFail("New linear angles", newLinearBends=linearList)
 
     # Before quitting, make sure step is reasonable.  It should only be
     # screwball if we are using the "First Guess" after the back-transformation failed.
     if sqrt(np.dot(dq, dq)) > 10 * trust:
-        raise optExceptions.ALG_FAIL("opt.py: Step is far too large.")
+        raise optExceptions.AlgFail("opt.py: Step is far too large.")
 
     return dq
 
 
-def Dq_P_RFO(Molsys, E, fq, H):
+def Dq_P_RFO(oMolsys, E, fq, H):
     Hdim = len(fq)  # size of Hessian
     trust = op.Params.intrafrag_trust  # maximum step size
     rfo_follow_root = op.Params.rfo_follow_root  # whether to follow root
@@ -421,7 +421,7 @@ def Dq_P_RFO(Molsys, E, fq, H):
     print_opt("\tLarger values of rfo_root are not yet supported.\n")
     rfo_root = 0
     """  TODO: use rfo_root to decide which eigenvectors are moved into the max/mu space.
-    if not rfo_follow_root or len(History.steps) < 2:
+    if not rfo_follow_root or len(oHistory.steps) < 2:
         rfo_root = op.Params.rfo_root
         print_opt("\tMaximizing along %d lowest eigenvalue of Hessian.\n" % (rfo_root+1) )
     else:
@@ -536,10 +536,10 @@ def Dq_P_RFO(Molsys, E, fq, H):
     print_opt("\tProjected Delta(E) : %15.10f\n\n" % DEprojected)
 
     # Scale fq into aJ for printing
-    fq_aJ = qShowForces(Molsys.intcos, fq)
+    fq_aJ = qShowForces(oMolsys.intcos, fq)
 
     # this won't work for multiple fragments yet until dq and fq get cut up.
-    for F in Molsys._fragments:
+    for F in oMolsys._fragments:
         displace(F.intcos, F.geom, dq, fq_aJ)
 
     # For now, saving RFO unit vector and using it in projection to match C++ code,
@@ -547,29 +547,29 @@ def Dq_P_RFO(Molsys, E, fq, H):
     dqnorm_actual = sqrt(np.dot(dq, dq))
     print_opt("\tNorm of achieved step-size %15.10f\n" % dqnorm_actual)
 
-    History.appendRecord(DEprojected, dq, rfo_u, rfo_g, rfo_h)
+    oHistory.appendRecord(DEprojected, dq, rfo_u, rfo_g, rfo_h)
 
-    linearList = linearBendCheck(Molsys.intcos, Molsys.geom, dq)
+    linearList = linearBendCheck(oMolsys.intcos, oMolsys.geom, dq)
     if linearList:
-        raise optExceptions.ALG_FAIL("New linear angles", newLinearBends=linearList)
+        raise optExceptions.AlgFail("New linear angles", newLinearBends=linearList)
 
     # Before quitting, make sure step is reasonable.  It should only be
     # screwball if we are using the "First Guess" after the back-transformation failed.
     if sqrt(np.dot(dq, dq)) > 10 * trust:
-        raise optExceptions.ALG_FAIL("opt.py: Step is far too large.")
+        raise optExceptions.AlgFail("opt.py: Step is far too large.")
 
     return dq
 
 
 # Take Steepest Descent step
-def Dq_SD(Molsys, E, fq):
+def Dq_SD(oMolsys, E, fq):
     print_opt("\tTaking SD optimization step.\n")
     dim = len(fq)
     sd_h = op.Params.sd_hessian  # default value
 
-    if len(History.steps) > 1:
-        previous_forces = History.steps[-2].forces
-        previous_dq = History.steps[-2].Dq
+    if len(oHistory.steps) > 1:
+        previous_forces = oHistory.steps[-2].forces
+        previous_dq = oHistory.steps[-2].Dq
 
         # Compute overlap of previous forces with current forces.
         previous_forces_u = previous_forces.copy() / np.linalg.norm(previous_forces)
@@ -601,8 +601,8 @@ def Dq_SD(Molsys, E, fq):
     print_opt(
         "\tProjected energy change by quadratic approximation: %20.10lf\n" % DEprojected)
 
-    fq_aJ = qShowForces(Molsys.intcos, fq)  # for printing
-    displace(Molsys._fragments[0].intcos, Molsys._fragments[0].geom, dq, fq_aJ)
+    fq_aJ = qShowForces(oMolsys.intcos, fq)  # for printing
+    displace(oMolsys._fragments[0].intcos, oMolsys._fragments[0].geom, dq, fq_aJ)
 
     dqnorm_actual = np.linalg.norm(dq)
     print_opt("\tNorm of achieved step-size %15.10f\n" % dqnorm_actual)
@@ -610,11 +610,11 @@ def Dq_SD(Molsys, E, fq):
     # Symmetrize the geometry for next step
     # symmetrize_geom()
 
-    History.appendRecord(DEprojected, dq, sd_u, sd_g, sd_h)
+    oHistory.appendRecord(DEprojected, dq, sd_u, sd_g, sd_h)
 
-    linearList = linearBendCheck(Molsys.intcos, Molsys.geom, dq)
+    linearList = linearBendCheck(oMolsys.intcos, oMolsys.geom, dq)
     if linearList:
-        raise optExceptions.ALG_FAIL("New linear angles", newLinearBends=linearList)
+        raise optExceptions.AlgFail("New linear angles", newLinearBends=linearList)
 
     return dq
 
@@ -631,26 +631,26 @@ def Dq_SD(Molsys, E, fq):
 #       projectedDE - recompute
 
 
-def Dq_BACKSTEP(Molsys):
+def Dq_BACKSTEP(oMolsys):
     print_opt("\tRe-doing last optimization step - smaller this time.\n")
 
     # Calling function shouldn't let this happen; this is a check for developer
-    if len(History.steps) < 2:
-        raise optExceptions.OPT_FAIL("Backstep called, but no history is available.")
+    if len(oHistory.steps) < 2:
+        raise optExceptions.OptFail("Backstep called, but no history is available.")
 
     # Erase last, partial step data for current step.
-    del History.steps[-1]
+    del oHistory.steps[-1]
 
     # Get data from previous step.
-    fq = History.steps[-1].forces
-    dq = History.steps[-1].Dq
-    oneDgradient = History.steps[-1].oneDgradient
-    oneDhessian = History.steps[-1].oneDhessian
+    fq = oHistory.steps[-1].forces
+    dq = oHistory.steps[-1].Dq
+    oneDgradient = oHistory.steps[-1].oneDgradient
+    oneDhessian = oHistory.steps[-1].oneDhessian
     # Copy old geometry so displace doesn't change history
-    geom = History.steps[-1].geom.copy()
+    geom = oHistory.steps[-1].geom.copy()
 
     #print_opt('test geom old from history\n')
-    #printMat(Molsys.geom)
+    #printMat(oMolsys.geom)
 
     # Compute new Dq and energy step projection.
     dq /= 2
@@ -664,10 +664,10 @@ def Dq_BACKSTEP(Molsys):
         DEprojected = DE_projected('NR', dqNorm, oneDgradient, oneDhessian)
     print_opt("\tProjected energy change : %20.10lf\n" % DEprojected)
 
-    fq_aJ = qShowForces(Molsys.intcos, fq)  # for printing
+    fq_aJ = qShowForces(oMolsys.intcos, fq)  # for printing
     # Displace from previous geometry
-    displace(Molsys._fragments[0].intcos, geom, dq, fq_aJ)
-    Molsys.geom = geom # uses setter; writes into all fragments
+    displace(oMolsys._fragments[0].intcos, geom, dq, fq_aJ)
+    oMolsys.geom = geom # uses setter; writes into all fragments
 
     dqNormActual = np.linalg.norm(dq)
     print_opt("\tNorm of achieved step-size %15.10f\n" % dqNormActual)
@@ -675,22 +675,22 @@ def Dq_BACKSTEP(Molsys):
     # symmetrize_geom()
 
     # Update the history entries which changed.
-    History.steps[-1].projectedDE = DEprojected
-    History.steps[-1].Dq[:] = dq
+    oHistory.steps[-1].projectedDE = DEprojected
+    oHistory.steps[-1].Dq[:] = dq
 
-    linearList = linearBendCheck(Molsys.intcos, Molsys.geom, dq)
+    linearList = linearBendCheck(oMolsys.intcos, oMolsys.geom, dq)
     if linearList:
-        raise optExceptions.ALG_FAIL("New linear angles", newLinearBends=linearList)
+        raise optExceptions.AlgFail("New linear angles", newLinearBends=linearList)
 
     return dq
 
 
 # Take Rational Function Optimization step
-def Dq_LINESEARCH(Molsys, E, fq, H, energy_function):
+def Dq_LINESEARCH(oMolsys, E, fq, H, energy_function, o_json):
     s = op.Params.linesearch_step
 
-    if len(History.steps) > 1:
-        s = norm(History.steps[-2].Dq) / 2
+    if len(oHistory.steps) > 1:
+        s = norm(oHistory.steps[-2].Dq) / 2
         print_opt("\tModifying linesearch s to %10.6f\n" % s)
 
     print_opt("\n\tTaking LINESEARCH optimization step.\n")
@@ -698,7 +698,7 @@ def Dq_LINESEARCH(Molsys, E, fq, H, energy_function):
     fq_unit = fq / sqrt(np.dot(fq, fq))
     printArray(fq_unit)
     Ea = E
-    geomA = Molsys.geom  # get copy of original geometry
+    geomA = oMolsys.geom  # get copy of original geometry
     Eb = Ec = 0
     bounded = False
     ls_iter = 0
@@ -711,22 +711,22 @@ def Dq_LINESEARCH(Molsys, E, fq, H, energy_function):
         if Eb == 0:
             print_opt("\n\tStepping along forces distance %10.5f\n" % s)
             dq = s * fq_unit
-            fq_aJ = qShowForces(Molsys.intcos, fq)
-            displace(Molsys._fragments[0].intcos, Molsys._fragments[0].geom, dq, fq_aJ)
-            xyz = Molsys.geom
+            fq_aJ = qShowForces(oMolsys.intcos, fq)
+            displace(oMolsys._fragments[0].intcos, oMolsys._fragments[0].geom, dq, fq_aJ)
+            xyz = oMolsys.geom
             print_opt("\tComputing energy at this point now.\n")
-            Eb = energy_function(xyz)
-            Molsys.geom = geomA  # reset geometry to point A
+            Eb, nuc = energy_function(xyz, o_json)
+            oMolsys.geom = geomA  # reset geometry to point A
 
         if Ec == 0:
             print_opt("\n\tStepping along forces distance %10.5f\n" % (stepScale * s))
             dq = (stepScale * s) * fq_unit
-            fq_aJ = qShowForces(Molsys.intcos, fq)
-            displace(Molsys._fragments[0].intcos, Molsys._fragments[0].geom, dq, fq_aJ)
-            xyz = Molsys.geom
+            fq_aJ = qShowForces(oMolsys.intcos, fq)
+            displace(oMolsys._fragments[0].intcos, oMolsys._fragments[0].geom, dq, fq_aJ)
+            xyz = oMolsys.geom
             print_opt("\tComputing energy at this point now.\n")
-            Ec = energy_function(xyz)
-            Molsys.geom = geomA  # reset geometry to point A
+            Ec, nuc = energy_function(xyz, o_json)
+            oMolsys.geom = geomA  # reset geometry to point A
 
         print_opt("\n\tCurrent linesearch bounds.\n")
         print_opt("\t s=%7.5f, Ea=%17.12f\n" % (0, Ea))
@@ -758,10 +758,11 @@ def Dq_LINESEARCH(Molsys, E, fq, H, energy_function):
             Emin_projected = x[0] * Xmin * Xmin + x[1] * Xmin + Ea
             dq = Xmin * fq_unit
             print_opt("\tProjected step size to minimum is %12.6f\n" % Xmin)
-            displace(Molsys._fragments[0].intcos, Molsys._fragments[0].geom, dq, fq_aJ)
-            xyz = Molsys.geom
+            displace(oMolsys._fragments[0].intcos, oMolsys._fragments[0].geom, dq, fq_aJ)
+            xyz = oMolsys.geom
             print_opt("\tComputing energy at projected point.\n")
-            Emin = energy_function(xyz)
+            Emin, nuc = energy_function(xyz, o_json)
+            print('nuclear repulsion energy for Emin', nuc)
             print_opt("\tProjected energy along line: %15.10f\n" % Emin_projected)
             print_opt("\t   Actual energy along line: %15.10f\n" % Emin)
 
@@ -800,8 +801,8 @@ def Dq_LINESEARCH(Molsys, E, fq, H, energy_function):
         "\tProjected quadratic energy change using full Hessian: %15.10f\n" % DEprojected)
 
     # Scale fq into aJ for printing
-    #fq_aJ = qShowForces(Molsys.intcos, fq)
-    #displace(Molsys._fragments[0].intcos, Molsys._fragments[0].geom, dq, fq_aJ)
+    #fq_aJ = qShowForces(oMolsys.intcos, fq)
+    #displace(oMolsys._fragments[0].intcos, oMolsys._fragments[0].geom, dq, fq_aJ)
 
     dq_actual = sqrt(np.dot(dq, dq))
     print_opt("\tNorm of achieved step-size %15.10f\n" % dq_actual)
@@ -810,11 +811,13 @@ def Dq_LINESEARCH(Molsys, E, fq, H, energy_function):
     # symmetrize_geom()
 
     # save values in step data
-    History.appendRecord(DEprojected, dq, ls_u, ls_g, ls_h)
+    oHistory.appendRecord(DEprojected, dq, ls_u, ls_g, ls_h)
 
     # Can check full geometry, but returned indices will correspond then to that.
-    linearList = linearBendCheck(Molsys.intcos, Molsys.geom, dq)
+    linearList = linearBendCheck(oMolsys.intcos, oMolsys.geom, dq)
     if linearList:
-        raise optExceptions.ALG_FAIL("New linear angles", newLinearBends=linearList)
+        raise optExceptions.AlgFail("New linear angles", newLinearBends=linearList)
+
+    oHistory.nuclear_repulsion_energy = nuc
 
     return dq

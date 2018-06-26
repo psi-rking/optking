@@ -97,7 +97,7 @@ def intList(inList):
 
 def intIntFloatList(inList):
     if len(inList) % 3 != 0:
-        raise optExceptions.OPT_FAIL("List is not comprised of int-int-float elements")
+        raise optExceptions.OptFail("List is not comprised of int-int-float elements")
     outList = []
     for i in range(0, len(inList), 3):
         outList.append(int(inList[i + 0]))
@@ -108,7 +108,7 @@ def intIntFloatList(inList):
 
 def intIntIntFloatList(inList):
     if len(inList) % 4 != 0:
-        raise optExceptions.OPT_FAIL(
+        raise optExceptions.OptFail(
             "List is not comprised of int-int-int-float elements")
     outList = []
     for i in range(0, len(inList), 4):
@@ -121,7 +121,7 @@ def intIntIntFloatList(inList):
 
 def intIntIntIntFloatList(inList):
     if len(inList) % 5 != 0:
-        raise optExceptions.OPT_FAIL(
+        raise optExceptions.OptFail(
             "List is not comprised of int-int-int-int-float elements")
     outList = []
     for i in range(0, len(inList), 5):
@@ -134,16 +134,16 @@ def intIntIntIntFloatList(inList):
 
 def int_XYZ_list(inList):
     if len(inList) % 2 != 0:
-        raise optExceptions.OPT_FAIL("int-XYZ list does not have even number of entries")
+        raise optExceptions.OptFail("int-XYZ list does not have even number of entries")
     outList = []
     for i in range(0, len(inList), 2):
         outList.append(int(inList[i + 0]))
         cart_string = str(inList[i + 1]).upper()
         if len(cart_string) > 3 or len(cart_string) < 1:
-            raise optExceptions.OPT_FAIL("Could not decipher xyz coordinate string")
+            raise optExceptions.OptFail("Could not decipher xyz coordinate string")
         for c in cart_string:
             if c not in ('X','Y','Z'):
-                raise optExceptions.OPT_FAIL("Could not decipher xyz coordinate string")
+                raise optExceptions.OptFail("Could not decipher xyz coordinate string")
         cart_string = sorted(cart_string) # x , then y, then z
         outList.append(cart_string)
     return outList

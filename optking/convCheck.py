@@ -20,12 +20,11 @@ from .intcosMisc import Gmat, Bmat, qValues
 # return True, if geometry is optimized
 # By default, checks maximum force and (Delta(E) or maximum disp)
 
-
-def convCheck(iterNum, Molsys, dq, f, energies, qPivot=None, masses=None):
+def convCheck(iterNum, oMolsys, dq, f, energies, qPivot=None, masses=None):
     max_disp = absMax(dq)
     rms_disp = rms(dq)
-    Nintco = len(Molsys.intcos)
-    has_fixed = any([ints.fixedEqVal for ints in Molsys.intcos])
+    Nintco = len(oMolsys.intcos)
+    has_fixed = any([ints.fixedEqVal for ints in oMolsys.intcos])
     energy = energies[-1]
     last_energy = energies[-2] if len(energies) > 1 else 0.0
 
@@ -43,24 +42,24 @@ def convCheck(iterNum, Molsys, dq, f, energies, qPivot=None, masses=None):
         print_opt(
             "\tForces used to impose fixed constraints are not included in convergence check.\n"
         )
-        for i, ints in enumerate(Molsys.intcos):
+        for i, ints in enumerate(oMolsys.intcos):
             if ints.fixedEqVal:
                 f[i] = 0
 
     if op.Params.opt_type == 'IRC':
-        G = Gmat(Molsys.intcos, Molsys.geom, masses)
-        B = Bmat(Molsys.intcos, Molsys.geom, masses)
+        G = Gmat(oMolsys.intcos, oMolsys.geom, masses)
+        B = Bmat(oMolsys.intcos, oMolsys.geom, masses)
         Ginv = np.linalg.inv(G)
 
         # compute p_m, mass-weighted hypersphere vector
         q_pivot = qPivot
-        x = Molsys.geom
+        x = oMolsys.geom
         print("B matrix")
         print(B)
         print("geom")
         print(x)
-        q = qValues(Molsys.intcos, Molsys.geom)
-        #q = np.dot(Ginv, np.dot(B, np.dot(np.identity(Molsys.Natom * 3), x)))
+        q = qValues(oMolsys.intcos, oMolsys.geom)
+        #q = np.dot(Ginv, np.dot(B, np.dot(np.identity(oMolsys.Natom * 3), x)))
         print("q")
         print(q)
         print("q-pivot")

@@ -30,21 +30,21 @@ def qShowValues(intcos, geom):
 
 def updateDihedralOrientations(intcos, geom):
     for intco in intcos:
-        if isinstance(intco, tors.TORS) or isinstance(intco, oofp.OOFP):
+        if isinstance(intco, tors.Tors) or isinstance(intco, oofp.OOFP):
             intco.updateOrientation(geom)
     return
 
 
 def fixBendAxes(intcos, geom):
     for intco in intcos:
-        if isinstance(intco, bend.BEND):
+        if isinstance(intco, bend.Bend):
             intco.fixBendAxes(geom)
     return
 
 
 def unfixBendAxes(intcos):
     for intco in intcos:
-        if isinstance(intco, bend.BEND):
+        if isinstance(intco, bend.Bend):
             intco.unfixBendAxes()
     return
 
@@ -163,12 +163,12 @@ def projectRedundanciesAndConstraints(intcos, geom, fq, H):
             printMat(H)
 
 
-def applyFixedForces(Molsys, fq, H, stepNumber):
-    x = Molsys.geom
-    for iF, F in enumerate(Molsys._fragments):
+def applyFixedForces(oMolsys, fq, H, stepNumber):
+    x = oMolsys.geom
+    for iF, F in enumerate(oMolsys._fragments):
         for i, intco in enumerate(F.intcos):
             if intco.fixed:
-                location = Molsys.frag_1st_intco(iF) + i
+                location = oMolsys.frag_1st_intco(iF) + i
                 val = intco.q(x)
                 eqVal = intco.fixedEqVal
 
@@ -285,15 +285,15 @@ def torsContainsBend(b, t):
 
 
 def removeOldNowLinearBend(atoms, intcos):
-    b = bend.BEND(atoms[0], atoms[1], atoms[2])
+    b = bend.Bend(atoms[0], atoms[1], atoms[2])
     print_opt(str(b) + '\n')
     intcos[:] = [I for I in intcos if not (I == b)]
     intcos[:] = [
-        I for I in intcos if not (isinstance(I, tors.TORS) and torsContainsBend(b, I))
+        I for I in intcos if not (isinstance(I, tors.Tors) and torsContainsBend(b, I))
     ]
     #    if b == Coord:
     #        del intcos[iCoord]
-    #    if isinstance(Coord, tors.TORS):
+    #    if isinstance(Coord, tors.Tors):
     #        if (atoms in [Coord.atoms[0:3], list(reversed(Coord.atoms[0:3])),
     #                      Coord.atoms[1:4], list(reversed(Coord.atoms[1:4]))]):
     #            del intcos[iCoord]

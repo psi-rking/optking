@@ -25,3 +25,7 @@ def guess(intcos, geom, Z, connectivity=False, guessType="SIMPLE"):
         H[i, i] = intco.diagonalHessianGuess(geom, Z, connectivity, guessType)
 
     return H
+
+def convert_json_hess_to_matrix(H, Natom):
+    return H.reshape(3 * Natom, 3 * Natom)
+

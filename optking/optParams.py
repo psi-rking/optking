@@ -5,7 +5,7 @@
 # Option keys in the input dictionary are interpreted case-insensitively.
 # The enumerated string types are translated to all upper-case within the parameter object.
 
-from .printTools import print_opt
+from optking.printTools import print_opt 
 #Params = 0
 from . import optExceptions
 
@@ -19,7 +19,7 @@ def stringOption(storage_name):
         if value.upper() in allowedStringOptions[storage_name]:
             instance.__dict__[storage_name] = value.upper()
         else:
-            raise optExceptions.OPT_FAIL('Invalid value for ' + storage_name)
+            raise optExceptions.OptFail('Invalid value for ' + storage_name)
 
     return property(stringOption_getter, stringOption_setter)
 
@@ -612,7 +612,7 @@ class OPT_PARAMS(object):
                 "Moving to run_level 6: XYZ, SD, 1 backstep, smaller trust, smaller step.\n"
             )
         else:
-            raise optExceptions.OPT_FAIL("Unknown value of run_level")
+            raise optExceptions.OptFail("Unknown value of run_level")
 
 
 def welcome():

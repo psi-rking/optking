@@ -2,7 +2,7 @@
 #! Internal-coordinate constraints in internal-coordinate optimizations.
 
 import psi4
-import Psi4Opt
+import runpsi4API
 
 OH_frozen_stre_rhf       = -150.781130357 #TEST
 OOH_frozen_bend_rhf      = -150.786372411 #TEST
@@ -16,13 +16,16 @@ def test_frozen_stre():
       O 2 1.40 1 100.0 
       H 3 0.90 2 100.0 1 115.0
     """)
-    
-    psi4.set_options({
+   
+    psi4options = {
       'diis': 'false',
       'basis': 'cc-PVDZ',
       'g_convergence': 'gau_verytight',
-      'scf_type': 'pk', 
-    })
+      'scf_type': 'pk',
+    }
+
+ 
+    psi4.set_options(psi4options)
     
     frozen_stre = ("""
         1  2
@@ -30,8 +33,7 @@ def test_frozen_stre():
     """)
     
     psi4.set_module_options('OPTKING', {'frozen_distance': frozen_stre})
-    Psi4Opt.calcName = 'hf'
-    thisenergy = Psi4Opt.Psi4Opt()
+    thisenergy, nucenergy = runpsi4API.Psi4Opt('hf', psi4options)
     assert psi4.compare_values(OH_frozen_stre_rhf, thisenergy, 7, 
                         "Int. Coord. RHF opt of HOOH with O-H frozen, energy")  #TEST
 
@@ -43,13 +45,15 @@ def test_frozen_bend():
       O 2 1.40 1 100.0
       H 3 0.90 2 100.0 1 115.0
     """)
-    
-    psi4.set_options({
+    psi4options = {
       'diis': 'false',
       'basis': 'cc-PVDZ',
       'g_convergence': 'gau_verytight',
-      'scf_type': 'pk', 
-    })
+      'scf_type': 'pk',
+    }
+
+
+    psi4.set_options(psi4options)
 
     frozen_angles = ("""
         1 2 3
@@ -57,8 +61,7 @@ def test_frozen_bend():
     """)
     
     psi4.set_module_options('OPTKING', {'frozen_bend': frozen_angles}) 
-    Psi4Opt.calcName = 'hf'
-    thisenergy = Psi4Opt.Psi4Opt()
+    thisenergy, nucenergy = runpsi4API.Psi4Opt('hf', psi4options)
     assert psi4.compare_values(OOH_frozen_bend_rhf, thisenergy, 7,
                         "Int. Coord. RHF opt of HOOH with O-O-H frozen, energy") #TEST
 
@@ -70,19 +73,20 @@ def test_frozen_tors():
       O 2 1.40 1 100.0 
       H 3 0.90 2 100.0 1 115.0
     """)
-    
-    psi4.set_options({
+
+    psi4options = {
       'diis': 'false',
       'basis': 'cc-PVDZ',
       'g_convergence': 'gau_verytight',
-      'scf_type': 'pk', 
-    })
+      'scf_type': 'pk',
+    }
+
+    psi4.set_options(psi4options)
 
     frozen_tors = ("1 2 3 4")
     
     psi4.set_module_options('OPTKING', {'frozen_dihedral': frozen_tors}) 
-    Psi4Opt.calcName = 'hf'
-    thisenergy = Psi4Opt.Psi4Opt()
+    thisenergy, nucenergy = runpsi4API.Psi4Opt('hf', psi4options)
     assert psi4.compare_values(HOOH_frozen_dihedral_rhf, thisenergy, 7, 
                         "Int. Coord. RHF opt of HOOH with H-O-O-H frozen, energy") #TEST
 

@@ -8,7 +8,7 @@ from .linearAlgebra import absMax, rms, signOfDouble
 from .printTools import printMat, printMatString, printArrayString, print_opt
 
 
-class STEP(object):
+class Step(object):
     def __init__(self, geom, E, forces):
         self.geom = geom.copy()  # Store as 2D object
         self.E = E
@@ -43,13 +43,13 @@ class STEP(object):
         return s
 
 
-class HISTORY(object):
+class History(object):
     stepsSinceLastHessian = 0
     consecutiveBacksteps = 0
-
+    nuclear_repulsion_energy = 0
     def __init__(self):
         self.steps = []
-        HISTORY.stepsSinceLastHessian = 0
+        History.stepsSinceLastHessian = 0
 
     def __str__(self):
         s = "History of length %d\n" % len(self)
@@ -72,9 +72,9 @@ class HISTORY(object):
 
     # Add new step.  We will store geometry as 1D in history.
     def append(self, geom, E, forces):
-        s = STEP(geom, E, forces)
+        s = Step(geom, E, forces)
         self.steps.append(s)
-        HISTORY.stepsSinceLastHessian += 1
+        History.stepsSinceLastHessian += 1
 
     # Fill in details of new step.
     def appendRecord(self, projectedDE, Dq, followedUnitVector, oneDgradient,
@@ -188,7 +188,7 @@ class HISTORY(object):
 
         # Don't go further back than the last Hessian calculation
         numToUse = min(op.Params.hess_update_use_last,
-                       len(self.steps) - 1, HISTORY.stepsSinceLastHessian)
+                       len(self.steps) - 1, History.stepsSinceLastHessian)
         print_opt("\tUsing last %d steps for update.\n" % numToUse)
 
         # Make list of old geometries to update with.
@@ -322,4 +322,4 @@ class HISTORY(object):
         return
 
 
-History = HISTORY()
+oHistory = History()

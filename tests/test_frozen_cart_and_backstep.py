@@ -5,7 +5,7 @@
 #! 3. Cartesian optimization with fixed O's.
 
 import psi4
-import Psi4Opt
+import runpsi4API
 
 HOOH_E             = -150.7866742 # TEST
 HOOH_E_fixed_H_xyz = -150.7866491 # TEST
@@ -22,16 +22,16 @@ def test_hooh_full_opt():
       no_reorient
     """)
     
-    psi4.set_options({
+    psi4options = {
      'basis': 'cc-pvdz',
      'opt_coordinates': 'cartesian',
      'g_convergence': 'gau_tight',
      'geom_maxiter': 20,
-     'consecutive_backsteps': 1  # TEST backsteps 
-    })
-    
-    Psi4Opt.calcName = 'hf'
-    thisenergy = Psi4Opt.Psi4Opt()
+     'consecutive_backsteps': 1
+    }
+
+    psi4.set_options(psi4options)
+    thisenergy, nucenergy = runpsi4API.Psi4Opt('hf', psi4options)
     assert psi4.compare_values(HOOH_E, thisenergy, 6, "Cart. Coord. RHF opt of HOOH, energy")  #TEST
 
 def test_hooh_freeze_xyz_Hs():    
@@ -44,21 +44,22 @@ def test_hooh_freeze_xyz_Hs():
       no_com
       no_reorient
     """)
-    
-    psi4.set_options({
+   
+    psi4options = {
      'basis': 'cc-pvdz',
      'opt_coordinates': 'cartesian',
      'g_convergence': 'gau_tight',
      'geom_maxiter': 20,
-     'consecutive_backsteps': 1  # TEST backsteps 
-    })
+     'consecutive_backsteps': 1
+    }
+
+    psi4.set_options(psi4options)
     
     freeze_list = """ 1 Xyz 4 xYz """
     
     psi4.set_module_options('Optking', {'frozen_cartesian': freeze_list})
     
-    Psi4Opt.calcName = 'hf'
-    thisenergy = Psi4Opt.Psi4Opt()
+    thisenergy, nucenergy = runpsi4API.Psi4Opt('hf', psi4options)
     assert psi4.compare_values(HOOH_E_fixed_H_xyz, thisenergy, 6, 
                         "Cart. Coord. RHF opt of HOOH with H's xyz frozen, energy")  #TEST
 
@@ -72,14 +73,16 @@ def test_hooh_freeze_xyz_Os():
       no_com
       no_reorient
     """)
-    
-    psi4.set_options({
+
+    psi4options = {
      'basis': 'cc-pvdz',
      'opt_coordinates': 'cartesian',
      'g_convergence': 'gau_tight',
      'geom_maxiter': 20,
-     'consecutive_backsteps': 1  # TEST backsteps 
-    })
+     'consecutive_backsteps': 1
+    }
+
+    psi4.set_options(psi4options)
         
     freeze_list = """
       2 xyz
@@ -87,8 +90,7 @@ def test_hooh_freeze_xyz_Os():
     """
     psi4.set_module_options('Optking', {'frozen_cartesian': freeze_list})
     
-    Psi4Opt.calcName = 'hf'
-    thisenergy = Psi4Opt.Psi4Opt()
+    thisenergy, nucenergy = runpsi4API.Psi4Opt('hf', psi4options)
     assert psi4.compare_values(HOOH_E_fixed_O_xyz, thisenergy, 6, 
                               "Cart. Coord. RHF opt of HOOH with O's xyz frozen, energy")  #TEST
 
@@ -102,14 +104,16 @@ def test_hooh_individual_freezes_x_y_z():
       no_com
       no_reorient
     """)
-    
-    psi4.set_options({
+
+    psi4options = {
      'basis': 'cc-pvdz',
      'opt_coordinates': 'cartesian',
      'g_convergence': 'gau_tight',
      'geom_maxiter': 20,
-     'consecutive_backsteps': 1  # TEST backsteps 
-    })
+     'consecutive_backsteps': 1
+    }
+
+    psi4.set_options(psi4options)
     
     freeze_list = """
       1 x
@@ -122,8 +126,7 @@ def test_hooh_individual_freezes_x_y_z():
     
     psi4.set_module_options('Optking', {'frozen_cartesian': freeze_list})
     
-    Psi4Opt.calcName = 'hf'
-    thisenergy = Psi4Opt.Psi4Opt()
+    thisenergy, nucenergy = runpsi4API.Psi4Opt('hf', psi4options)
     assert psi4.compare_values(HOOH_E_fixed_H_xyz, thisenergy, 6, "Cart. Coord. RHF opt of HOOH with H's x y z frozen, energy")  #TEST
 
 def test_hooh_freeze_xyz_change_opt_coord():    
@@ -137,22 +140,23 @@ def test_hooh_freeze_xyz_change_opt_coord():
       no_reorient
     """)
     
-    psi4.set_options({
+    psi4options = {
      'basis': 'cc-pvdz',
      'opt_coordinates': 'cartesian',
      'g_convergence': 'gau_tight',
      'geom_maxiter': 20,
-     'consecutive_backsteps': 1  # TEST backsteps 
-    })
+     'consecutive_backsteps': 1
+    }
+
+    psi4.set_options(psi4options)
     
     freeze_list = """
      1 xyz 
      4 xyz 
     """
-    
+
     psi4.set_module_options('Optking', {'frozen_cartesian': freeze_list, 'opt_coordinates': 'redundant'})
     
-    Psi4Opt.calcName = 'hf'
-    thisenergy = Psi4Opt.Psi4Opt()
+    thisenergy, nucenergy = runpsi4API.Psi4Opt('hf', psi4options)
     assert psi4.compare_values(HOOH_E_fixed_H_xyz, thisenergy, 6, "Int. Coord. RHF opt of HOOH with H's xyz frozen, energy")  #TEST
     
