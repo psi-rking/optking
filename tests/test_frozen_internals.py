@@ -78,6 +78,7 @@ def test_frozen_tors():
       'basis': 'cc-PVDZ',
       'g_convergence': 'gau_verytight',
       'scf_type': 'pk',
+      'consecutive_backsteps': 1
     }
 
     psi4.set_options(psi4options)

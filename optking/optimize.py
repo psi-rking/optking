@@ -41,8 +41,8 @@ def optimize(oMolsys, options_in, json_in=None):
     from . import IRCFollowing
     from . import atomData
     from . import psi4methods
-    converged = False
 
+    converged = False
 
     #generates a json dictionary if optking is not being called directly by json.
     #other option would be to have the wrapper make a JSON object and make json
