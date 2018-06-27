@@ -93,3 +93,13 @@ def printGeomGrad(geom, grad):
     for i in range(Natom):
         print_opt("\t%20.10f%20.10f%20.10f\n" % (grad[3 * i + 0], grad[3 * i + 1],
                                                  grad[3 * i + 2]))
+
+
+def welcome():
+    print_opt("\n\t\t\t-----------------------------------------\n")
+    print_opt("\t\t\t OPTKING 3.0: for geometry optimizations \n")
+    print_opt("\t\t\t     By R.A. King, Bethel University     \n")
+    print_opt("\t\t\t        with contributions from          \n")
+    print_opt("\t\t\t    A.V. Copan, J. Cayton, A. Heide      \n")
+    print_opt("\t\t\t-----------------------------------------\n")
+                                                                         

@@ -15,14 +15,14 @@ def optimize(oMolsys, options_in, json_in=None):
     a list of options for both the optimizer and the QM program with the options of passing a json_file
     in directly.  
     """
-    from .printTools import printGeomGrad, printMat, printArray, print_opt
+    from .printTools import printGeomGrad, printMat, printArray, print_opt, welcome
     from . import caseInsensitiveDict
     userOptions = caseInsensitiveDict.CaseInsensitiveDict(options_in)
     origOptions = userOptions.copy()  # Save copy of original user options.
 
     # Create full list of parameters from user options plus defaults.
     from . import optParams as op
-    op.welcome()  # print header
+    welcome()  # print header
     print_opt("\tProcessing user input options...\n")
     op.Params = op.OPT_PARAMS(userOptions)
     print_opt("\tParameters from optking.optimize\n")
@@ -304,14 +304,6 @@ def optimize(oMolsys, options_in, json_in=None):
     del o_json
     #this is where'd i'd like to add an if statement to potentilly generate an json_file_output
     return returnVal, returnNuc    
-
-def welcome():
-    print_out("\n\t\t\t-----------------------------------------\n")
-    print_out("\t\t\t OPTKING 3.0: for geometry optimizations \n")
-    print_out("\t\t\t     By R.A. King, Bethel University     \n")
-    print_out("\t\t\t        with contributions from          \n")
-    print_out("\t\t\t    A.V. Copan, J. Cayton, A. Heide      \n")
-    print_out("\t\t\t-----------------------------------------\n")
 
 def get_gradient(new_geom, o_json, printResults=True, nuc=True):
     """get_gradient gets a gradient from a QM program (only psi4 is currently implemented

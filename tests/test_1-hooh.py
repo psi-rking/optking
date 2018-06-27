@@ -22,7 +22,7 @@ def test_B_dB_matrices():
 
     psi4.set_options(psi4options)
     
-    psi4.set_module_options('OPTKING', {'TEST_B': True, 'TEST_DERIVATIVE_B': False})
+    psi4.set_module_options('OPTKING', {'TEST_B': True, 'TEST_DERIVATIVE_B': True})
     
     thisenergy, nucenergy = runpsi4API.Psi4Opt('hf', psi4options)
    

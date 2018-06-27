@@ -613,12 +613,3 @@ class OPT_PARAMS(object):
             )
         else:
             raise optExceptions.OptFail("Unknown value of run_level")
-
-
-def welcome():
-    print_opt("\n\t\t\t-----------------------------------------\n")
-    print_opt("\t\t\t OPTKING 3.0: for geometry optimizations \n")
-    print_opt("\t\t\t     By R.A. King, Bethel University     \n")
-    print_opt("\t\t\t        with contributions from          \n")
-    print_opt("\t\t\t    A.V. Copan, J. Cayton, A. Heide      \n")
-    print_opt("\t\t\t-----------------------------------------\n")
