@@ -29,5 +29,5 @@ def Psi4Opt(calcName, psi4_options):
     optking_user_options['PSI4'] = psi4_options
     optking_user_options['PSI4']['calcName'] = calcName
     
-    returnVal = optking.optimize(oMolsys, optking_user_options)
-    return returnVal
+    returnVal, nucenergy = optking.optimize(oMolsys, optking_user_options)
+    return returnVal, nucenergy

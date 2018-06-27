@@ -23,7 +23,6 @@ def test_frozen_stre():
       'g_convergence': 'gau_verytight',
       'scf_type': 'pk',
     }
-
  
     psi4.set_options(psi4options)
     
@@ -45,13 +44,13 @@ def test_frozen_bend():
       O 2 1.40 1 100.0
       H 3 0.90 2 100.0 1 115.0
     """)
+
     psi4options = {
       'diis': 'false',
       'basis': 'cc-PVDZ',
       'g_convergence': 'gau_verytight',
       'scf_type': 'pk',
     }
-
 
     psi4.set_options(psi4options)
 

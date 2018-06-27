@@ -29,11 +29,16 @@ class jsonSchema:
         
     def update_geom_and_driver(self, geom, driver='gradient'):
         """Updates the geometry and driver in optkings json dictionary in order to
-        request a calculation be performed
+        request a calculation be performed. Also politely requests psi4 not to reorient
+        any coordinates
         """
-        
-        self.optking_json['molecule']['geometry'] = geom
-        self.optking_json['driver'] = driver
+        json_for_input = copy.deepcopy(self.optking_json)
+        json_for_input['molecule']['fix_com'] = True
+        json_for_input['molecule']['fix_orientation'] = True
+        json_for_input['molecule']['geometry'] = geom
+        json_for_input['driver'] = driver
+
+        return json_for_input
     
     def find_optking_options(self):
         """This is meant to look for any options specifically for optking in a qcdb format. I'm assumming a sub

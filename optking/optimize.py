@@ -9,6 +9,7 @@ printTools.printInit(psi4.core.print_out)
 from psi4.driver import json_wrapper
 from . import qcdbjson
 from . import hessian
+
 def optimize(oMolsys, options_in, json_in=None):
     """Logical 'driver' for optking's optimization procedure takes in optking's moolecular system
     a list of options for both the optimizer and the QM program with the options of passing a json_file
@@ -26,7 +27,9 @@ def optimize(oMolsys, options_in, json_in=None):
     op.Params = op.OPT_PARAMS(userOptions)
     print_opt("\tParameters from optking.optimize\n")
     print_opt(str(op.Params))
-    op.Params.dynamic_level_max = 3
+
+    #op.Params.dynamic_level_max = 3
+
     from . import addIntcos
     from . import optExceptions
     from . import history
@@ -48,7 +51,6 @@ def optimize(oMolsys, options_in, json_in=None):
     if json_in is None:
         QM_method, basis, keywords = psi4methods.collect_psi4_options(options_in)
         atom_list = oMolsys.get_atom_list()
-        print('This is the atom list', atom_list)
         qc_schema = qcdbjson.make_qcschema("", atom_list, QM_method, basis, keywords)        
         o_json = qcdbjson.jsonSchema(qc_schema)   
     else:
@@ -299,6 +301,7 @@ def optimize(oMolsys, options_in, json_in=None):
     del history.oHistory[:]
     del op.Params
     del oMolsys
+    del o_json
     #this is where'd i'd like to add an if statement to potentilly generate an json_file_output
     return returnVal, returnNuc    
 
@@ -318,10 +321,10 @@ def get_gradient(new_geom, o_json, printResults=True, nuc=True):
         o_json - optking's json object
     returns a energy and gradient with the option to return the nueclear repulsion enrgy as well
     """
+    from .printTools import print_opt
     #i may need to add in a line to convert the geometry into json form
     geom = qcdbjson.to_JSON_geom(new_geom)
-    o_json.update_geom_and_driver(geom, 'gradient')
-    json_input = copy.deepcopy(o_json.optking_json)
+    json_input = o_json.update_geom_and_driver(geom, 'gradient')
     json_output = json_wrapper.run_json_qc_schema(json_input, True)
     E, g_x, nuclear_rep = qcdbjson.get_JSON_result(json_output, 'gradient', nuc)
     g_x = np.asarray(g_x)
@@ -339,8 +342,7 @@ def get_hessian(new_geom, o_json, printResults=False):
     """
 
     geom = qcdbjson.to_JSON_geom(new_geom)
-    o_json.update_geom_and_driver(geom, 'hessian')
-    json_input = copy.deepcopy(o_json.optking_json)
+    json_input = o_json.update_geom_and_driver(geom, 'hessian')
     json_output = json_wrapper.run_json_qc_schema(json_input, True)     
     H = np.array(qcdbjson.get_JSON_result(json_output, 'hessian'))
     return hessian.convert_json_hess_to_matrix(H, len(json_output['molecule']['symbols'])) 
@@ -357,9 +359,6 @@ def get_energy(new_geom, o_json, printResults=False, nuc=True):
     """
     
     geom = qcdbjson.to_JSON_geom(new_geom)
-    o_json.update_geom_and_driver(geom, 'energy')
-    json_input = copy.deepcopy(o_json.optking_json) 
+    json_input = o_json.update_geom_and_driver(geom, 'energy')
     json_output = json_wrapper.run_json_qc_schema(json_input, True)
-    return qcdbjson.get_JSON_result(json_output, 'energy', nuc)
-    
-     
+    return qcdbjson.get_JSON_result(json_output, 'energy', nuc) 
