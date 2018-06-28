@@ -6,7 +6,7 @@ import json
 import copy
 from . import printTools
 from . import history
-from . import optParams
+from . import optparams as op
 
 
 class jsonSchema:
@@ -18,6 +18,8 @@ class jsonSchema:
     def __init__(self, JSON_dict):
         if JSON_dict['schema_name'] == 'qc_schema_input':
             self.optking_json = copy.deepcopy(JSON_dict)
+            self.optking_json['molecule']['fix_com'] = True
+            self.optking_json['molecule']['fix_orientation'] = True
         else:
             raise ValueError("JSON file must match...")
 
@@ -32,10 +34,8 @@ class jsonSchema:
         request a calculation be performed. Also politely requests psi4 not to reorient
         any coordinates
         """
+        self.optking_json['molecule']['geometry'] = geom
         json_for_input = copy.deepcopy(self.optking_json)
-        json_for_input['molecule']['fix_com'] = True
-        json_for_input['molecule']['fix_orientation'] = True
-        json_for_input['molecule']['geometry'] = geom
         json_for_input['driver'] = driver
 
         return json_for_input
@@ -49,22 +49,24 @@ class jsonSchema:
         optking_options = {}
         if 'optimizer' in self.optking_json['keywords']:
             for i in self.optking_json['keywords']['optimizer']:
-                if self.optking_json['keywords']['optimizer'][i] in allowedStringOptions:
-                    optking_options.append(self.keywords['optimizer'][i])         
- 
+                optking_options[i] = self.optking_json['keywords']['optimizer'][i]         
+
+        del self.optking_json['keywords']['optimizer'] 
         return optking_options
 
-    def generate_json_output(self):
+    def generate_json_output(self, geom):
+        import os
         """Untested method for creating a JSON output file"""
-        self.optking_json['schema_name'] = 'qc_schema_output'
-        self.optking_json['return_result'] = self.optking_json['molecule']['geometry ']
-        self.optking_json['properties'] = {'return_energy': history.oHistory[-1].E}
-        self.optking_json['properties'] = {'nuclear_repulsion_energy' \
-            : history.oHistory.nuclear_repulsion_energy}        
-        
-        output_file = open('output.dat', 'w+')
-        json.dump(self.optking_json, output_file)    
-        
+        json_output = {'schema_name': 'qc_schema_output'}
+        json_output['provenance'] = {'creator': 'optking', 'version': '3.0?', \
+            'routine': 'runoptkingjson'} 
+        json_output['return_result'] = to_JSON_geom(geom)
+        json_output['success'] = 'true'
+        json_output['properties'] = {'return_energy': history.oHistory[-1].E, \
+                'nuclear_repulsion_energy': history.oHistory.nuclear_repulsion_energy}
+        json_output['properties']['steps'] = history.oHistory.summary()
+        return json_output
+
 def to_JSON_geom(geom):
     """Takes in optkings molecular systems geometry and converts to a 1D list to can be appended to
     a JSON_file. Returns a string.

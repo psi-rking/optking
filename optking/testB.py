@@ -5,7 +5,7 @@
 import numpy as np
 from . import intcosMisc
 from .printTools import printMat, print_opt
-from . import optParams as op
+from . import optparams as op
 from math import fabs
 
 

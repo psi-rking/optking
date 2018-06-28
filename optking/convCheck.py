@@ -11,7 +11,7 @@ P.flexible_g_convergence = uod.get('FLEXIBLE_G_CONVERGENCE', False)
 
 from .printTools import print_opt, printArray, printMat
 import numpy as np
-from . import optParams as op
+from . import optparams as op
 from math import fabs
 from .linearAlgebra import absMax, rms
 from .intcosMisc import Gmat, Bmat, qValues

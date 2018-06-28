@@ -25,7 +25,7 @@ def Psi4Opt(calcName, psi4_options):
 
     all_options = psi4.driver.p4util.prepare_options_for_modules()
     optking_user_options = optking.psi4methods.get_optking_options_psi4(all_options) 
-
+    
     optking_user_options['PSI4'] = psi4_options
     optking_user_options['PSI4']['calcName'] = calcName
     

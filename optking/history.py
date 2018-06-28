@@ -3,7 +3,7 @@ from math import fabs
 import numpy as np
 
 from . import intcosMisc
-from . import optParams as op
+from . import optparams as op
 from .linearAlgebra import absMax, rms, signOfDouble
 from .printTools import printMat, printMatString, printArrayString, print_opt
 
@@ -90,21 +90,10 @@ class History(object):
             t.append((S.E, list(Zstring), S.geom.copy()))
         return t
 
-    def summary(self):
-        print_opt("\n  ==> Optimization Summary <==\n\n")
-        print_opt("  Measures of convergence in internal coordinates in au. (Any backward steps not shown.)\n")
-        print_opt(
-            "  --------------------------------------------------------------------------------------------------------------- ~\n"
-        )
-        print_opt(
-            "   Step         Total Energy             Delta E       MAX Force       RMS Force        MAX Disp        RMS Disp  ~\n"
-        )
-        print_opt(
-            "  --------------------------------------------------------------------------------------------------------------- ~\n"
-        )
-
+    def summary(self, printoption=False):
+        steps = {} #for json
         for i in range(len(self.steps)):
-
+    
             if i == 0: DE = self.steps[0].E
             else: DE = self.steps[i].E - self.steps[i - 1].E
 
@@ -116,15 +105,19 @@ class History(object):
             Dq = self.steps[i].Dq
             max_disp = absMax(Dq)
             rms_disp = rms(Dq)
-
-            print_opt(
-                "   %4d %20.12lf  %18.12lf    %12.8lf    %12.8lf    %12.8lf    %12.8lf  ~\n"
-                % ((i + 1), self.steps[i].E, DE, max_force, rms_force, max_disp,
-                   rms_disp))
-        print_opt(
-            "  --------------------------------------------------------------------------------------------------------------- ~\n\n"
-        )
-
+            if printoption is False:
+                steps['Step ' + str(i+1)] = {'Energy': self.steps[i].E, 'DE': DE, 'max_force': \
+                    max_force, 'max_disp': max_disp, 'rms_disp': rms_disp}   
+            else:
+                print_opt(
+                    "   %4d %20.12lf  %18.12lf    %12.8lf    %12.8lf    %12.8lf    %12.8lf  ~\n"
+                    % ((i + 1), self.steps[i].E, DE, max_force, rms_force, max_disp,
+                        rms_disp))
+                print_opt(
+                "  --------------------------------------------------------------------------------------------------------------- ~\n\n"
+                )
+        if printoption is False:
+            return steps
     # Report on performance of last step
     # Eventually might have this function return False to reject a step
     def currentStepReport(self):

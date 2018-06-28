@@ -4,7 +4,7 @@ import numpy as np
 
 from . import covRadii
 from . import optExceptions
-from . import optParams as op
+from . import optparams as op
 from . import physconst as pc  # has physical constants
 from . import v3d
 from .misc import HguessLindhRho

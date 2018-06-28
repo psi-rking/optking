@@ -102,4 +102,20 @@ def welcome():
     print_opt("\t\t\t        with contributions from          \n")
     print_opt("\t\t\t    A.V. Copan, J. Cayton, A. Heide      \n")
     print_opt("\t\t\t-----------------------------------------\n")
-                                                                         
+
+def generate_file_output():
+    from . import history
+
+    print_opt("\n  ==> Optimization Summary <==\n\n")
+    print_opt("  Measures of convergence in internal coordinates in au. (Any backward steps not shown.)\n")
+    print_opt(
+        "  --------------------------------------------------------------------------------------------------------------- ~\n"
+    )
+    print_opt(
+        "   Step         Total Energy             Delta E       MAX Force       RMS Force        MAX Disp        RMS Disp  ~\n"
+    )
+    print_opt(
+        "  --------------------------------------------------------------------------------------------------------------- ~\n"
+    )
+    
+    history.oHistory.summary(printoption=True)                                                                     

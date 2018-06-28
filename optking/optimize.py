@@ -21,10 +21,10 @@ def optimize(oMolsys, options_in, json_in=None):
     origOptions = userOptions.copy()  # Save copy of original user options.
 
     # Create full list of parameters from user options plus defaults.
-    from . import optParams as op
+    from . import optparams as op
     welcome()  # print header
     print_opt("\tProcessing user input options...\n")
-    op.Params = op.OPT_PARAMS(userOptions)
+    op.Params = op.optParams(userOptions)
     print_opt("\tParameters from optking.optimize\n")
     print_opt(str(op.Params))
 
@@ -46,7 +46,8 @@ def optimize(oMolsys, options_in, json_in=None):
 
     #generates a json dictionary if optking is not being called directly by json.
     #other option would be to have the wrapper make a JSON object and make json
-    #be a requirement of calling optking
+    #be a requirement of calling optking. If we're adding additional ways to call optking
+    #this if json_in is None will be refactored into a method within optimize
     o_json = 0
     if json_in is None:
         QM_method, basis, keywords = psi4methods.collect_psi4_options(options_in)
@@ -54,9 +55,8 @@ def optimize(oMolsys, options_in, json_in=None):
         qc_schema = qcdbjson.make_qcschema("", atom_list, QM_method, basis, keywords)        
         o_json = qcdbjson.jsonSchema(qc_schema)   
     else:
-        #what I'd like to do is add an output option for optking to either just return the energy
-        #or for optking to generate a json_output_file
         o_json = json_in
+        op.Params.output_type = 'JSON'
 
     # For IRC computations:
     ircNumber = 0
@@ -282,8 +282,12 @@ def optimize(oMolsys, options_in, json_in=None):
                 history.oHistory.stepsSinceLastHessian = 0
                 history.oHistory.consecutiveBacksteps = 0
 
+    output_dict = {}
     # print summary
-    history.oHistory.summary()
+    if op.Params.output_type == 'FILE':
+        printTools.generate_file_output()
+    else:
+       output_dict = o_json.generate_json_output(history.oHistory[-1].geom) 
 
     if op.Params.trajectory:
         # history doesn't contain atomic numbers so pass them in
@@ -299,11 +303,17 @@ def optimize(oMolsys, options_in, json_in=None):
         del f._intcos[:]
         del f
     del history.oHistory[:]
-    del op.Params
     del oMolsys
-    del o_json
-    #this is where'd i'd like to add an if statement to potentilly generate an json_file_output
-    return returnVal, returnNuc    
+    #this is where'd i'd like to add an if statement to potentilly generate an json_file_outputi
+
+    if op.Params.output_type == 'FILE':
+        del op.Params
+        del o_json
+        return returnVal, returnNuc
+    else:
+        del op.Params
+        del o_json
+        return output_dict
 
 def get_gradient(new_geom, o_json, printResults=True, nuc=True):
     """get_gradient gets a gradient from a QM program (only psi4 is currently implemented

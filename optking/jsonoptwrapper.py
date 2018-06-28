@@ -11,13 +11,20 @@ from optking import molsys
 def run_optking_json(json_file):
     
     with open(json_file) as input_data:
-        json_dict = json.load(input_data) #this might actually want to be just  a load 
-    if json_dict['driver'] != 'optimize': #or something similar
-        print_out('optking is not meant to run this input Please use your favorite QM program (psi4) ;)')
+        json_dict = json.load(input_data) 
+    if json_dict['driver'] != 'optimize':
+        print_out('optking is not meant to run this input please use your favorite QM program (psi4) ;)')
         quit()
     print(json_dict)
+
     o_json = optking.qcdbjson.jsonSchema(json_dict)
     optking_options = o_json.find_optking_options()
     oMolsys = molsys.Molsys.from_JSON_molecule(json.dumps(json_dict['molecule']))
+    json_output = optking.optimize(oMolsys, optking_options, o_json)
 
-    return optking.optimize(oMolsys, optking_options, o_json) 
+    with open(json_file, "r+") as input_data:
+        json_dict = json.load(input_data)
+        json_dict.update(json_output)
+        input_data.seek(0)
+        input_data.truncate() 
+        json.dump(json_dict, input_data, indent = 2) 

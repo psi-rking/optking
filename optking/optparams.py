@@ -48,7 +48,7 @@ allowedStringOptions = {
 from .misc import intList, intIntFloatList, intIntIntFloatList, intIntIntIntFloatList
 from .misc import tokenizeInputString, int_XYZ_list
 
-class OPT_PARAMS(object):
+class optParams(object):
     # define properties
     opt_type = stringOption('opt_type')
     step_type = stringOption('step_type')
@@ -82,6 +82,7 @@ class OPT_PARAMS(object):
         P.print_lvl = uod.get('print', 1)
         ## Print all optimization parameters.
         #P.print_opt_params = uod.get('PRINT_OPT_PARAMS', False)
+        P.output_type = uod.get('OUTPUT_TYPE', 'FILE')
         # Specifies minimum search, transition-state search, or IRC following
         P.opt_type = uod.get('OPT_TYPE', 'MIN')
         # Geometry optimization step type, e.g., Newton-Raphson or Rational Function Optimization

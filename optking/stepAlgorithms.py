@@ -2,7 +2,7 @@
 # Steepest Descent.
 import numpy as np
 #from .optParams import Params # this will not cause changes in trust to persist
-from . import optParams as op
+from . import optparams as op
 from .displace import displace
 from .intcosMisc import qShowForces
 from .addIntcos import linearBendCheck

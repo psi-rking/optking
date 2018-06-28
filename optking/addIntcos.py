@@ -6,7 +6,7 @@ from . import bend
 from . import cart
 from . import covRadii
 from . import optExceptions
-from . import optParams as op
+from . import optparams as op
 from . import physconst as pc
 from . import stre
 from . import tors

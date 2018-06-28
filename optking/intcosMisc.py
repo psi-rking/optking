@@ -3,7 +3,7 @@ from math import sqrt
 import numpy as np
 
 from . import oofp
-from . import optParams as op
+from . import optparams as op
 from .linearAlgebra import symmMatInv
 from .printTools import printMat, printArray, print_opt
 

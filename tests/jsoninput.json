@@ -1,24 +1,41 @@
 {
   "schema_name": "qc_schema_input",
-    "schema_version": 1,
-    "molecule": {
-      "geometry": [
-        0.000000,   0.000000,  -0.129476,
-        0.000000,  -1.494182,   1.027443,
-        0.000000,   1.494182,   1.027443
-      ],
-      "symbols": ["O", "H", "H"],
-      "masses": [15.994915, 1.007825, 1.007825]
-    },
-    "driver": "optimize",
-    "model": {
-      "method": "hf",
-      "basis": "sto-3g"
-    },
-    "keywords": {
-      "diis": false,
-      "e_convergence": 10,
-      "d_convergence": 10,
-      "scf_type": "pk"
+  "schema_version": 1,
+  "molecule": {
+    "geometry": [
+      0.0,
+      0.0,
+      0.28100228,
+      0.0,
+      1.42674323,
+      -0.8431958,
+      0.0,
+      -1.42674323,
+      -0.8431958
+    ],
+    "symbols": [
+      "O",
+      "H",
+      "H"
+    ],
+    "masses": [
+      15.994915,
+      1.007825,
+      1.007825
+    ]
+  },
+  "driver": "optimize",
+  "model": {
+    "method": "hf",
+    "basis": "sto-3g"
+  },
+  "keywords": {
+    "diis": false,
+    "e_convergence": 10,
+    "d_convergence": 10,
+    "scf_type": "pk",
+    "optimizer": {
+      "output_type": "JSON"
     }
+  }
 }

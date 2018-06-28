@@ -2,7 +2,7 @@
 
 finalEnergy = -76.05776970 #TEST
 import psi4
-import runpsi4API
+import psi4optwrapper
 
 def test_h2o_rfo():
     h2o = psi4.geometry("""
@@ -21,7 +21,7 @@ def test_h2o_rfo():
     psi4.set_options(psi4options)
     
     psi4.set_module_options('Optking', {'step_type': 'rfo'})
-    E, nucenergy = runpsi4API.Psi4Opt('hf', psi4options)
+    E, nucenergy = psi4optwrapper.Psi4Opt('hf', psi4options)
     assert psi4.compare_values(finalEnergy, E, 6, "RFO Step Final Energy")                                #TEST
 
 def test_h2o_nr():
@@ -43,7 +43,7 @@ def test_h2o_nr():
     
     psi4.set_module_options('Optking', {'step_type': 'nr'})
     
-    E, nuc = runpsi4API.Psi4Opt('hf', psi4options)
+    E, nuc = psi4optwrapper.Psi4Opt('hf', psi4options)
     assert psi4.compare_values(finalEnergy, E, 6, "NR Step Final Energy")                                #TEST
 
 def test_h2o_SD():    
@@ -64,7 +64,7 @@ def test_h2o_SD():
     
     psi4.set_module_options('Optking', {'step_type': 'SD'})
     
-    E, nucenergy = runpsi4API.Psi4Opt('hf', psi4options)
+    E, nucenergy = psi4optwrapper.Psi4Opt('hf', psi4options)
     assert psi4.compare_values(finalEnergy, E, 6, "SD Step Final Energy")                                #TEST
 
 

@@ -2,7 +2,7 @@ import numpy as np
 
 from . import intcosMisc
 from . import optExceptions
-from . import optParams as op
+from . import optparams as op
 from .linearAlgebra import absMax, rms, symmMatInv
 from .printTools import print_opt, printArray
 

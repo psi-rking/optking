@@ -26,5 +26,5 @@ import runpsi4API
 thisenergy, nucenergy = runpsi4API.Psi4Opt('hf', psi4options)
 
 psi4.compare_values(refnucenergy, nucenergy, 3, "Nuclear repulsion energy")    #TEST
-psi4.compare_values(refenergy, thisenergy, 6, "Reference energy")                                #TEST
+psi4.compare_values(refenergy, thisenergy, 6, "Reference energy")  #TEST
 
