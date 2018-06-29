@@ -1,13 +1,13 @@
 import numpy as np
 
-from . import covRadii
-from . import optExceptions
-from . import physconst as pc
-from . import v3d
-from .misc import delta, ZtoPeriod, HguessLindhRho
-from .physconst import bohr2angstroms
-from .printTools import print_opt
-from .simple import *
+import covRadii
+import optExceptions
+import physconst as pc
+import v3d
+from misc import delta, ZtoPeriod, HguessLindhRho
+from physconst import bohr2angstroms
+from printTools import print_opt
+from simple import Simple
 
 
 class Stre(Simple):

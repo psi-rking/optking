@@ -1,7 +1,6 @@
-from .bend import *
 import numpy as np
-from .printTools import printMat
-
+from printTools import printMat
+#from bend import *
 
 # print the Hessian in common spectroscopic units of aJ/Ang^2, aJ/deg^2 or aJ/(Ang deg)
 def show(H, intcos):

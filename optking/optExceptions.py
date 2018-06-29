@@ -1,5 +1,4 @@
-from .printTools import print_opt
-
+from printTools import print_opt
 
 # We don't catch this one internallyclass OptFail(Exception):
 class OptFail(Exception):

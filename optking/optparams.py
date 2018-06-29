@@ -5,10 +5,15 @@
 # Option keys in the input dictionary are interpreted case-insensitively.
 # The enumerated string types are translated to all upper-case within the parameter object.
 
-from optking.printTools import print_opt 
-#Params = 0
-from . import optExceptions
+import optExceptions
 
+from printTools import print_opt 
+from misc import intList, \
+                 intIntFloatList, \
+                 intIntIntFloatList, \
+                 intIntIntIntFloatList, \
+                 tokenizeInputString, \
+                 int_XYZ_list
 
 # Class for enumerated string options.
 def stringOption(storage_name):
@@ -44,9 +49,6 @@ allowedStringOptions = {
 
 #def enum_key( enum_type, value):
 #    print_opt([key for key, val in enum_type.__dir__.items() if val == value][0])
-
-from .misc import intList, intIntFloatList, intIntIntFloatList, intIntIntIntFloatList
-from .misc import tokenizeInputString, int_XYZ_list
 
 class optParams(object):
     # define properties

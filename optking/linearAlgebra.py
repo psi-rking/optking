@@ -1,8 +1,8 @@
 from math import fabs, sqrt
-
 import numpy as np
+import operator
 
-from . import optExceptions
+import optExceptions
 
 
 def norm(V):
@@ -37,10 +37,6 @@ def symmMatEig(mat):
         # could be ALG_FAIL ?
     evects = evects.T
     return evals, evects
-
-
-import operator
-
 
 # returns eigenvectors as rows; orders evals
 def asymmMatEig(mat):

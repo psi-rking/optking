@@ -1,17 +1,17 @@
 import numpy as np
 import json
-import pprint
+from pprint import PrettyPrinter
 
-from . import covRadii
-from . import frag
-from . import optExceptions
-from . import physconst as pc
-from . import v3d
-from . import atomData
-from .addIntcos import connectivityFromDistances, addCartesianIntcos
-from .printTools import print_opt, printArray, printMat
+import covRadii
+import frag
+import optExceptions
+import physconst as pc
+import v3d
+import atomData
+from addIntcos import connectivityFromDistances, addCartesianIntcos
+from printTools import print_opt, printArray, printMat
 
-pp = pprint.PrettyPrinter(indent=4)
+pp = PrettyPrinter(indent=4)
 
 class Molsys(object):  # new-style classes required for getter/setters
     def __init__(self, fragments, fb_fragments=None, intcos=None):

@@ -4,9 +4,10 @@ import json
 import optking
 import psi4
 
-from optking import printTools
-printTools.printInit(psi4.core.print_out)
-from optking import molsys
+import printTools
+#printTools.printInit(psi4.core.print_out)
+from molsys import Molsys
+import qcdbjson
 
 def run_optking_json(json_file):
     
@@ -17,9 +18,9 @@ def run_optking_json(json_file):
         quit()
     print(json_dict)
 
-    o_json = optking.qcdbjson.jsonSchema(json_dict)
+    o_json = qcdbjson.jsonSchema(json_dict)
     optking_options = o_json.find_optking_options()
-    oMolsys = molsys.Molsys.from_JSON_molecule(json.dumps(json_dict['molecule']))
+    oMolsys = Molsys.from_JSON_molecule(json.dumps(json_dict['molecule']))
     json_output = optking.optimize(oMolsys, optking_options, o_json)
 
     with open(json_file, "r+") as input_data:

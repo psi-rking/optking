@@ -4,15 +4,17 @@
 import numpy as np
 import json
 import copy
-from . import printTools
-from . import history
-from . import optparams as op
+
+import printTools
+import history
+import optparams as op
 
 
 class jsonSchema:
-    """Class for handling molSSI json input/output. Designed for "schema_name": "qc_schema_input", "schema_version": 1
-    optking does not store qc_schema_output files from QM programs. Once this class is used to make a jsonSchema object
-    optking simply updates the object when requesting a calculation. 
+    """Class for handling molSSI json input/output. Designed for "schema_name": "qc_schema_input", 
+    "schema_version": 1 optking does not store qc_schema_output files from QM programs. 
+    Once this class is used to make an instance object optking simply updates the object 
+    when requesting a calculation. 
     """
     
     def __init__(self, JSON_dict):
@@ -41,9 +43,9 @@ class jsonSchema:
         return json_for_input
     
     def find_optking_options(self):
-        """This is meant to look for any options specifically for optking in a qcdb format. I'm assumming a sub
-        dictionary of optking options will be provided.  We'll see if someone who actually can
-        make decisions wants to do something different
+        """This is meant to look for any options specifically for optking in a qcdb format. 
+        I'm assumming a sub dictionary of optking options will be provided.  We'll see if someone
+        who actually can make decisions wants to do something different
         """
 
         optking_options = {}
@@ -54,67 +56,70 @@ class jsonSchema:
         del self.optking_json['keywords']['optimizer'] 
         return optking_options
 
-    def generate_json_output(self, geom):
+    def generate_json_output(self, geom) -> dict:
         import os
-        """Untested method for creating a JSON output file"""
+        "Assembles all nessecary infmoration for appending output to the json_input file"
+        
         json_output = {'schema_name': 'qc_schema_output'}
         json_output['provenance'] = {'creator': 'optking', 'version': '3.0?', \
             'routine': 'runoptkingjson'} 
-        json_output['return_result'] = to_JSON_geom(geom)
+        json_output['return_result'] = self.to_JSON_geom(geom)
         json_output['success'] = 'true'
         json_output['properties'] = {'return_energy': history.oHistory[-1].E, \
                 'nuclear_repulsion_energy': history.oHistory.nuclear_repulsion_energy}
         json_output['properties']['steps'] = history.oHistory.summary()
         return json_output
-
-def to_JSON_geom(geom):
-    """Takes in optkings molecular systems geometry and converts to a 1D list to can be appended to
-    a JSON_file. Returns a string.
-    """
-    j_geom = []
-    for i in geom.flat:
-        j_geom.append(i)
-
-    return j_geom #Do I actually want to return a string here??
-
-def get_JSON_result(json_data, calc_type, nuc=False):
-    """Reads in the properties list of a qc_schmea json output file to get any data needed in
-    addition to the return_result field. Meant to be called by optimize.get_x()
-    Input:
-        json_data: qc json calculation output - type qc JSON format dict
-        calc_type: driver from calculation (gradient, hessian, etc..) - type string
-    returns: gradient and energy (+nuc), hessian, or energy (+ nuc) as dictated by calc_type
-         
-    """   
-    if json_data['schema_name'] == 'qc_schema_output':
-        if calc_type == 'gradient':
-            return_result = json_data['return_result']
-            return_energy = json_data['properties']['return_energy']
-            if nuc == True:
-                nuc_energy = json_data['properties']['nuclear_repulsion_energy']
-                return return_energy, return_result, nuc_energy     
-            return return_energy, return_result    
-        elif calc_type == 'hessian':
-            return_result = json_data['return_result']
-            return return_result
-        elif calc_type == 'energy':
-            return_result = json_data['return_result']
-            if nuc == True:
-                return_nuc = json_data['properties']['nuclear_repulsion_energy']
-                return return_result, return_nuc
-            return return_result
-
-def make_qcschema(geom, symbols, QM_method, basis, keywords):
-    """Creates a qc_schmea input.
-    Parameters -
-        geom - cartesian geometry - type 1D list
-        symbols - atomic symbols - type 1D list
-        QM_method - type string
-        basis - type string
-        keywords - Python Dict of strings
-    """ 
-    qcschema = {"schema_name": "qc_schema_input", "schema_version": 1, "molecule": \
-        {"geometry": geom, "symbols": symbols}, "driver": "", "model": 
-        {"method": QM_method, "basis": basis}, "keywords": keywords}  
     
-    return qcschema
+    @staticmethod
+    def to_JSON_geom(geom):
+        """Takes in optkings molecular systems geometry and converts to a 1D list to can be
+        appended to a JSON_file. Returns a string.
+        """
+        j_geom = []
+        for i in geom.flat:
+            j_geom.append(i)
+
+        return j_geom #Do I actually want to return a string here??
+
+    @staticmethod
+    def get_JSON_result(json_data, calc_type, nuc=False):
+        """Reads in the properties list of a qc_schmea json output file to get any data needed in
+        addition to the return_result field. Meant to be called by optimize.get_x()
+        Input:
+            json_data: qc json calculation output - type qc JSON format dict
+            calc_type: driver from calculation (gradient, hessian, etc..) - type string
+        returns: gradient and energy (+nuc), hessian, or energy (+ nuc) as dictated by calc_type
+        """   
+        if json_data['schema_name'] == 'qc_schema_output':
+            if calc_type == 'gradient':
+                return_result = json_data['return_result']
+                return_energy = json_data['properties']['return_energy']
+                if nuc == True:
+                    nuc_energy = json_data['properties']['nuclear_repulsion_energy']
+                    return return_energy, return_result, nuc_energy     
+                return return_energy, return_result    
+            elif calc_type == 'hessian':
+                return_result = json_data['return_result']
+                return return_result
+            elif calc_type == 'energy':
+                return_result = json_data['return_result']
+                if nuc == True:
+                    return_nuc = json_data['properties']['nuclear_repulsion_energy']
+                    return return_result, return_nuc
+                return return_result
+
+    @classmethod
+    def make_qcschema(cls, geom, symbols, QM_method, basis, keywords):
+        """Creates a qc_schmea input.
+        Parameters -
+            geom - cartesian geometry - type 1D list
+            symbols - atomic symbols - type 1D list
+            QM_method - type string
+            basis - type string
+            keywords - Python Dict of strings
+        """ 
+        qcschema = {"schema_name": "qc_schema_input", "schema_version": 1, "molecule": \
+            {"geometry": geom, "symbols": symbols, "fix_com": True, "fix_orientation": True}, \
+            "driver": "", "model": {"method": QM_method, "basis": basis}, "keywords": keywords}
+  
+        return cls(qcschema)

@@ -9,12 +9,13 @@ P.rms_disp_g_convergence = uod.get('RMS_DISP_G_CONVERGENCE', 1.2e-3)
 P.flexible_g_convergence = uod.get('FLEXIBLE_G_CONVERGENCE', False)
 """
 
-from .printTools import print_opt, printArray, printMat
 import numpy as np
-from . import optparams as op
 from math import fabs
-from .linearAlgebra import absMax, rms
-from .intcosMisc import Gmat, Bmat, qValues
+
+import optparams as op
+from linearAlgebra import absMax, rms
+from intcosMisc import Gmat, Bmat, qValues
+from printTools import print_opt, printArray, printMat
 
 # Check convergence criteria and print status to output file.
 # return True, if geometry is optimized

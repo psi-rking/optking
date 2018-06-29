@@ -1,11 +1,10 @@
 from math import sqrt, fabs
-
 import numpy as np
 
-from . import displace
-from . import intcosMisc
-from .linearAlgebra import symmMatEig, symmMatInv, symmMatRoot
-from .printTools import printArray, printMat, print_opt
+import displace
+import intcosMisc
+from linearAlgebra import symmMatEig, symmMatInv, symmMatRoot
+from printTools import printArray, printMat, print_opt
 
 
 #Takes a half step from starting geometry along the gradient, then takes an additional half step as a guess

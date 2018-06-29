@@ -1,18 +1,20 @@
 # Functions for step algorithms: Newton-Raphson, Rational Function Optimization,
 # Steepest Descent.
 import numpy as np
-#from .optParams import Params # this will not cause changes in trust to persist
-from . import optparams as op
-from .displace import displace
-from .intcosMisc import qShowForces
-from .addIntcos import linearBendCheck
 from math import sqrt, fabs
-from .printTools import printArray, printMat, print_opt
-from .misc import symmetrizeXYZ, isDqSymmetric
-from .linearAlgebra import absMax, symmMatEig, asymmMatEig, symmMatInv, norm
-from . import v3d
-from .history import oHistory
-from . import optExceptions
+#from .optParams import Params # this will not cause changes in trust to persist
+
+
+import v3d
+import optExceptions
+import optparams as op
+from history import oHistory
+from displace import displace
+from intcosMisc import qShowForces
+from addIntcos import linearBendCheck
+from misc import symmetrizeXYZ, isDqSymmetric
+from printTools import printArray, printMat, print_opt
+from linearAlgebra import absMax, symmMatEig, asymmMatEig, symmMatInv, norm
 
 
 # This function and its components:

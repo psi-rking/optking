@@ -1,26 +1,20 @@
-from __future__ import print_function
+#from __future__ import print_function
 ### Printing functions.
-
-print_opt = None
-
 from sys import stdout
+import history
 
 
-def cleanPrint(arg):
+def print_opt(arg):
     print(arg, file=stdout, end='')
     return
 
-
 #print_opt = cleanPrint
 
-
-def printInit(printFunction=None):
-    global print_opt
-    if not printFunction:
-        print_opt = cleanPrint
-    else:
-        print_opt = printFunction
-    return
+#def printInit(printFunction=None, file=stdout):
+    #if not printFunction:
+#    print_opt = cleanPrint
+    #else:
+    #    print_opt = printFunction
 
 
 def printMat(M, Ncol=7, title=None):
@@ -104,8 +98,6 @@ def welcome():
     print_opt("\t\t\t-----------------------------------------\n")
 
 def generate_file_output():
-    from . import history
-
     print_opt("\n  ==> Optimization Summary <==\n\n")
     print_opt("  Measures of convergence in internal coordinates in au. (Any backward steps not shown.)\n")
     print_opt(

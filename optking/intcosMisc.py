@@ -1,11 +1,13 @@
 from math import sqrt
-
 import numpy as np
 
-from . import oofp
-from . import optparams as op
-from .linearAlgebra import symmMatInv
-from .printTools import printMat, printArray, print_opt
+import oofp
+import optparams as op
+import bend
+import tors
+
+from linearAlgebra import symmMatInv
+from printTools import printMat, printArray, print_opt
 
 # Simple operations on internal :148
 #coordinate sets.  For example,
@@ -270,8 +272,6 @@ def convertHessianToCartesians(Hint, intcos, geom, masses=None, g_q=None):
 
 # For given [A,B,C], remove any regular bends as well as any torsions
 # which contain it
-from . import bend
-from . import tors
 
 
 def torsContainsBend(b, t):

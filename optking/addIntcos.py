@@ -2,17 +2,17 @@ from itertools import combinations, permutations
 
 import numpy as np
 
-from . import bend
-from . import cart
-from . import covRadii
-from . import optExceptions
-from . import optparams as op
-from . import physconst as pc
-from . import stre
-from . import tors
-from . import v3d
-from .intcosMisc import qValues
-from .printTools import print_opt
+import bend
+import cart
+import covRadii
+import optExceptions
+import optparams as op
+import physconst as pc
+import stre
+import tors
+import v3d
+from intcosMisc import qValues
+from printTools import print_opt
 
 
 # returns connectivity matrix.  Matrix is 0 if i==j.

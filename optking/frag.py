@@ -1,9 +1,9 @@
 import numpy as np
 
-from . import addIntcos
-from . import atomData
-from . import physconst
-from .printTools import printArrayString, printMatString, print_opt
+import addIntcos
+import atomData
+import physconst
+from printTools import printArrayString, printMatString, print_opt
 
 # Geometry is 2D object (atom,xyz)
 

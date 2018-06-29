@@ -1,6 +1,6 @@
-from . import physconst as pc  # has physical constants
+import physconst as pc  # has physical constants
 
-from .simple import *
+from simple import Simple
 
 
 class Cart(Simple):

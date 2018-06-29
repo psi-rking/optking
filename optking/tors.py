@@ -2,15 +2,15 @@ from math import sqrt, fabs
 
 import numpy as np
 
-from . import covRadii
-from . import optExceptions
-from . import optparams as op
-from . import physconst as pc  # has physical constants
-from . import v3d
-from .misc import HguessLindhRho
-from .physconst import bohr2angstroms
-from .printTools import print_opt
-from .simple import *
+import covRadii
+import optExceptions
+import optparams as op
+import physconst as pc  # has physical constants
+import v3d
+from misc import HguessLindhRho
+from physconst import bohr2angstroms
+from printTools import print_opt
+from simple import Simple
 
 
 class Tors(Simple):

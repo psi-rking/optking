@@ -1,5 +1,3 @@
+from .printTools import print_opt
 from .optimize import optimize
-from .printTools import printInit
-#from .molsys import Molsys
-
 from . import lj_functions

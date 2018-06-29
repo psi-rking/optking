@@ -2,13 +2,13 @@
 #creates a moleuclar system from psi4s and generates optkings options from psi4's lsit of options
 
 import psi4
-import optking
 import numpy as np 
 import json
+import optking
 
-optking.printInit(psi4.core.print_out)
-import optking.molsys
-import optking.psi4methods
+import printTools
+from molsys import Molsys
+import psi4methods
     
 #Please note this is a hack. we do not want to read in all of psi4's options
 #Right now I am reading in all global and optking options and appending the calcname to that
@@ -18,13 +18,13 @@ def Psi4Opt(calcName, psi4_options):
     psi4s molecule class, a set containing all optking keywords, a function to
     set the geometry in psi4, and functions to get the gradient, hessian, and 
     energy from psi4. Returns energy or (energy, trajectory) if trajectory== True.
-    """
-    
+    """  
+ 
     mol = psi4.core.get_active_molecule()
-    oMolsys = optking.molsys.Molsys.fromPsi4Molecule(mol)
+    oMolsys = Molsys.fromPsi4Molecule(mol)
 
     all_options = psi4.driver.p4util.prepare_options_for_modules()
-    optking_user_options = optking.psi4methods.get_optking_options_psi4(all_options) 
+    optking_user_options = psi4methods.get_optking_options_psi4(all_options) 
     
     optking_user_options['PSI4'] = psi4_options
     optking_user_options['PSI4']['calcName'] = calcName

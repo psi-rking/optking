@@ -1,11 +1,10 @@
 from math import fabs
-
 import numpy as np
 
-from . import intcosMisc
-from . import optparams as op
-from .linearAlgebra import absMax, rms, signOfDouble
-from .printTools import printMat, printMatString, printArrayString, print_opt
+import intcosMisc
+import optparams as op
+from linearAlgebra import absMax, rms, signOfDouble
+from printTools import printMat, printMatString, printArrayString, print_opt
 
 
 class Step(object):
@@ -130,9 +129,6 @@ class History(object):
         projectedChange = self.steps[-2].projectedDE
 
         print_opt("\tEnergy change for the previous step:\n")
-        print('PROJECTED CHANGE')
-        print(projectedChange)
-        print(type(projectedChange))
         print_opt("\t\tProjected    : %20.10lf\n" % projectedChange)
         print_opt("\t\tActual       : %20.10lf\n" % energyChange)
 
