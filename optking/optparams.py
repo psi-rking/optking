@@ -5,10 +5,15 @@
 # Option keys in the input dictionary are interpreted case-insensitively.
 # The enumerated string types are translated to all upper-case within the parameter object.
 
-from .printTools import print_opt
-Params = 0
-from . import optExceptions
+import optExceptions
 
+from printTools import print_opt 
+from misc import intList, \
+                 intIntFloatList, \
+                 intIntIntFloatList, \
+                 intIntIntIntFloatList, \
+                 tokenizeInputString, \
+                 int_XYZ_list
 
 # Class for enumerated string options.
 def stringOption(storage_name):
@@ -19,7 +24,7 @@ def stringOption(storage_name):
         if value.upper() in allowedStringOptions[storage_name]:
             instance.__dict__[storage_name] = value.upper()
         else:
-            raise optExceptions.OPT_FAIL('Invalid value for ' + storage_name)
+            raise optExceptions.OptFail('Invalid value for ' + storage_name)
 
     return property(stringOption_getter, stringOption_setter)
 
@@ -45,10 +50,7 @@ allowedStringOptions = {
 #def enum_key( enum_type, value):
 #    print_opt([key for key, val in enum_type.__dir__.items() if val == value][0])
 
-from .misc import intList, intIntFloatList, intIntIntFloatList, intIntIntIntFloatList
-from .misc import tokenizeInputString, int_XYZ_list
-
-class OPT_PARAMS(object):
+class optParams(object):
     # define properties
     opt_type = stringOption('opt_type')
     step_type = stringOption('step_type')
@@ -82,6 +84,7 @@ class OPT_PARAMS(object):
         P.print_lvl = uod.get('print', 1)
         ## Print all optimization parameters.
         #P.print_opt_params = uod.get('PRINT_OPT_PARAMS', False)
+        P.output_type = uod.get('OUTPUT_TYPE', 'FILE')
         # Specifies minimum search, transition-state search, or IRC following
         P.opt_type = uod.get('OPT_TYPE', 'MIN')
         # Geometry optimization step type, e.g., Newton-Raphson or Rational Function Optimization
@@ -612,13 +615,4 @@ class OPT_PARAMS(object):
                 "Moving to run_level 6: XYZ, SD, 1 backstep, smaller trust, smaller step.\n"
             )
         else:
-            raise optExceptions.OPT_FAIL("Unknown value of run_level")
-
-
-def welcome():
-    print_opt("\n\t\t\t-----------------------------------------\n")
-    print_opt("\t\t\t OPTKING 3.0: for geometry optimizations \n")
-    print_opt("\t\t\t     By R.A. King, Bethel University     \n")
-    print_opt("\t\t\t        with contributions from          \n")
-    print_opt("\t\t\t    A.V. Copan, J. Cayton, A. Heide      \n")
-    print_opt("\t\t\t-----------------------------------------\n")
+            raise optExceptions.OptFail("Unknown value of run_level")

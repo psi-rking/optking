@@ -1,16 +1,16 @@
 import numpy as np
 
-from . import covRadii
-from . import optExceptions
-from . import physconst as pc
-from . import v3d
-from .misc import delta, ZtoPeriod, HguessLindhRho
-from .physconst import bohr2angstroms
-from .printTools import print_opt
-from .simple import *
+import covRadii
+import optExceptions
+import physconst as pc
+import v3d
+from misc import delta, ZtoPeriod, HguessLindhRho
+from physconst import bohr2angstroms
+from printTools import print_opt
+from simple import Simple
 
 
-class STRE(SIMPLE):
+class Stre(Simple):
     def __init__(self, a, b, frozen=False, fixedEqVal=None, inverse=False):
 
         self._inverse = inverse  # bool - is really 1/R coordinate?
@@ -18,7 +18,7 @@ class STRE(SIMPLE):
         if a < b: atoms = (a, b)
         else: atoms = (b, a)
 
-        SIMPLE.__init__(self, atoms, frozen, fixedEqVal)
+        Simple.__init__(self, atoms, frozen, fixedEqVal)
 
     def __str__(self):
         if self.frozen: s = '*'
@@ -34,7 +34,7 @@ class STRE(SIMPLE):
 
     def __eq__(self, other):
         if self.atoms != other.atoms: return False
-        elif not isinstance(other, STRE): return False
+        elif not isinstance(other, Stre): return False
         elif self.inverse != other.inverse: return False
         else: return True
 
@@ -65,7 +65,7 @@ class STRE(SIMPLE):
     def DqDx(self, geom, dqdx, mini=False):
         check, eAB = v3d.eAB(geom[self.A], geom[self.B])  # A->B
         if not check:
-            raise optExceptions.ALG_FAIL("STRE.DqDx: could not normalize s vector")
+            raise optExceptions.AlgFail("Stre.DqDx: could not normalize s vector")
 
         if mini:
             startA = 0
@@ -88,7 +88,7 @@ class STRE(SIMPLE):
     def Dq2Dx2(self, geom, dq2dx2):
         check, eAB = v3d.eAB(geom[self.A], geom[self.B])  # A->B
         if not check:
-            raise optExceptions.ALG_FAIL("STRE.Dq2Dx2: could not normalize s vector")
+            raise optExceptions.AlgFail("Stre.Dq2Dx2: could not normalize s vector")
 
         if not self._inverse:
             length = self.q(geom)
@@ -176,7 +176,7 @@ class STRE(SIMPLE):
             return 1.0
 
 
-class HBOND(STRE):
+class HBond(Stre):
     def __str__(self):
         if self.frozen: s = '*'
         else: s = ' '
@@ -189,10 +189,10 @@ class HBOND(STRE):
             s += "[%.4f]" % self.fixedEqVal
         return s
 
-    # overrides STRE eq in comparisons, regardless of order
+    # overrides Stre eq in comparisons, regardless of order
     def __eq__(self, other):
         if self.atoms != other.atoms: return False
-        elif not isinstance(other, HBOND): return False
+        elif not isinstance(other, HBond): return False
         elif self.inverse != other.inverse: return False
         else: return True
 

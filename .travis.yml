@@ -28,12 +28,9 @@ install:
   - conda config --set always_yes yes --set changeps1 no
   - conda update -q conda
   - conda info -a
-  - conda create -q -n optking_env python=$TRAVIS_PYTHON_VERSION numpy
-  - source activate optking_env
-
-    # Install anything not in conda
-  - pip install codecov
-  - pip install pytest-cov
+  - conda create -q -n tenv python=$TRAVIS_PYTHON_VERSION ci-psi4 psi4 numpy -c psi4/label/dev
+  - source activate tenv
+  - conda install pytest pytest-cov codecov -c conda-forge
   - conda list
 
 before_script:
@@ -42,8 +39,10 @@ before_script:
   - pip install -e .
 
 script:
+  - pwd
+  - export PYTHONPATH=../:optking/:psi4/:./:tests/
 #  - py.test -v --cov=gau2grid/ --durations=5
-  - py.test -v --durations=5
+  - py.test -v -rws --durations=5 --cov
 
 notifications:
   email: false

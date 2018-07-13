@@ -1,15 +1,19 @@
 import numpy as np
+import json
+from pprint import PrettyPrinter
 
-from . import covRadii
-from . import frag
-from . import optExceptions
-from . import physconst as pc
-from . import v3d
-from .addIntcos import connectivityFromDistances, addCartesianIntcos
-from .printTools import print_opt
+import covRadii
+import frag
+import optExceptions
+import physconst as pc
+import v3d
+import atomData
+from addIntcos import connectivityFromDistances, addCartesianIntcos
+from printTools import print_opt, printArray, printMat
 
+pp = PrettyPrinter(indent=4)
 
-class MOLSYS(object):  # new-style classes required for getter/setters
+class Molsys(object):  # new-style classes required for getter/setters
     def __init__(self, fragments, fb_fragments=None, intcos=None):
         # ordinary fragments with internal structure
         self._fragments = []
@@ -57,7 +61,51 @@ class MOLSYS(object):  # new-style classes required for getter/setters
             for i in range(fragNatom):
                 fragMasses[i] = fragMol.mass(i)
 
-            frags.append(frag.FRAG(fragZ, fragGeom, fragMasses))
+            frags.append(frag.Frag(fragZ, fragGeom, fragMasses))
+        return cls(frags)
+
+
+    #todo
+    @classmethod
+    def from_JSON_molecule(cls, JSON_string):
+        """Takes in a string formatted according to the QC JSON schema form returned by 
+        psi4.driver.qcdb.to_schema(). Method converts input to a python dict, creates optking 
+        fragments and assembles a molecular system.
+        """
+
+        print_opt("\n\tGenerating molecular system for optimization from QC Schema.\n")
+        molecule = json.loads(JSON_string)        
+        #NF = len(molecule['fragments'])
+        frags = []    
+       
+        atom_number = 0
+        fragMasses = []
+        fragZ = []    
+      
+        if 'fragments' in molecule: 
+            for iF in range(len(molecule['fragments'])):
+                fragNatom = len(molecule['fragments'][iF])
+                fragAtoms = molecule['fragments'][iF]
+                fragGeom = np.asarray(molecule['geometry'][(atom_number * 3):((atom_number 
+                    + fragNatom) * 3)])
+                fragGeom = fragGeom.reshape(-1, 3)
+                print_opt('Fragment Geometry')
+                printMat(fragGeom)
+                #fragGeom = np.zeros((fragNatom, 3)), float)
+                for i in molecule['fragments'][iF]:    
+                    fragMasses.append(molecule['masses'][atom_number])
+                    fragZ.append(atomData.symbol_to_Z[molecule['symbols'][atom_number].upper()])
+                    atom_number += 1              
+                frags.append(frag.Frag(fragZ, fragGeom, fragMasses))            
+        else:
+            fragNAtom = len(molecule['symbols'])
+            fragGeom = np.asarray(molecule['geometry'])
+            fragGeom = fragGeom.reshape(-1,3)
+            for i in range(fragNAtom):
+                fragMasses.append(molecule['masses'][i])    
+                fragZ.append(atomData.symbol_to_Z[molecule['symbols'][i].upper()])
+            frags.append(frag.Frag(fragZ, fragGeom, fragMasses))    
+            
         return cls(frags)
 
     @property
@@ -89,7 +137,7 @@ class MOLSYS(object):  # new-style classes required for getter/setters
         for iF, F in enumerate(self._fragments):
             if atom_index in self.frag_atom_range(iF):
                 return iF
-        raise optExceptions.OPT_FAIL("atom2frag_index: atom_index impossibly large")
+        raise optExceptions.OptFail("atom2frag_index: atom_index impossibly large")
 
     # Given a list of atoms, return all the fragments to which they belong
     def atomList2uniqueFragList(self, atomList):
@@ -171,11 +219,19 @@ class MOLSYS(object):  # new-style classes required for getter/setters
             print_opt("Fragment %d\n" % (iF + 1))
             F.showGeom()
 
+    def get_atom_list(self):
+        atom_symbol_list = []
+        for i in self._fragments:
+            frag_atom_list = i.get_atom_list()
+            for j in frag_atom_list:
+                atom_symbol_list.append(j)
+        return atom_symbol_list
+
     def consolidateFragments(self):
         if self.Nfragments == 1:
             return
         print_opt("Consolidating multiple fragments into one for optimization.\n")
-        consolidatedFrag = frag.FRAG(self.Z, self.geom, self.masses)
+        consolidatedFrag = frag.Frag(self.Z, self.geom, self.masses)
         del self._fragments[:]
         self._fragments.append(consolidatedFrag)
 
@@ -216,7 +272,7 @@ class MOLSYS(object):  # new-style classes required for getter/setters
                     subZ[i] = tempZ[I]
                     subGeom[i, 0:3] = tempGeom[I, 0:3]
                     subMasses[i] = tempMasses[I]
-                newFragments.append(frag.FRAG(subZ, subGeom, subMasses))
+                newFragments.append(frag.Frag(subZ, subGeom, subMasses))
 
         del self._fragments[:]
         self._fragments = newFragments

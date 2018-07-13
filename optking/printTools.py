@@ -1,26 +1,20 @@
-from __future__ import print_function
+#from __future__ import print_function
 ### Printing functions.
-
-print_opt = None
-
 from sys import stdout
+import history
 
 
-def cleanPrint(arg):
+def print_opt(arg):
     print(arg, file=stdout, end='')
     return
 
-
 #print_opt = cleanPrint
 
-
-def printInit(printFunction=None):
-    global print_opt
-    if not printFunction:
-        print_opt = cleanPrint
-    else:
-        print_opt = printFunction
-    return
+#def printInit(printFunction=None, file=stdout):
+    #if not printFunction:
+#    print_opt = cleanPrint
+    #else:
+    #    print_opt = printFunction
 
 
 def printMat(M, Ncol=7, title=None):
@@ -93,3 +87,27 @@ def printGeomGrad(geom, grad):
     for i in range(Natom):
         print_opt("\t%20.10f%20.10f%20.10f\n" % (grad[3 * i + 0], grad[3 * i + 1],
                                                  grad[3 * i + 2]))
+
+
+def welcome():
+    print_opt("\n\t\t\t-----------------------------------------\n")
+    print_opt("\t\t\t OPTKING 3.0: for geometry optimizations \n")
+    print_opt("\t\t\t     By R.A. King, Bethel University     \n")
+    print_opt("\t\t\t        with contributions from          \n")
+    print_opt("\t\t\t    A.V. Copan, J. Cayton, A. Heide      \n")
+    print_opt("\t\t\t-----------------------------------------\n")
+
+def generate_file_output():
+    print_opt("\n  ==> Optimization Summary <==\n\n")
+    print_opt("  Measures of convergence in internal coordinates in au. (Any backward steps not shown.)\n")
+    print_opt(
+        "  --------------------------------------------------------------------------------------------------------------- ~\n"
+    )
+    print_opt(
+        "   Step         Total Energy             Delta E       MAX Force       RMS Force        MAX Disp        RMS Disp  ~\n"
+    )
+    print_opt(
+        "  --------------------------------------------------------------------------------------------------------------- ~\n"
+    )
+    
+    history.oHistory.summary(printoption=True)                                                                     

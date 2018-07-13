@@ -1,8 +1,8 @@
 from math import fabs, sqrt
-
 import numpy as np
+import operator
 
-from . import optExceptions
+import optExceptions
 
 
 def norm(V):
@@ -33,21 +33,17 @@ def symmMatEig(mat):
     try:
         evals, evects = np.linalg.eigh(mat)
     except:
-        raise optExceptions.OPT_FAIL("symmMatEig: could not compute eigenvectors")
+        raise optExceptions.OptFail("symmMatEig: could not compute eigenvectors")
         # could be ALG_FAIL ?
     evects = evects.T
     return evals, evects
-
-
-import operator
-
 
 # returns eigenvectors as rows; orders evals
 def asymmMatEig(mat):
     try:
         evals, evects = np.linalg.eig(mat)
     except:
-        raise optExceptions.OPT_FAIL("asymmMatEig: could not compute eigenvectors")
+        raise optExceptions.OptFail("asymmMatEig: could not compute eigenvectors")
         # could be ALG_FAIL ?
 
     evects = evects.T
@@ -69,14 +65,14 @@ def symmMatInv(A, redundant=False, redundant_eval_tol=1.0e-10):
     try:
         evals, evects = symmMatEig(A)
     except:
-        raise optExceptions.OPT_FAIL("symmMatrixInv: could not compute eigenvectors")
+        raise optExceptions.OptFail("symmMatrixInv: could not compute eigenvectors")
         # could be ALG_FAIL ?
 
     for i in range(dim):
         det *= evals[i]
 
     if not redundant and fabs(det) < 1E-10:
-        raise optExceptions.OPT_FAIL(
+        raise optExceptions.OptFail(
             "symmMatrixInv: non-generalized inverse failed; very small determinant")
         # could be ALG_FAIL ?
 
@@ -100,7 +96,7 @@ def symmMatRoot(A, Inverse=None):
     try:
         evals, evects = np.linalg.eigh(A)
     except:
-        raise optExceptions.OPT_FAIL("symmMatRoot: could not compute eigenvectors")
+        raise optExceptions.OptFail("symmMatRoot: could not compute eigenvectors")
         # could be ALG_FAIL ?
 
     rootMatrix = np.zeros((len(evals), len(evals)), float)

@@ -1,14 +1,14 @@
 import numpy as np
 
-from . import addIntcos
-from . import atomData
-from . import physconst
-from .printTools import printArrayString, printMatString, print_opt
+import addIntcos
+import atomData
+import physconst
+from printTools import printArrayString, printMatString, print_opt
 
 # Geometry is 2D object (atom,xyz)
 
 
-class FRAG:
+class Frag:
     def __init__(self, Z, geom, masses, intcos=None):
         self._Z = Z
         self._geom = geom
@@ -32,22 +32,44 @@ class FRAG:
         s += "\n"
         return s
 
-    @classmethod
-    def fromPsi4Molecule(cls, mol):
-        mol.update_geometry()
-        geom = np.array(mol.geometry())
-        Natom = mol.natom()
+#    @classmethod
+#    def fromPsi4Molecule(cls, mol):
+#        mol.update_geometry()
+#        geom = np.array(mol.geometry())
+#        Natom = mol.natom()
+#
+#        #Z = np.zeros( Natom, int)
+#        Z = []
+#        for i in range(Natom):
+#            Z.append(int(mol.Z(i)))
+#
+#        masses = np.zeros(Natom, float)
+#        for i in range(Natom):
+#            masses[i] = mol.mass(i)
+#
+#        return cls(Z, geom, masses)
+#
+#
+#    #todo
+#    @classmethod
+#    def from_JSON_molecule(cls, pmol):
+#        #taking in psi4.core.molecule and converting to schema
+#        jmol = pmol.to_schema()
+#        print(jmol) 
+#        Natom = len(jmol['symbols'])
+#        geom = np.asarray(molecule['geometry']).reshape(-1,3) #?need to reshape in some way todo
+#        print(geom)
+#        Z = []
+#        for i in range(Natom):
+#            Z.append(atomDatas.symbol_to_Z(jmol['symbols'][i]))
+#        
+#        print(Z)
+#                        
+#        masses = jmol['masses']
+#        print(masses)
+#
+#        return cls(Z, geom, masses)
 
-        #Z = np.zeros( Natom, int)
-        Z = []
-        for i in range(Natom):
-            Z.append(int(mol.Z(i)))
-
-        masses = np.zeros(Natom, float)
-        for i in range(Natom):
-            masses[i] = mol.mass(i)
-
-        return cls(Z, geom, masses)
 
     @property
     def Natom(self):
@@ -99,3 +121,9 @@ class FRAG:
             print_opt("\t%5s%15.10f%15.10f%15.10f\n" % \
             (atomData.Z_to_symbol[self._Z[i]], Ang[i,0], Ang[i,1], Ang[i,2]))
         print_opt("\n")
+
+    def get_atom_list(self):
+        frag_atom_list = []
+        for i in range(self._geom.shape[0]):
+            frag_atom_list.append(atomData.Z_to_symbol[self._Z[i]])
+        return frag_atom_list

@@ -1,10 +1,10 @@
 import numpy as np
 
-from . import intcosMisc
-from . import optExceptions
-from . import optParams as op
-from .linearAlgebra import absMax, rms, symmMatInv
-from .printTools import print_opt, printArray
+import intcosMisc
+import optExceptions
+import optparams as op
+from linearAlgebra import absMax, rms, symmMatInv
+from printTools import print_opt, printArray
 
 # dq : displacements in internal coordinates to be performed.
 #      On exit, overridden to actual displacements performed.
@@ -220,7 +220,7 @@ def stepIter(intcos,
         geom[:] = best_geom
 
     if op.Params.opt_type == "IRC" and not bt_converged:
-        raise optExceptions.OPT_FAIL(
+        raise optExceptions.OptFail(
             "Could not take constrained step in an IRC computation.")
 
     return bt_converged

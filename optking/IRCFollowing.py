@@ -1,22 +1,21 @@
 from math import sqrt, fabs
-
 import numpy as np
 
-from . import displace
-from . import intcosMisc
-from .linearAlgebra import symmMatEig, symmMatInv, symmMatRoot
-from .printTools import printArray, printMat, print_opt
+import displace
+import intcosMisc
+from linearAlgebra import symmMatEig, symmMatInv, symmMatRoot
+from printTools import printArray, printMat, print_opt
 
 
 #Takes a half step from starting geometry along the gradient, then takes an additional half step as a guess
 #returns dq
-def takeHessianHalfStep(Molsys, Hq, B, fq, s, direction='forward'):
+def takeHessianHalfStep(oMolsys, Hq, B, fq, s, direction='forward'):
     print_opt(
         "==================================================================================\n"
     )
     print_opt("Taking Hessian IRC HalfStep and Guess Step\n")
     #Calculate G, G^-1/2 and G-1/2
-    Gm = intcosMisc.Gmat(Molsys.intcos, Molsys.geom, Molsys.masses)
+    Gm = intcosMisc.Gmat(oMolsys.intcos, oMolsys.geom, oMolsys.masses)
     GmInv = symmMatInv(Gm)
     GmRoot = symmMatRoot(Gm)
     GmRootInv = symmMatInv(GmRoot)
@@ -28,14 +27,14 @@ def takeHessianHalfStep(Molsys, Hq, B, fq, s, direction='forward'):
     printMat(GmRoot)
     print_opt("Hesian in Internals\n")
     printMat(Hq)
-    #Hq = intcosMisc.convertHessianToInternals(H, Molsys.intcos, Molsys.geom)
+    #Hq = intcosMisc.convertHessianToInternals(H, oMolsys.intcos, oMolsys.geom)
     HEigVals, HEigVects = symmMatEig(Hq)
     #get gradient from Psi4 in cartesian geom
     #gx = fgradient(geom)
     #gq = np.dot(GmInv, np.dot(B, gx))
 
     #initial internal coordinates from .intcosMisc
-    qZero = intcosMisc.qValues(Molsys.intcos, Molsys.geom)
+    qZero = intcosMisc.qValues(oMolsys.intcos, oMolsys.geom)
 
     #symmMatEig returns the Eigen Vectors as rows in order of increasing eigen values
     #first step from TS will be along the smallest eigenvector
@@ -64,7 +63,7 @@ def takeHessianHalfStep(Molsys, Hq, B, fq, s, direction='forward'):
     #qPrime = np.dot (N, np.dot(G, gQ))
     dqPrime = np.dot(2, dqPivot)
     qPrime = np.add(dqPrime, qZero)
-    displaceIRCStep(Molsys, dqPrime, Hq, fq)
+    displaceIRCStep(oMolsys, dqPrime, Hq, fq)
 
     print_opt("next geometry\n ")
     print(qPrime)
@@ -81,14 +80,14 @@ def takeHessianHalfStep(Molsys, Hq, B, fq, s, direction='forward'):
 
 #Takes a half step from starting geometry along the gradient, then takes an additional half step as a guess
 #returns dq
-def takeGradientHalfStep(Molsys, H, B, s, gX):
+def takeGradientHalfStep(oMolsys, H, B, s, gX):
     #Calculate G, G^-1/2 and G-1/2
-    Gm = intcosMisc.Gmat(Molsys.intcos, Molsys.geom, Molsys.masses)
+    Gm = intcosMisc.Gmat(oMolsys.intcos, oMolsys.geom, oMolsys.masses)
     GmInv = symmMatInt(Gm)
     GmRoot = symmMatRoot(Gm)
     GmRootInv = symmMatInv(GmRoot)
 
-    qZero = intcosMisc.qValues(Molsys.intcos, Molsys.geom)
+    qZero = intcosMisc.qValues(oMolsys.intcos, oMolsys.geom)
 
     #convert gradient to Internals
     gQ = np.dot(GmInv, np.dot(B, gX))
@@ -106,7 +105,7 @@ def takeGradientHalfStep(Molsys, H, B, s, gX):
         qPivot[i] = 0.5 * s * qPivot[i]
         qPivot = np.subtract(qZero, qPivot)
 
-    #displaceIRCStep(Molsys.intcos, Molsys.geom, np.subtract(qPivot, qZero), H, g)
+    #displaceIRCStep(oMolsys.intcos, oMolsys.geom, np.subtract(qPivot, qZero), H, g)
 
     qPrime = np.dot(N, np.dot(G, gQ))
     for i in range(len(gQ)):
@@ -121,17 +120,17 @@ def takeGradientHalfStep(Molsys, H, B, s, gX):
 
 #Before Dq_IRC is called, the goemetry must be updated to the guess point
 #Returns Dq from qk+1 to gprime.
-def Dq(Molsys, g, E, Hq, B, s, qPrime, dqPrime):
+def Dq(oMolsys, g, E, Hq, B, s, qPrime, dqPrime):
     print_opt(
         "======================================================================================================\n"
     )
     print_opt("Starting constrained optimization\n")
-    GPrime = intcosMisc.Gmat(Molsys.intcos, Molsys.geom, Molsys.masses)
+    GPrime = intcosMisc.Gmat(oMolsys.intcos, oMolsys.geom, oMolsys.masses)
     GPrimeInv = symmMatInv(GPrime)
     GPrimeRoot = symmMatRoot(GPrime)
     GPrimeRootInv = symmMatRoot(GPrime, True)
-    #Hq = intcosMisc.convertHessianToInternals(Hq, Molsys.intcos, Molsys.geom)
-    #Hq = intcosMisc.convertHessianToInternals(H, Molsys.intcos, Molsys.geom)
+    #Hq = intcosMisc.convertHessianToInternals(Hq, oMolsys.intcos, oMolsys.geom)
+    #Hq = intcosMisc.convertHessianToInternals(H, oMolsys.intcos, oMolsys.geom)
     #vectors nessecary to solve for Lambda, naming is taken from Gonzalez and Schlegel
     deltaQM = 0
     pPrime = dqPrime
@@ -142,7 +141,7 @@ def Dq(Molsys, g, E, Hq, B, s, qPrime, dqPrime):
     #print_opt ("Hessian in Internals")
     #printMat (Hq)
 
-    u = np.identity(Molsys.Natom * 3)
+    u = np.identity(oMolsys.Natom * 3)
     print_opt("Cartesian Gradient\n")
     printArray(g)
     g = np.dot(GPrimeInv, np.dot(B, np.dot(u, g)))
@@ -237,7 +236,7 @@ def Dq(Molsys, g, E, Hq, B, s, qPrime, dqPrime):
     dq = np.dot(GPrimeRoot, deltaQM)
     print_opt("dq to next geometry\n")
     printArray(dq)
-    displaceIRCStep(Molsys, dq, Hq, np.dot(-1, g))
+    displaceIRCStep(oMolsys, dq, Hq, np.dot(-1, g))
     print_opt("New internal coordinates\n")
     qNew = np.add(qPrime, dq)
     printArray(qNew)
@@ -269,7 +268,7 @@ def calcLagrangian(Lambda, HMEigValues, HMEigVects, gM, pM, s):
 
 #displaces an atom with the dq from the IRC data
 #returns void
-def displaceIRCStep(Molsys, dq, H, fq):
+def displaceIRCStep(oMolsys, dq, H, fq):
     # get norm |q| and unit vector in the step direction
     ircDqNorm = sqrt(np.dot(dq, dq))
     ircU = dq / ircDqNorm
@@ -287,14 +286,14 @@ def displaceIRCStep(Molsys, dq, H, fq):
     #print_opt("\tProjected energy change by quadratic approximation: %20.10lf\n" % DEprojected)
 
     # Scale fq into aJ for printing
-    fq_aJ = intcosMisc.qShowForces(Molsys.intcos, fq)
+    fq_aJ = intcosMisc.qShowForces(oMolsys.intcos, fq)
     #print ("------------------------------")
-    #print (Molsys._fragments[0].intcos)
-    #print (Molsys._fragments[0].geom)
+    #print (oMolsys._fragments[0].intcos)
+    #print (oMolsys._fragments[0].geom)
     #print (dq)
     #print (fq_aJ)
     #print ("--------------------------------")
-    displace(Molsys._fragments[0].intcos, Molsys._fragments[0].geom, dq, fq_aJ)
+    displace(oMolsys._fragments[0].intcos, oMolsys._fragments[0].geom, dq, fq_aJ)
 
     dq_actual = sqrt(np.dot(dq, dq))
     print_opt("\tNorm of achieved step-size %15.10f\n" % dq_actual)

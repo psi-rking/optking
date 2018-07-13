@@ -1,7 +1,6 @@
-from .bend import *
 import numpy as np
-from .printTools import printMat
-
+from printTools import printMat
+#from bend import *
 
 # print the Hessian in common spectroscopic units of aJ/Ang^2, aJ/deg^2 or aJ/(Ang deg)
 def show(H, intcos):
@@ -25,3 +24,7 @@ def guess(intcos, geom, Z, connectivity=False, guessType="SIMPLE"):
         H[i, i] = intco.diagonalHessianGuess(geom, Z, connectivity, guessType)
 
     return H
+
+def convert_json_hess_to_matrix(H, Natom):
+    return H.reshape(3 * Natom, 3 * Natom)
+

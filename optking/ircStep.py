@@ -1,4 +1,4 @@
-from . import optParams as op
+from . import optparams as op
 
 #Object class that stores the pivot point in internals, converged geometry, and overall stepNumber for the step
 #Meant to be entered into a list to track the optimization

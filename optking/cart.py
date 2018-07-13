@@ -1,14 +1,14 @@
-from . import physconst as pc  # has physical constants
+import physconst as pc  # has physical constants
 
-from .simple import *
+from simple import Simple
 
 
-class CART(SIMPLE):
+class Cart(Simple):
     def __init__(self, a, xyz_in, frozen=False, fixedEqVal=None):
 
         self.xyz = xyz_in  # uses setter below
         atoms = (a, )
-        SIMPLE.__init__(self, atoms, frozen, fixedEqVal)
+        Simple.__init__(self, atoms, frozen, fixedEqVal)
 
     def __str__(self):
         if self.frozen: s = '*'
@@ -25,7 +25,7 @@ class CART(SIMPLE):
 
     def __eq__(self, other):
         if self.atoms != other.atoms: return False
-        elif not isinstance(other, CART): return False
+        elif not isinstance(other, Cart): return False
         elif self.xyz != other.xyz: return False
         else: return True
 
@@ -42,7 +42,7 @@ class CART(SIMPLE):
         elif setval in [2, 'z', 'Z']:
             self._xyz = 2
         else:
-            raise optExceptions.OPT_FAIL("Cartesian coordinate must be set to 0-2 or X-Z")
+            raise optExceptions.OptFail("Cartesian coordinate must be set to 0-2 or X-Z")
 
     def q(self, geom):
         return geom[self.A, self._xyz]
