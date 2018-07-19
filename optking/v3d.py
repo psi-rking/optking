@@ -2,11 +2,11 @@
 # torsions, out-of-plane angles.  Several return False if the operation
 # cannot be completed numerically, as for example a torsion in which 3
 # points are collinear.
+import logging
 import numpy as np
 from math import sqrt, fabs, sin, acos, asin, fsum
 
 import optparams as op
-from printTools import print_opt
 
 # a couple of obscure parameters used in torsion computation:
 #  phi_lim = op.Params.v3d_tors_angle_lim
@@ -84,14 +84,15 @@ def are_parallel_or_antiparallel(u, v):
 # tol is nearness of cos to 1/-1 to set angle 0/pi.
 # Returns boolean check and value.
 def angle(A, B, C, tol=1.0e-14):
+    logger = logging.getLogger(__name__)
     check, eBA = eAB(B, A)
     if not check:
-        print_opt("Warning: could not normalize eBA in angle()\n")
+        logger.warning("Could not normalize eBA in angle()\n")
         return False, 0.0
 
     check, eBC = eAB(B, C)
     if not check:
-        print_opt("Warning: could not normalize eBC in angle()\n")
+        logger.warning("Could not normalize eBC in angle()\n")
         return False, 0.0
 
     dotprod = dot(eBA, eBC)

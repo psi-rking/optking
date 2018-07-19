@@ -3,8 +3,9 @@
 
 #ToDo delete this method once psi4 writes a method that does this (just better)
 def collect_psi4_options(options):
-    """Is meant to look through the dictionary of psi4 options being passed in and pick out the basis
-     set and QM method used (Calcname) which are appened to the list of psi4 options, 
+    """Is meant to look through the dictionary of psi4 options being passed in and
+    pick out the basis set and QM method used (Calcname)
+    which are appened to the list of psi4 options, 
     """
     keywords = {}
     for opt in options['PSI4']:
@@ -17,15 +18,13 @@ def collect_psi4_options(options):
 
     return QM_method, basis, keywords
 
-
 def get_optking_options_psi4(all_options):
     optking_user_options = {}
     optking_options = all_options['OPTKING']
     optking_user_options['OPTKING'] = {}
-    for opt,optval in optking_options.items():
+    for opt, optval in optking_options.items():
         if optval['has_changed'] == True:
             optking_user_options[opt] = optval['value']
-
 
     return optking_user_options
 

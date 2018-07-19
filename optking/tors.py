@@ -1,5 +1,5 @@
 from math import sqrt, fabs
-
+import logging
 import numpy as np
 
 import covRadii
@@ -9,7 +9,6 @@ import physconst as pc  # has physical constants
 import v3d
 from misc import HguessLindhRho
 from physconst import bohr2angstroms
-from printTools import print_opt
 from simple import Simple
 
 
@@ -243,6 +242,9 @@ class Tors(Simple):
           Schlegel, Theor. Chim. Acta, 66, 333 (1984) and
           Fischer and Almlof, J. Phys. Chem., 96, 9770 (1992).
         """
+
+        logger = logging.getLogger(__name__)
+
         if guessType == "SIMPLE":
             return 0.1
 
@@ -275,7 +277,7 @@ class Tors(Simple):
                 Bbonds = Bbonds + Brow[i]
                 Cbonds = Cbonds + Crow[i]
             L = Bbonds + Cbonds - 2
-            print_opt("Connectivity of central 2 torsional atoms - 2 = L = %d\n" % L)
+            logger.info("Connectivity of central 2 torsional atoms - 2 = L = %d\n" % L)
             return a + b * (np.power(L, d)) / (np.power(R * Rcov, e)) * (
                 np.exp(-c * (R - Rcov)))
 
@@ -292,5 +294,6 @@ class Tors(Simple):
             return k_tau * Lindh_Rho_AB * Lindh_Rho_BC * Lindh_Rho_CD
 
         else:
-            print_opt("Warning: Hessian guess encountered unknown coordinate type.\n")
+            logger.warning("""Hessian guess encountered unknown coordinate type.\n 
+                As default, identity matrix is used""")
             return 1.0

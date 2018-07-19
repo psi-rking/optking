@@ -1,5 +1,5 @@
 import physconst as pc  # has physical constants
-
+import optExceptions
 from simple import Simple
 
 
@@ -14,9 +14,12 @@ class Cart(Simple):
         if self.frozen: s = '*'
         else: s = ' '
 
-        if self._xyz == 0: s += 'X'
-        elif self._xyz == 1: s += 'Y'
-        elif self._xyz == 2: s += 'Z'
+        if self._xyz == 0:
+             s += 'X'
+        elif self._xyz == 1:
+             s += 'Y'
+        elif self._xyz == 2:
+             s += 'Z'
 
         s += "(%d)" % (self.A + 1)
         if self.fixedEqVal:
@@ -24,10 +27,14 @@ class Cart(Simple):
         return s
 
     def __eq__(self, other):
-        if self.atoms != other.atoms: return False
-        elif not isinstance(other, Cart): return False
-        elif self.xyz != other.xyz: return False
-        else: return True
+        if self.atoms != other.atoms:
+             return False
+        elif not isinstance(other, Cart):
+             return False
+        elif self.xyz != other.xyz:
+             return False
+        else:
+             return True
 
     @property
     def xyz(self):

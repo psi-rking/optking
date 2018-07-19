@@ -1,5 +1,6 @@
 import numpy as np
 import json
+import logging
 from pprint import PrettyPrinter
 
 import covRadii
@@ -9,13 +10,15 @@ import physconst as pc
 import v3d
 import atomData
 from addIntcos import connectivityFromDistances, addCartesianIntcos
-from printTools import print_opt, printArray, printMat
+from printTools import printMatString
 
 pp = PrettyPrinter(indent=4)
+
 
 class Molsys(object):  # new-style classes required for getter/setters
     def __init__(self, fragments, fb_fragments=None, intcos=None):
         # ordinary fragments with internal structure
+        self.logger = logging.getLogger(__name__)
         self._fragments = []
         if fragments:
             self._fragments = fragments
@@ -27,35 +30,36 @@ class Molsys(object):  # new-style classes required for getter/setters
     def __str__(self):
         s = ''
         for iF, F in enumerate(self._fragments):
-            s += "Fragment %d\n" % (iF + 1)
+            s += "\n\tFragment %d\n" % (iF + 1)
             s += F.__str__()
         for iB, B in enumerate(self._fb_fragments):
-            s += "Fixed boxy Fragment %d\n" % (iB + 1)
+            s += "\tFixed boxy Fragment %d\n" % (iB + 1)
             s += B.__str__()
         return s
 
     @classmethod
     def fromPsi4Molecule(cls, mol):
-        print_opt("\n\tGenerating molecular system for optimization from PSI4.\n")
+        logger = logging.getLogger(__name__)
+        logger.info("\tGenerating molecular system for optimization from PSI4.")
 
         NF = mol.nfragments()
-        print_opt("\t%d Fragments in PSI4 molecule object.\n" % NF)
+        logger.info("\t%d Fragments in PSI4 molecule object." % NF)
         frags = []
 
         for iF in range(NF):
             fragMol = mol.extract_subsets(iF + 1)
 
             fragNatom = fragMol.natom()
-            print_opt("\tCreating fragment %d with %d atoms\n" % (iF + 1, fragNatom))
+            logger.info("\tCreating fragment %d with %d atoms" % (iF + 1, fragNatom))
 
             fragGeom = np.zeros((fragNatom, 3), float)
             fragGeom[:] = fragMol.geometry()
 
-            #fragZ = np.zeros( fragNatom, int)
+            # fragZ = np.zeros( fragNatom, int)
             fragZ = []
             for i in range(fragNatom):
                 fragZ.append(int(fragMol.Z(i)))
-                #fragZ[i] = fragMol.Z(i)
+                # fragZ[i] = fragMol.Z(i)
 
             fragMasses = np.zeros(fragNatom, float)
             for i in range(fragNatom):
@@ -64,48 +68,43 @@ class Molsys(object):  # new-style classes required for getter/setters
             frags.append(frag.Frag(fragZ, fragGeom, fragMasses))
         return cls(frags)
 
-
-    #todo
+    # Todo
     @classmethod
     def from_JSON_molecule(cls, JSON_string):
-        """Takes in a string formatted according to the QC JSON schema form returned by 
-        psi4.driver.qcdb.to_schema(). Method converts input to a python dict, creates optking 
+        """Takes in a string formatted according to the QC JSON schema form returned by
+        psi4.driver.qcdb.to_schema(). Method converts input to a python dict, creates optking
         fragments and assembles a molecular system.
         """
+        logger = logging.getLogger(__name__)
+        logger.info("\tGenerating molecular system for optimization from QC Schema.\n")
+        molecule = json.loads(JSON_string)
+        # NF = len(molecule['fragments'])
+        frags = []
 
-        print_opt("\n\tGenerating molecular system for optimization from QC Schema.\n")
-        molecule = json.loads(JSON_string)        
-        #NF = len(molecule['fragments'])
-        frags = []    
-       
         atom_number = 0
         fragMasses = []
-        fragZ = []    
-      
-        if 'fragments' in molecule: 
+        fragZ = []
+
+        if 'fragments' in molecule:
             for iF in range(len(molecule['fragments'])):
                 fragNatom = len(molecule['fragments'][iF])
-                fragAtoms = molecule['fragments'][iF]
-                fragGeom = np.asarray(molecule['geometry'][(atom_number * 3):((atom_number 
-                    + fragNatom) * 3)])
+                fragGeom = np.asarray(molecule['geometry'][(atom_number * 3):
+                                                           ((atom_number + fragNatom) * 3)])
                 fragGeom = fragGeom.reshape(-1, 3)
-                print_opt('Fragment Geometry')
-                printMat(fragGeom)
-                #fragGeom = np.zeros((fragNatom, 3)), float)
-                for i in molecule['fragments'][iF]:    
+                for i in molecule['fragments'][iF]:
                     fragMasses.append(molecule['masses'][atom_number])
                     fragZ.append(atomData.symbol_to_Z[molecule['symbols'][atom_number].upper()])
-                    atom_number += 1              
-                frags.append(frag.Frag(fragZ, fragGeom, fragMasses))            
+                    atom_number += 1
+                frags.append(frag.Frag(fragZ, fragGeom, fragMasses))
         else:
             fragNAtom = len(molecule['symbols'])
             fragGeom = np.asarray(molecule['geometry'])
-            fragGeom = fragGeom.reshape(-1,3)
+            fragGeom = fragGeom.reshape(-1, 3)
             for i in range(fragNAtom):
-                fragMasses.append(molecule['masses'][i])    
+                fragMasses.append(molecule['masses'][i])
                 fragZ.append(atomData.symbol_to_Z[molecule['symbols'][i].upper()])
-            frags.append(frag.Frag(fragZ, fragGeom, fragMasses))    
-            
+            frags.append(frag.Frag(fragZ, fragGeom, fragMasses))
+
         return cls(frags)
 
     @property
@@ -195,7 +194,7 @@ class Molsys(object):  # new-style classes required for getter/setters
 
     def printIntcos(self):
         for iF, F in enumerate(self._fragments):
-            print_opt("Fragment %d\n" % (iF + 1))
+            self.logger.info("Fragment %d\n" % (iF + 1))
             F.printIntcos()
         return
 
@@ -210,14 +209,18 @@ class Molsys(object):  # new-style classes required for getter/setters
             addCartesianIntcos(F._intcos, F._geom)
 
     def printGeom(self):
+        """Returns a string of the geometry for logging in bohr"""
         for iF, F in enumerate(self._fragments):
-            print_opt("Fragment %d\n" % (iF + 1))
+            self.logger.info("\tFragment %d\n" % (iF + 1))
             F.printGeom()
 
     def showGeom(self):
+        """Return a string of the geometry in angstroms"""
+        molsys_geometry = ''
         for iF, F in enumerate(self._fragments):
-            print_opt("Fragment %d\n" % (iF + 1))
-            F.showGeom()
+            molsys_geometry += ("\tFragment %d\n" % (iF + 1))
+            molsys_geometry += F.showGeom()
+        return molsys_geometry
 
     def get_atom_list(self):
         atom_symbol_list = []
@@ -230,7 +233,7 @@ class Molsys(object):  # new-style classes required for getter/setters
     def consolidateFragments(self):
         if self.Nfragments == 1:
             return
-        print_opt("Consolidating multiple fragments into one for optimization.\n")
+        self.logger.info("\tConsolidating multiple fragments into one for optimization.")
         consolidatedFrag = frag.Frag(self.Z, self.geom, self.masses)
         del self._fragments[:]
         self._fragments.append(consolidatedFrag)
@@ -245,7 +248,6 @@ class Molsys(object):  # new-style classes required for getter/setters
         for F in self._fragments:
             C = connectivityFromDistances(F.geom, F.Z)
             atomsToAllocate = list(reversed(range(F.Natom)))
-
             while atomsToAllocate:
                 frag_atoms = [atomsToAllocate.pop()]
 
@@ -253,12 +255,12 @@ class Molsys(object):  # new-style classes required for getter/setters
                 while more_found:
                     more_found = False
                     addAtoms = []
-                    for A in frag_atoms:
+                    for A in frag_atoms:  # Is this actually a loop?
                         for B in atomsToAllocate:
                             if C[A, B]:
-                                addAtoms.append(B)
+                                if B not in addAtoms:
+                                    addAtoms.append(B)
                                 more_found = True
-
                     for a in addAtoms:
                         frag_atoms.append(a)
                         atomsToAllocate.remove(a)
@@ -280,7 +282,7 @@ class Molsys(object):  # new-style classes required for getter/setters
     # Supplements a connectivity matrix to connect all fragments.  Assumes the
     # definition of the fragments has ALREADY been determined before function called.
     def augmentConnectivityToSingleFragment(self, C):
-        print_opt('\tAugmenting connectivity matrix to join fragments.\n')
+        self.logger.info('\tAugmenting connectivity matrix to join fragments.')
         fragAtoms = []
         geom = self.geom
         for iF, F in enumerate(self._fragments):
@@ -318,10 +320,11 @@ class Molsys(object):  # new-style classes required for getter/setters
                     R_i = covRadii.R[int(Z[i])] / pc.bohr2angstroms
                     R_j = covRadii.R[int(Z[j])] / pc.bohr2angstroms
                     if Rij > scale_dist * (R_i + R_j):
-                        continue  # ignore this as too far - for starters.  may have A-B-C situation.
+                        # ignore this as too far - for starters.  may have A-B-C situation.
+                        continue
 
-                    print_opt("\tConnecting fragments with atoms %d and %d\n" % (i + 1,
-                                                                                 j + 1))
+                    self.logger.info("\tConnecting fragments with atoms %d and %d"
+                                     % (i + 1, j + 1))
                     C[i][j] = C[j][i] = True
                     frag_connectivity[f1][f2] = frag_connectivity[f2][f1] = True
 
@@ -335,16 +338,16 @@ class Molsys(object):  # new-style classes required for getter/setters
                             if np.fabs(tval - minVal) < 1.0e-10:
                                 i = f1_atom
                                 j = f2_atom
-                                print_opt("\tAlso, with atoms %d and %d\n" % (i + 1,
-                                                                              j + 1))
+                                self.logger.info("\tAlso, with atoms %d and %d\n"
+                                                 % (i + 1, j + 1))
                                 C[i][j] = C[j][i] = True
 
             # Test whether all frags are connected using current distance threshold
             if np.sum(frag_connectivity[0]) == nF:
-                print_opt("\tAll fragments are connected in connectivity matrix.\n")
+                self.logger.info("\tAll fragments are connected in connectivity matrix.")
                 all_connected = True
             else:
                 scale_dist += 0.2
-                print_opt(
-                    "\tIncreasing scaling to %6.3f to connect fragments.\n" % scale_dist)
+                self.logger.info(
+                    "\tIncreasing scaling to %6.3f to connect fragments." % scale_dist)
         return

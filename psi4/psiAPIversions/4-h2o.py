@@ -2,7 +2,7 @@
 
 finalEnergy = -76.05776970 #TEST
 import psi4
-import Psi4Opt
+import psi4optwrapper
 
 h2o = psi4.geometry("""
  O

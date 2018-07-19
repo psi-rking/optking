@@ -1,19 +1,23 @@
 import numpy as np
-from printTools import printMat
-#from bend import *
+import logging
+from printTools import printMatString
+import physconst as pc
+# from bend import *
 
-# print the Hessian in common spectroscopic units of aJ/Ang^2, aJ/deg^2 or aJ/(Ang deg)
+
 def show(H, intcos):
+    """ print the Hessian in common spectroscopic units of aJ/Ang^2, aJ/deg^2 or aJ/(Ang deg)
+    """
+    logger = logging.getLogger(__name__)
     Hscaled = np.zeros(H.shape, H.dtype)
     for i, row in enumerate(intcos):
         for j, col in enumerate(intcos):
             Hscaled[i, j] = H[i, j] * pc.hartree2aJ / row.qShowFactor / col.qShowFactor
-    print_opt("Hessian in aJ/Ang^2, etc.\n")
-    printMat(Hscaled)
+    logger.info("Hessian in aJ/Ang^2, etc.\n" + printMatString(Hscaled))
 
 
 def guess(intcos, geom, Z, connectivity=False, guessType="SIMPLE"):
-    """ Generates diagonal empirical Hessians in a.u. such as 
+    """ Generates diagonal empirical Hessians in a.u. such as
       Schlegel, Theor. Chim. Acta, 66, 333 (1984) and
       Fischer and Almlof, J. Phys. Chem., 96, 9770 (1992).
     """
@@ -25,6 +29,6 @@ def guess(intcos, geom, Z, connectivity=False, guessType="SIMPLE"):
 
     return H
 
+
 def convert_json_hess_to_matrix(H, Natom):
     return H.reshape(3 * Natom, 3 * Natom)
-

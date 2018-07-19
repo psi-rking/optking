@@ -3,13 +3,13 @@ import numpy as np
 import operator
 
 import optExceptions
+#  Linear algebra routines. #
 
 
 def norm(V):
     return np.linalg.norm(V)
 
 
-### Linear algebra routines.
 def absMax(V):
     return max(abs(elem) for elem in V)
 
@@ -23,9 +23,12 @@ def rms(V):
 
 
 def signOfDouble(d):
-    if d > 0: return 1
-    elif d < 0: return -1
-    else: return 0
+    if d > 0:
+        return 1
+    elif d < 0:
+        return -1
+    else:
+        return 0
 
 
 # Returns eigenvectors as rows?
@@ -37,6 +40,7 @@ def symmMatEig(mat):
         # could be ALG_FAIL ?
     evects = evects.T
     return evals, evects
+
 
 # returns eigenvectors as rows; orders evals
 def asymmMatEig(mat):
@@ -59,7 +63,8 @@ def asymmMatEig(mat):
 #  then a generalized inverse is permitted.
 def symmMatInv(A, redundant=False, redundant_eval_tol=1.0e-10):
     dim = A.shape[0]
-    if dim <= 0: return np.zeros((0, 0), float)
+    if dim <= 0:
+        return np.zeros((0, 0), float)
     det = 1.0
 
     try:

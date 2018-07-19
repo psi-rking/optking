@@ -1,4 +1,5 @@
 import numpy as np
+import logging
 
 import covRadii
 import optExceptions
@@ -6,7 +7,6 @@ import physconst as pc
 import v3d
 from misc import delta, ZtoPeriod, HguessLindhRho
 from physconst import bohr2angstroms
-from printTools import print_opt
 from simple import Simple
 
 
@@ -15,17 +15,23 @@ class Stre(Simple):
 
         self._inverse = inverse  # bool - is really 1/R coordinate?
 
-        if a < b: atoms = (a, b)
-        else: atoms = (b, a)
+        if a < b:
+            atoms = (a, b)
+        else:
+            atoms = (b, a)
 
         Simple.__init__(self, atoms, frozen, fixedEqVal)
 
     def __str__(self):
-        if self.frozen: s = '*'
-        else: s = ' '
+        if self.frozen:
+            s = '*'
+        else:
+            s = ' '
 
-        if self.inverse: s += '1/R'
-        else: s += 'R'
+        if self.inverse:
+            s += '1/R'
+        else:
+            s += 'R'
 
         s += "(%d,%d)" % (self.A + 1, self.B + 1)
         if self.fixedEqVal:
@@ -33,10 +39,14 @@ class Stre(Simple):
         return s
 
     def __eq__(self, other):
-        if self.atoms != other.atoms: return False
-        elif not isinstance(other, Stre): return False
-        elif self.inverse != other.inverse: return False
-        else: return True
+        if self.atoms != other.atoms:
+            return False
+        elif not isinstance(other, Stre):
+            return False
+        elif self.inverse != other.inverse:
+            return False
+        else:
+            return True
 
     @property
     def inverse(self):
@@ -101,8 +111,8 @@ class Stre(Simple):
                                 eAB[a_xyz] * eAB[b_xyz] - delta(a_xyz, b_xyz)) / length
                             if a == b:
                                 tval *= -1.0
-                            dq2dx2[3*self.atoms[a]+a_xyz, \
-                                3*self.atoms[b]+b_xyz] = tval
+                            dq2dx2[3*self.atoms[a]+a_xyz,
+                                   3*self.atoms[b]+b_xyz] = tval
 
         else:  # using 1/R
             val = self.q(geom)
@@ -121,9 +131,10 @@ class Stre(Simple):
 
     def diagonalHessianGuess(self, geom, Z, connectivity=False, guessType="SIMPLE"):
         """ Generates diagonal empirical Hessians in a.u. such as
-		  Schlegel, Theor. Chim. Acta, 66, 333 (1984) and
-		  Fischer and Almlof, J. Phys. Chem., 96, 9770 (1992).
-		"""
+        Schlegel, Theor. Chim. Acta, 66, 333 (1984) and
+        Fischer and Almlof, J. Phys. Chem., 96, 9770 (1992).
+        """
+        logger = logging.getLogger(__name__)
         if guessType == "SIMPLE":
             return 0.5
 
@@ -172,17 +183,21 @@ class Stre(Simple):
             return k_r * HguessLindhRho(Z[self.A], Z[self.B], R)
 
         else:
-            print_opt("Warning: Hessian guess encountered unknown coordinate type.\n")
+            logger.warning("Hessian guess encountered unknown coordinate type.\n")
             return 1.0
 
 
 class HBond(Stre):
     def __str__(self):
-        if self.frozen: s = '*'
-        else: s = ' '
+        if self.frozen:
+            s = '*'
+        else:
+            s = ' '
 
-        if self.inverse: s += '1/H'
-        else: s += 'H'
+        if self.inverse:
+            s += '1/H'
+        else:
+            s += 'H'
 
         s += "(%d,%d)" % (self.A + 1, self.B + 1)
         if self.fixedEqVal:
@@ -191,18 +206,23 @@ class HBond(Stre):
 
     # overrides Stre eq in comparisons, regardless of order
     def __eq__(self, other):
-        if self.atoms != other.atoms: return False
-        elif not isinstance(other, HBond): return False
-        elif self.inverse != other.inverse: return False
-        else: return True
+        if self.atoms != other.atoms:
+            return False
+        elif not isinstance(other, HBond):
+            return False
+        elif self.inverse != other.inverse:
+            return False
+        else:
+            return True
 
     def diagonalHessianGuess(self, geom, Z, connectivity, guessType):
         """ Generates diagonal empirical Hessians in a.u. such as
-		  Schlegel, Theor. Chim. Acta, 66, 333 (1984) and
-		  Fischer and Almlof, J. Phys. Chem., 96, 9770 (1992).
-		"""
-        if guess == "SIMPLE":
+        Schlegel, Theor. Chim. Acta, 66, 333 (1984) and
+        Fischer and Almlof, J. Phys. Chem., 96, 9770 (1992).
+        """
+        logger = logging.getLogger(__name__)
+        if guessType == "SIMPLE":
             return 0.1
         else:
-            print_opt("Warning: Hessian guess encountered unknown coordinate type.\n")
+            logger.warning("Hessian guess encountered unknown coordinate type.\n")
             return 1.0
