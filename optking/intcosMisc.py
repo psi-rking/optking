@@ -18,16 +18,39 @@ from printTools import printMatString, printArrayString
 # q    -> qValues
 # DqDx -> Bmat
 def qValues(intcos, geom):
-    q = np.zeros((len(intcos)), float)
-    for i, intco in enumerate(intcos):
-        q[i] = intco.q(geom)
+    """
+    Calculates internal coordinates
+    Paramters
+    ---------
+    intcos : list
+        (nat) list of stretches, bends, etc...
+    geom : ndarray
+        (nat, 3) cartesian geometry
+    Returns
+    -------
+    ndarray
+        internal coordinate values
+    """
+
+    q = np.array([i.q(geom) for i in intcos])
     return q
 
 
 def qShowValues(intcos, geom):
-    q = np.zeros((len(intcos)), float)
-    for i, intco in enumerate(intcos):
-        q[i] = intco.qShow(geom)
+    """
+    Scales internal coordiante values by coordinate factor
+    Parameters
+    ----------
+    intcos : list
+        (nat) list of stretches, bends, etc
+    geom : ndarray
+        (nat, 3) cartesian geometry
+    Returns
+    -------
+    ndarray
+        scaled internal coordinate values
+    """ 
+    q = np.array([i.qShow(geom) for i in intcos])
     return q
 
 
@@ -59,7 +82,7 @@ def Bmat(intcos, geom, masses=None):
 
     B = np.zeros((Nint, Ncart), float)
     for i, intco in enumerate(intcos):
-        intco.DqDx(geom, B[i])
+        intco.DqDx(geom, B[i]) 
 
     if masses is not None:
         logger.debug("mass weighting B matrix\n")
@@ -83,9 +106,23 @@ def Gmat(intcos, geom, masses=None):
     return np.dot(B, B.T)
 
 
-# Compute forces in internal coordinates in au, f_q = G_inv B u f_x
-# if u is unit matrix, f_q = (BB^T)^(-1) * B f_x
 def qForces(intcos, geom, gradient_x):
+    """
+    Transforms forces from cartesian to internal coordinates
+    fq = (BuB^T)^(-1)*B*f_x
+    Parameters
+    ----------
+    intcos : list
+        stretches, bends, etc
+    geom : ndarray
+        (nat, 3) cartesian geometry
+    gradient _x :
+        (nat, 3) cartesian gradient
+    Returns
+    -------
+    ndarray
+        (1, intcos) internal coordinate forces (-1) * gradient
+    """
     if len(intcos) == 0 or len(geom) == 0:
         return np.zeros(0, float)
     B = Bmat(intcos, geom)
@@ -102,11 +139,15 @@ def qForces(intcos, geom, gradient_x):
     return fq
 
 
-# Prints them, but does not recompute them.
 def qShowForces(intcos, forces):
-    qaJ = np.copy(forces)
-    for i, intco in enumerate(intcos):
-        qaJ[i] *= intco.fShowFactor
+    """
+    returns scaled forces (does not recompute)
+    This may not be tested.
+    """
+    #qaJ = np.copy(forces)
+    qaJ = [forces[i] * intco.fShowFactor for i, intco in enumerate(intcos)]
+    #for i, intco in enumerate(intcos):
+    #    qaJ[i] *= intco.fShowFactor
     return qaJ
 
 

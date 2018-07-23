@@ -28,14 +28,40 @@ def connectivityFromDistances(geom, Z):
 
 
 def addIntcosFromConnectivity(C, intcos, geom):
+    """
+    Calls add_x_FromConnectivity for each internal coordinate type
+    Parameters
+    ----------
+    C : ndarray
+        (nat, nat) matrix desribing connectivity
+        see intcosMisc.connectivityFromDistances()
+    intcos : list
+            (nat) list of current internal coordiantes (Stre, Bend, Tors)
+    geom : ndarray
+        (nat, 3) cartesian geometry
+    """
     addStreFromConnectivity(C, intcos)
     addBendFromConnectivity(C, intcos, geom)
     addTorsFromConnectivity(C, intcos, geom)
     return
 
 
-# Add Stretches from connectivity.  Return number added.
 def addStreFromConnectivity(C, intcos):
+    """
+    Adds stretches from connectivity
+
+    Parameters
+    ----------
+    C : ndarray
+        (nat, nat)
+    intcos : list
+        (nat)
+    Returns
+    -------
+    int
+        number of stretches added
+    """
+
     Norig = len(intcos)
     for i, j in combinations(range(len(C)), 2):
         if C[i, j]:
@@ -45,8 +71,24 @@ def addStreFromConnectivity(C, intcos):
     return len(intcos) - Norig  # return number added
 
 
-# Add Bends from connectivity.  Return number added.
 def addBendFromConnectivity(C, intcos, geom):
+    """
+    Adds Bends from connectivity
+
+    Paramters
+    ---------
+    C : ndarray
+        (nat, nat) unitary connectivity matrix
+    intcos : list
+        (nat) list of internal coordinates
+    geom : ndarray
+        (nat, 3) cartesian geometry
+    Returns
+    -------
+    float
+        number of bends added
+    """
+
     Norig = len(intcos)
     Natom = len(geom)
     for i, j in permutations(range(Natom), 2):
@@ -72,9 +114,25 @@ def addBendFromConnectivity(C, intcos, geom):
     return len(intcos) - Norig
 
 
-# Add torsions for all bonds present; return number added.
-# Use prior existence of linear bends to determine linearity in this function.
 def addTorsFromConnectivity(C, intcos, geom):
+    """
+    Add torisions for all bonds present and determine linearity from existance of
+    linear bends
+
+    Parameters
+    ----------
+    C : ndarray
+        (nat, nat) connectivity matrix
+    intcos : list
+        (nat) list of stretches, bends, etc...
+    geom : ndarray
+        (nat, 3) cartesian geometry
+    Returns
+    -------
+    float
+        number of torsions added
+    """
+
     Norig = len(intcos)
     Natom = len(geom)
 
@@ -153,6 +211,20 @@ def addTorsFromConnectivity(C, intcos, geom):
 
 
 def addCartesianIntcos(intcos, geom):
+    """
+    Add cartesian coordiantes to intcos (takes place of internal coordiantes)
+    Parameters
+    ----------
+    intcos : list
+        (nat) list of coordinates
+    geom : ndarray
+        (nat, 3) cartesian geometry
+    Returns
+    -------
+    float
+        number of coordinates added
+    """
+
     Norig = len(intcos)
     Natom = len(geom)
 
@@ -164,12 +236,27 @@ def addCartesianIntcos(intcos, geom):
     return len(intcos) - Norig
 
 
-# Identify linear angles, return them.
 def linearBendCheck(intcos, geom, dq):
+    """
+    Identifies near linear angles
+    Paramters
+    ---------
+    intcos : list
+        (nat) list of stretches, bends, etc        
+    geom : ndarray
+        (nat, 3) cartesian geometry
+    dq : ndarray
+        
+    Returns
+    -------
+    list
+        missing linear bends    
+    """
+
     logger = logging.getLogger(__name__)
     linearBends = []
 
-    # This will need generalized later for combination coordinates.
+    # TODO This will need generalized later for combination coordinates.
     q = qValues(intcos, geom)
 
     for i, intco in enumerate(intcos):
@@ -205,9 +292,16 @@ def linearBendCheck(intcos, geom, dq):
 
 
 def freezeStretchesFromInputAtomList(frozenStreList, oMolsys):
-    """params: List of integers corresponding to atoms of distance to be frozen
-    list of internal coordinates
     """
+    Freezes stretch coordinate between atoms
+    Parameters
+    ----------
+    frozenStreList : list
+        (2*x) list of pairs of atoms
+    oMolsys : object
+        optking molecular system
+    """
+
     logger = logging.getLogger(__name__)
     if len(frozenStreList) % 2 != 0:
         raise optExceptions.OptFail(
@@ -220,14 +314,20 @@ def freezeStretchesFromInputAtomList(frozenStreList, oMolsys):
             frozen_stretch = oMolsys._fragments[f]._intcos.index(stretch)
             oMolsys._fragments[f]._intcos[frozen_stretch].frozen = True
         except ValueError:
-            logger.info("Frozen stretch not present, so adding it.\n")
+            logger.info("Stretch to be frozen not present, so adding it.\n")
             oMolsys._fragments[f]._intcos.append(stretch)
     return
 
 
 def freezeBendsFromInputAtomList(frozenBendList, oMolsys):
-    """params: List of integers corresponding to atoms of bend to be frozen
-    list of internal coordinates
+    """
+    Freezes bend coordinates
+    Parameters
+    ----------
+    frozenBendList : list
+        (3*x) list of triplets of atoms
+    oMolsys : object
+        optking molecular system
     """
     logger = logging.getLogger(__name__)
     if len(frozenBendList) % 3 != 0:
@@ -251,8 +351,14 @@ def freezeBendsFromInputAtomList(frozenBendList, oMolsys):
 
 
 def freezeTorsionsFromInputAtomList(frozenTorsList, oMolsys):
-    """ params: List of integers corresponding to atoms of dihedral to be frozen
-    list of internal coordinates
+    """
+    Freezes dihedral angles
+    Paramters
+    ---------
+    frozenTorsList : list
+        (4*x) list of atoms in sets of four
+    oMolsys: object
+        optking molecular system
     """
     if len(frozenTorsList) % 4 != 0:
         raise optExceptions.OptFail(

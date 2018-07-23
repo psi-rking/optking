@@ -292,6 +292,10 @@ class Molsys(object):  # new-style classes required for getter/setters
 
         # Which fragments are connected?
         nF = self.Nfragments
+        self.logger.critical(str(self.Nfragments))
+        if self.Nfragments == 1:
+            return
+
         frag_connectivity = np.zeros((nF, nF))
         for iF in range(nF):
             frag_connectivity[iF, iF] = 1

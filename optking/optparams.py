@@ -86,6 +86,7 @@ class optParams(object):
         # P.printxopt_params = uod.get('printxopt_PARAMS', False)
         P.output_type = uod.get('OUTPUT_TYPE', 'FILE')
         # Specifies minimum search, transition-state search, or IRC following
+        # P.stringOptionsSetter(stringOption('opt_type')
         P.opt_type = uod.get('OPT_TYPE', 'MIN')
         # Geometry optimization step type, e.g., Newton-Raphson or Rational Function Optimization
         P.step_type = uod.get('STEP_TYPE', 'RFO')

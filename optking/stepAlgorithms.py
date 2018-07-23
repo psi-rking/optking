@@ -184,7 +184,7 @@ def Dq_RFO(oMolsys, E, fq, H):
             logger.debug("\tEigenvectors of scaled RFO matrix.\n\n" +
                          printMatString(SRFOevects))
 
-        if op.Params.print_lvl >= 2:
+        if op.Params.print_lvl >= 4:
             logger.debug("\tEigenvalues of scaled RFO matrix.\n\n\t" +
                          printArrayString(SRFOevals))
             logger.debug("\tFirst eigenvector (unnormalized) of scaled RFO matrix.\n\n\t" +
@@ -319,9 +319,9 @@ def Dq_RFO(oMolsys, E, fq, H):
 
         analyticDerivative = 2 * Lambda / (1 + alpha * dqtdq) * tval
         if op.Params.print_lvl >= 2:
-            rfo_step_report += ("\t  Analytic derivative d(norm)/d(alpha) = %15.10lf\n"
-                                % analyticDerivative
-                                + "\n\t------------------------------------------------\n")
+            rfo_step_report = ("\t  Analytic derivative d(norm)/d(alpha) = %15.10lf\n"
+                               % analyticDerivative)
+            # + "\n\t------------------------------------------------\n")
 
         logger.info(rfo_step_report)
         # Calculate new scaling alpha value.
@@ -360,7 +360,7 @@ def Dq_RFO(oMolsys, E, fq, H):
     # For now, saving RFO unit vector and using it in projection to match C++ code,
     # could use actual Dq instead.
     dqnorm_actual = sqrt(np.dot(dq, dq))
-    logger.info("\tNorm of achieved step-size \n\n\t %15.10f\n" % dqnorm_actual)
+    logger.info("\tNorm of achieved step-size \t %15.10f\n" % dqnorm_actual)
 
     # To test step sizes
     # x_before = original geometry
