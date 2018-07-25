@@ -5,7 +5,7 @@ import sys
 
 from .optimize import optimize
 from . import lj_functions
-import loggingconfig
+from . import loggingconfig
 
 print(os.getcwd())
 

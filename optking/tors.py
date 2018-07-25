@@ -2,14 +2,13 @@ from math import sqrt, fabs
 import logging
 import numpy as np
 
-import covRadii
-import optExceptions
-import optparams as op
-import physconst as pc  # has physical constants
-import v3d
-from misc import HguessLindhRho
-from physconst import bohr2angstroms
-from simple import Simple
+from . import covRadii
+from . import optExceptions
+from . import optparams as op
+from . import physconst as pc  # has physical constants
+from . import v3d
+from .misc import HguessLindhRho
+from .simple import Simple
 
 
 class Tors(Simple):
@@ -251,7 +250,7 @@ class Tors(Simple):
         elif guessType == "SCHLEGEL":
             R_BC = v3d.dist(geom[self.B], geom[self.C])
             Rcov = (
-                covRadii.R[int(Z[self.B])] + covRadii.R[int(Z[self.C])]) / bohr2angstroms
+                covRadii.R[int(Z[self.B])] + covRadii.R[int(Z[self.C])]) / pc.bohr2angstroms
             a = 0.0023
             b = 0.07
             if R_BC > (Rcov + a / b):
@@ -261,7 +260,7 @@ class Tors(Simple):
         elif guessType == "FISCHER":
             R = v3d.dist(geom[self.B], geom[self.C])
             Rcov = (
-                covRadii.R[int(Z[self.B])] + covRadii.R[int(Z[self.C])]) / bohr2angstroms
+                covRadii.R[int(Z[self.B])] + covRadii.R[int(Z[self.C])]) / pc.bohr2angstroms
             a = 0.0015
             b = 14.0
             c = 2.85

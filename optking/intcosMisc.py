@@ -2,13 +2,13 @@ from math import sqrt
 import numpy as np
 import logging
 
-import oofp
-import optparams as op
-import bend
-import tors
+from . import oofp
+from . import optparams as op
+from . import bend
+from . import tors
 
-from linearAlgebra import symmMatInv
-from printTools import printMatString, printArrayString
+from .linearAlgebra import symmMatInv
+from .printTools import printMatString, printArrayString
 
 # Simple operations on internal :148
 # coordinate sets.  For example,
@@ -37,14 +37,15 @@ def qValues(intcos, geom):
 
 
 def qShowValues(intcos, geom):
-    """
-    Scales internal coordiante values by coordinate factor
+    """Scales internal coordiante values by coordinate factor.
+
     Parameters
     ----------
     intcos : list
         (nat) list of stretches, bends, etc
     geom : ndarray
         (nat, 3) cartesian geometry
+
     Returns
     -------
     ndarray

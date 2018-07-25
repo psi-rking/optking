@@ -6,9 +6,9 @@ import numpy as np
 from math import fabs
 import logging
 
-import intcosMisc
-from printTools import printMatString
-import optparams as op
+from . import intcosMisc
+from .printTools import printMatString
+from . import optparams as op
 
 
 def testB(intcos, geom):

@@ -1,13 +1,12 @@
 import numpy as np
 import logging
 
-import covRadii
-import optExceptions
-import physconst as pc
-import v3d
-from misc import delta, ZtoPeriod, HguessLindhRho
-from physconst import bohr2angstroms
-from simple import Simple
+from . import covRadii
+from . import optExceptions
+from . import physconst as pc
+from . import v3d
+from .misc import delta, ZtoPeriod, HguessLindhRho
+from .simple import Simple
 
 
 class Stre(Simple):
@@ -171,7 +170,7 @@ class Stre(Simple):
 
         elif guessType == "FISCHER":
             Rcov = (
-                covRadii.R[int(Z[self.A])] + covRadii.R[int(Z[self.B])]) / bohr2angstroms
+                covRadii.R[int(Z[self.A])] + covRadii.R[int(Z[self.B])]) / pc.bohr2angstroms
             R = v3d.dist(geom[self.A], geom[self.B])
             AA = 0.3601
             BB = 1.944

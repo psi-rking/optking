@@ -1,10 +1,10 @@
 import numpy as np
 import logging
 
-import intcosMisc
-import optExceptions
-import optparams as op
-from linearAlgebra import absMax, rms, symmMatInv
+from . import intcosMisc
+from . import optExceptions
+from . import optparams as op
+from .linearAlgebra import absMax, rms, symmMatInv
 
 # dq : displacements in internal coordinates to be performed.
 #      On exit, overridden to actual displacements performed.

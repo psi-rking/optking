@@ -1,7 +1,7 @@
 import numpy as np
 import logging
-from printTools import printMatString
-import physconst as pc
+from .printTools import printMatString
+from . import physconst as pc
 # from bend import *
 
 
