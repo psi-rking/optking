@@ -1,7 +1,7 @@
 # JSON class for json_object storage and manipulation.
 import copy
 
-import history
+from . import history
 
 
 class jsonSchema:

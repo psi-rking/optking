@@ -2,13 +2,12 @@ from math import sqrt, cos
 
 import numpy as np
 
-import covRadii
-import optExceptions
-import physconst as pc  # has physical constants
-import v3d
-from simple import Simple
-from misc import delta, HguessLindhRho
-from physconst import bohr2angstroms
+from . import covRadii
+from . import optExceptions
+from . import physconst as pc  # has physical constants
+from . import v3d
+from .simple import Simple
+from .misc import delta, HguessLindhRho
 
 
 class Bend(Simple):
@@ -256,9 +255,9 @@ class Bend(Simple):
             c = 0.44
             d = -0.42
             Rcov_AB = (
-                covRadii.R[int(Z[self.A])] + covRadii.R[int(Z[self.B])]) / bohr2angstroms
+                covRadii.R[int(Z[self.A])] + covRadii.R[int(Z[self.B])]) / pc.bohr2angstroms
             Rcov_BC = (
-                covRadii.R[int(Z[self.C])] + covRadii.R[int(Z[self.B])]) / bohr2angstroms
+                covRadii.R[int(Z[self.C])] + covRadii.R[int(Z[self.B])]) / pc.bohr2angstroms
             R_AB = v3d.dist(geom[self.A], geom[self.B])
             R_BC = v3d.dist(geom[self.B], geom[self.C])
             return a + b / (np.power(Rcov_AB * Rcov_BC, d)) * np.exp(
