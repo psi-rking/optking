@@ -80,10 +80,10 @@ class OOFP(Simple):
             Torsion angle [rad]
 
         """
-        check, tau = v3d.oofp(geom[self.A], geom[self.B], geom[self.C], geom[self.D])
-        if not check:
-            raise optExceptions.AlgFail(
-                "OOFP::compute.q: unable to compute out-of-plane value")
+        try:
+            tau = v3d.oofp(geom[self.A], geom[self.B], geom[self.C], geom[self.D])
+        except optExceptions.AlgFail as error:
+            raise RuntimeError("Unable to compute out-of-plane value\n") from error
 
         # Extend domain of out-of-plane angles to beyond pi
         if self._near180 == -1 and tau > op.Params.fix_val_near_pi:
@@ -108,7 +108,7 @@ class OOFP(Simple):
 
         # compute out-of-plane value, C-B-D angle
         val = self.q(geom)
-        check, phi_CBD = v3d.angle(geom[self.C], geom[self.B], geom[self.D])
+        phi_CBD = v3d.angle(geom[self.C], geom[self.B], geom[self.D])
 
         # S vector for A
         tmp = v3d.cross(eBC, eBD)
@@ -135,7 +135,6 @@ class OOFP(Simple):
         # S vector for B
         dqdx[3*self.B:3*self.B+3] = -1.0 * dqdx[3*self.A:3*self.A+3] \
             - dqdx[3*self.C:3*self.C+3] - dqdx[3*self.D:3*self.D+3]
-        return
 
     def Dq2Dx2(self, geom, dqdx):
         raise optExceptions.AlgFail('no derivative B matrices for out-of-plane angles')

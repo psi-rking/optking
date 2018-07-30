@@ -1,5 +1,5 @@
 from math import sqrt, cos
-
+import logging
 import numpy as np
 
 import covRadii
@@ -60,15 +60,15 @@ class Bend(Simple):
 
     @bendType.setter
     def bendType(self, intype):
-        if intype in "REGULAR" "LINEAR" "COMPLEMENT":
+        if intype in ["REGULAR", "LINEAR", "COMPLEMENT"]:
             self._bendType = intype
         else:
             raise optExceptions.OptFail(
                 "Bend.bendType must be REGULAR, LINEAR, or COMPLEMENT")
 
     def compute_axes(self, geom):
-        check, u = v3d.eAB(geom[self.B], geom[self.A])  # B->A
-        check, v = v3d.eAB(geom[self.B], geom[self.C])  # B->C
+        u = v3d.eAB(geom[self.B], geom[self.A])  # B->A
+        v = v3d.eAB(geom[self.B], geom[self.C])  # B->C
 
         if self._bendType == "REGULAR":  # not a linear-bend type
             self._w[:] = v3d.cross(u, v)  # orthogonal vector
@@ -114,26 +114,32 @@ class Bend(Simple):
         return
 
     def q(self, geom):
+        logger = logging.getLogger(__name__)
         # check, phi = v3d.angle(geom[self.A], geom[self.B], geom[self.C])
         # printxopt('Traditional Angle = %15.10f\n', phi)
 
         if not self._axes_fixed:
             self.compute_axes(geom)
 
-        check, u = v3d.eAB(geom[self.B], geom[self.A])  # B->A
-        check, v = v3d.eAB(geom[self.B], geom[self.C])  # B->C
+        u = v3d.eAB(geom[self.B], geom[self.A])  # B->A
+        v = v3d.eAB(geom[self.B], geom[self.C])  # B->C
 
         # linear bend is sum of 2 angles, u.x + v.x
         origin = np.zeros(3, float)
-        check, phi = v3d.angle(u, origin, self._x)
-        if not check:
-            raise optExceptions.AlgFail("Bend.q could not compute linear bend")
+        try:
+            phi = v3d.angle(u, origin, self._x)
+        except optExceptions.AlgFail as error:
+            logger.error("Bend.q could not compute linear bend")
+            raise RuntimeError from error
 
-        check, phi2 = v3d.angle(self._x, origin, v)
-        if not check:
-            raise optExceptions.AlgFail("Bend.q could not compute linear bend")
-        phi += phi2
-        return phi
+        try:
+            phi2 = v3d.angle(self._x, origin, v)
+        except optExceptions.AlgFail as error:
+            logger.error("Bend.q could not compute linear bend")
+            raise RuntimeError from error
+        else:
+            phi += phi2
+            return phi
 
     @property
     def qShowFactor(self):
@@ -184,6 +190,7 @@ class Bend(Simple):
         return
 
     # Return derivative B matrix elements.  Matrix is cart X cart and passed in.
+    # TODO update with jet turneys code
     def Dq2Dx2(self, geom, dq2dx2):
 
         if not self._axes_fixed:
@@ -273,5 +280,5 @@ class Bend(Simple):
             return k_phi * Lindh_Rho_AB * Lindh_Rho_BC
 
         else:
-            printxopt("Warning: Hessian guess encountered unknown coordinate type.\n")
+            # printxopt("Warning: Hessian guess encountered unknown coordinate type.\n")
             return 1.0

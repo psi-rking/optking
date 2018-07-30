@@ -73,9 +73,10 @@ class Stre(Simple):
     # If mini == False, dqdx is 1x(3*number of atoms in fragment).
     # if mini == True, dqdx is 1x6.
     def DqDx(self, geom, dqdx, mini=False):
-        check, eAB = v3d.eAB(geom[self.A], geom[self.B])  # A->B
-        if not check:
-            raise optExceptions.AlgFail("Stre.DqDx: could not normalize s vector")
+        try:
+            eAB = v3d.eAB(geom[self.A], geom[self.B])  # A->B
+        except optException.AlgFail as error:
+            raise RuntimeError("Stre.DqDx: could not normalize s vector") from error
 
         if mini:
             startA = 0
@@ -92,13 +93,13 @@ class Stre(Simple):
             dqdx[startA:startA + 3] *= -1.0 * val * val  # -(1/R)^2 * (dR/da)
             dqdx[startB:startB + 3] *= -1.0 * val * val
 
-        return
 
     # Return derivative B matrix elements.  Matrix is cart X cart and passed in.
     def Dq2Dx2(self, geom, dq2dx2):
-        check, eAB = v3d.eAB(geom[self.A], geom[self.B])  # A->B
-        if not check:
-            raise optExceptions.AlgFail("Stre.Dq2Dx2: could not normalize s vector")
+        try:
+            eAB = v3d.eAB(geom[self.A], geom[self.B])  # A->B
+        except optExceptions.AlgFail:
+            raise RuntimeError("Stre.Dq2Dx2: could not normalize s vector") from error
 
         if not self._inverse:
             length = self.q(geom)

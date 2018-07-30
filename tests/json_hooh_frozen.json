@@ -1,0 +1,39 @@
+{
+  "schema_name": "qc_schema_input",
+  "schema_version": 1,
+  "molecule": {
+    "geometry": [
+      1.635264,
+      1.392752,
+      0.846589,
+      0.194579,
+      1.308419,
+      -0.053343,
+      -0.194579,
+      -1.308419,
+      -0.053343,
+      -1.635264,
+      -1.392752,
+      0.846589
+    ],
+    "symbols": [
+      "H",
+      "O",
+      "O",
+      "H"
+    ]
+  },
+  "driver": "optimize",
+  "model": {
+    "method": "HF",
+    "basis": "cc-pvdz"
+  },
+  "keywords": {
+    "diis": false,
+    "scf_type": "pk",
+    "g_convergence": "gau_verytight",
+    "optimizer": {
+      "frozen_bend": "1 2 3 2 3 4"
+    }
+  }
+}

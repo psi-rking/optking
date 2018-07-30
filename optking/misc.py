@@ -13,12 +13,14 @@ def delta(i, j):
 
 def isDqSymmetric(intcos, geom, Dq):
     logger = logging.getLogger(__name__)
+    # TODO add symmetry check
     logger.debug('\tTODO add isDqSymmetric\n')
     return True
 
 
 def symmetrizeXYZ(XYZ):
     logger = logging.getLogger(__name__)
+    # TODO add symmetrize function
     logger.debug('\tTODO add symmetrize XYZ\n')
     return XYZ
 

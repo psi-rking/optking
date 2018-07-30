@@ -119,7 +119,7 @@ class History(object):
                         rms_disp))
                 opt_summary += ("\t-------------------------------------------------------"
                                 + "--------------------------------------------------------"
-                                + "~\n\n")
+                                + "\n\n")
         if printoption is False:
             return steps
         else:

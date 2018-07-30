@@ -1,11 +1,13 @@
-#Where I keep methods for interacting with psi4. i.e. getting gradients, hessians etc.
+# Where I keep methods for interacting with psi4. i.e. getting gradients, hessians etc.
+import logging
+from psi4.driver import json_wrapper
 
 
-#ToDo delete this method once psi4 writes a method that does this (just better)
+# TODO delete this method once psi4 writes a method that does this (just better)
 def collect_psi4_options(options):
     """Is meant to look through the dictionary of psi4 options being passed in and
     pick out the basis set and QM method used (Calcname)
-    which are appened to the list of psi4 options, 
+    which are appened to the list of psi4 options
     """
     keywords = {}
     for opt in options['PSI4']:
@@ -18,15 +20,27 @@ def collect_psi4_options(options):
 
     return QM_method, basis, keywords
 
+
 def get_optking_options_psi4(all_options):
     optking_user_options = {}
     optking_options = all_options['OPTKING']
     optking_user_options['OPTKING'] = {}
     for opt, optval in optking_options.items():
-        if optval['has_changed'] == True:
+        if optval['has_changed']:
             optking_user_options[opt] = optval['value']
 
     return optking_user_options
+
+
+def psi4_calculation(new_geom, o_json, driver='gradient'):
+    """ Call psi4 to perform a calculation"""
+
+    logger = logging.getLogger(__name__)
+    logger.debug("\tGetting %s from Psi4 through JSON interface\n" % (driver))
+    geom = o_json.to_JSON_geom(new_geom)
+    json_input = o_json.update_geom_and_driver(geom, driver)
+    return json_wrapper.run_json_qc_schema(json_input, True)
+
 
 #################
 ## Thses are all methods that are not longer used. Keeping them around for reference if needed. Will remove completely later

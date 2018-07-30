@@ -71,9 +71,10 @@ class Tors(Simple):
 
     # compute angle and return value in radians
     def q(self, geom):
-        check, tau = v3d.tors(geom[self.A], geom[self.B], geom[self.C], geom[self.D])
-        if not check:
-            raise optExceptions.AlgFail("Tors.q: unable to compute torsion value")
+        try:
+            tau = v3d.tors(geom[self.A], geom[self.B], geom[self.C], geom[self.D])
+        except optException.AlgFail as error:
+            raise RuntimeError("Tors.q: unable to compute torsion value") from error
 
         # Extend values domain of torsion angles beyond pi or -pi, so that
         # delta(values) can be calculated

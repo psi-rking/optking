@@ -11,16 +11,33 @@ import physconst as pc
 import stre
 import tors
 import v3d
-from intcosMisc import qValues
+# from intcosMisc import qValues
 
 
-# returns connectivity matrix.  Matrix is 0 if i==j.
 def connectivityFromDistances(geom, Z):
-    C = np.zeros((len(geom), len(geom)), bool)
+    """
+    Creates a matrix (1 or 0) to describe molecular connectivity based on
+    nuclear distances
+    Parameters
+    ----------
+        geom : ndarray
+            (nat, 3) cartesian geometry
+        Z : list
+            (nat) list of atomic numbers
 
-    for i, j in combinations(range(len(geom)), 2):
+    Returns
+    -------
+        C : ndarray
+            (nat, nat)
+    """
+    nat = geom.shape[0]
+    C = np.zeros((len(geom), len(geom)), bool)
+    # logger = logging.getLogger(__name__)
+    for i, j in combinations(range(nat), 2):
         R = v3d.dist(geom[i], geom[j])
         Rcov = (covRadii.R[int(Z[i])] + covRadii.R[int(Z[j])]) / pc.bohr2angstroms
+        # logger.debug("Trying to connect atoms " + str(i) + ' and ' + str(j) + " distance is: " +
+        #            str((covRadii.R[int(Z[i])] + covRadii.R[int(Z[j])]) / pc.bohr2angstroms))
         if R < op.Params.covalent_connect * Rcov:
             C[i, j] = C[j, i] = True
 
@@ -43,7 +60,6 @@ def addIntcosFromConnectivity(C, intcos, geom):
     addStreFromConnectivity(C, intcos)
     addBendFromConnectivity(C, intcos, geom)
     addTorsFromConnectivity(C, intcos, geom)
-    return
 
 
 def addStreFromConnectivity(C, intcos):
@@ -62,13 +78,13 @@ def addStreFromConnectivity(C, intcos):
         number of stretches added
     """
 
-    Norig = len(intcos)
+    # Norig = len(intcos)
     for i, j in combinations(range(len(C)), 2):
         if C[i, j]:
             s = stre.Stre(i, j)
             if s not in intcos:
                 intcos.append(s)
-    return len(intcos) - Norig  # return number added
+    # return len(intcos) - Norig  # return number added
 
 
 def addBendFromConnectivity(C, intcos, geom):
@@ -89,29 +105,30 @@ def addBendFromConnectivity(C, intcos, geom):
         number of bends added
     """
 
-    Norig = len(intcos)
-    Natom = len(geom)
-    for i, j in permutations(range(Natom), 2):
+    # Norig = len(intcos)
+    nat = len(geom)
+    for i, j in permutations(range(nat), 2):
         if C[i, j]:
-            for k in range(i + 1, Natom):  # make i<k; the constructor checks too
+            for k in range(i + 1, nat):  # make i<k; the constructor checks too
                 if C[j, k]:
-                    (check, val) = v3d.angle(geom[i], geom[j], geom[k])
-                    if not check:
-                        continue
-                    if val < op.Params.linear_bend_threshold:
-                        b = bend.Bend(i, j, k)
-                        if b not in intcos:
-                            intcos.append(b)
-                    else:  # linear angle
-                        b = bend.Bend(i, j, k, bendType="LINEAR")
-                        if b not in intcos:
-                            intcos.append(b)
+                    try:
+                        val = v3d.angle(geom[i], geom[j], geom[k])
+                    except optExceptions.AlgFail:
+                        pass
+                    else:
+                        if val > op.Params.linear_bend_threshold:
+                            b = bend.Bend(i, j, k, bendType="LINEAR")
+                            if b not in intcos:
+                                intcos.append(b)
 
-                        b2 = bend.Bend(i, j, k, bendType="COMPLEMENT")
-                        if b2 not in intcos:
-                            intcos.append(b2)
-
-    return len(intcos) - Norig
+                            b2 = bend.Bend(i, j, k, bendType="COMPLEMENT")
+                            if b2 not in intcos:
+                                intcos.append(b2)
+                        else:
+                            b = bend.Bend(i, j, k)
+                            if b not in intcos:
+                                intcos.append(b)
+    # return len(intcos) - Norig
 
 
 def addTorsFromConnectivity(C, intcos, geom):
@@ -133,7 +150,7 @@ def addTorsFromConnectivity(C, intcos, geom):
         number of torsions added
     """
 
-    Norig = len(intcos)
+    # Norig = len(intcos)
     Natom = len(geom)
 
     # Find i-j-k-l where i-j-k && j-k-l are NOT collinear.
@@ -199,15 +216,18 @@ def addTorsFromConnectivity(C, intcos, geom):
                                                 continue
                                             else:  # Have found I-J-K-L.
                                                 L = l
-                                                check, val = v3d.tors(
-                                                    geom[I], geom[J], geom[K], geom[L])
-                                                if check:
+                                                try:
+                                                    val = v3d.tors(
+                                                        geom[I], geom[J], geom[K], geom[L])
+                                                except optExceptions.AlgFail:
+                                                    pass
+                                                else:
                                                     t = tors.Tors(I, J, K, L)
                                                     if t not in intcos:
                                                         intcos.append(t)
-                                        l = l + 1
-                            i = i + 1
-    return len(intcos) - Norig
+                                        l += 1
+                            i += 1
+    # return len(intcos) - Norig
 
 
 def addCartesianIntcos(intcos, geom):
@@ -225,7 +245,7 @@ def addCartesianIntcos(intcos, geom):
         number of coordinates added
     """
 
-    Norig = len(intcos)
+    # Norig = len(intcos)
     Natom = len(geom)
 
     for i in range(Natom):
@@ -233,7 +253,7 @@ def addCartesianIntcos(intcos, geom):
         intcos.append(cart.Cart(i, 'Y'))
         intcos.append(cart.Cart(i, 'Z'))
 
-    return len(intcos) - Norig
+    # return len(intcos) - Norig
 
 
 def linearBendCheck(intcos, geom, dq):
@@ -242,22 +262,22 @@ def linearBendCheck(intcos, geom, dq):
     Paramters
     ---------
     intcos : list
-        (nat) list of stretches, bends, etc        
+        (nat) list of stretches, bends, etc
     geom : ndarray
         (nat, 3) cartesian geometry
     dq : ndarray
-        
+
     Returns
     -------
     list
-        missing linear bends    
+        missing linear bends
     """
 
     logger = logging.getLogger(__name__)
     linearBends = []
 
     # TODO This will need generalized later for combination coordinates.
-    q = qValues(intcos, geom)
+    # q = qValues(intcos, geom)
 
     for i, intco in enumerate(intcos):
         if isinstance(intco, bend.Bend):
@@ -297,7 +317,7 @@ def freezeStretchesFromInputAtomList(frozenStreList, oMolsys):
     Parameters
     ----------
     frozenStreList : list
-        (2*x) list of pairs of atoms
+        (2*x) list of pairs of atoms. 1 indexed
     oMolsys : object
         optking molecular system
     """
@@ -316,7 +336,6 @@ def freezeStretchesFromInputAtomList(frozenStreList, oMolsys):
         except ValueError:
             logger.info("Stretch to be frozen not present, so adding it.\n")
             oMolsys._fragments[f]._intcos.append(stretch)
-    return
 
 
 def freezeBendsFromInputAtomList(frozenBendList, oMolsys):
@@ -347,7 +366,6 @@ def freezeBendsFromInputAtomList(frozenBendList, oMolsys):
         except ValueError:
             logger.info("Frozen bend not present, so adding it.\n")
             oMolsys._fragments[f]._intcos.append(bendFroz)
-    return
 
 
 def freezeTorsionsFromInputAtomList(frozenTorsList, oMolsys):
@@ -378,12 +396,17 @@ def freezeTorsionsFromInputAtomList(frozenTorsList, oMolsys):
         except ValueError:
             logging.info("Frozen dihedral not present, so adding it.\n")
             oMolsys._fragments[f]._intcos.append(torsAngle)
-    return
 
 
 def freeze_cartesians_from_input_list(frozen_cart_list, oMolsys):
     """ params: List of integers indicating atoms, and then 'x' or 'xy', etc.
     indicating cartesians to be frozen
+
+    Parameters
+    ----------
+    frozen_cart_list : string
+        uses 1 indexing for atoms. number xy or z or any combo
+        add example
     """
     logger = logging.getLogger(__name__)
     for i in range(0, len(frozen_cart_list), 2):
@@ -397,13 +420,13 @@ def freeze_cartesians_from_input_list(frozen_cart_list, oMolsys):
             except ValueError:
                 logger.info("\tFrozen cartesian not present, so adding it.\n")
                 oMolsys._fragments[f]._intcos.append(newCart)
-    return
 
 
-# Check if a group of atoms are in the same fragment (or not).
-# Implicitly this function also returns a ValueError for too high atom indices.
-# Raise error if different, return fragment if same.
 def checkFragment(atomList, oMolsys):
+    """Check if a group of atoms are in the same fragment (or not).
+    Implicitly this function also returns a ValueError for too high atom indices.
+    Raise error if different, return fragment if same.
+    """
     logger = logging.getLogger(__name__)
     fragList = oMolsys.atomList2uniqueFragList(atomList)
     if len(fragList) != 1:
@@ -414,7 +437,7 @@ def checkFragment(atomList, oMolsys):
     return fragList[0]
 
 
-# Length mod 3 should be checked in optParams
+# TODO Length mod 3 should be checked in optParams
 def fixStretchesFromInputList(fixedStreList, oMolsys):
     logger = logging.getLogger(__name__)
     for i in range(0, len(fixedStreList), 3):  # loop over fixed stretches
@@ -428,7 +451,6 @@ def fixStretchesFromInputList(fixedStreList, oMolsys):
         except ValueError:
             logger.info("Fixed stretch not present, so adding it.\n")
             oMolsys._fragments[f]._intcos.append(stretch)
-    return
 
 
 def fixBendsFromInputList(fixedBendList, oMolsys):
@@ -445,7 +467,6 @@ def fixBendsFromInputList(fixedBendList, oMolsys):
         except ValueError:
             logger.info("Fixed bend not present, so adding it.\n")
             oMolsys._fragments[f]._intcos.append(one_bend)
-    return
 
 
 def fixTorsionsFromInputList(fixedTorsList, oMolsys):
@@ -462,7 +483,6 @@ def fixTorsionsFromInputList(fixedTorsList, oMolsys):
         except ValueError:
             logger.info("Fixed torsion not present, so adding it.\n")
             oMolsys._fragments[f]._intcos.append(one_tors)
-    return
 
 
 def addFrozenAndFixedIntcos(oMolsys):
@@ -481,4 +501,3 @@ def addFrozenAndFixedIntcos(oMolsys):
         fixBendsFromInputList(op.Params.fixed_bend, oMolsys)
     if op.Params.fixed_dihedral:
         fixTorsionsFromInputList(op.Params.fixed_dihedral, oMolsys)
-    return

@@ -39,6 +39,18 @@ class Molsys(object):  # new-style classes required for getter/setters
 
     @classmethod
     def fromPsi4Molecule(cls, mol):
+        """ Creates a optking molecular system from psi4 molsys
+
+        Parameters
+        ----------
+        mol: object
+            psi4 mol
+
+        Returns
+        -------
+        cls :
+            optking molecular system: list of fragments
+        """
         logger = logging.getLogger(__name__)
         logger.info("\tGenerating molecular system for optimization from PSI4.")
 
@@ -68,42 +80,45 @@ class Molsys(object):  # new-style classes required for getter/setters
             frags.append(frag.Frag(fragZ, fragGeom, fragMasses))
         return cls(frags)
 
-    # Todo
     @classmethod
     def from_JSON_molecule(cls, JSON_string):
-        """Takes in a string formatted according to the QC JSON schema form returned by
-        psi4.driver.qcdb.to_schema(). Method converts input to a python dict, creates optking
-        fragments and assembles a molecular system.
+        """ Creates optking molecular system from JSON input.
+
+        Parameters
+        ----------
+        JSON_string : string
+            Takes in a string of the molecule key from the QC JSON schema
+            see http://molssi-qc-schema.readthedocs.io/en/latest/auto_topology.html
+
+        Returns
+        -------
+        cls:
+            molsys cls consists of list of Frags
         """
+
+        # TODO add no masses given implementation
         logger = logging.getLogger(__name__)
         logger.info("\tGenerating molecular system for optimization from QC Schema.\n")
         molecule = json.loads(JSON_string)
-        # NF = len(molecule['fragments'])
+
+        geom = np.asarray(molecule['geometry'])
+        geom = geom.reshape(-1, 3)
+
+        Z_list = [atomData.symbol_to_Z[atom.upper()] for atom in molecule['symbols']]
+
+        masses_list = molecule.get('masses')
+        if masses_list is None:
+            masses_list = [atomData.el2mass.get(atom) for atom in molecule['symbols']]
+
         frags = []
-
-        atom_number = 0
-        fragMasses = []
-        fragZ = []
-
         if 'fragments' in molecule:
             for iF in range(len(molecule['fragments'])):
-                fragNatom = len(molecule['fragments'][iF])
-                fragGeom = np.asarray(molecule['geometry'][(atom_number * 3):
-                                                           ((atom_number + fragNatom) * 3)])
-                fragGeom = fragGeom.reshape(-1, 3)
-                for i in molecule['fragments'][iF]:
-                    fragMasses.append(molecule['masses'][atom_number])
-                    fragZ.append(atomData.symbol_to_Z[molecule['symbols'][atom_number].upper()])
-                    atom_number += 1
-                frags.append(frag.Frag(fragZ, fragGeom, fragMasses))
+                frag_geom = geom[iF[0]:iF[-1] + 1]
+                frag_masses = masses_list[iF[0]:(iF[-1] + 1)]
+                frag_Z_list = Z_list[iF[0]:(iF[-1] + 1)]
+                frags.append(frag.Frag(frag_Z_list, frag_geom, frag_masses))
         else:
-            fragNAtom = len(molecule['symbols'])
-            fragGeom = np.asarray(molecule['geometry'])
-            fragGeom = fragGeom.reshape(-1, 3)
-            for i in range(fragNAtom):
-                fragMasses.append(molecule['masses'][i])
-                fragZ.append(atomData.symbol_to_Z[molecule['symbols'][i].upper()])
-            frags.append(frag.Frag(fragZ, fragGeom, fragMasses))
+            frags.append(frag.Frag(Z_list, geom, masses_list))
 
         return cls(frags)
 

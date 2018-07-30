@@ -185,6 +185,8 @@ def optimize(oMolsys, options_in, json_in=None):
                         else:
                             H = hessian.guess(oMolsys.intcos, oMolsys.geom, oMolsys.Z, C,
                                               op.Params.intrafrag_hess)
+                            if op.Params.print_lvl >= 4:
+                                optimize_log.info(printMatString(H, title="Initial Hessian Guess"))
                     else:
                         # that is, compute hessian never or only once.
                         if op.Params.full_hess_every < 1:
@@ -329,7 +331,9 @@ def optimize(oMolsys, options_in, json_in=None):
             del op.Params
             del o_json
             return output_dict
+
     except Exception as error:
+        # TODO needs some improvements
         optimize_log.critical("\tA non-optimization error has occured\n")
         optimize_log.critical(("\tResetting all optimzation options to prevent queued" +
                                "optimizations from failing\n"))
@@ -342,60 +346,28 @@ def optimize(oMolsys, options_in, json_in=None):
         del op.Params
 
 
-def get_gradient(new_geom, o_json, printResults=False, nuc=True):
-    """get_gradient gets a gradient from a QM program (only psi4 is currently implemented
-    calls psi4.driver.json_wrapper.run_json_qc_schema. Similar method calls can be added later.
-    Input:
-        new_geom - geometry optimizer is stepping to - type Natom*3 numpy array
-        o_json - optking's json object
-    returns a energy and gradient with the option to return the nueclear repulsion enrgy as well
+def get_gradient(new_geom, o_json, printResults=False, nuc=True, QM='psi4'):
+    """Use JSON interface to have QM program perform gradient calculation
+    Only Psi4 is currently implemented
     """
 
-    logger = logging.getLogger(__name__)
-    logger.debug("\tGetting Gradient from Psi4 through JSON interface\n")
-    geom = o_json.to_JSON_geom(new_geom)
-    json_input = o_json.update_geom_and_driver(geom, 'gradient')
-    json_output = json_wrapper.run_json_qc_schema(json_input, True)
-    E, g_x, nuclear_rep = o_json.get_JSON_result(json_output, 'gradient', nuc)
-    g_x = np.asarray(g_x)
-    if nuc:
-        return E, g_x, nuclear_rep
-    else:
-        return E, g_x
+    json_output = psi4methods.psi4_calculation(new_geom, o_json)
+    return o_json.get_JSON_result(json_output, 'gradient', nuc)
 
 
-def get_hessian(new_geom, o_json, printResults=False):
-    """get_hessian gets a hessian from a QM program (currently only psi4 is implemented)
-    calls psi4.driver.json_wrapper.run_json_qc_schema. Similar method calls can be added later.
-    Input:
-        new_geom - geometry optimizer is stepping to - type Natom*3 numpy array
-        o_json - optking's json object
-    returns the hessian as a 1D numpy array
+def get_hessian(new_geom, o_json, printResults=False, QM='psi4'):
+    """Use JSON interface to have QM program perform hessian calculation
+    Only Psi4 is currently implemented
     """
-    logger = logging.getLogger(__name__)
-    logger.debug("\tGetting Hessian from Psi4 through JSON interface\n")
-
-    geom = o_json.to_JSON_geom(new_geom)
-    json_input = o_json.update_geom_and_driver(geom, 'hessian')
-    json_output = json_wrapper.run_json_qc_schema(json_input, True)
+    json_output = psi4methods.psi4_calculation(new_geom, o_json, driver="hessian")
     H = np.array(o_json.get_JSON_result(json_output, 'hessian'))
-    return hessian.convert_json_hess_to_matrix(H, len(json_output['molecule']['symbols']))
+    return H
 
 
-def get_energy(new_geom, o_json, printResults=False, nuc=True):
-    """get_energy gets a energy from a QM program corresponding to the input method.
-    calls psi4.driver.json_wrapper.run_json_qc_schema. Similar method calls can be added later.
-    This is a specialized method only used for linesearching.
-    Input:
-        new_geom - geometry optimizer is stepping to - type Natom*3 numpy array
-        o_json - optking's json object
-    returns the energy with the options of returning the nuclear repulsion energy as well
-    Get_gradient returns both Energy and Gradient (which is what we usually want)
+def get_energy(new_geom, o_json, printResults=False, nuc=True, QM='psi4'):
+    """ Use JSON interface to have QM program perform energy calculation
+    Only psi4 is current implemented
     """
-    logger = logging.getLogger(__name__)
-    logger.debug("\tGetting a energy from Psi4 through JSON interface\n")
 
-    geom = o_json.to_JSON_geom(new_geom)
-    json_input = o_json.update_geom_and_driver(geom, 'energy')
-    json_output = json_wrapper.run_json_qc_schema(json_input, True)
+    json_output = psi4methods.psi4_calculation(new_geom, o_json, driver='energy')
     return o_json.get_JSON_result(json_output, 'energy', nuc)

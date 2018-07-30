@@ -15,6 +15,22 @@ from linearAlgebra import absMax, rms, symmMatInv
 
 
 def displace(intcos, geom, dq, fq, atom_offset=0, ensure_convergence=False):
+    """ Converts internal coordinate step into the new cartesian geometry
+
+    Parameters
+    ----------
+    intcos : list of Stre, Bend, Tors, or Oofp
+    geom : ndarray
+        (nat, 3) cartesian geometry
+        overriden to new geometry after step
+    dq : ndarray
+        step (displacement) in internal coordiantes
+        overriden to actual displacements performed
+    fq : ndarray
+        forces in internal coordinates
+
+
+    """
     logger = logging.getLogger(__name__)
     if not len(intcos) or not len(geom) or not len(dq):
         dq[:] = 0
@@ -236,13 +252,29 @@ def stepIter(intcos, geom, dq,
 #   dx = Bt (B Bt)^-1 dq
 #   dx = Bt G^-1 dq, where G = B B^t.
 def oneStep(intcos, geom, dq, printDetails=False):
+    """ Convert dq to dx.  Geometry is updated
+
+    Parameters
+    ----------
+    intcos : list of Stre, Bend, Tors, or Oofp
+    geom : ndarray
+        cartesian geometry updated to new geometry
+    dq : displacement in internal coordinates
+
+    Returns
+    -------
+    float :
+        rms of cartesian displacement
+    float :
+        absolute maximum of cartesian displacement
+    """
     B = intcosMisc.Bmat(intcos, geom)
-    G = np.dot(B, B.T)
+    G = intcosMisc.Gmat_B(B, intcos)
     Ginv = symmMatInv(G, redundant=True)
     tmp_v_Nint = np.dot(Ginv, dq)
-    dx = np.zeros(geom.shape[0] * geom.shape[1], float)  # dx is 1D here
+    # dx = np.zeros(geom.shape[0] * geom.shape[1], float)  # dx is 1D here
 
-    dx[:] = np.dot(B.T, tmp_v_Nint)
+    dx = np.dot(B.T, tmp_v_Nint)
     if printDetails:
         qOld = intcosMisc.qValues(intcos, geom)
     geom += dx.reshape(geom.shape)

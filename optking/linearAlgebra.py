@@ -63,15 +63,15 @@ def asymmMatEig(mat):
 #  then a generalized inverse is permitted.
 def symmMatInv(A, redundant=False, redundant_eval_tol=1.0e-10):
     dim = A.shape[0]
-    if dim <= 0:
+    if dim == 0:
         return np.zeros((0, 0), float)
     det = 1.0
 
     try:
         evals, evects = symmMatEig(A)
-    except:
+    except LinAlgError:
         raise optExceptions.OptFail("symmMatrixInv: could not compute eigenvectors")
-        # could be ALG_FAIL ?
+        # could be LinAlgError?
 
     for i in range(dim):
         det *= evals[i]
@@ -79,7 +79,7 @@ def symmMatInv(A, redundant=False, redundant_eval_tol=1.0e-10):
     if not redundant and fabs(det) < 1E-10:
         raise optExceptions.OptFail(
             "symmMatrixInv: non-generalized inverse failed; very small determinant")
-        # could be ALG_FAIL ?
+        # could be LinAlgError?
 
     diagInv = np.zeros((dim, dim), float)
 
@@ -100,7 +100,7 @@ def symmMatInv(A, redundant=False, redundant_eval_tol=1.0e-10):
 def symmMatRoot(A, Inverse=None):
     try:
         evals, evects = np.linalg.eigh(A)
-    except:
+    except LinAlgError:
         raise optExceptions.OptFail("symmMatRoot: could not compute eigenvectors")
         # could be ALG_FAIL ?
 

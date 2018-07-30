@@ -1,3 +1,4 @@
+
 from math import sqrt
 import numpy as np
 import logging
@@ -49,30 +50,30 @@ def qShowValues(intcos, geom):
     -------
     ndarray
         scaled internal coordinate values
-    """ 
+    """
     q = np.array([i.qShow(geom) for i in intcos])
     return q
 
 
 def updateDihedralOrientations(intcos, geom):
+    """ wrapper for updating orientation of dihedrals
+    calls updateOrientation for each tors coordinate
+    """
     for intco in intcos:
         if isinstance(intco, tors.Tors) or isinstance(intco, oofp.OOFP):
             intco.updateOrientation(geom)
-    return
 
 
 def fixBendAxes(intcos, geom):
     for intco in intcos:
         if isinstance(intco, bend.Bend):
             intco.fixBendAxes(geom)
-    return
 
 
 def unfixBendAxes(intcos):
     for intco in intcos:
         if isinstance(intco, bend.Bend):
             intco.unfixBendAxes()
-    return
 
 
 def Bmat(intcos, geom, masses=None):
@@ -82,28 +83,64 @@ def Bmat(intcos, geom, masses=None):
 
     B = np.zeros((Nint, Ncart), float)
     for i, intco in enumerate(intcos):
-        intco.DqDx(geom, B[i]) 
+        intco.DqDx(geom, B[i])
 
-    if masses is not None:
+    # mass-weight & solve
+    #   sqrtmmm = np.repeat(np.sqrt(mass), 3)
+    #   sqrtmmminv = np.divide(1.0, sqrtmmm)
+    #   mwhess = np.einsum('i,ij,j->ij', sqrtmmminv, nmwhess, sqrtmmminv)
+    if masses:
         logger.debug("mass weighting B matrix\n")
-        for i in range(len(intcos)):
-            for a in range(len(geom)):
-                for xyz in range(3):
-                    B[i, 3 * a + xyz] /= sqrt(masses[a])
+        B = inv_mass_weighted(B, intcos, masses)
 
     return B
 
 
 def Gmat(intcos, geom, masses=None):
+    """ Calculates BuB^T (calculates B matrix)
+
+    Parameters
+    ----------
+    intcos : list
+        list of internal coordinates
+    geom : ndarray
+        (nat, 3) cartesian geometry
+
+    """
     B = Bmat(intcos, geom, masses)
 
-    if masses is not None:
-        for i in range(len(intcos)):
-            for a in range(len(geom)):
-                for xyz in range(3):
-                    B[i][3 * a + xyz] /= sqrt(masses[a])
+    if masses:
+        B = inv_mass_weighted(B, intcos, masses)
 
     return np.dot(B, B.T)
+
+
+def Gmat_B(B, intcos, masses=None):
+    """ Calculate G matrix (BuB^T) if B matrix has already been calculated """
+    if masses:
+        B = inv_mass_weighted(B, intcos, masses)
+
+    return np.dot(B, B.T)
+
+
+def inv_mass_weighted(matrix, intcos, masses):
+    """ Mass weight a B or G matrix for dqi/dxj mass weight wrt atom j
+
+    Parameters
+    ----------
+    matrix : ndarray
+        (len(intcos), 3nat)
+
+    masses: list
+
+    Returns
+    -------
+    ndarray
+        mass weighted matrix
+    """
+
+    sqrtm = np.array([np.repeat(np.sqrt(masses), 3)]*len(intcos))
+    return np.divide(matrix, sqrtm)
 
 
 def qForces(intcos, geom, gradient_x):
@@ -128,13 +165,8 @@ def qForces(intcos, geom, gradient_x):
     B = Bmat(intcos, geom)
     fx = -1.0 * gradient_x  # gradient -> forces
     temp_arr = np.dot(B, fx.T)
-    del fx
-
     G = np.dot(B, B.T)
-    del B
     Ginv = symmMatInv(G, redundant=True)
-    del G
-
     fq = np.dot(Ginv, temp_arr.T)
     return fq
 
@@ -144,9 +176,10 @@ def qShowForces(intcos, forces):
     returns scaled forces (does not recompute)
     This may not be tested.
     """
-    #qaJ = np.copy(forces)
-    qaJ = [forces[i] * intco.fShowFactor for i, intco in enumerate(intcos)]
-    #for i, intco in enumerate(intcos):
+    # qaJ = np.copy(forces)
+    factors = np.asarray([intco.fShowFactor for intco in intcos])
+    qaJ = forces * factors
+    # for i, intco in enumerate(intcos):
     #    qaJ[i] *= intco.fShowFactor
     return qaJ
 
@@ -159,10 +192,15 @@ def constraint_matrix(intcos):
         if coord.frozen:
             C[i, i] = 1.0
     return C
+    # frozen_coords = np.asarray([int(coord.frozen) for coord in intcos])
+    # if np.any(frozen_coords):
+    #    return np.diagflat(frozen_coords)
+    # else:
+    #    return None
 
 
-# Project redundancies and constraints out of forces and Hessian.
 def projectRedundanciesAndConstraints(intcos, geom, fq, H):
+    """Project redundancies and constraints out of forces and Hessian"""
     logger = logging.getLogger(__name__)
     # dim = len(intcos)
     # compute projection matrix = G G^-1
@@ -171,37 +209,39 @@ def projectRedundanciesAndConstraints(intcos, geom, fq, H):
     Pprime = np.dot(G, G_inv)
     if op.Params.print_lvl >= 3:
         logger.debug("\tProjection matrix for redundancies.\n\n" + printMatString(Pprime))
-
     # Add constraints to projection matrix
     C = constraint_matrix(intcos)
 
-    if C is not None:
+    if np.any(C):
         logger.info("Adding constraints for projection.\n" + printMatString(C))
-        P = np.zeros((len(intcos), len(intcos)), float)
         # print_opt(np.dot(C, np.dot(Pprime, C)))
         CPC = np.zeros((len(intcos), len(intcos)), float)
         CPC[:, :] = np.dot(C, np.dot(Pprime, C))
-        CPC = symmMatInv(CPC, redundant=True)
-        P[:, :] = Pprime - np.dot(Pprime, np.dot(C, np.dot(CPC, np.dot(C, Pprime))))
-        # Project redundancies out of forces.
-        # fq~ = P fq
-        fq[:] = np.dot(P, fq.T)
+        CPCInv = symmMatInv(CPC, redundant=True)
+        P = np.zeros((len(intcos), len(intcos)), float)
+        P[:, :] = Pprime - np.dot(Pprime, np.dot(C, np.dot(CPCInv, np.dot(C, Pprime))))
+    else:
+        P = Pprime
 
-        if op.Params.print_lvl >= 3:
-            logger.info("\tInternal forces in au, after projection of redundancies"
-                        + "and constraints.\n" + printArrayString(fq))
-        # Project redundancies out of Hessian matrix.
-        # Peng, Ayala, Schlegel, JCC 1996 give H -> PHP + 1000(1-P)
-        # The second term appears unnecessary and sometimes messes up Hessian updating.
-        tempMat = np.dot(H, P)
-        H[:, :] = np.dot(P, tempMat)
-        # for i in range(dim)
-        #    H[i,i] += 1000 * (1.0 - P[i,i])
-        # for i in range(dim)
-        #    for j in range(i):
-        #        H[j,i] = H[i,j] = H[i,j] + 1000 * (1.0 - P[i,j])
-        if op.Params.print_lvl >= 3:
-            logger.debug("Projected (PHP) Hessian matrix\n" + printMatString(H))
+    # Project redundancies out of forces.
+    # fq~ = P fq
+    fq[:] = np.dot(P, fq.T)
+
+    if op.Params.print_lvl >= 3:
+        logger.info("\tInternal forces in au, after projection of redundancies"
+                    + "and constraints.\n" + printArrayString(fq))
+    # Project redundancies out of Hessian matrix.
+    # Peng, Ayala, Schlegel, JCC 1996 give H -> PHP + 1000(1-P)
+    # The second term appears unnecessary and sometimes messes up Hessian updating.
+    tempMat = np.dot(H, P)
+    H[:, :] = np.dot(P, tempMat)
+    # for i in range(dim)
+    #    H[i,i] += 1000 * (1.0 - P[i,i])
+    # for i in range(dim)
+    #    for j in range(i):
+    #        H[j,i] = H[i,j] = H[i,j] + 1000 * (1.0 - P[i,j])
+    if op.Params.print_lvl >= 3:
+        logger.debug("Projected (PHP) Hessian matrix\n" + printMatString(H))
 
 
 def applyFixedForces(oMolsys, fq, H, stepNumber):
@@ -210,6 +250,8 @@ def applyFixedForces(oMolsys, fq, H, stepNumber):
     for iF, F in enumerate(oMolsys._fragments):
         for i, intco in enumerate(F.intcos):
             if intco.fixed:
+                # TODO we may need to add iF to the location to get unique locations
+                # for each fragment
                 location = oMolsys.frag_1st_intco(iF) + i
                 val = intco.q(x)
                 eqVal = intco.fixedEqVal
@@ -218,7 +260,7 @@ def applyFixedForces(oMolsys, fq, H, stepNumber):
                 k = (1 + 0.05 * stepNumber) * op.Params.fixed_coord_force_constant
                 force = k * (eqVal - val)
                 H[location][location] = k
-
+                fq[location] = force
                 fix_forces_report = ("\n\tAdding user-defined constraint:"
                                      + "Fragment %d; Coordinate %d:\n" % (iF + 1, i + 1))
                 fix_forces_report += ("\t\tValue = %12.6f; Fixed value    = %12.6f"
@@ -226,16 +268,13 @@ def applyFixedForces(oMolsys, fq, H, stepNumber):
                 fix_forces_report += ("\t\tForce = %12.6f; Force constant = %12.6f"
                                       % (force, k))
                 logger.info(fix_forces_report)
-                fq[location] = force
 
                 # Delete coupling between this coordinate and others.
                 logger.info("\t\tRemoving off-diagonal coupling between coordinate"
                             + "%d and others." % (location + 1))
                 for j in range(len(H)):  # gives first dimension length
                     if j != location:
-                        H[j][location] = H[location][j] = 0
-
-    return
+                        H[j][location] = H[location][j] = 0.0
 
 
 # """
@@ -260,13 +299,12 @@ def convertHessianToInternals(H, intcos, geom, masses=None, g_x=None):
     B = Bmat(intcos, geom, masses)
     Atranspose = np.dot(Ginv, B)
 
+    Hworking = H.copy()
     if g_x is None:  # A^t Hxy A
         logger.info("Neglecting force/B-matrix derivative term, only correct at"
                     + "stationary points.\n")
-        Hworking = H
     else:  # A^t (Hxy - Kxy) A;    K_xy = sum_q ( grad_q[I] d^2(q_I)/(dx dy) )
         logger.info("Including force/B-matrix derivative term.\n")
-        Hworking = H.copy()
 
         g_q = np.dot(Atranspose, g_x)
         Ncart = 3 * len(geom)
@@ -278,8 +316,8 @@ def convertHessianToInternals(H, intcos, geom, masses=None, g_x=None):
 
             for a in range(Ncart):
                 for b in range(Ncart):
-                    Hworking[a, b] -= g_q[I] * dq2dx2[
-                        a, b]  # adjust indices for multiple fragments
+                    # adjust indices for multiple fragments
+                    Hworking[a, b] -= g_q[I] * dq2dx2[a, b] 
 
     Hq = np.dot(Atranspose, np.dot(Hworking, Atranspose.T))
     return Hq
@@ -311,26 +349,24 @@ def convertHessianToCartesians(Hint, intcos, geom, masses=None, g_q=None):
     return Hxy
 
 
-# For given [A,B,C], remove any regular bends as well as any torsions
-# which contain it
 
 
 def torsContainsBend(b, t):
-    if (b.atoms in [
-            t.atoms[0:3],
-            list(reversed(t.atoms[0:3])), t.atoms[1:4],
-            list(reversed(t.atoms[1:4]))
-    ]):
-        return True
-    return False
+    return (b.atoms in [t.atoms[0:3],
+                        list(reversed(t.atoms[0:3])),
+                        t.atoms[1:4],
+                        list(reversed(t.atoms[1:4]))])
 
 
 def removeOldNowLinearBend(atoms, intcos):
+    """ For given bend [A,B,C], remove any regular bends as well as any torsions
+    which contain it 
+    """
     logger = logging.getLogger(__name__)
     b = bend.Bend(atoms[0], atoms[1], atoms[2])
     logger.info("Removing Old Linear Bend")
     logger.info(str(b) + '\n')
-    intcos[:] = [I for I in intcos if not (I == b)]
+    intcos[:] = [I for I in intcos if I != b]
     intcos[:] = [
         I for I in intcos if not (isinstance(I, tors.Tors) and torsContainsBend(b, I))
     ]
@@ -340,4 +376,3 @@ def removeOldNowLinearBend(atoms, intcos):
     #        if (atoms in [Coord.atoms[0:3], list(reversed(Coord.atoms[0:3])),
     #                      Coord.atoms[1:4], list(reversed(Coord.atoms[1:4]))]):
     #            del intcos[iCoord]
-    return

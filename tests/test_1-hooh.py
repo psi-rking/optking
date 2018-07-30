@@ -17,7 +17,7 @@ def test_B_dB_matrices():
     psi4options = {
       'basis': 'cc-pvdz',
       'g_convergence': 'gau_tight',
-      'scf_type': 'pk',
+      'scf_type': 'pk'
     }    
 
     psi4.set_options(psi4options)

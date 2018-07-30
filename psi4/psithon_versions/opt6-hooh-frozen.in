@@ -27,9 +27,10 @@ set optking {
     3  4
   ")
 }
-import Psi4Opt
-Psi4Opt.calcName = 'hf'
-thisenergy = Psi4Opt.Psi4Opt()
+#import Psi4Opt
+#Psi4Opt.calcName = 'hf'
+#thisenergy = Psi4Opt.Psi4Opt()
+thisenergy = optimize('hf')
 compare_values(OH_frozen_stre_rhf, thisenergy, 7, "Int. Coord. RHF opt of HOOH with O-H frozen, energy")  #TEST
 
 # Constrained minimization with O-O-H angles frozen.
@@ -47,9 +48,9 @@ set optking {
     2 3 4
   ")
 }
-reload(Psi4Opt)
-Psi4Opt.calcName = 'hf'
-thisenergy = Psi4Opt.Psi4Opt()
+#reload(Psi4Opt)
+#Psi4Opt.calcName = 'hf'
+thisenergy = optimize('hf')
 compare_values(OOH_frozen_bend_rhf, thisenergy, 7, "Int. Coord. RHF opt of HOOH with O-O-H frozen, energy") #TEST
 
 # Constrained minimization with H-O-O-H dihedral frozen.
@@ -67,8 +68,9 @@ set optking {
     1 2 3 4
   ")
 }
-reload(Psi4Opt)
-Psi4Opt.calcName = 'hf'
-thisenergy = Psi4Opt.Psi4Opt()
+#reload(Psi4Opt)
+#Psi4Opt.calcName = 'hf'
+thisenergy = optimize('hf')
+#thisenergy = Psi4Opt.Psi4Opt()
 compare_values(HOOH_frozen_dihedral_rhf, thisenergy, 7, "Int. Coord. RHF opt of HOOH with H-O-O-H frozen, energy") #TEST
 

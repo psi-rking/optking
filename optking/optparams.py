@@ -400,6 +400,8 @@ class optParams(object):
         P.conv_rms_force = -1
         P.conv_rms_disp = -1
         P.conv_max_DE = -1
+        P.conv_max_force = -1
+        P.conv_max_disp = -1
         #
         if P.g_convergence == 'QCHEM':
             P.i_untampered = True

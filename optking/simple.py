@@ -1,6 +1,7 @@
 from abc import ABCMeta, abstractmethod
 import optExceptions
 
+
 class Simple(object):
     __metaclass__ = ABCMeta
 
@@ -20,7 +21,7 @@ class Simple(object):
             for v in values:
                 if int(v) < 0:
                     raise optExceptions.OptFail('Atom identifier cannot be negative.')
-        except:
+        except TypeError:
             raise optExceptions.OptFail('Atoms must be iterable list of whole numbers.')
         self._atoms = values
 

@@ -1,4 +1,5 @@
 from __future__ import print_function
+import numpy as np
 import logging
 # from sys import stdout
 
@@ -31,7 +32,24 @@ import logging
 #    return
 
 
-def printMatString(M, Ncol=7, title=None):
+def printMatString(M, Ncol=7, title="\n"):
+    """Formats a Matrix for Logging or Printing
+
+    Parameters
+    ----------
+    M : ndarray, list
+
+    title="\n" : string
+        optional title to include
+
+    Returns
+    -------
+    string
+        numpy array as string
+    """
+    #if title != "\n":
+    #    title = title + "\n"
+    #return np.array2string(M, max_line_width=100, precision=6, prefix=title, suffix="\n")
     s = '\t'
     if title:
         s += title + '\n\t'
@@ -61,7 +79,25 @@ def printMatString(M, Ncol=7, title=None):
 #    return
 
 
-def printArrayString(M, Ncol=7, title=None):
+def printArrayString(M, Ncol=7, title="\n"):
+    """Formats Arrays for Logging or Printing
+
+    Parameters
+    ----------
+    M : ndarray, list
+
+    title="\n" : string
+        optional title to include
+
+    Returns
+    -------
+    string
+        numpy array as string
+    """
+    #M = np.asarray(M)
+    #if title != "\n":
+    #    title = title + "\n"
+    #return np.array2string(M, max_line_width=100, precision=6, prefix=title, suffix="\n")
     s = ''
     if title:
         s = title + '\n'
@@ -70,8 +106,8 @@ def printArrayString(M, Ncol=7, title=None):
         tab += 1
         s += " %10.6f" % entry
         if tab == Ncol and i != (len(M) - 1):
-            s += '\n'
-            tab = 0
+           s += '\n'
+           tab = 0
     s += '\n'
     return s
 
