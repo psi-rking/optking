@@ -5,13 +5,13 @@
 # Option keys in the input dictionary are interpreted case-insensitively.
 # The enumerated string types are translated to all upper-case within the parameter object.
 import logging
-import optExceptions
-from misc import intList, \
-                 intIntFloatList, \
-                 intIntIntFloatList, \
-                 intIntIntIntFloatList, \
-                 tokenizeInputString, \
-                 int_XYZ_list
+from . import optExceptions
+from .misc import (intList,
+                   intIntFloatList,
+                   intIntIntFloatList,
+                   intIntIntIntFloatList,
+                   tokenizeInputString,
+                   int_XYZ_list)
 
 
 # Class for enumerated string options.

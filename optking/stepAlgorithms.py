@@ -5,16 +5,16 @@ from math import sqrt, fabs
 # from .optParams import Params # this will not cause changes in trust to persist
 import logging
 
-import v3d
-import optExceptions
-import optparams as op
-from history import oHistory
-from displace import displace
-from intcosMisc import qShowForces
-from addIntcos import linearBendCheck
-from misc import isDqSymmetric
-from printTools import printArrayString, printMatString
-from linearAlgebra import absMax, symmMatEig, asymmMatEig, symmMatInv, norm
+from . import v3d
+from . import optExceptions
+from . import optparams as op
+from .history import oHistory
+from .displace import displace
+from .intcosMisc import qShowForces
+from .addIntcos import linearBendCheck
+from .misc import isDqSymmetric
+from .printTools import printArrayString, printMatString
+from .linearAlgebra import absMax, symmMatEig, asymmMatEig, symmMatInv, norm
 
 
 # This function and its components:

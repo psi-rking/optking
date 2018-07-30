@@ -1,6 +1,6 @@
-import physconst as pc  # has physical constants
-import optExceptions
-from simple import Simple
+from . import physconst as pc
+from . import optExceptions
+from .simple import Simple
 
 
 class Cart(Simple):

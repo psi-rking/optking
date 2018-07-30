@@ -1,7 +1,7 @@
 import numpy as np
 import logging
 
-import optExceptions
+from . import optExceptions
 
 
 def delta(i, j):

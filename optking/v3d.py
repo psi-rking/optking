@@ -6,8 +6,8 @@ import logging
 import numpy as np
 from math import fabs, sin, acos, asin, fsum
 
-import optparams as op
-import optExceptions
+from . import optparams as op
+from . import optExceptions
 
 # a couple of obscure parameters used in torsion computation:
 #  phi_lim = op.Params.v3d_tors_angle_lim

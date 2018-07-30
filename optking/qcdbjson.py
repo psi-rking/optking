@@ -2,9 +2,9 @@
 import copy
 import math
 import logging
-
-import history
 import numpy as np
+
+from . import history
 
 
 class jsonSchema:

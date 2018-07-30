@@ -1,5 +1,5 @@
 from abc import ABCMeta, abstractmethod
-import optExceptions
+from . import optExceptions
 
 
 class Simple(object):

@@ -12,10 +12,10 @@ import logging
 import numpy as np
 from math import fabs
 
-import optparams as op
-from linearAlgebra import absMax, rms
-from intcosMisc import Gmat, Bmat, qValues
-from printTools import printArrayString, printMatString
+from . import optparams as op
+from .linearAlgebra import absMax, rms
+from .intcosMisc import Gmat, Bmat, qValues
+from .printTools import printArrayString, printMatString
 
 # Check convergence criteria and print status to output file.
 # return True, if geometry is optimized

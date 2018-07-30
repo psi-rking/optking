@@ -2,16 +2,16 @@ from itertools import combinations, permutations
 import logging
 import numpy as np
 
-import bend
-import cart
-import covRadii
-import optExceptions
-import optparams as op
-import physconst as pc
-import stre
-import tors
-import v3d
-# from intcosMisc import qValues
+from . import bend
+from . import cart
+from . import covRadii
+from . import optExceptions
+from . import optparams as op
+from . import physconst as pc
+from . import stre
+from . import tors
+from . import v3d
+from .intcosMisc import qValues
 
 
 def connectivityFromDistances(geom, Z):

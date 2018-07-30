@@ -3,25 +3,25 @@ import numpy as np
 import logging
 from pprint import PrettyPrinter
 
-from psi4.driver import json_wrapper
+from psi4.driver import json_wrapper  # COMMENT FOR INDEP DOCS BUILD
 
-import hessian
-import stepAlgorithms
-import caseInsensitiveDict
-import optparams as op
-import optExceptions
-import addIntcos
-import history
-import intcosMisc
-import convCheck
-import testB
+from . import hessian
+from . import stepAlgorithms
+from . import caseInsensitiveDict
+from . import optparams as op
+from . import optExceptions
+from . import addIntcos
+from . import history
+from . import intcosMisc
+from . import convCheck
+from . import testB
 # import IRCFollowing
-import psi4methods
-from qcdbjson import jsonSchema
-from printTools import printGeomGrad, \
-                       printMatString, \
-                       printArrayString, \
-                       welcome
+from . import psi4methods
+from .qcdbjson import jsonSchema
+from .printTools import (printGeomGrad,
+                         printMatString,
+                         printArrayString,
+                         welcome)
 
 pp = PrettyPrinter(indent=4)
 

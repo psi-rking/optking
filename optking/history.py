@@ -2,10 +2,10 @@ from math import fabs
 import numpy as np
 import logging
 
-import intcosMisc
-import optparams as op
-from linearAlgebra import absMax, rms, signOfDouble
-from printTools import printMatString, printArrayString
+from . import intcosMisc
+from . import optparams as op
+from .linearAlgebra import absMax, rms, signOfDouble
+from .printTools import printMatString, printArrayString
 
 
 class Step(object):

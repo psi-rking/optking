@@ -2,7 +2,7 @@ from math import fabs, sqrt
 import numpy as np
 import operator
 
-import optExceptions
+from . import optExceptions
 #  Linear algebra routines. #
 
 
