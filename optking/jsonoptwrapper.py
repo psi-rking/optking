@@ -3,11 +3,11 @@ import json
 import logging
 import optking
 
-from molsys import Molsys
-import qcdbjson
+from .molsys import Molsys
+from . import qcdbjson
 
 
-def run_optking_json(json_file):
+def run_json(json_file):
     logger = logging.getLogger(__name__)
     with open(json_file) as input_data:
         json_dict = json.load(input_data)

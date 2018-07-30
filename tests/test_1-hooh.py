@@ -1,7 +1,7 @@
 #SCF CC-PVDZ geometry optimzation, with Z-matrix input
 
 import psi4
-import psi4optwrapper
+import optking
 
 def test_B_dB_matrices():
     refnucenergy = 38.06177      #TEST
@@ -24,7 +24,7 @@ def test_B_dB_matrices():
     
     psi4.set_module_options('OPTKING', {'TEST_B': True, 'TEST_DERIVATIVE_B': True})
     
-    thisenergy, nucenergy = psi4optwrapper.Psi4Opt('hf', psi4options)
+    thisenergy, nucenergy = optking.Psi4Opt('hf', psi4options)
    
     assert psi4.compare_values(refnucenergy, nucenergy, 4, "Nuclear repulsion energy")    #TEST
     assert psi4.compare_values(refenergy, thisenergy, 8, "Reference energy")

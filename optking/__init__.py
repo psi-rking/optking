@@ -6,6 +6,17 @@ import sys
 from .optimize import optimize
 from . import lj_functions
 from . import loggingconfig
+from .psi4optwrapper import Psi4Opt
+from .jsonoptwrapper import run_json
+from .stre import Stre
+from .bend import Bend
+from .tors import Tors
+from .oofp import Oofp
+from .frag import Frag 
+from .molsys import Molsys
+from .history import History
+from .qcdbjson import jsonSchema
+from .displace import displace
 
 print(os.getcwd())
 

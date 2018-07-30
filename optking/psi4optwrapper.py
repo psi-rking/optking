@@ -4,8 +4,8 @@
 import psi4
 import optking
 
-from molsys import Molsys
-import psi4methods
+from . import molsys
+from . import psi4methods
 
 
 # Please note this is a hack. we do not want to read in all of psi4's options
@@ -19,7 +19,7 @@ def Psi4Opt(calcName, psi4_options):
     """
 
     mol = psi4.core.get_active_molecule()
-    oMolsys = Molsys.fromPsi4Molecule(mol)
+    oMolsys = molsys.Molsys.fromPsi4Molecule(mol)
 
     all_options = psi4.driver.p4util.prepare_options_for_modules()
     optking_user_options = psi4methods.get_optking_options_psi4(all_options)

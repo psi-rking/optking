@@ -2,7 +2,7 @@
 #! Internal-coordinate constraints in internal-coordinate optimizations.
 
 import psi4
-import psi4optwrapper
+import optking
 
 OH_frozen_stre_rhf       = -150.781130357 #TEST
 OOH_frozen_bend_rhf      = -150.786372411 #TEST
@@ -32,7 +32,7 @@ def test_frozen_stre():
     """)
     
     psi4.set_module_options('OPTKING', {'frozen_distance': frozen_stre, "g_convergence": "MOLPRO", "print": 4})
-    thisenergy, nucenergy = psi4optwrapper.Psi4Opt('hf', psi4options)
+    thisenergy, nucenergy = optking.Psi4Opt('hf', psi4options)
     assert psi4.compare_values(OH_frozen_stre_rhf, thisenergy, 7, 
                         "Int. Coord. RHF opt of HOOH with O-H frozen, energy")  #TEST
 
@@ -60,7 +60,7 @@ def test_frozen_bend():
     """)
     
     psi4.set_module_options('OPTKING', {'frozen_bend': frozen_angles, 'g_convergence': 'CFOUR', "print": 4}) 
-    thisenergy, nucenergy = psi4optwrapper.Psi4Opt('hf', psi4options)
+    thisenergy, nucenergy = optking.Psi4Opt('hf', psi4options)
     assert psi4.compare_values(OOH_frozen_bend_rhf, thisenergy, 7,
                         "Int. Coord. RHF opt of HOOH with O-O-H frozen, energy") #TEST
 
@@ -86,8 +86,7 @@ def test_frozen_tors():
     frozen_tors = ("1 2 3 4")
     
     psi4.set_module_options('OPTKING', {'frozen_dihedral': frozen_tors, 'g_convergence': "gau_verytight", "print": 4}) 
-    thisenergy, nucenergy = psi4optwrapper.Psi4Opt('hf', psi4options)
+    thisenergy, nucenergy = optking.Psi4Opt('hf', psi4options)
     assert psi4.compare_values(HOOH_frozen_dihedral_rhf, thisenergy, 7, 
                         "Int. Coord. RHF opt of HOOH with H-O-O-H frozen, energy") #TEST
 
-test_frozen_bend()

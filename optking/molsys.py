@@ -1,21 +1,27 @@
 import numpy as np
 import json
 import logging
-from pprint import PrettyPrinter
 
-import covRadii
-import frag
-import optExceptions
-import physconst as pc
-import v3d
-import atomData
-from addIntcos import connectivityFromDistances, addCartesianIntcos
-from printTools import printMatString
-
-pp = PrettyPrinter(indent=4)
+from . import covRadii
+from . import frag
+from . import optExceptions
+from . import physconst as pc
+from . import v3d
+from . import atomData
+from .addIntcos import connectivityFromDistances, addCartesianIntcos
 
 
 class Molsys(object):  # new-style classes required for getter/setters
+    """ The molecular system consisting of a collection of fragments
+
+    Parameters
+    ----------
+    fragments : list(Frag)
+    fb_fragments : list
+        NYI fixed body fragments
+    intcos : list(Simple), optional
+
+    """
     def __init__(self, fragments, fb_fragments=None, intcos=None):
         # ordinary fragments with internal structure
         self.logger = logging.getLogger(__name__)
@@ -164,6 +170,7 @@ class Molsys(object):  # new-style classes required for getter/setters
 
     @property
     def geom(self):
+        """cartesian geometry [a0]"""
         geom = np.zeros((self.Natom, 3), float)
         for iF, F in enumerate(self._fragments):
             row = self.frag_1st_atom(iF)
@@ -172,6 +179,7 @@ class Molsys(object):  # new-style classes required for getter/setters
 
     @geom.setter
     def geom(self, newgeom):
+        """ setter for geometry"""
         for iF, F in enumerate(self._fragments):
             row = self.frag_1st_atom(iF)
             F.geom[:] = newgeom[row:(row + F.Natom), :]
@@ -224,13 +232,13 @@ class Molsys(object):  # new-style classes required for getter/setters
             addCartesianIntcos(F._intcos, F._geom)
 
     def printGeom(self):
-        """Returns a string of the geometry for logging in bohr"""
+        """Returns a string of the geometry for logging in [a0]"""
         for iF, F in enumerate(self._fragments):
             self.logger.info("\tFragment %d\n" % (iF + 1))
             F.printGeom()
 
     def showGeom(self):
-        """Return a string of the geometry in angstroms"""
+        """Return a string of the geometry in [A]"""
         molsys_geometry = ''
         for iF, F in enumerate(self._fragments):
             molsys_geometry += ("\tFragment %d\n" % (iF + 1))
@@ -253,8 +261,8 @@ class Molsys(object):  # new-style classes required for getter/setters
         del self._fragments[:]
         self._fragments.append(consolidatedFrag)
 
-    # Split any fragment not connected by bond connectivity.
     def splitFragmentsByConnectivity(self):
+        """ Split any fragment not connected by bond connectivity."""
         tempZ = np.copy(self.Z)
         tempGeom = np.copy(self.geom)
         tempMasses = np.copy(self.masses)

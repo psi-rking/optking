@@ -1,4 +1,4 @@
-# Where I keep methods for interacting with psi4. i.e. getting gradients, hessians etc.
+""" various methods for interacting with psi4. i.e. getting gradients, hessians, options etc """
 import logging
 from psi4.driver import json_wrapper
 

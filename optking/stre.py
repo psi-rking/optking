@@ -10,6 +10,22 @@ from .simple import Simple
 
 
 class Stre(Simple):
+    """ stretching coordinate between two atoms
+
+    Parameters
+    ----------
+    a : int
+        atom 1 (zero indexing)
+    b : int
+        atom 2 (zero indexing)
+    frozen : boolean, optional
+        set stretch as frozen
+    fixedEqVal : float
+        value to fix stretch at
+    inverse : boolean
+        identifies 1/R coordinate
+
+    """
     def __init__(self, a, b, frozen=False, fixedEqVal=None, inverse=False):
 
         self._inverse = inverse  # bool - is really 1/R coordinate?

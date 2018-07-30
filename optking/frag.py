@@ -1,15 +1,29 @@
 # import numpy as np
 import logging
 
-import addIntcos
-import atomData
-import physconst
-from printTools import printArrayString, printMatString
+from . import addIntcos
+from . import atomData
+from . import physconst
+from .printTools import printArrayString, printMatString
 
 # Geometry is 2D object (atom,xyz)
 
 
 class Frag:
+    """ Group of bonded atoms
+
+    Parameters
+    ----------
+    Z : list
+        atomic numbers
+    geom : ndarray
+        (nat, 3) cartesian geometry
+    masses : list
+        atomic masses
+    intcos : list(Simple), optional
+        internal coordinates (stretches, bends, etch...)
+
+    """
     def __init__(self, Z, geom, masses, intcos=None):
         self._Z = Z
         self._geom = geom
@@ -20,7 +34,6 @@ class Frag:
             self._intcos = intcos
 
     def __str__(self):
-        logger = logging.getLogger(__name__)
         s = "\n\tZ (Atomic Numbers)\n\t"
         s += printArrayString(self._Z)
         s += "\tGeom\n\t"

@@ -1,13 +1,19 @@
-# JSON class for json_object storage and manipulation.
 import copy
 import math
-import logging
 import numpy as np
 
 from . import history
 
 
 class jsonSchema:
+    """ An implementation of MolSSI's qc schema
+
+    Parameters
+    ----------
+    JSON_dict : dict
+        should match qc_schema_input format. version 1
+
+    """
 
     def __init__(self, JSON_dict):
         if JSON_dict['schema_name'] == 'qc_schema_input':
@@ -87,7 +93,8 @@ class jsonSchema:
 
         Returns
         -------
-        j_geom : list
+        list
+            1D geometry
         """
         j_geom = [i for i in geom.flat]
         return j_geom
@@ -146,7 +153,7 @@ class jsonSchema:
         QM_method: str
         basis : str
         keywords : dict of str
-            all options (currently)
+            all options
         """
         qcschema = {"schema_name": "qc_schema_input", "schema_version": 1, "molecule":
                     {"geometry": geom, "symbols": symbols, "fix_com": True,

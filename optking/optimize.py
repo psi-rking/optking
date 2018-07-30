@@ -27,9 +27,21 @@ pp = PrettyPrinter(indent=4)
 
 
 def optimize(oMolsys, options_in, json_in=None):
-    """Logical 'driver' for optking's optimization procedure takes in optking's
-    moolecular system a list of options for both the optimizer and the QM
-    program with the options of passing a json_file in directly.
+    """Driver for optking's optimization procedure
+
+    Parameters
+    ----------
+    oMolsys : cls
+        optking molecular system
+    options_in : dict
+        options for QM program and optking
+    json_in : dict, optional
+        MolSSI qc schema
+
+    Returns
+    -------
+    float, float or dict
+        energy and nuclear repulsion energy or MolSSI qc_schema_output as dict
     """
 
     try:
@@ -41,9 +53,9 @@ def optimize(oMolsys, options_in, json_in=None):
 
         # Create full list of parameters from user options plus defaults.
         optimize_log.info(welcome())  # print header
-        optimize_log.info("\n\tProcessing user input options...\n")
+        optimize_log.debug("\n\tProcessing user input options...\n")
         op.Params = op.optParams(userOptions)
-        optimize_log.info(str(op.Params))
+        optimize_log.debug(str(op.Params))
 
         # if op.Params.logging_lvl == 'DEBUG' or op.Params.print_lvl == 5:
         #    log_file.setLevel(logging.DEBUG)
@@ -217,8 +229,7 @@ def optimize(oMolsys, options_in, json_in=None):
                     #    Dq = IRCFollowing.Dq(oMolsys, g, E, Hq, B, op.Params.irc_step_size,
                     #                         qPrime, dqPrime)
                     # else:  # Displaces and adds step to history.
-                    Dq = stepAlgorithms.Dq(oMolsys, E, fq, H, op.Params.step_type,
-                                           get_energy, o_json)
+                    Dq = stepAlgorithms.Dq(oMolsys, E, fq, H, op.Params.step_type, o_json)
                     # else statement paried with above IRC if was removed
 
                     converged = convCheck.convCheck(stepNumber, oMolsys, Dq, fq, energies,

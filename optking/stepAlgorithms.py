@@ -21,7 +21,30 @@ from .linearAlgebra import absMax, symmMatEig, asymmMatEig, symmMatInv, norm
 # 1. Computes Dq, the step in internal coordinates.
 # 2. Calls displace and attempts to take the step.
 # 3. Updates history with results.
-def Dq(oMolsys, E, qForces, H, stepType=None, energy_function=None, o_json=None):
+def Dq(oMolsys, E, qForces, H, stepType=None, o_json=None):
+    """ Calls one of the optimization algorithms to take a step 
+    
+    Parameters
+    ----------
+    oMolsys : object
+        optking's molecular system
+    E : float
+        energy [aO]
+    qForces : ndarray
+        forces in internal coordinates [aO]
+    H : ndarray
+        hessian in internal coordinates
+    stepType : string, optional
+        defaults to stepType in options
+    o_json : dict, optional
+        instance of jsonSchema (required for line search)    
+
+    Returns
+    -------
+    ndarray
+        dispalcement in internals
+
+    """
     if len(H) == 0 or len(qForces) == 0:
         return np.zeros((0), float)
 
@@ -39,7 +62,7 @@ def Dq(oMolsys, E, qForces, H, stepType=None, energy_function=None, o_json=None)
     elif stepType == 'P_RFO':
         return Dq_P_RFO(oMolsys, E, qForces, H)
     elif stepType == 'LINESEARCH':
-        return Dq_LINESEARCH(oMolsys, E, qForces, H, energy_function, o_json)
+        return Dq_LINESEARCH(oMolsys, E, qForces, H, o_json)
     else:
         raise optExceptions.OptFail('Dq: step type not yet implemented')
 
@@ -679,7 +702,7 @@ def Dq_BACKSTEP(oMolsys):
 
 
 # Take Rational Function Optimization step
-def Dq_LINESEARCH(oMolsys, E, fq, H, energy_function, o_json):
+def Dq_LINESEARCH(oMolsys, E, fq, H, o_json):
     logger = logging.getLogger(__name__)
     s = op.Params.linesearch_step
 
@@ -709,7 +732,7 @@ def Dq_LINESEARCH(oMolsys, E, fq, H, energy_function, o_json):
             displace(oMolsys._fragments[0].intcos, oMolsys._fragments[0].geom, dq, fq_aJ)
             xyz = oMolsys.geom
             logger.debug("\tComputing energy at this point now.\n")
-            Eb, nuc = energy_function(xyz, o_json)
+            Eb, nuc = psi4methods.psi4_calculation(xyz, o_json, driver='energy')
             oMolsys.geom = geomA  # reset geometry to point A
 
         if Ec == 0:
@@ -719,7 +742,7 @@ def Dq_LINESEARCH(oMolsys, E, fq, H, energy_function, o_json):
             displace(oMolsys._fragments[0].intcos, oMolsys._fragments[0].geom, dq, fq_aJ)
             xyz = oMolsys.geom
             logger.debug("\tComputing energy at this point now.\n")
-            Ec, nuc = energy_function(xyz, o_json)
+            Ec, nuc = psi4methods.psi4_calculations(xyz, o_json, driver='energy')
             oMolsys.geom = geomA  # reset geometry to point A
 
         logger.info("\n\tCurrent linesearch bounds.\n")
@@ -755,7 +778,7 @@ def Dq_LINESEARCH(oMolsys, E, fq, H, energy_function, o_json):
             displace(oMolsys._fragments[0].intcos, oMolsys._fragments[0].geom, dq, fq_aJ)
             xyz = oMolsys.geom
             logger.debug("\tComputing energy at projected point.\n")
-            Emin, nuc = energy_function(xyz, o_json)
+            Emin, nuc = psi4methods.psi4_calculation(xyz, o_json, driver='energy')
             logger.info("\tProjected energy along line: %15.10f\n" % Emin_projected)
             logger.info("\t   Actual energy along line: %15.10f\n" % Emin)
 

@@ -11,6 +11,28 @@ from .misc import delta, HguessLindhRho
 
 
 class Bend(Simple):
+    """ bend coordinate between three atoms
+
+    Parameters
+    ----------
+    a : int
+        first atom
+    b : int
+        second atom
+    c : int
+        third atom
+    frozen : boolean, optional
+        set bend as frozen
+    fixedEqVal : float
+        value to fix bend at
+    bendType : string, optional
+        can be regular, linear, or complement (used to describe linear bends)
+
+    Notes
+    -----
+        atoms must be listed in order. Uses 0-based indexing.
+
+    """
     def __init__(self, a, b, c, frozen=False, fixedEqVal=None, bendType="REGULAR"):
 
         if a < c:

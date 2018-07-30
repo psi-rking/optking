@@ -66,7 +66,7 @@ class optParams(object):
     # interfrag_hess  = stringOption( 'interfrag_hess' )
 
     def __str__(P):
-        s = "\t\t -- Optimization Parameters --\n"
+        s = "\n\t\t -- Optimization Parameters --\n"
         for attr in dir(P):
             if not hasattr(getattr(P, attr), '__self__'):  # omit bound methods
                 if '__' not in attr:  # omit these methods

@@ -2,7 +2,7 @@
 #! then in Cs symmetry from a starting point with a non-linear central bond angle.
 
 import psi4
-import psi4optwrapper
+import optking
 #import importlib
 
 def test_opt2_allene():
@@ -29,7 +29,7 @@ def test_opt2_allene():
 
     psi4.set_options(psi4options)
 
-    thisenergy, nucenergy = psi4optwrapper.Psi4Opt('hf', psi4options)
+    thisenergy, nucenergy = optking.Psi4Opt('hf', psi4options)
     
     assert psi4.compare_values(refnucenergy, nucenergy, 2, "Nuclear repulsion energy")    #TEST
     assert psi4.compare_values(refenergy, thisenergy, 6, "Reference energy")                                   #TEST
@@ -46,7 +46,7 @@ def test_opt2_allene():
      H -0.92  0.00    1.8
     """)
     
-    thisenergy, nucenergy = psi4optwrapper.Psi4Opt('hf', psi4options)
+    thisenergy, nucenergy = optking.Psi4Opt('hf', psi4options)
     
     assert psi4.compare_values(refnucenergy, nucenergy, 2, "Nuclear repulsion energy")    #TEST
     assert psi4.compare_values(refenergy, thisenergy, 6, "Reference energy")                                   #TEST

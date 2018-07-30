@@ -3,35 +3,6 @@ import numpy as np
 import logging
 # from sys import stdout
 
-
-# def printxopt(arg):
-#    print(arg, file=stdout, end='')
-#    return
-
-# printxopt = cleanPrint
-
-# def printInit(printFunction=None, file=stdout):
-# if not printFunction:
-#    printxopt = cleanPrint
-# else:
-#    printxopt = printFunction
-
-
-# def printMat(M, Ncol=7, title=None):
-#    if title:
-#        printxopt(title + '\n')
-#    for row in range(M.shape[0]):
-#        tab = 0
-#        for col in range(M.shape[1]):
-#            tab += 1
-#            printxopt(" %10.6f" % M[row, col])
-#            if tab == Ncol and col != (M.shape[1] - 1):
-#                printxopt("\n")
-#                tab = 0
-#        printxopt("\n")
-#    return
-
-
 def printMatString(M, Ncol=7, title="\n"):
     """Formats a Matrix for Logging or Printing
 
@@ -39,13 +10,14 @@ def printMatString(M, Ncol=7, title="\n"):
     ----------
     M : ndarray, list
 
-    title="\n" : string
-        optional title to include
+    title : string, optional
+        title to include
 
     Returns
     -------
     string
         numpy array as string
+    
     """
     #if title != "\n":
     #    title = title + "\n"
@@ -63,21 +35,6 @@ def printMatString(M, Ncol=7, title="\n"):
                 tab = 0
         s += '\n\t'
     return s
-
-
-# def printArray(M, Ncol=7, title=None):
-#   if title:
-#        printxopt(title + '\n')
-#    tab = 0
-#    for col, entry in enumerate(M):
-#        tab += 1
-#        printxopt(" %10.6f" % M[col])
-#        if tab == Ncol and col != (len(M) - 1):
-#            printxopt("\n")
-#            tab = 0
-#    printxopt("\n")
-#    return
-
 
 def printArrayString(M, Ncol=7, title="\n"):
     """Formats Arrays for Logging or Printing

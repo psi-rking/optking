@@ -1,7 +1,7 @@
 import os
 import json
 
-import jsonoptwrapper
+import optking
 import psi4
 
 
@@ -11,7 +11,7 @@ def test_input_through_json():
  
     with open(os.path.join(os.path.dirname(__file__), 'jsoninput.json')) as input_data:
         input_copy = json.load(input_data)
-    jsonoptwrapper.run_optking_json(os.path.join(os.path.dirname(__file__), 'jsoninput.json'))
+    optking.run_json(os.path.join(os.path.dirname(__file__), 'jsoninput.json'))
     
     #For testing purposes. If this works, we have properly returned the output, and added the result
     #to the original file. In order to preserve the form of the test suite, we now resore the input
@@ -33,7 +33,7 @@ def test_betapinene_json():
     refnucenergy = 568.2219045869700267
     with open(os.path.join(os.path.dirname(__file__), 'json_betapinene.json')) as input_data:
         input_copy = json.load(input_data)
-    jsonoptwrapper.run_optking_json(os.path.join(os.path.dirname(__file__), 'json_betapinene.json'))
+    optking.run_json(os.path.join(os.path.dirname(__file__), 'json_betapinene.json'))
 
     #For testing purposes. If this works, we have properly returned the output, and added the result
     #to the original file. In order to preserve the form of the test suite, we now resore the input
@@ -55,14 +55,14 @@ def test_frozen_coords():
 
     with open(os.path.join(os.path.dirname(__file__), 'json_hooh_frozen.json')) as input_data:
         input_copy = json.load(input_data)
-    jsonoptwrapper.run_optking_json(os.path.join(os.path.dirname(__file__), 'json_hooh_frozen.json'))
+    optking.run_json(os.path.join(os.path.dirname(__file__), 'json_hooh_frozen.json'))
 
     #For testing purposes. If this works, we have properly returned the output, and added the result
     #to the original file. In order to preserve the form of the test suite, we now resore the input
     #to its original state
     with open(os.path.join(os.path.dirname(__file__), 'json_hooh_frozen.json')) as input_data:
         json_dict = json.load(input_data)
-    assert psi4.compare_values(refenergy, json_dict['properties']['return_energy'], 6, \
+    assert psi4.compare_values(refenergy, json_dict['properties']['return_energy'], 6,
         "Reference energy")
 
     with open(os.path.join(os.path.dirname(__file__), 'json_hooh_frozen.json'), 'r+') as input_data:

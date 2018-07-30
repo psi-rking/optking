@@ -1,7 +1,7 @@
 #Tests the PRFO code finding the 180 degree tors angle transition state for hooh
 
 import psi4
-import psi4optwrapper
+import optking
 
 TORS_ENERGY      = -150.7854114 #TEST
 ZERO_TORS_ENERGY = -150.786766850 #TEST
@@ -28,7 +28,7 @@ def test_hooh_TS():
 
     psi4.set_options(psi4options) 
     
-    thisenergy, nucenergy = psi4optwrapper.Psi4Opt('hf', psi4options)
+    thisenergy, nucenergy = optking.Psi4Opt('hf', psi4options)
     assert psi4.compare_values(TORS_ENERGY, thisenergy, 6, "cc-pVDZ RHF transition-state opt. of HOOH (dihedral=180), energy") #TEST
 
 def test_hooh_min():
@@ -50,6 +50,6 @@ def test_hooh_min():
 
     psi4.set_options(psi4options)
     
-    thisenergy, nucenergy = psi4optwrapper.Psi4Opt('hf', psi4options)
+    thisenergy, nucenergy = optking.Psi4Opt('hf', psi4options)
     assert psi4.compare_values(ZERO_TORS_ENERGY, thisenergy, 6, "cc-pVDZ RHF transition-state opt. of HOOH (dihedral=0), energy") #TEST
 

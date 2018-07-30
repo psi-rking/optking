@@ -20,15 +20,16 @@ def connectivityFromDistances(geom, Z):
     nuclear distances
     Parameters
     ----------
-        geom : ndarray
-            (nat, 3) cartesian geometry
-        Z : list
-            (nat) list of atomic numbers
+    geom : ndarray
+        (nat, 3) cartesian geometry
+    Z : list
+        (nat) list of atomic numbers
 
     Returns
     -------
-        C : ndarray
-            (nat, nat)
+    C : ndarray
+        (nat, nat)
+
     """
     nat = geom.shape[0]
     C = np.zeros((len(geom), len(geom)), bool)
@@ -56,6 +57,7 @@ def addIntcosFromConnectivity(C, intcos, geom):
             (nat) list of current internal coordiantes (Stre, Bend, Tors)
     geom : ndarray
         (nat, 3) cartesian geometry
+
     """
     addStreFromConnectivity(C, intcos)
     addBendFromConnectivity(C, intcos, geom)
@@ -76,6 +78,7 @@ def addStreFromConnectivity(C, intcos):
     -------
     int
         number of stretches added
+
     """
 
     # Norig = len(intcos)
@@ -103,6 +106,7 @@ def addBendFromConnectivity(C, intcos, geom):
     -------
     float
         number of bends added
+
     """
 
     # Norig = len(intcos)

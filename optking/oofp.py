@@ -10,7 +10,7 @@ from .simple import Simple
 # to the CBD plane; canonical order is C < D
 
 
-class OOFP(Simple):
+class Oofp(Simple):
     def __init__(self, a, b, c, d, frozen=False, fixedEqVal=None):
 
         if c < d:
@@ -36,7 +36,7 @@ class OOFP(Simple):
     def __eq__(self, other):
         if self.atoms != other.atoms:
             return False
-        elif not isinstance(other, OOFP):
+        elif not isinstance(other, Oofp):
             return False
         else:
             return True

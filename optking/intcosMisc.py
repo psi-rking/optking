@@ -1,4 +1,3 @@
-
 from math import sqrt
 import numpy as np
 import logging
@@ -19,9 +18,9 @@ from .printTools import printMatString, printArrayString
 # q    -> qValues
 # DqDx -> Bmat
 def qValues(intcos, geom):
-    """
-    Calculates internal coordinates
-    Paramters
+    """Calculates internal coordinates from cartesian geometry
+
+    Parameters
     ---------
     intcos : list
         (nat) list of stretches, bends, etc...
@@ -61,7 +60,7 @@ def updateDihedralOrientations(intcos, geom):
     calls updateOrientation for each tors coordinate
     """
     for intco in intcos:
-        if isinstance(intco, tors.Tors) or isinstance(intco, oofp.OOFP):
+        if isinstance(intco, tors.Tors) or isinstance(intco, oofp.Oofp):
             intco.updateOrientation(geom)
 
 
@@ -125,14 +124,13 @@ def Gmat_B(B, intcos, masses=None):
 
 
 def inv_mass_weighted(matrix, intcos, masses):
-    """ Mass weight a B or G matrix for dqi/dxj mass weight wrt atom j
+    """ Mass weight a B or G matrix dqi/dxj mass weight wrt atom j
 
     Parameters
     ----------
     matrix : ndarray
-        (len(intcos), 3nat)
-
-    masses: list
+    intcos : list(simple)
+    masses: list(float)
 
     Returns
     -------
@@ -145,21 +143,26 @@ def inv_mass_weighted(matrix, intcos, masses):
 
 
 def qForces(intcos, geom, gradient_x):
-    """
-    Transforms forces from cartesian to internal coordinates
-    fq = (BuB^T)^(-1)*B*f_x
+    """Transforms cartesian gradient to internals
+
     Parameters
     ----------
     intcos : list
         stretches, bends, etc
     geom : ndarray
         (nat, 3) cartesian geometry
-    gradient _x :
-        (nat, 3) cartesian gradient
+    gradient_x :
+        (3nat, 1) cartesian gradient
+
     Returns
     -------
     ndarray
-        (1, intcos) internal coordinate forces (-1) * gradient
+        forces in internal coordinates (-1 * gradient)
+
+    Notes
+    -----
+    fq = (BuB^T)^(-1)*B*f_x
+
     """
     if len(intcos) == 0 or len(geom) == 0:
         return np.zeros(0, float)
@@ -173,8 +176,7 @@ def qForces(intcos, geom, gradient_x):
 
 
 def qShowForces(intcos, forces):
-    """
-    returns scaled forces (does not recompute)
+    """ Returns scaled forces (does not recompute)
     This may not be tested.
     """
     # qaJ = np.copy(forces)
