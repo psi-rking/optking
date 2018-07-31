@@ -43,8 +43,8 @@ script:
   - export PYTHONPATH=../:optking/:psi4/:./:tests/
 #  - py.test -v --cov=gau2grid/ --durations=5
   - |
-    if [$python == 3.6]
-     then
+    if [$TRAVIS_PYTHON_VERSION == 3.6]
+    then
       py.test -v -rws --durations=5
     else
       py.test -v -rws --durations=5 --cov
