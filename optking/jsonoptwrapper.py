@@ -8,6 +8,20 @@ from . import qcdbjson
 
 
 def run_json(json_file):
+    """ wrapper for running optking's optimize() with json input 
+
+    Parameters
+    ----------
+    json_file : file
+        json input file: qc_schema_input
+
+    Notes
+    -----
+    optimization summary is added to the original json input file. Final optimized geometry [a0] 
+    replaces the input geometry. For more information about the optimization see the .out logging
+    file
+    """
+
     logger = logging.getLogger(__name__)
     with open(json_file) as input_data:
         json_dict = json.load(input_data)
