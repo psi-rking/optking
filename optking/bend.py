@@ -151,13 +151,13 @@ class Bend(Simple):
             phi = v3d.angle(u, origin, self._x)
         except optExceptions.AlgFail as error:
             logger.error("Bend.q could not compute linear bend")
-            raise RuntimeError from error
+            raise
 
         try:
             phi2 = v3d.angle(self._x, origin, v)
         except optExceptions.AlgFail as error:
             logger.error("Bend.q could not compute linear bend")
-            raise RuntimeError from error
+            raise
         else:
             phi += phi2
             return phi

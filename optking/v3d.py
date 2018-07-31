@@ -125,13 +125,13 @@ def angle(A, B, C, tol=1.0e-14):
         eBA = eAB(B, A)
     except optExceptions.AlgFail as error:
         logger.warning("Could not normalize eBA in angle()\n")
-        raise RuntimeError from error
+        raise optExcpetions.AlgFail from error
 
     try:
         eBC = eAB(B, C)
     except optExceptions.AlgFail as error:
         logger.warning("Could not normalize eBC in angle()\n")
-        raise RuntimeError from error
+        raise optExceptions.AlgFail from error
 
     return _calc_angle(eBA, eBC, tol)
 
@@ -179,23 +179,23 @@ def tors(A, B, C, D):
         EAB = -1 * EBA
     except optExceptions.AlgFail as error:
         logger.warning("Could not normalize %d, %d vector in tors()\n" % (str(A), str(B)))
-        raise RuntimeError from error
+        raise
     try:
         EBC = eAB(B, C)
     except optExceptions.AlgFail as error:
         logger.warning("Could not normalize %d, %d vector in tors()\n" % (str(B), str(C)))
-        raise RuntimeError from error
+        raise
     try:
         ECB = eAB(C, B)
         EBC = -1 * ECB
     except optExceptions.AlgFail as error:
         logger.warning("Could not normalize %d, %d vector in tors()\n" % (str(C), str(D)))
-        raise RuntimeError from error
+        raise
     try:
         ECD = eAB(C, D)
     except optExceptions.AlgFail as error:
         logger.warning("Could not normalize %d, %d vector in tors()\n" % (str(C), str(D)))
-        raise RuntimeError from error
+        raise
 
     # Compute bond angles
     phi_123 = _calc_angle(EBA, EBC)
@@ -237,17 +237,17 @@ def oofp(A, B, C, D):
         eBA = eAB(B, A)
     except optExceptions.AlgFail as error:
         logger.warning("Could not normalize %d, %d vector in tors()\n" % (str(B), str(A)))
-        raise RuntimeError from error
+        raise
     try:
         eBC = eAB(B, C)
     except optExceptions.AlgFail as error:
         logger.warning("Could not normalize %d, %d vector in tors()\n" % (str(B), str(C)))
-        raise RuntimeError from error
+        raise
     try:
         eBD = eAB(B, D)
     except optExceptions.AlgFail as error:
         logger.warning("Could not normalize %d, %d vector in tors()\n" % (str(B), str(D)))
-        raise RuntimeError from error
+        raise
 
     phi_CBD = _calc_angle(eBC, eBD)
 

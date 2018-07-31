@@ -83,7 +83,7 @@ class Oofp(Simple):
         try:
             tau = v3d.oofp(geom[self.A], geom[self.B], geom[self.C], geom[self.D])
         except optExceptions.AlgFail as error:
-            raise RuntimeError("Unable to compute out-of-plane value\n") from error
+            raise
 
         # Extend domain of out-of-plane angles to beyond pi
         if self._near180 == -1 and tau > op.Params.fix_val_near_pi:

@@ -90,8 +90,8 @@ class Stre(Simple):
     def DqDx(self, geom, dqdx, mini=False):
         try:
             eAB = v3d.eAB(geom[self.A], geom[self.B])  # A->B
-        except optException.AlgFail as error:
-            raise RuntimeError("Stre.DqDx: could not normalize s vector") from error
+        except optExceptions.AlgFail as error:
+            raise optExceptions.AlgFail("Stre.DqDx: could not normalize s vector") from error
 
         if mini:
             startA = 0
@@ -114,7 +114,7 @@ class Stre(Simple):
         try:
             eAB = v3d.eAB(geom[self.A], geom[self.B])  # A->B
         except optExceptions.AlgFail:
-            raise RuntimeError("Stre.Dq2Dx2: could not normalize s vector") from error
+            raise optExceptions.AlgFail("Stre.Dq2Dx2: could not normalize s vector") from error
 
         if not self._inverse:
             length = self.q(geom)
