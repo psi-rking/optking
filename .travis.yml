@@ -41,13 +41,14 @@ before_script:
 script:
   - pwd
   - export PYTHONPATH=../:optking/:psi4/:./:tests/
+  - py.test -v -rws --durations=5
 #  - py.test -v --cov=gau2grid/ --durations=5
-  - |
-    if [["$TRAVIS_PYTHON_VERSION" == "3.6"]]; then
-      py.test -v -rws --durations=5
-    else
-      py.test -v -rws --durations=5 --cov
-    fi
+#  - |
+#    if [["$TRAVIS_PYTHON_VERSION" == "3.6"]]; then
+#      py.test -v -rws --durations=5
+#    else
+#      py.test -v -rws --durations=5 --cov
+#    fi
 
 notifications:
   email: false
