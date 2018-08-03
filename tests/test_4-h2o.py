@@ -21,7 +21,8 @@ def test_h2o_rfo():
     psi4.set_options(psi4options)
     
     psi4.set_module_options('Optking', {'step_type': 'rfo'})
-    E, nucenergy = optking.Psi4Opt('hf', psi4options)
+    json_output = optking.Psi4Opt('hf', psi4options)
+    E = json_output['properties']['return_energy']
     assert psi4.compare_values(finalEnergy, E, 6, "RFO Step Final Energy")                                #TEST
 
 def test_h2o_nr():
@@ -43,7 +44,8 @@ def test_h2o_nr():
     
     psi4.set_module_options('Optking', {'step_type': 'nr'})
     
-    E, nuc = optking.Psi4Opt('hf', psi4options)
+    json_output = optking.Psi4Opt('hf', psi4options)
+    E = json_output['properties']['return_energy']
     assert psi4.compare_values(finalEnergy, E, 6, "NR Step Final Energy")                                #TEST
 
 def test_h2o_SD():    
@@ -64,7 +66,8 @@ def test_h2o_SD():
     
     psi4.set_module_options('Optking', {'step_type': 'SD'})
     
-    E, nucenergy = optking.Psi4Opt('hf', psi4options)
+    json_output = optking.Psi4Opt('hf', psi4options)
+    E = json_output['properties']['return_energy']
     assert psi4.compare_values(finalEnergy, E, 6, "SD Step Final Energy")                                #TEST
 
 

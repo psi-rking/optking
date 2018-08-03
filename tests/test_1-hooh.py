@@ -22,9 +22,11 @@ def test_B_dB_matrices():
 
     psi4.set_options(psi4options)
     
-    psi4.set_module_options('OPTKING', {'TEST_B': True, 'TEST_DERIVATIVE_B': True})
+    psi4.set_module_options('OPTKING', {'TEST_B': True, 'TEST_DERIVATIVE_B': True, "G_CONVERGENCE": "gau_tight"})
     
-    thisenergy, nucenergy = optking.Psi4Opt('hf', psi4options)
-   
+    json_output = optking.Psi4Opt('hf', psi4options)
+    thisenergy = json_output['properties']['return_energy']
+    nucenergy = json_output['properties']['nuclear_repulsion_energy']
+
     assert psi4.compare_values(refnucenergy, nucenergy, 4, "Nuclear repulsion energy")    #TEST
     assert psi4.compare_values(refenergy, thisenergy, 8, "Reference energy")

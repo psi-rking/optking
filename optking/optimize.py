@@ -76,7 +76,6 @@ def optimize(oMolsys, options_in, json_in=None):
             o_json = jsonSchema.make_qcschema("", atom_list, QM_method, basis, keywords)
         else:
             o_json = json_in
-            op.Params.output_type = 'JSON'
 
         # For IRC computations:
         # ircNumber = 0
@@ -311,20 +310,19 @@ def optimize(oMolsys, options_in, json_in=None):
                     history.oHistory.stepsSinceLastHessian = 0
                     history.oHistory.consecutiveBacksteps = 0
 
-        output_dict = {}
         # print summary
-        if op.Params.output_type == 'FILE':
-            logging.info("\tOptimization Finished\n" + history.generate_file_output())
-        else:
-            output_dict = o_json.generate_json_output(history.oHistory[-1].geom)
+        logging.info("\tOptimization Finished\n" + history.generate_file_output())
+        output_dict = o_json.generate_json_output(history.oHistory[-1].geom, g_x)
+        json_original = o_json._get_original(oMolsys.geom)
 
+        if op.Params.opt_type == 'linesearch':
+            g_x = get_gradient(oMolsys.geom, o_json, nuc=False)
+            
         if op.Params.trajectory:
             # history doesn't contain atomic numbers so pass them in
             returnVal = history.oHistory.trajectory(oMolsys.Z)
         else:
             returnVal = history.oHistory[-1].E
-
-        returnNuc = history.oHistory.nuclear_repulsion_energy
 
         # clean up
         del H
@@ -333,15 +331,9 @@ def optimize(oMolsys, options_in, json_in=None):
             del f
         del history.oHistory[:]
         del oMolsys
-
-        if op.Params.output_type == 'FILE':
-            del op.Params
-            del o_json
-            return returnVal, returnNuc
-        else:
-            del op.Params
-            del o_json
-            return output_dict
+        del op.Params
+        json_original.update(output_dict)         
+        return json_original
 
     except Exception as error:
         # TODO needs some improvements

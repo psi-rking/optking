@@ -31,7 +31,8 @@ def test_hooh_full_opt():
     }
 
     psi4.set_options(psi4options)
-    thisenergy, nucenergy = optking.Psi4Opt('hf', psi4options)
+    json_output = optking.Psi4Opt('hf', psi4options)
+    thisenergy = json_output['properties']['return_energy']
     assert psi4.compare_values(HOOH_E, thisenergy, 6, "Cart. Coord. RHF opt of HOOH, energy")  #TEST
 
 def test_hooh_freeze_xyz_Hs():    
@@ -59,7 +60,8 @@ def test_hooh_freeze_xyz_Hs():
     
     psi4.set_module_options('Optking', {'frozen_cartesian': freeze_list})
     
-    thisenergy, nucenergy = optking.Psi4Opt('hf', psi4options)
+    json_output = optking.Psi4Opt('hf', psi4options)
+    thisenergy = json_output['properties']['return_energy']
     assert psi4.compare_values(HOOH_E_fixed_H_xyz, thisenergy, 6, 
                         "Cart. Coord. RHF opt of HOOH with H's xyz frozen, energy")  #TEST
 
@@ -90,7 +92,8 @@ def test_hooh_freeze_xyz_Os():
     """
     psi4.set_module_options('Optking', {'frozen_cartesian': freeze_list})
     
-    thisenergy, nucenergy = optking.Psi4Opt('hf', psi4options)
+    json_output = optking.Psi4Opt('hf', psi4options)
+    thisenergy = json_output['properties']['return_energy']
     assert psi4.compare_values(HOOH_E_fixed_O_xyz, thisenergy, 6, 
                               "Cart. Coord. RHF opt of HOOH with O's xyz frozen, energy")  #TEST
 
@@ -126,7 +129,8 @@ def test_hooh_individual_freezes_x_y_z():
     
     psi4.set_module_options('Optking', {'frozen_cartesian': freeze_list})
     
-    thisenergy, nucenergy = optking.Psi4Opt('hf', psi4options)
+    json_output = optking.Psi4Opt('hf', psi4options)
+    thisenergy = json_output['properties']['return_energy']
     assert psi4.compare_values(HOOH_E_fixed_H_xyz, thisenergy, 6, "Cart. Coord. RHF opt of HOOH with H's x y z frozen, energy")  #TEST
 
 def test_hooh_freeze_xyz_change_opt_coord():    
@@ -157,6 +161,7 @@ def test_hooh_freeze_xyz_change_opt_coord():
 
     psi4.set_module_options('Optking', {'frozen_cartesian': freeze_list, 'opt_coordinates': 'redundant'})
     
-    thisenergy, nucenergy = optking.Psi4Opt('hf', psi4options)
+    json_output = optking.Psi4Opt('hf', psi4options)
+    thisenergy = json_output['properties']['return_energy']
     assert psi4.compare_values(HOOH_E_fixed_H_xyz, thisenergy, 6, "Int. Coord. RHF opt of HOOH with H's xyz frozen, energy")  #TEST
     

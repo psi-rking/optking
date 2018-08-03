@@ -36,8 +36,6 @@ def run_json(json_file):
     json_output = optking.optimize(oMolsys, optking_options, o_json)
 
     with open(json_file, "r+") as input_data:
-        json_dict = json.load(input_data)
-        json_dict.update(json_output)
         input_data.seek(0)
         input_data.truncate()
-        json.dump(json_dict, input_data, indent=2)
+        json.dump(json_output, input_data, indent=2)

@@ -13,10 +13,10 @@ def collect_psi4_options(options):
     for opt in options['PSI4']:
         keywords[opt] = options['PSI4'][opt]
 
-    basis = keywords['basis']
-    del keywords['basis']
-    QM_method = keywords['calcName']
-    del keywords['calcName']
+    basis = keywords['BASIS']
+    del keywords['BASIS']
+    QM_method = keywords['CALCNAME']
+    del keywords['CALCNAME']
 
     return QM_method, basis, keywords
 

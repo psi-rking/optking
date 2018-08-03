@@ -18,6 +18,7 @@ class jsonSchema:
     def __init__(self, JSON_dict):
         if JSON_dict['schema_name'] == 'qc_schema_input':
             self.optking_json = copy.deepcopy(JSON_dict)
+            self._original = copy.deepcopy(JSON_dict)
             self.optking_json['molecule']['fix_com'] = True
             self.optking_json['molecule']['fix_orientation'] = True
         else:
@@ -25,6 +26,10 @@ class jsonSchema:
 
     def __str__(self):
         return str(self.optking_json)
+
+    def _get_original(self, geom, driver = 'gradient'):
+        self._original['molecule']['geometry'] = geom
+        return self._original
 
     def update_geom_and_driver(self, geom, driver='gradient'):
         """Updates jsonSchema for requesting calculation
@@ -59,7 +64,7 @@ class jsonSchema:
 
     # TODO turn off logging_file if using json
     # TODO error output to json_output file
-    def generate_json_output(self, geom):
+    def generate_json_output(self, geom, g_x):
         """ Creates json style dictionary to summarize optimization
 
         Parameters
@@ -74,12 +79,13 @@ class jsonSchema:
         json_output = {'schema_name': 'qc_schema_output'}
         json_output['provenance'] = {'creator': 'optking', 'version': '3.0?',
                                      'routine': 'runoptkingjson'}
-        json_output['return_result'] = self.to_JSON_geom(geom)
+        json_output['return_result'] = {'geometry': self.to_JSON_geom(geom)}
         json_output['success'] = 'true'
         json_output['properties'] = {'return_energy': history.oHistory[-1].E,
                                      'nuclear_repulsion_energy':
                                          history.oHistory.nuclear_repulsion_energy}
         json_output['properties']['steps'] = history.oHistory.summary()
+        json_output['return_result']['gradient'] = g_x.tolist()
         return json_output
 
     @staticmethod
