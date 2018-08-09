@@ -7,10 +7,6 @@ import optking
 from . import molsys
 from . import psi4methods
 
-
-# Please note this is a hack. we do not want to read in all of psi4's options
-# Right now I am reading in all global and optking options and appending the calcname to that
-# dictionary just as a way to get the infromation into optking for generating json files
 def Psi4Opt(calcName, psi4_options):
     """Method call for optimizing a molecule. Gives pyOptking a molsys from
     psi4s molecule class, a set containing all optking keywords, a function to

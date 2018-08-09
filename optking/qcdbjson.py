@@ -28,7 +28,7 @@ class jsonSchema:
         return str(self.optking_json)
 
     def _get_original(self, geom, driver = 'gradient'):
-        self._original['molecule']['geometry'] = geom
+        self._original['molecule']['geometry'] = self.to_JSON_geom(geom)
         return self._original
 
     def update_geom_and_driver(self, geom, driver='gradient'):
@@ -85,7 +85,7 @@ class jsonSchema:
                                      'nuclear_repulsion_energy':
                                          history.oHistory.nuclear_repulsion_energy}
         json_output['properties']['steps'] = history.oHistory.summary()
-        json_output['return_result']['gradient'] = g_x.tolist()
+        json_output['return_result']['gradient'] = [i for i in g_x.flat]
         return json_output
 
     @staticmethod

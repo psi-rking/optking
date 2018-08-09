@@ -17,8 +17,9 @@ from .molsys import Molsys
 from .history import History
 from .qcdbjson import jsonSchema
 from .displace import displace
+from . import optparams as op
 
-print(os.getcwd())
+op.Params = op.optParams({})
 
 try:
     with open(os.path.join(os.getcwd(), sys.argv[0][:-3]) + ".out", "r+") as output_file:

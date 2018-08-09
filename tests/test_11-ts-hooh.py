@@ -28,7 +28,8 @@ def test_hooh_TS():
 
     psi4.set_options(psi4options) 
     
-    thisenergy, nucenergy = optking.Psi4Opt('hf', psi4options)
+    json_output = optking.Psi4Opt('hf', psi4options)
+    thisenergy = json_output['properties']['return_energy']    
     assert psi4.compare_values(TORS_ENERGY, thisenergy, 6, "cc-pVDZ RHF transition-state opt. of HOOH (dihedral=180), energy") #TEST
 
 def test_hooh_min():
@@ -50,6 +51,7 @@ def test_hooh_min():
 
     psi4.set_options(psi4options)
     
-    thisenergy, nucenergy = optking.Psi4Opt('hf', psi4options)
+    json_output = optking.Psi4Opt('hf', psi4options)
+    thisenergy = json_output['properties']['return_energy']    
     assert psi4.compare_values(ZERO_TORS_ENERGY, thisenergy, 6, "cc-pVDZ RHF transition-state opt. of HOOH (dihedral=0), energy") #TEST
 

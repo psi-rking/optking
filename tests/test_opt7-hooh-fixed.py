@@ -36,7 +36,8 @@ def test_hooh_fixed_OH_stre():
     
     psi4.set_module_options('Optking', {'fixed_distance': OH_bondlengths})
     
-    thisenergy, nucenergy = optking.Psi4Opt('hf', psi4options)
+    json_output = optking.Psi4Opt('hf', psi4options)
+    thisenergy = json_output['properties']['return_energy']
     assert psi4.compare_values(OH_950_stre , thisenergy, 6, "Int. Coord. RHF opt of HOOH with O-H fixed to 0.95, energy")  #TEST
 
 
@@ -63,7 +64,8 @@ def test_hooh_fixed_OOH_bend():
     
     psi4.set_module_options('Optking', {'fixed_bend': bend_coordinates})
     
-    thisenergy, nucenergy = optking.Psi4Opt('hf', psi4options)
+    json_output = optking.Psi4Opt('hf', psi4options)
+    thisenergy = json_output['properties']['return_energy']
     assert psi4.compare_values(OOH_105_bend , thisenergy, 6, "Int. Coord. RHF opt of HOOH with O-O-H fixed to 105, energy") #TEST
 
 def test_hooh_fixed_HOOH_tor():    
@@ -89,5 +91,6 @@ def test_hooh_fixed_HOOH_tor():
     
     psi4.set_module_options('Optking', {'fixed_dihedral': dihedral_angle})
     
-    thisenergy, nucenergy = optking.Psi4Opt('hf', psi4options)
+    json_output = optking.Psi4Opt('hf', psi4options)
+    thisenergy = json_output['properties']['return_energy']
     assert psi4.compare_values(HOOH_120_dihedral , thisenergy, 6, "Int. Coord. RHF opt of HOOH with H-O-O-H fixed to 120, energy") #TEST
