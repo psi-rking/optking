@@ -4,25 +4,27 @@
 # Returns True or False, doesn't raise exceptions
 import numpy as np
 from math import fabs
+import logging
 
-import intcosMisc
-from printTools import printMat, print_opt
-import optparams as op
+from . import intcosMisc
+from .printTools import printMatString
+from . import optparams as op
 
 
 def testB(intcos, geom):
+    logger = logging.getLogger(__name__)
     Natom = len(geom)
     Nintco = len(intcos)
     DISP_SIZE = 0.01
     MAX_ERROR = 50 * DISP_SIZE * DISP_SIZE * DISP_SIZE * DISP_SIZE
 
-    print_opt("\n\tTesting B-matrix numerically...\n")
+    logger.info("\tTesting B-matrix numerically...")
 
     B_analytic = intcosMisc.Bmat(intcos, geom)
 
     if op.Params.print_lvl >= 3:
-        print_opt("Analytic B matrix in au\n")
-        printMat(B_analytic)
+        logger.debug("Analytic B matrix in au")
+        logger.debug(printMatString)
 
     B_fd = np.zeros((Nintco, 3 * Natom), float)
 
@@ -47,8 +49,8 @@ def testB(intcos, geom):
                     q_m2[i] - 8 * q_m[i] + 8 * q_p[i] - q_p2[i]) / (12.0 * DISP_SIZE)
 
     if op.Params.print_lvl >= 3:
-        print_opt("Numerical B matrix in au, DISP_SIZE = %lf\n" % DISP_SIZE)
-        printMat(B_fd)
+        logger.debug("Numerical B matrix in au, DISP_SIZE = %lf\n" % DISP_SIZE
+                     + printMatString(B_fd))
 
     intcosMisc.unfixBendAxes(intcos)
 
@@ -60,18 +62,17 @@ def testB(intcos, geom):
                 max_error = fabs(B_analytic[i][j] - B_fd[i][j])
                 max_error_intco = i
 
-    print_opt("\t\tMaximum difference is %.1e for internal coordinate %d.\n" %
+    logger.info("\t\tMaximum difference is %.1e for internal coordinate %d." %
               (max_error, max_error_intco + 1))
-    print_opt("\t\tThis coordinate is %s" % str(intcos[max_error_intco]))
+    logger.info("\t\tThis coordinate is %s" % str(intcos[max_error_intco]))
 
     if max_error > MAX_ERROR:
-        print_opt("\tB-matrix could be in error. However, numerical tests may fail for\n")
-        print_opt(
-            "\ttorsions at 180 degrees, and slightly for linear bond angles. This is OK.\n"
-        )
+        logger.warning("\tB-matrix could be in error. However, numerical tests may fail for\n"
+                       + "\ttorsions at 180 degrees, and slightly for linear bond angles."
+                       + "This is OK.\n")
         return False
     else:
-        print_opt("\t...Passed.\n")
+        logger.info("\t...Passed.")
         return True
 
 
@@ -81,6 +82,7 @@ def testB(intcos, geom):
 
 
 def testDerivativeB(intcos, geom_in):
+    logger = logging.getLogger(__name__)
     Natom = len(geom_in)
     Nintco = len(intcos)
     DISP_SIZE = 0.01
@@ -90,19 +92,19 @@ def testDerivativeB(intcos, geom_in):
     dq2dx2_analytic = np.zeros((3 * Natom, 3 * Natom), float)
     coord = np.copy(geom_in)
 
-    print_opt("\n\tTesting Derivative B-matrix numerically...\n")
+    logger.info("\n\tTesting Derivative B-matrix numerically...")
 
     warn = False
     for i in range(Nintco):  # test one intco at a time
 
-        print_opt("\t\tTesting internal coordinate %d : \n" % (i + 1))
+        logger.info("\t\tTesting internal coordinate %d :" % (i + 1))
 
         dq2dx2_analytic.fill(0)
         intcos[i].Dq2Dx2(coord, dq2dx2_analytic)
 
         if op.Params.print_lvl >= 3:
-            print_opt("Analytic B' (Dq2Dx2) matrix in au\n")
-            printMat(dq2dx2_analytic)
+            logger.info("Analytic B' (Dq2Dx2) matrix in au\n" + 
+                        printMatString(dq2dx2_analytic))
 
         # compute B' matrix from B matrices
         for atom_a in range(Natom):
@@ -129,9 +131,9 @@ def testDerivativeB(intcos, geom_in):
                          8*B_p[i,3*atom_b+xyz_b] - B_p2[i][3*atom_b+xyz_b]) / (12.0*DISP_SIZE)
 
         if op.Params.print_lvl >= 3:
-            print_opt(
-                "\nNumerical B' (Dq2Dx2) matrix in au, DISP_SIZE = %f\n" % DISP_SIZE)
-            printMat(dq2dx2_fd)
+            logger.info(
+                "\nNumerical B' (Dq2Dx2) matrix in au, DISP_SIZE = %f\n" % DISP_SIZE +
+            printMatString(dq2dx2_fd))
 
         max_error = -1.0
         max_error_xyz = (-1, -1)
@@ -141,19 +143,21 @@ def testDerivativeB(intcos, geom_in):
                     max_error = fabs(dq2dx2_analytic[I][J] - dq2dx2_fd[I][J])
                     max_error_xyz = (I, J)
 
-        print_opt("\t\tMax. difference is %.1e; 2nd derivative wrt %d and %d.\n" %
-                  (max_error, I + 1, J + 1))
+        logger.info("\t\tMax. difference is %.1e; 2nd derivative wrt %d and %d." %
+                  (max_error, max_error_xyz[0], max_error_xyz[1]))
 
         if max_error > MAX_ERROR:
             warn = True
 
     if warn:
-        print_opt("\tSome values did not agree.  However, numerical tests may fail for\n")
-        print_opt("\ttorsions at 180 degrees and linear bond angles. This is OK.\n")
-        print_opt("\tIf discontinuities are interfering with a geometry optimization,\n")
-        print_opt("\ttry restarting your optimization at an updated geometry, and/or\n")
-        print_opt("\tremove angular coordinates that are fixed by symmetry.\n")
+        logger.warning("""
+        \tSome values did not agree.  However, numerical tests may fail for
+        \ttorsions at 180 degrees and linear bond angles. This is OK
+        \tIf discontinuities are interfering with a geometry optimization
+        \ttry restarting your optimization at an updated geometry, and/or
+        \tremove angular coordinates that are fixed by symmetry.""")
+        
         return False
     else:
-        print_opt("\t...Passed.\n")
+        logger.info("\t...Passed.")
         return True

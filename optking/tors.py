@@ -1,16 +1,14 @@
 from math import sqrt, fabs
-
+import logging
 import numpy as np
 
-import covRadii
-import optExceptions
-import optparams as op
-import physconst as pc  # has physical constants
-import v3d
-from misc import HguessLindhRho
-from physconst import bohr2angstroms
-from printTools import print_opt
-from simple import Simple
+from . import covRadii
+from . import optExceptions
+from . import optparams as op
+from . import physconst as pc  # has physical constants
+from . import v3d
+from .misc import HguessLindhRho
+from .simple import Simple
 
 
 class Tors(Simple):
@@ -72,9 +70,10 @@ class Tors(Simple):
 
     # compute angle and return value in radians
     def q(self, geom):
-        check, tau = v3d.tors(geom[self.A], geom[self.B], geom[self.C], geom[self.D])
-        if not check:
-            raise optExceptions.AlgFail("Tors.q: unable to compute torsion value")
+        try:
+            tau = v3d.tors(geom[self.A], geom[self.B], geom[self.C], geom[self.D])
+        except optExceptions.AlgFail as error:
+            raise RuntimeError("Tors.q: unable to compute torsion value") from error
 
         # Extend values domain of torsion angles beyond pi or -pi, so that
         # delta(values) can be calculated
@@ -243,13 +242,16 @@ class Tors(Simple):
           Schlegel, Theor. Chim. Acta, 66, 333 (1984) and
           Fischer and Almlof, J. Phys. Chem., 96, 9770 (1992).
         """
+
+        logger = logging.getLogger(__name__)
+
         if guessType == "SIMPLE":
             return 0.1
 
         elif guessType == "SCHLEGEL":
             R_BC = v3d.dist(geom[self.B], geom[self.C])
             Rcov = (
-                covRadii.R[int(Z[self.B])] + covRadii.R[int(Z[self.C])]) / bohr2angstroms
+                covRadii.R[int(Z[self.B])] + covRadii.R[int(Z[self.C])]) / pc.bohr2angstroms
             a = 0.0023
             b = 0.07
             if R_BC > (Rcov + a / b):
@@ -259,7 +261,7 @@ class Tors(Simple):
         elif guessType == "FISCHER":
             R = v3d.dist(geom[self.B], geom[self.C])
             Rcov = (
-                covRadii.R[int(Z[self.B])] + covRadii.R[int(Z[self.C])]) / bohr2angstroms
+                covRadii.R[int(Z[self.B])] + covRadii.R[int(Z[self.C])]) / pc.bohr2angstroms
             a = 0.0015
             b = 14.0
             c = 2.85
@@ -275,7 +277,7 @@ class Tors(Simple):
                 Bbonds = Bbonds + Brow[i]
                 Cbonds = Cbonds + Crow[i]
             L = Bbonds + Cbonds - 2
-            print_opt("Connectivity of central 2 torsional atoms - 2 = L = %d\n" % L)
+            logger.info("Connectivity of central 2 torsional atoms - 2 = L = %d\n" % L)
             return a + b * (np.power(L, d)) / (np.power(R * Rcov, e)) * (
                 np.exp(-c * (R - Rcov)))
 
@@ -292,5 +294,6 @@ class Tors(Simple):
             return k_tau * Lindh_Rho_AB * Lindh_Rho_BC * Lindh_Rho_CD
 
         else:
-            print_opt("Warning: Hessian guess encountered unknown coordinate type.\n")
+            logger.warning("""Hessian guess encountered unknown coordinate type.\n 
+                As default, identity matrix is used""")
             return 1.0

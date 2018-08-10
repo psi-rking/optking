@@ -1,7 +1,7 @@
 #! 6-31G** UHF CH2 3B1 optimization.  Uses a Z-Matrix with dummy atoms, just for demo and testing purposes.
 
 import psi4
-import psi4optwrapper
+import optking
 
 nucrefenergy = 6.197322440574482     #TEST
 refenergy = -38.925486977153      #TEST
@@ -30,8 +30,10 @@ def test_ch2_with_dummy_atoms():
  
     psi4.set_options(psi4options)
     
-    thisenergy, nucenergy = psi4optwrapper.Psi4Opt('hf', psi4options)
-    
+    json_output = optking.Psi4Opt('hf', psi4options)
+    thisenergy = json_output['properties']['return_energy']
+    nucenergy = json_output['properties']['nuclear_repulsion_energy']   
+ 
     assert psi4.compare_values(nucrefenergy, nucenergy, 3, "Nuclear repulsion energy")  #TEST
     assert psi4.compare_values(refenergy, thisenergy, 6, "Reference energy")  #TEST
 

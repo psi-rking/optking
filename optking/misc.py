@@ -1,7 +1,8 @@
 import numpy as np
+import logging
 
-import optExceptions
-from printTools import print_opt
+from . import optExceptions
+
 
 def delta(i, j):
     if i == j:
@@ -11,22 +12,31 @@ def delta(i, j):
 
 
 def isDqSymmetric(intcos, geom, Dq):
-    print_opt('\tTODO add isDqSymmetric\n')
+    logger = logging.getLogger(__name__)
+    # TODO add symmetry check
+    logger.debug('\tTODO add isDqSymmetric\n')
     return True
 
 
 def symmetrizeXYZ(XYZ):
-    print_opt('\tTODO add symmetrize XYZ\n')
+    logger = logging.getLogger(__name__)
+    # TODO add symmetrize function
+    logger.debug('\tTODO add symmetrize XYZ\n')
     return XYZ
 
 
 # return period from atomic number
 def ZtoPeriod(Z):
-    if Z <= 2: return 1
-    elif Z <= 10: return 2
-    elif Z <= 18: return 3
-    elif Z <= 36: return 4
-    else: return 5
+    if Z <= 2:
+        return 1
+    elif Z <= 10:
+        return 2
+    elif Z <= 18:
+        return 3
+    elif Z <= 36:
+        return 4
+    else:
+        return 5
 
 
 # "Average" bond length given two periods
@@ -79,12 +89,12 @@ def HguessLindhRho(ZA, ZB, RAB):
     return np.exp(-alpha * (RAB * RAB - r_ref * r_ref))
 
 
-####
-## params: string of integers corresponding to internal coordinates
-## returns: a list of integers correspoding to an atom
-## removes spaces or non integer characters from string of internal coordinates to be frozen
-####
 def tokenizeInputString(inString):
+    """
+    params: string of integers corresponding to internal coordinates
+    returns: a list of integers correspoding to an atom
+    removes spaces or non integer characters from string of internal coordinates to be frozen
+    """
     outString = inString.replace('(', '').replace(')', '')
     return outString.split()
 
@@ -131,6 +141,7 @@ def intIntIntIntFloatList(inList):
         outList.append(float(inList[i + 4]))
     return outList
 
+
 def int_XYZ_list(inList):
     if len(inList) % 2 != 0:
         raise optExceptions.OptFail("int-XYZ list does not have even number of entries")
@@ -141,9 +152,8 @@ def int_XYZ_list(inList):
         if len(cart_string) > 3 or len(cart_string) < 1:
             raise optExceptions.OptFail("Could not decipher xyz coordinate string")
         for c in cart_string:
-            if c not in ('X','Y','Z'):
+            if c not in ('X', 'Y', 'Z'):
                 raise optExceptions.OptFail("Could not decipher xyz coordinate string")
-        cart_string = sorted(cart_string) # x , then y, then z
+        cart_string = sorted(cart_string)  # x , then y, then z
         outList.append(cart_string)
     return outList
-

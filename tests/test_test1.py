@@ -1,6 +1,6 @@
 #! SCF STO-3G geometry optimzation, with Z-matrix input
 import psi4
-import psi4optwrapper
+import optking
 # These values are from a tightly converged QChem run
 
 def test_opt1_h2o():
@@ -23,8 +23,10 @@ def test_opt1_h2o():
     }    
 
     psi4.set_options(psi4options)
-     
-    thisenergy, nucenergy = psi4optwrapper.Psi4Opt('hf', psi4options)
+    
+    json_output = optking.Psi4Opt('hf', psi4options)
+    thisenergy = json_output['properties']['return_energy']
+    nucenergy = json_output['properties']['nuclear_repulsion_energy']
     
     assert psi4.compare_values(refnucenergy, nucenergy, 3, "Nuclear repulsion energy")    #TEST
     assert psi4.compare_values(refenergy, thisenergy, 6, "Reference energy")                                #TEST

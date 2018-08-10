@@ -1,7 +1,7 @@
 #! SCF CC-PVDZ geometry optimzation, with Z-matrix input
 
 import psi4
-import psi4optwrapper
+import optking
 
 finalEnergy = -150.786766850  #TEST
 
@@ -23,7 +23,8 @@ def test_nokeywordhess_every():
     
     psi4.set_module_options('Optking', {'print': 3, 'geom_maxiter': 100}) 
     
-    E, nucenergy = psi4optwrapper.Psi4Opt('hf', psi4options)
+    json_output = optking.Psi4Opt('hf', psi4options)
+    E = json_output['properties']['return_energy']
     assert psi4.compare_values(finalEnergy, E, 8, "Final energy, empirical Hessian")                                #TEST
 
 def test_hess_every0():
@@ -44,7 +45,8 @@ def test_hess_every0():
  
     psi4.set_module_options('Optking', {'print': 5, 'full_hess_every': 0, 'geom_maxiter': 200})
     
-    E, nucenergy = psi4optwrapper.Psi4Opt('hf', psi4options)
+    json_output = optking.Psi4Opt('hf', psi4options)
+    E = json_output['properties']['return_energy']
     assert psi4.compare_values(finalEnergy, E, 8, "Final energy, initial Hessian")                                #TEST
 
 def test_hess_every3():    
@@ -65,7 +67,8 @@ def test_hess_every3():
     
     psi4.set_module_options('Optking', {'full_hess_every': 3, 'geom_maxiter': 200})
     
-    E, nucenergy = psi4optwrapper.Psi4Opt('hf', psi4options)
+    json_output = optking.Psi4Opt('hf', psi4options)
+    E = json_output['properties']['return_energy']
     assert psi4.compare_values(finalEnergy, E, 8, "Final energy, every 3rd step Hessian")                                #TEST
 
 def test_hess_every1():    
@@ -86,7 +89,8 @@ def test_hess_every1():
 
     psi4.set_module_options('Optking', {'full_hess_every': 1})
     
-    E, nucenergy = psi4optwrapper.Psi4Opt('hf', psi4options)
+    json_output = optking.Psi4Opt('hf', psi4options)
+    E = json_output['properties']['return_energy']
     psi4.compare_values(finalEnergy, E, 8, "Final energy, every step Hessian")                                #TEST
 
 def test_hess_fischer():
@@ -108,7 +112,8 @@ def test_hess_fischer():
     
     psi4.set_module_options('Optking', {'intrafrag_hess': 'fischer'})
     
-    E, nucenergy = psi4optwrapper.Psi4Opt('hf', psi4options)
+    json_output = optking.Psi4Opt('hf', psi4options)
+    E = json_output['properties']['return_energy']
     psi4.compare_values(finalEnergy, E, 8, "Final energy, every step Hessian")                                #TEST
 
 def test_hess_lindh_simple():
@@ -130,7 +135,8 @@ def test_hess_lindh_simple():
 
     psi4.set_module_options('Optking', {'intrafrag_hess': 'LindH_simple'})
     
-    E, nucenergy = psi4optwrapper.Psi4Opt('hf', psi4options)
+    json_output = optking.Psi4Opt('hf', psi4options)
+    E = json_output['properties']['return_energy']
     assert psi4.compare_values(finalEnergy, E, 8, "Final energy, every step Hessian")                                #TEST
 
 
