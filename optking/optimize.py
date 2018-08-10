@@ -320,7 +320,7 @@ def optimize(oMolsys, options_in, json_in=None):
             
         if op.Params.trajectory:
             # history doesn't contain atomic numbers so pass them in
-            returnVal = history.oHistory.trajectory(oMolsys.Z)
+            output_dict['properties']['trajectory'] = history.oHistory.trajectory(oMolsys.Z) 
         else:
             returnVal = history.oHistory[-1].E
 
