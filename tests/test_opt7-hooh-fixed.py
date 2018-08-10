@@ -2,7 +2,7 @@
 #! For "fixed" coordinates, the final value is provided by the user.
 
 import psi4
-import Psi4Opt
+import optking
 
 # Minimized energy with OH bonds at 0.950 Angstroms.  #TEST
 OH_950_stre       = -150.78666731                     #TEST
@@ -20,14 +20,14 @@ def test_hooh_fixed_OH_stre():
       O 2 1.40 1 100.0 
       H 3 0.90 2 100.0 1 115.0
     """)
-    
-    
-    psi4.set_options({
+
+    psi4options = {
       'diis': 'false',
       'basis': 'cc-pvdz',
       'g_convergence': 'gau_verytight'
-    })
+    }
     
+    psi4.set_options(psi4options)
     
     OH_bondlengths = ("""
         1  2 0.950
@@ -36,8 +36,8 @@ def test_hooh_fixed_OH_stre():
     
     psi4.set_module_options('Optking', {'fixed_distance': OH_bondlengths})
     
-    Psi4Opt.calcName = 'hf'
-    thisenergy = Psi4Opt.Psi4Opt()
+    json_output = optking.Psi4Opt('hf', psi4options)
+    thisenergy = json_output['properties']['return_energy']
     assert psi4.compare_values(OH_950_stre , thisenergy, 6, "Int. Coord. RHF opt of HOOH with O-H fixed to 0.95, energy")  #TEST
 
 
@@ -49,14 +49,14 @@ def test_hooh_fixed_OOH_bend():
       O 2 1.40 1 100.0
       H 3 0.90 2 100.0 1 115.0
     """)
-       
-    psi4.set_options({
+    psi4options = {
       'diis': 'false',
       'basis': 'cc-pvdz',
       'g_convergence': 'gau_verytight'
-    })
+    }
+
+    psi4.set_options(psi4options)
  
-    #fixed_distance = (" ")
     bend_coordinates = (""" 
         1 2 3 105.0 
         2 3 4 105.0
@@ -64,8 +64,8 @@ def test_hooh_fixed_OOH_bend():
     
     psi4.set_module_options('Optking', {'fixed_bend': bend_coordinates})
     
-    Psi4Opt.calcName = 'hf'
-    thisenergy = Psi4Opt.Psi4Opt()
+    json_output = optking.Psi4Opt('hf', psi4options)
+    thisenergy = json_output['properties']['return_energy']
     assert psi4.compare_values(OOH_105_bend , thisenergy, 6, "Int. Coord. RHF opt of HOOH with O-O-H fixed to 105, energy") #TEST
 
 def test_hooh_fixed_HOOH_tor():    
@@ -77,19 +77,20 @@ def test_hooh_fixed_HOOH_tor():
       H 3 0.90 2 100.0 1 115.0
     """)
     
-    psi4.set_options({
+    psi4options = {
       'diis': 'false',
       'basis': 'cc-pvdz',
       'g_convergence': 'gau_verytight'
-    })
+    }
+
+    psi4.set_options(psi4options)
 
     dihedral_angle = ("""
         1 2 3 4 120.0
     """)
     
-    
     psi4.set_module_options('Optking', {'fixed_dihedral': dihedral_angle})
     
-    Psi4Opt.calcName = 'hf'
-    thisenergy = Psi4Opt.Psi4Opt()
+    json_output = optking.Psi4Opt('hf', psi4options)
+    thisenergy = json_output['properties']['return_energy']
     assert psi4.compare_values(HOOH_120_dihedral , thisenergy, 6, "Int. Coord. RHF opt of HOOH with H-O-O-H fixed to 120, energy") #TEST

@@ -1,0 +1,31 @@
+#! Linesearch tests
+memory 8gb
+
+molecule Ar{
+  Ar
+  --
+  Ar 
+}
+
+set {
+  basis cc-pvdz
+  d_convergence 10
+#  scf_type pk
+#  mp2_type conv
+  geom_maxiter 20
+  g_convergence = gau_tight
+}
+
+set optking step_type linesearch
+
+import Psi4Opt
+#Psi4Opt.calcName = 'b3lyp-d'
+Psi4Opt.calcName = 'mp2'
+E = Psi4Opt.Psi4Opt()
+
+#molecule h2o {
+# O
+# H 1 1.0
+# H 1 1.0 2 104.5
+#}
+

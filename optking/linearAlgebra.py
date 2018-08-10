@@ -1,15 +1,15 @@
 from math import fabs, sqrt
-
 import numpy as np
+import operator
 
 from . import optExceptions
+#  Linear algebra routines. #
 
 
 def norm(V):
     return np.linalg.norm(V)
 
 
-### Linear algebra routines.
 def absMax(V):
     return max(abs(elem) for elem in V)
 
@@ -23,9 +23,12 @@ def rms(V):
 
 
 def signOfDouble(d):
-    if d > 0: return 1
-    elif d < 0: return -1
-    else: return 0
+    if d > 0:
+        return 1
+    elif d < 0:
+        return -1
+    else:
+        return 0
 
 
 # Returns eigenvectors as rows?
@@ -33,13 +36,10 @@ def symmMatEig(mat):
     try:
         evals, evects = np.linalg.eigh(mat)
     except:
-        raise optExceptions.OPT_FAIL("symmMatEig: could not compute eigenvectors")
+        raise optExceptions.OptFail("symmMatEig: could not compute eigenvectors")
         # could be ALG_FAIL ?
     evects = evects.T
     return evals, evects
-
-
-import operator
 
 
 # returns eigenvectors as rows; orders evals
@@ -47,7 +47,7 @@ def asymmMatEig(mat):
     try:
         evals, evects = np.linalg.eig(mat)
     except:
-        raise optExceptions.OPT_FAIL("asymmMatEig: could not compute eigenvectors")
+        raise optExceptions.OptFail("asymmMatEig: could not compute eigenvectors")
         # could be ALG_FAIL ?
 
     evects = evects.T
@@ -63,22 +63,23 @@ def asymmMatEig(mat):
 #  then a generalized inverse is permitted.
 def symmMatInv(A, redundant=False, redundant_eval_tol=1.0e-10):
     dim = A.shape[0]
-    if dim <= 0: return np.zeros((0, 0), float)
+    if dim == 0:
+        return np.zeros((0, 0), float)
     det = 1.0
 
     try:
         evals, evects = symmMatEig(A)
-    except:
-        raise optExceptions.OPT_FAIL("symmMatrixInv: could not compute eigenvectors")
-        # could be ALG_FAIL ?
+    except LinAlgError:
+        raise optExceptions.OptFail("symmMatrixInv: could not compute eigenvectors")
+        # could be LinAlgError?
 
     for i in range(dim):
         det *= evals[i]
 
     if not redundant and fabs(det) < 1E-10:
-        raise optExceptions.OPT_FAIL(
+        raise optExceptions.OptFail(
             "symmMatrixInv: non-generalized inverse failed; very small determinant")
-        # could be ALG_FAIL ?
+        # could be LinAlgError?
 
     diagInv = np.zeros((dim, dim), float)
 
@@ -99,8 +100,8 @@ def symmMatInv(A, redundant=False, redundant_eval_tol=1.0e-10):
 def symmMatRoot(A, Inverse=None):
     try:
         evals, evects = np.linalg.eigh(A)
-    except:
-        raise optExceptions.OPT_FAIL("symmMatRoot: could not compute eigenvectors")
+    except LinAlgError:
+        raise optExceptions.OptFail("symmMatRoot: could not compute eigenvectors")
         # could be ALG_FAIL ?
 
     rootMatrix = np.zeros((len(evals), len(evals)), float)

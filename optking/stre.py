@@ -1,31 +1,52 @@
 import numpy as np
+import logging
 
 from . import covRadii
 from . import optExceptions
 from . import physconst as pc
 from . import v3d
 from .misc import delta, ZtoPeriod, HguessLindhRho
-from .physconst import bohr2angstroms
-from .printTools import print_opt
-from .simple import *
+from .simple import Simple
 
 
-class STRE(SIMPLE):
+class Stre(Simple):
+    """ stretching coordinate between two atoms
+
+    Parameters
+    ----------
+    a : int
+        atom 1 (zero indexing)
+    b : int
+        atom 2 (zero indexing)
+    frozen : boolean, optional
+        set stretch as frozen
+    fixedEqVal : float
+        value to fix stretch at
+    inverse : boolean
+        identifies 1/R coordinate
+
+    """
     def __init__(self, a, b, frozen=False, fixedEqVal=None, inverse=False):
 
         self._inverse = inverse  # bool - is really 1/R coordinate?
 
-        if a < b: atoms = (a, b)
-        else: atoms = (b, a)
+        if a < b:
+            atoms = (a, b)
+        else:
+            atoms = (b, a)
 
-        SIMPLE.__init__(self, atoms, frozen, fixedEqVal)
+        Simple.__init__(self, atoms, frozen, fixedEqVal)
 
     def __str__(self):
-        if self.frozen: s = '*'
-        else: s = ' '
+        if self.frozen:
+            s = '*'
+        else:
+            s = ' '
 
-        if self.inverse: s += '1/R'
-        else: s += 'R'
+        if self.inverse:
+            s += '1/R'
+        else:
+            s += 'R'
 
         s += "(%d,%d)" % (self.A + 1, self.B + 1)
         if self.fixedEqVal:
@@ -33,10 +54,14 @@ class STRE(SIMPLE):
         return s
 
     def __eq__(self, other):
-        if self.atoms != other.atoms: return False
-        elif not isinstance(other, STRE): return False
-        elif self.inverse != other.inverse: return False
-        else: return True
+        if self.atoms != other.atoms:
+            return False
+        elif not isinstance(other, Stre):
+            return False
+        elif self.inverse != other.inverse:
+            return False
+        else:
+            return True
 
     @property
     def inverse(self):
@@ -63,9 +88,10 @@ class STRE(SIMPLE):
     # If mini == False, dqdx is 1x(3*number of atoms in fragment).
     # if mini == True, dqdx is 1x6.
     def DqDx(self, geom, dqdx, mini=False):
-        check, eAB = v3d.eAB(geom[self.A], geom[self.B])  # A->B
-        if not check:
-            raise optExceptions.ALG_FAIL("STRE.DqDx: could not normalize s vector")
+        try:
+            eAB = v3d.eAB(geom[self.A], geom[self.B])  # A->B
+        except optExceptions.AlgFail as error:
+            raise optExceptions.AlgFail("Stre.DqDx: could not normalize s vector") from error
 
         if mini:
             startA = 0
@@ -82,13 +108,13 @@ class STRE(SIMPLE):
             dqdx[startA:startA + 3] *= -1.0 * val * val  # -(1/R)^2 * (dR/da)
             dqdx[startB:startB + 3] *= -1.0 * val * val
 
-        return
 
     # Return derivative B matrix elements.  Matrix is cart X cart and passed in.
     def Dq2Dx2(self, geom, dq2dx2):
-        check, eAB = v3d.eAB(geom[self.A], geom[self.B])  # A->B
-        if not check:
-            raise optExceptions.ALG_FAIL("STRE.Dq2Dx2: could not normalize s vector")
+        try:
+            eAB = v3d.eAB(geom[self.A], geom[self.B])  # A->B
+        except optExceptions.AlgFail:
+            raise optExceptions.AlgFail("Stre.Dq2Dx2: could not normalize s vector") from error
 
         if not self._inverse:
             length = self.q(geom)
@@ -101,8 +127,8 @@ class STRE(SIMPLE):
                                 eAB[a_xyz] * eAB[b_xyz] - delta(a_xyz, b_xyz)) / length
                             if a == b:
                                 tval *= -1.0
-                            dq2dx2[3*self.atoms[a]+a_xyz, \
-                                3*self.atoms[b]+b_xyz] = tval
+                            dq2dx2[3*self.atoms[a]+a_xyz,
+                                   3*self.atoms[b]+b_xyz] = tval
 
         else:  # using 1/R
             val = self.q(geom)
@@ -121,9 +147,10 @@ class STRE(SIMPLE):
 
     def diagonalHessianGuess(self, geom, Z, connectivity=False, guessType="SIMPLE"):
         """ Generates diagonal empirical Hessians in a.u. such as
-		  Schlegel, Theor. Chim. Acta, 66, 333 (1984) and
-		  Fischer and Almlof, J. Phys. Chem., 96, 9770 (1992).
-		"""
+        Schlegel, Theor. Chim. Acta, 66, 333 (1984) and
+        Fischer and Almlof, J. Phys. Chem., 96, 9770 (1992).
+        """
+        logger = logging.getLogger(__name__)
         if guessType == "SIMPLE":
             return 0.5
 
@@ -160,7 +187,7 @@ class STRE(SIMPLE):
 
         elif guessType == "FISCHER":
             Rcov = (
-                covRadii.R[int(Z[self.A])] + covRadii.R[int(Z[self.B])]) / bohr2angstroms
+                covRadii.R[int(Z[self.A])] + covRadii.R[int(Z[self.B])]) / pc.bohr2angstroms
             R = v3d.dist(geom[self.A], geom[self.B])
             AA = 0.3601
             BB = 1.944
@@ -172,37 +199,46 @@ class STRE(SIMPLE):
             return k_r * HguessLindhRho(Z[self.A], Z[self.B], R)
 
         else:
-            print_opt("Warning: Hessian guess encountered unknown coordinate type.\n")
+            logger.warning("Hessian guess encountered unknown coordinate type.\n")
             return 1.0
 
 
-class HBOND(STRE):
+class HBond(Stre):
     def __str__(self):
-        if self.frozen: s = '*'
-        else: s = ' '
+        if self.frozen:
+            s = '*'
+        else:
+            s = ' '
 
-        if self.inverse: s += '1/H'
-        else: s += 'H'
+        if self.inverse:
+            s += '1/H'
+        else:
+            s += 'H'
 
         s += "(%d,%d)" % (self.A + 1, self.B + 1)
         if self.fixedEqVal:
             s += "[%.4f]" % self.fixedEqVal
         return s
 
-    # overrides STRE eq in comparisons, regardless of order
+    # overrides Stre eq in comparisons, regardless of order
     def __eq__(self, other):
-        if self.atoms != other.atoms: return False
-        elif not isinstance(other, HBOND): return False
-        elif self.inverse != other.inverse: return False
-        else: return True
+        if self.atoms != other.atoms:
+            return False
+        elif not isinstance(other, HBond):
+            return False
+        elif self.inverse != other.inverse:
+            return False
+        else:
+            return True
 
     def diagonalHessianGuess(self, geom, Z, connectivity, guessType):
         """ Generates diagonal empirical Hessians in a.u. such as
-		  Schlegel, Theor. Chim. Acta, 66, 333 (1984) and
-		  Fischer and Almlof, J. Phys. Chem., 96, 9770 (1992).
-		"""
-        if guess == "SIMPLE":
+        Schlegel, Theor. Chim. Acta, 66, 333 (1984) and
+        Fischer and Almlof, J. Phys. Chem., 96, 9770 (1992).
+        """
+        logger = logging.getLogger(__name__)
+        if guessType == "SIMPLE":
             return 0.1
         else:
-            print_opt("Warning: Hessian guess encountered unknown coordinate type.\n")
+            logger.warning("Hessian guess encountered unknown coordinate type.\n")
             return 1.0

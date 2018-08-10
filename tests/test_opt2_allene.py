@@ -2,10 +2,11 @@
 #! then in Cs symmetry from a starting point with a non-linear central bond angle.
 
 import psi4
+import optking
 #import importlib
 
 def test_opt2_allene():
-    nucenergy =   59.2532646680161                                                                 #TEST
+    refnucenergy = 59.2532646680161                                                                 #TEST
     refenergy = -115.8302823663                                                                    #TEST
     
     # starting point is D2d/c2v
@@ -18,19 +19,20 @@ def test_opt2_allene():
      H  0.92  0.00    1.8
      H -0.92  0.00    1.8
     """)
-    
-    psi4.set_options({
+   
+    psi4options = {
       'basis': 'DZ',
       'e_convergence': 10,
       'd_convergence': 10,
       'scf_type': 'pk',
-    })
-    
-    import Psi4Opt
-    Psi4Opt.calcName = 'hf'
-    thisenergy = Psi4Opt.Psi4Opt()
-    
-    assert psi4.compare_values(nucenergy, allene.nuclear_repulsion_energy(), 2, "Nuclear repulsion energy")    #TEST
+    }
+
+    psi4.set_options(psi4options)
+
+    json_output = optking.Psi4Opt('hf', psi4options)
+    thisenergy = json_output['properties']['return_energy']
+    nucenergy = json_output['properties']['nuclear_repulsion_energy']
+    assert psi4.compare_values(refnucenergy, nucenergy, 2, "Nuclear repulsion energy")    #TEST
     assert psi4.compare_values(refenergy, thisenergy, 6, "Reference energy")                                   #TEST
     
     # central C-C-C bond angle starts around 170 degrees to test the dynamic addition
@@ -45,9 +47,9 @@ def test_opt2_allene():
      H -0.92  0.00    1.8
     """)
     
-    #importlib.reload(Psi4Opt) This reload no longer is nessecary since Psi4Opt no longer contains any global variables
-    Psi4Opt.calcName = 'hf'
-    thisenergy = Psi4Opt.Psi4Opt()
     
-    assert psi4.compare_values(nucenergy, allene.nuclear_repulsion_energy(), 2, "Nuclear repulsion energy")    #TEST
+    json_output = optking.Psi4Opt('hf', psi4options)
+    thisenergy = json_output['properties']['return_energy']
+    nucenergy = json_output['properties']['nuclear_repulsion_energy']
+    assert psi4.compare_values(refnucenergy, nucenergy, 2, "Nuclear repulsion energy")    #TEST
     assert psi4.compare_values(refenergy, thisenergy, 6, "Reference energy")                                   #TEST
