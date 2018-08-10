@@ -374,7 +374,6 @@ def Dq_RFO(oMolsys, E, fq, H):
             logger.info("\tLambda calculated by (dq^t).(-f) = %15.10lf\n" % Lambda)
 
         # Calculate derivative of step size wrt alpha.
-        # Equation 20, Besalu and Bofill, Theor. Chem. Acc., 1999, 100:265-274
         tval = 0
         for i in range(dim):
             tval += (pow(v3d.dot(Hevects[i], fq, dim), 2)) / (pow(
@@ -388,7 +387,7 @@ def Dq_RFO(oMolsys, E, fq, H):
 
         logger.info(rfo_step_report)
         # Calculate new scaling alpha value.
-        # Equation 20, Besalu and Bofill, Theor. Chem. Acc., 1999, 100:265-274
+        # Equation 20, Besalu and Bofill, Theor. Chem. Acc., 1998, 100:265-274
         alpha += 2 * (trust * sqrt(dqtdq) - dqtdq) / analyticDerivative
 
     # end alpha RS-RFO iterations
