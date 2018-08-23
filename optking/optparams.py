@@ -106,9 +106,9 @@ class optParams(object):
         # Starting level for dynamic optimization (0=nondynamic, higher=>more conservative)
         P.dynamic_level = uod.get('DYNAMIC_LEVEL', 0)
         if P.dynamic_level == 0:  # don't change parameters
-            P.dynamic_level_max = 1
+            P.dynamic_level_max = 0
         else:
-            P.dynamic_level_max = uod.get('DYNAMIC_LEVEL_MAX', 8)  # 7 level currently defined
+            P.dynamic_level_max = uod.get('DYNAMIC_LEVEL_MAX', 7)  # 7 level currently defined
         # IRC step size in bohr(amu)\ $^{1/2}$.
         P.irc_step_size = uod.get('IRC_STEP_SIZE', 0.2)
         # IRC mapping direction

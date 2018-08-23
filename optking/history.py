@@ -117,8 +117,10 @@ class History(object):
                     "\t  %4d %20.12lf  %18.12lf    %12.8lf    %12.8lf    %12.8lf    %12.8lf  ~\n"
                     % ((i + 1), self.steps[i].E, DE, max_force, rms_force, max_disp,
                         rms_disp))
-                opt_summary += ("\t-------------------------------------------------------"
-                                + "--------------------------------------------------------"
+
+        if printoption: # Add footer of table
+            opt_summary += ("\t-------------------------------------------------------"
+                            + "--------------------------------------------------------"
                                 + "\n\n")
         if printoption is False:
             return steps

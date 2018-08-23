@@ -1,10 +1,10 @@
-#SCF CC-PVDZ geometry optimzation, with Z-matrix input
+# HF SCF CC-PVDZ geometry optimization of HOOH with Z-matrix input
 
 import psi4
 import optking
 
 def test_B_dB_matrices():
-    refnucenergy = 38.06177      #TEST
+    refnucenergy = 38.06177     #TEST
     refenergy = -150.786766850  #TEST
     
     hooh = psi4.geometry("""
@@ -28,5 +28,5 @@ def test_B_dB_matrices():
     thisenergy = json_output['properties']['return_energy']
     nucenergy = json_output['properties']['nuclear_repulsion_energy']
 
-    assert psi4.compare_values(refnucenergy, nucenergy, 4, "Nuclear repulsion energy")    #TEST
-    assert psi4.compare_values(refenergy, thisenergy, 8, "Reference energy")
+    assert psi4.compare_values(refnucenergy, nucenergy, 4, "Nuclear repulsion energy") #TEST
+    assert psi4.compare_values(refenergy, thisenergy, 8, "Reference energy")           #TEST

@@ -61,8 +61,6 @@ def optimize(oMolsys, options_in, json_in=None):
         #    log_file.setLevel(logging.DEBUG)
         # elif op.Params.logging_lvl == 'INFO' or op.Params.print_lvl >= 3:
 
-        op.Params.dynamic_level_max = 3
-
         converged = False
 
         # generates a json dictionary if optking is not being called directly by json.
@@ -282,12 +280,12 @@ def optimize(oMolsys, options_in, json_in=None):
                                                               oMolsys._fragments[F].intcos)
                     oMolsys.addIntcosFromConnectivity()
                     eraseHistory = True
-                elif op.Params.dynamic_level >= (op.Params.dynamic_level_max - 1):
-                    optimize_log.critical("\n\t Current approach/dynamic_level is %d.\n"
+                elif op.Params.dynamic_level == op.Params.dynamic_level_max:
+                    optimize_log.critical("\n\t Current algorithm/dynamic_level is %d.\n"
                                           % op.Params.dynamic_level)
                     optimize_log.critical("\n\t Alternative approaches are not available or"
                                           + "turned on.\n")
-                    raise optExceptions.OptFail("Maximum dynamic_level exceeded.")
+                    raise optExceptions.OptFail("Maximum dynamic_level reached.")
                 else:
                     op.Params.dynamic_level += 1
                     optimize_log.warning("\n\t Increasing dynamic_level algorithm to %d.\n"
