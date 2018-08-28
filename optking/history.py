@@ -8,6 +8,13 @@ from .linearAlgebra import absMax, rms, signOfDouble
 from .printTools import printMatString, printArrayString
 
 
+class IRC_step(object):
+    def __init__(self, pivot_point, new_geom, IRC_number):
+        self.pivot_point = pivot_point
+        self.new_geom = new_geom
+        self.iteration = IRC_number
+
+
 class Step(object):
     def __init__(self, geom, E, forces):
         self.geom = geom.copy()  # Store as 2D object
@@ -83,6 +90,7 @@ class History(object):
         self.steps[-1].record(projectedDE, Dq, followedUnitVector, oneDgradient,
                               oneDhessian)
 
+    # TODO we should be able to redo this Z_to_symbol with new additions to atomData
     def trajectory(self, Zs):
         from . import atomData
         t = []

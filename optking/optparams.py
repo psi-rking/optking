@@ -630,3 +630,6 @@ class optParams(object):
             )
         else:
             raise optExceptions.OptFail("Unknown value of run_level")
+
+
+Params = 0

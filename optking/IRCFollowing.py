@@ -2,10 +2,12 @@ from math import sqrt, fabs
 import numpy as np
 import logging
 
-import displace
-import intcosMisc
-from linearAlgebra import symmMatEig, symmMatInv, symmMatRoot
-from printTools import printArrayString, printMatString
+
+from . import optparams as op
+from . import displace
+from . import intcosMisc
+from .linearAlgebra import symmMatEig, symmMatInv, symmMatRoot
+from .printTools import printArrayString, printMatString
 
 
 def takeHessianHalfStep(oMolsys, Hq, B, fq, s, direction='forward'):
@@ -13,6 +15,7 @@ def takeHessianHalfStep(oMolsys, Hq, B, fq, s, direction='forward'):
     then takes an additional 'half step' as a guess
     Returns: dq (change in internal coordinates (vector))
     """
+
     logger = logging.getLogger(__name__)
     IRC_starting = (
         "==================================================================================\n")
@@ -24,46 +27,45 @@ def takeHessianHalfStep(oMolsys, Hq, B, fq, s, direction='forward'):
     GmRootInv = symmMatInv(GmRoot)
 
     # PrintStartingMatrices
-    logger.debug("B matrix\n" + printMatString(B))
-    logger.debug("Mass Weighted G Root Matrix\n" + printMatString(GmRoot))
-    logger.debug("Hesian in Internals\n" + printMatString(Hq))
-    # Hq = intcosMisc.convertHessianToInternals(H, oMolsys.intcos, oMolsys.geom)
-    HEigVals, HEigVects = symmMatEig(Hq)
-    # get gradient from Psi4 in cartesian geom
-    # gx = fgradient(geom)
-    # gq = np.dot(GmInv, np.dot(B, gx))
+    if op.Params.print_lvl >= 4:
+        logger.debug("B matrix\n" + printMatString(B))
+        logger.debug("Mass Weighted G Root Matrix\n" + printMatString(GmRoot))
+        logger.debug("Hesian in Internals\n" + printMatString(Hq))
+
+    #TODO this should be the mass weighted hessian
+    H_eig_vals, H_eig_vects = symmMatEig(Hq)
 
     # initial internal coordinates from .intcosMisc
     qZero = intcosMisc.qValues(oMolsys.intcos, oMolsys.geom)
 
-    # symmMatEig returns the Eigen Vectors as rows in order of increasing eigen values
+    # symmMatEig returns the Eigen Vectors as rows in order of increasing eigenvalues
     # first step from TS will be along the smallest eigenvector
-    gk = np.zeros(len(HEigVects[0]), float)
+    #gk = np.zeros(len(HEigVects[0]), float)
 
-    for col in range(len(HEigVects[0])):
-        gk[col] = HEigVects[0, col]
+    gk = np.copy(HEigVects[0])
+    logger.debug("Smallest EigenVector of Hessian" + printArrayString(gk))
+
+    #for col in range(len(HEigVects[0])):
+    #    gk[col] = HEigVects[0, col]
 
     if direction == 'backward':
-        for i in range(len(gk)):
-            gk[i] = -1 * gk[i]
+        gk = np.multiply(-1, gk)
 
     # To solve N = (gk^t * G * gk)
-    N = np.dot(gk.T, np.dot(Gm, gk))
-    N = 1 / sqrt(N)
+    N = 1 / sqrt(np.dot(gk.T, np.dot(Gm, gk)))
 
     # g*k+1 = qk - 1/2 * s * (N*G*gk)
     # N*G*gk
-    dqPivot = np.dot(N, np.dot(Gm, gk))
+    normalized_vector = np.dot(N, np.dot(Gm, gk))
 
     # applying weight 1/2 s to product (N*G*gk)
     # then applies vector addition q -  1/2 * s* (N*G*gk)
-    dqPivot = np.dot(0.5, np.dot(s, dqPivot))
-    qPivot = np.add(qZero, dqPivot)
-    # To-Do add cartesian coordinate for pivot point
-    # qPrime = np.dot (N, np.dot(G, gQ))
-    dqPrime = np.dot(2, dqPivot)
-    qPrime = np.add(dqPrime, qZero)
-    displaceIRCStep(oMolsys, dqPrime, Hq, fq)
+    scaled_step = np.multiply(0.5, np.multiply(s, normalized_vector))
+    qPivot = np.subtract(qZero, scaled_step)
+    qGuess = np.substract(qZero, np.multiply(2, scaled_step))
+    # TODO add cartesian coordinate for pivot point. Alex: do we actually want this???
+
+    displaceIRCStep(oMolsys, qGuess, Hq, fq)
 
     logger.info("next geometry\n" + printArrayString(qPrime))
     logger.info("Dq to Pivot Point\n" + printArrayString(dqPivot))
@@ -71,7 +73,7 @@ def takeHessianHalfStep(oMolsys, Hq, B, fq, s, direction='forward'):
                 "\n================================================================="
                 + "==================\n")
 
-    return dqPivot, qPivot, qPrime
+    return scaled_step, qPivot, qGuess
 
 
 def takeGradientHalfStep(oMolsys, H, B, s, gX):
@@ -80,6 +82,7 @@ def takeGradientHalfStep(oMolsys, H, B, s, gX):
     half step as a guess
     Returns dq: displacement in internals as a numpy array
     """
+
     # Calculate G, G^-1/2 and G-1/2
     Gm = intcosMisc.Gmat(oMolsys.intcos, oMolsys.geom, oMolsys.masses)
     GmInv = symmMatInv(Gm)
