@@ -19,6 +19,7 @@ from .qcdbjson import jsonSchema
 from .displace import displace
 from . import optparams as op
 
+# this was on my TODO list, but now im not sure its working
 op.Params = op.optParams({})
 
 try:
