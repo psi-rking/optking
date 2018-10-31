@@ -97,26 +97,23 @@ def symmMatInv(A, redundant=False, redundant_eval_tol=1.0e-10):
     return AInv
 
 
+# Compute A^(1/2) for a positive-definite matrix.  A^(-1/2) if Inverse == True
 def symmMatRoot(A, Inverse=None):
     try:
         evals, evects = np.linalg.eigh(A)
+        # Eigenvectors of A are in columns of evects
+        # Evals in ascending order
     except LinAlgError:
         raise optExceptions.OptFail("symmMatRoot: could not compute eigenvectors")
-        # could be ALG_FAIL ?
 
     rootMatrix = np.zeros((len(evals), len(evals)), float)
     if Inverse:
         for i in range(0, len(evals)):
             evals[i] = 1 / evals[i]
 
-    Q = np.zeros((len(evals), len(evals)), float)
-    for i in range(len(evals)):
-        for j in range(len(evects)):
-            Q[j][i] = evects[i][j]
-
     for i in range(0, len(evals)):
         rootMatrix[i][i] = sqrt(evals[i])
 
-    A = np.dot(Q, np.dot(rootMatrix, Q.T))
+    A = np.dot(evects, np.dot(rootMatrix, evects.T))
 
     return A
