@@ -106,6 +106,9 @@ def symmMatRoot(A, Inverse=None):
     except LinAlgError:
         raise optExceptions.OptFail("symmMatRoot: could not compute eigenvectors")
 
+    evals[ np.abs(evals) < 5*np.finfo(np.float).resolution ] = 0.0
+    evects[ np.abs(evects) < 5*np.finfo(np.float).resolution ] = 0.0
+
     rootMatrix = np.zeros((len(evals), len(evals)), float)
     if Inverse:
         for i in range(0, len(evals)):
@@ -117,3 +120,4 @@ def symmMatRoot(A, Inverse=None):
     A = np.dot(evects, np.dot(rootMatrix, evects.T))
 
     return A
+
