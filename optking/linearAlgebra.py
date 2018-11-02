@@ -42,21 +42,36 @@ def symmMatEig(mat):
     return evals, evects
 
 
-# returns eigenvectors as rows; orders evals
 def asymmMatEig(mat):
+    """Compute the eigenvalues and right eigenvectors of a square array.
+    Wraps numpy.linalg.eig to sort eigenvalues, put eigenvectors in rows, and suppress complex.
+
+    Parameters
+    ----------
+    mat : ndarray
+        (n, n) Square matrix to diagonalize.
+
+    Returns
+    -------
+    ndarray, ndarray
+        (n, ), (n, n) sorted eigenvalues and normalized corresponding eigenvectors in rows.
+
+    Raises
+    ------
+    OptFail
+        When eigenvalue computation does not converge.
+
+    """
     try:
         evals, evects = np.linalg.eig(mat)
-    except:
-        raise optExceptions.OptFail("asymmMatEig: could not compute eigenvectors")
-        # could be ALG_FAIL ?
+    except np.LinAlgError as e:
+        raise optExceptions.OptFail("asymmMatEig: could not compute eigenvectors") from e
 
-    evects = evects.T
-    evalsSorted, evectsSorted = zip(*sorted(
-        zip(evals, evects), key=operator.itemgetter(0)))
-    # convert from tuple to array
-    evalsSorted = np.array(evalsSorted, float)
-    evectsSorted = np.array(evectsSorted, float)
-    return evalsSorted, evectsSorted
+    idx = np.argsort(evals)
+    evals = evals[idx]
+    evects = evects[:, idx]
+
+    return evals.real, evects.real.T
 
 
 #  Return the inverse of a real, symmetric matrix.  If "redundant" == true,
