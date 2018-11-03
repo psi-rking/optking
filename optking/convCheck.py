@@ -169,7 +169,7 @@ def test_for_convergence(DE, max_force, rms_force, max_disp, rms_disp):
 
     """ These are all the possible booleans for convergence """
     logger = logging.getLogger(__name__)
-    logger.debug("\Testing for convergence\n")
+    logger.debug(r"\Testing for convergence\n")
     converge = op.Params.g_convergence
     untampered = op.Params.i_untampered  # i_untampered see note below
     conv_max_force = (max_force < op.Params.conv_max_force)
