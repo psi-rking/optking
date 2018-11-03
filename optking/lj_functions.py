@@ -6,7 +6,7 @@ import numpy as np
 
 
 def calc_energy_and_gradient(positions, sigma, epsilon, do_gradient=True):
-    """
+    r"""
     Computes the energy and gradient of a expression in the form
     V_{ij} = 4 \epsilon [ (sigma / r) ^ 12 - (sigma / r)^6]
     """

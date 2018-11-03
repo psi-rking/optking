@@ -1,11 +1,11 @@
-from math import sqrt, fabs
+import math
 import logging
-import numpy as np
 
-from . import covRadii
+import numpy as np
+import qcelemental as qcel
+
 from . import optExceptions
 from . import optparams as op
-from . import physconst as pc  # has physical constants
 from . import v3d
 from .misc import HguessLindhRho
 from .simple import Simple
@@ -53,14 +53,14 @@ class Tors(Simple):
 
     @property
     def qShowFactor(self):
-        return 180.0 / pc.pi
+        return 180.0 / math.pi
 
     def qShow(self, geom):  # return in degrees
         return self.q(geom) * self.qShowFactor
 
     @property
     def fShowFactor(self):
-        return pc.hartree2aJ * pc.pi / 180.0
+        return qcel.constants.hartree2aJ * math.pi / 180.0
 
     @staticmethod
     def zeta(a, m, n):
@@ -78,9 +78,9 @@ class Tors(Simple):
         # Extend values domain of torsion angles beyond pi or -pi, so that
         # delta(values) can be calculated
         if self._near180 == -1 and tau > op.Params.fix_val_near_pi:
-            return tau - 2.0 * pc.pi
+            return tau - 2.0 * math.pi
         elif self._near180 == +1 and tau < -1 * op.Params.fix_val_near_pi:
-            return tau + 2.0 * pc.pi
+            return tau + 2.0 * math.pi
         else:
             return tau
 
@@ -102,8 +102,8 @@ class Tors(Simple):
         if 1.0 - cos_u * cos_u <= 1.0e-12 or 1.0 - cos_v * cos_v <= 1.0e-12:
             return
 
-        sin_u = sqrt(1.0 - cos_u * cos_u)
-        sin_v = sqrt(1.0 - cos_v * cos_v)
+        sin_u = math.sqrt(1.0 - cos_u * cos_u)
+        sin_v = math.sqrt(1.0 - cos_v * cos_v)
         uXw = v3d.cross(u, w)
         vXw = v3d.cross(v, w)
 
@@ -154,8 +154,8 @@ class Tors(Simple):
         if 1.0 - cos_u * cos_u <= 1.0e-12 or 1.0 - cos_v * cos_v <= 1.0e-12:
             return
 
-        sin_u = sqrt(1.0 - cos_u * cos_u)
-        sin_v = sqrt(1.0 - cos_v * cos_v)
+        sin_u = math.sqrt(1.0 - cos_u * cos_u)
+        sin_v = math.sqrt(1.0 - cos_v * cos_v)
         uXw = v3d.cross(u, w)
         vXw = v3d.cross(v, w)
 
@@ -217,21 +217,21 @@ class Tors(Simple):
 
                             if a == 1 and b == 1:
                                 tval += Tors.zeta(a,0,1) * Tors.zeta(b,1,2) * (j-i) * \
-                                  pow(-0.5, fabs(j-i)) * (+w[k]*cos_u - u[k]) / (Lu*Lw*sin_u*sin_u)
+                                  pow(-0.5, math.fabs(j-i)) * (+w[k]*cos_u - u[k]) / (Lu*Lw*sin_u*sin_u)
 
                             if (a == 3 and b == 2) or (a == 3 and b == 1) or (
                                     a == 2 and b == 2) or (a == 2 and b == 1):
                                 tval += Tors.zeta(a,3,2) * Tors.zeta(b,2,1) * (j-i) * \
-                                  pow(-0.5, fabs(j-i)) * (-w[k]*cos_v - v[k]) / (Lv*Lw*sin_v*sin_v)
+                                  pow(-0.5, math.fabs(j-i)) * (-w[k]*cos_v - v[k]) / (Lv*Lw*sin_v*sin_v)
 
                             if (a == 2 and b == 1) or (a == 2 and b == 0) or (
                                     a == 1 and b == 1) or (a == 1 and b == 0):
                                 tval += Tors.zeta(a,2,1) * Tors.zeta(b,1,0) * (j-i) * \
-                                  pow(-0.5, fabs(j-i)) * (-w[k]*cos_u + u[k]) / (Lu*Lw*sin_u*sin_u)
+                                  pow(-0.5, math.fabs(j-i)) * (-w[k]*cos_u + u[k]) / (Lu*Lw*sin_u*sin_u)
 
                             if a == 2 and b == 2:
                                 tval += Tors.zeta(a,1,2) * Tors.zeta(b,2,3) * (j-i) * \
-                                  pow(-0.5, fabs(j-i)) * (+w[k]*cos_v + v[k]) / (Lv*Lw*sin_v*sin_v)
+                                  pow(-0.5, math.fabs(j-i)) * (+w[k]*cos_v + v[k]) / (Lv*Lw*sin_v*sin_v)
 
                         dq2dx2[3*self.atoms[a]+i][3*self.atoms[b]+j] = \
                         dq2dx2[3*self.atoms[b]+j][3*self.atoms[a]+i] = tval
@@ -250,8 +250,7 @@ class Tors(Simple):
 
         elif guessType == "SCHLEGEL":
             R_BC = v3d.dist(geom[self.B], geom[self.C])
-            Rcov = (
-                covRadii.R[int(Z[self.B])] + covRadii.R[int(Z[self.C])]) / pc.bohr2angstroms
+            Rcov = qcel.covalentradii.get(Z[self.B]) + qcel.covalentradii.get(Z[self.C])
             a = 0.0023
             b = 0.07
             if R_BC > (Rcov + a / b):
@@ -260,8 +259,7 @@ class Tors(Simple):
 
         elif guessType == "FISCHER":
             R = v3d.dist(geom[self.B], geom[self.C])
-            Rcov = (
-                covRadii.R[int(Z[self.B])] + covRadii.R[int(Z[self.C])]) / pc.bohr2angstroms
+            Rcov = qcel.covalentradii.get(Z[self.B]) + qcel.covalentradii.get(Z[self.C])
             a = 0.0015
             b = 14.0
             c = 2.85

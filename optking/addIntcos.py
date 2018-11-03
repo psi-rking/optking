@@ -1,13 +1,13 @@
 from itertools import combinations, permutations
 import logging
+
 import numpy as np
+import qcelemental as qcel
 
 from . import bend
 from . import cart
-from . import covRadii
 from . import optExceptions
 from . import optparams as op
-from . import physconst as pc
 from . import stre
 from . import tors
 from . import v3d
@@ -36,9 +36,9 @@ def connectivityFromDistances(geom, Z):
     # logger = logging.getLogger(__name__)
     for i, j in combinations(range(nat), 2):
         R = v3d.dist(geom[i], geom[j])
-        Rcov = (covRadii.R[int(Z[i])] + covRadii.R[int(Z[j])]) / pc.bohr2angstroms
+        Rcov = qcel.covalentradii.get(Z[i]) + qcel.covalentradii.get(Z[j])
         # logger.debug("Trying to connect atoms " + str(i) + ' and ' + str(j) + " distance is: " +
-        #            str((covRadii.R[int(Z[i])] + covRadii.R[int(Z[j])]) / pc.bohr2angstroms))
+        #            str(qcel.covalentradii.get(Z[i]) + qcel.covalentradii.get(Z[j])))
         if R < op.Params.covalent_connect * Rcov:
             C[i, j] = C[j, i] = True
 

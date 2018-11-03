@@ -1,6 +1,8 @@
-from math import fabs
-import numpy as np
+import math
 import logging
+
+import numpy as np
+import qcelemental as qcel
 
 from . import intcosMisc
 from . import optparams as op
@@ -90,11 +92,9 @@ class History(object):
         self.steps[-1].record(projectedDE, Dq, followedUnitVector, oneDgradient,
                               oneDhessian)
 
-    # TODO we should be able to redo this Z_to_symbol with new additions to atomData
     def trajectory(self, Zs):
-        from . import atomData
         t = []
-        Zstring = [atomData.Z_to_symbol[i] for i in Zs]
+        Zstring = [qcel.periodictable.to_E(i) for i in Zs]
         for iS, S in enumerate(self.steps):
             t.append((S.E, list(Zstring), S.geom.copy()))
         return t
@@ -224,8 +224,8 @@ class History(object):
             if len(use_steps) == 0 and i == (len(self.steps) - 1):
                 use_steps.append(i)
 
-            if fabs(gq) < op.Params.hess_update_den_tol or fabs(
-                    qq) < op.Params.hess_update_den_tol:
+            if (math.fabs(gq) < op.Params.hess_update_den_tol or
+                math.fabs(qq) < op.Params.hess_update_den_tol):
                 logger.warning("\tDenominators (dg)(dq) or (dq)(dq) are very small.")
                 logger.warning("\tSkipping Hessian update for step %d." % (i + 1))
                 continue
@@ -323,10 +323,10 @@ class History(object):
 
                 for i in range(Nintco):
                     for j in range(Nintco):
-                        val = fabs(scale_limit * H[i, j])
+                        val = math.fabs(scale_limit * H[i, j])
                         maximum = max(val, max_limit)
 
-                        if fabs(H_new[i, j]) < maximum:
+                        if math.fabs(H_new[i, j]) < maximum:
                             H[i, j] += H_new[i, j]
                         else:  # limit change to max
                             H[i, j] += maximum * signOfDouble(H_new[i, j])

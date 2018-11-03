@@ -1,10 +1,10 @@
-from math import sqrt, cos
+import math
 import logging
-import numpy as np
 
-from . import covRadii
+import numpy as np
+import qcelemental as qcel
+
 from . import optExceptions
-from . import physconst as pc  # has physical constants
 from . import v3d
 from .simple import Simple
 from .misc import delta, HguessLindhRho
@@ -164,14 +164,14 @@ class Bend(Simple):
 
     @property
     def qShowFactor(self):
-        return 180.0 / pc.pi
+        return 180.0 / math.pi
 
     def qShow(self, geom):  # return in degrees
         return self.q(geom) * self.qShowFactor
 
     @property
     def fShowFactor(self):
-        return pc.hartree2aJ * pc.pi / 180.0
+        return qcel.constants.hartree2aJ * math.pi / 180.0
 
     @staticmethod
     def zeta(a, m, n):
@@ -234,12 +234,12 @@ class Bend(Simple):
                                 Bend.zeta(a, 2, 1) * wXv[0:3]/Lv
 
         val = self.q(geom)
-        cos_q = cos(val)  # cos_q = v3d_dot(u,v);
+        cos_q = math.cos(val)  # cos_q = v3d_dot(u,v);
 
         # leave 2nd derivatives empty - sin 0 = 0 in denominator
         if 1.0 - cos_q * cos_q <= 1.0e-12:
             return
-        sin_q = sqrt(1.0 - cos_q * cos_q)
+        sin_q = math.sqrt(1.0 - cos_q * cos_q)
 
         for a in range(3):
             for i in range(3):  # i = a_xyz
@@ -283,10 +283,8 @@ class Bend(Simple):
             b = 0.11
             c = 0.44
             d = -0.42
-            Rcov_AB = (
-                covRadii.R[int(Z[self.A])] + covRadii.R[int(Z[self.B])]) / pc.bohr2angstroms
-            Rcov_BC = (
-                covRadii.R[int(Z[self.C])] + covRadii.R[int(Z[self.B])]) / pc.bohr2angstroms
+            Rcov_AB = qcel.covalentradii.get(Z[self.A]) + qcel.covalentradii.get(Z[self.B])
+            Rcov_BC = qcel.covalentradii.get(Z[self.C]) + qcel.covalentradii.get(Z[self.B])
             R_AB = v3d.dist(geom[self.A], geom[self.B])
             R_BC = v3d.dist(geom[self.B], geom[self.C])
             return a + b / (np.power(Rcov_AB * Rcov_BC, d)) * np.exp(
