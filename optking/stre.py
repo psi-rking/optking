@@ -186,7 +186,7 @@ class Stre(Simple):
             return F
 
         elif guessType == "FISCHER":
-            Rcov = qcel.covalentradii.get(Z[self.A]) + qcel.covalentradii.get(Z[self.B])
+            Rcov = qcel.covalentradii.get(Z[self.A], missing=4.0) + qcel.covalentradii.get(Z[self.B], missing=4.0)
             R = v3d.dist(geom[self.A], geom[self.B])
             AA = 0.3601
             BB = 1.944

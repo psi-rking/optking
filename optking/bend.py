@@ -283,8 +283,8 @@ class Bend(Simple):
             b = 0.11
             c = 0.44
             d = -0.42
-            Rcov_AB = qcel.covalentradii.get(Z[self.A]) + qcel.covalentradii.get(Z[self.B])
-            Rcov_BC = qcel.covalentradii.get(Z[self.C]) + qcel.covalentradii.get(Z[self.B])
+            Rcov_AB = qcel.covalentradii.get(Z[self.A], missing=4.0) + qcel.covalentradii.get(Z[self.B], missing=4.0)
+            Rcov_BC = qcel.covalentradii.get(Z[self.C], missing=4.0) + qcel.covalentradii.get(Z[self.B], missing=4.0)
             R_AB = v3d.dist(geom[self.A], geom[self.B])
             R_BC = v3d.dist(geom[self.B], geom[self.C])
             return a + b / (np.power(Rcov_AB * Rcov_BC, d)) * np.exp(

@@ -340,8 +340,8 @@ class Molsys(object):  # new-style classes required for getter/setters
                                 j = f2_atom
 
                     Rij = v3d.dist(geom[i], geom[j])
-                    R_i = qcel.covalentradii.get(Z[i])
-                    R_j = qcel.covalentradii.get(Z[j])
+                    R_i = qcel.covalentradii.get(Z[i], missing=4.0)
+                    R_j = qcel.covalentradii.get(Z[j], missing=4.0)
                     if Rij > scale_dist * (R_i + R_j):
                         # ignore this as too far - for starters.  may have A-B-C situation.
                         continue

@@ -250,7 +250,7 @@ class Tors(Simple):
 
         elif guessType == "SCHLEGEL":
             R_BC = v3d.dist(geom[self.B], geom[self.C])
-            Rcov = qcel.covalentradii.get(Z[self.B]) + qcel.covalentradii.get(Z[self.C])
+            Rcov = qcel.covalentradii.get(Z[self.B], missing=4.0) + qcel.covalentradii.get(Z[self.C], missing=4.0)
             a = 0.0023
             b = 0.07
             if R_BC > (Rcov + a / b):
@@ -259,7 +259,7 @@ class Tors(Simple):
 
         elif guessType == "FISCHER":
             R = v3d.dist(geom[self.B], geom[self.C])
-            Rcov = qcel.covalentradii.get(Z[self.B]) + qcel.covalentradii.get(Z[self.C])
+            Rcov = qcel.covalentradii.get(Z[self.B], missing=4.0) + qcel.covalentradii.get(Z[self.C], missing=4.0)
             a = 0.0015
             b = 14.0
             c = 2.85
