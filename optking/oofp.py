@@ -1,8 +1,10 @@
-from math import cos, sin, tan
+import math
 import logging
+
+import qcelemental as qcel
+
 from . import optExceptions
 from . import optparams as op
-from . import physconst as pc
 from . import v3d
 from .simple import Simple
 
@@ -66,14 +68,14 @@ class Oofp(Simple):
 
     @property
     def qShowFactor(self):
-        return 180.0 / pc.pi
+        return 180.0 / math.pi
 
     def qShow(self, geom):  # return in degrees
         return self.q(geom) * self.qShowFactor
 
     @property
     def fShowFactor(self):
-        return pc.hartree2aJ * pc.pi / 180.0
+        return qcel.constants.hartree2aJ * math.pi / 180.0
 
     def q(self, geom):
         """Compute torsion angle for geometry.
@@ -96,9 +98,9 @@ class Oofp(Simple):
 
         # Extend domain of out-of-plane angles to beyond pi
         if self._near180 == -1 and tau > op.Params.fix_val_near_pi:
-            return tau - 2.0 * pc.pi
+            return tau - 2.0 * math.pi
         elif self._near180 == +1 and tau < -1 * op.Params.fix_val_near_pi:
-            return tau + 2.0 * pc.pi
+            return tau + 2.0 * math.pi
         else:
             return tau
 
@@ -125,24 +127,24 @@ class Oofp(Simple):
 
         # S vector for A
         tmp = v3d.cross(eBC, eBD)
-        tmp /= cos(val) * sin(phi_CBD)
-        tmp2 = tan(val) * eBA
+        tmp /= math.cos(val) * math.sin(phi_CBD)
+        tmp2 = math.tan(val) * eBA
         dqdx[3 * self.A:3 * self.A + 3] = self.neg * (tmp - tmp2) / rBA
 
         # S vector for C
         tmp = v3d.cross(eBD, eBA)
-        tmp = tmp / (cos(val) * sin(phi_CBD))
-        tmp2 = cos(phi_CBD) * eBD
+        tmp = tmp / (math.cos(val) * math.sin(phi_CBD))
+        tmp2 = math.cos(phi_CBD) * eBD
         tmp3 = -1.0 * tmp2 + eBC
-        tmp3 *= tan(val) / (sin(phi_CBD) * sin(phi_CBD))
+        tmp3 *= math.tan(val) / (math.sin(phi_CBD) * math.sin(phi_CBD))
         dqdx[3 * self.C:3 * self.C + 3] = self.neg * (tmp - tmp3) / rBC
 
         # S vector for D
         tmp = v3d.cross(eBA, eBC)
-        tmp /= cos(val) * sin(phi_CBD)
-        tmp2 = cos(phi_CBD) * eBC
+        tmp /= math.cos(val) * math.sin(phi_CBD)
+        tmp2 = math.cos(phi_CBD) * eBC
         tmp3 = -1.0 * tmp2 + eBD
-        tmp3 *= tan(val) / (sin(phi_CBD) * sin(phi_CBD))
+        tmp3 *= math.tan(val) / (math.sin(phi_CBD) * math.sin(phi_CBD))
         dqdx[3 * self.D:3 * self.D + 3] = self.neg * (tmp - tmp3) / rBD
 
         # S vector for B

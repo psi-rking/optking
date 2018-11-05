@@ -1,6 +1,8 @@
 import numpy as np
 import logging
 
+import qcelemental as qcel
+
 from . import optExceptions
 
 
@@ -23,20 +25,6 @@ def symmetrizeXYZ(XYZ):
     # TODO add symmetrize function
     logger.debug('\tTODO add symmetrize XYZ\n')
     return XYZ
-
-
-# return period from atomic number
-def ZtoPeriod(Z):
-    if Z <= 2:
-        return 1
-    elif Z <= 10:
-        return 2
-    elif Z <= 18:
-        return 3
-    elif Z <= 36:
-        return 4
-    else:
-        return 5
 
 
 # "Average" bond length given two periods
@@ -80,8 +68,8 @@ def HguessLindhAlpha(perA, perB):
 
 # rho_ij = e^(alpha (r^2,ref - r^2))
 def HguessLindhRho(ZA, ZB, RAB):
-    perA = ZtoPeriod(ZA)
-    perB = ZtoPeriod(ZB)
+    perA = qcel.periodictable.to_period(ZA)
+    perB = qcel.periodictable.to_period(ZB)
 
     alpha = HguessLindhAlpha(perA, perB)
     r_ref = AverageRFromPeriods(perA, perB)

@@ -1,7 +1,9 @@
-import numpy as np
 import logging
+
+import numpy as np
+import qcelemental as qcel
+
 from .printTools import printMatString
-from . import physconst as pc
 # from bend import *
 
 
@@ -12,7 +14,7 @@ def show(H, intcos):
     factors = np.asarray([intco.qShowFactor for intco in intcos])
     factors_inv = np.divide(1.0, factors)
     scaled_H = np.einsum('i,ij,j->ij', factors_inv, H, factors_inv)
-    scaled_H *= pc.hartree2aJ
+    scaled_H *= qcel.constants.hartree2aJ
     logger.info("Hessian in [aJ/Ang^2], etc.\n" + printMatString(scaled_H))
 
 

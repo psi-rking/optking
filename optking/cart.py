@@ -1,4 +1,5 @@
-from . import physconst as pc
+import qcelemental as qcel
+
 from . import optExceptions
 from .simple import Simple
 
@@ -56,14 +57,14 @@ class Cart(Simple):
 
     @property
     def qShowFactor(self):
-        return pc.bohr2angstroms
+        return qcel.constants.bohr2angstroms
 
     def qShow(self, geom):
         return self.qShowFactor * self.q(geom)
 
     @property
     def fShowFactor(self):
-        return pc.hartree2aJ / pc.bohr2angstroms
+        return qcel.constants.hartree2aJ / qcel.constants.bohr2angstroms
 
     # Compute and return in-place array of first derivative (row of B matrix)
     def DqDx(self, geom, dqdx):
