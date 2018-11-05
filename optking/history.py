@@ -18,10 +18,11 @@ class IRC_step(object):
 
 
 class Step(object):
-    def __init__(self, geom, E, forces):
+    def __init__(self, geom, E, forces, qcout=None):
         self.geom = geom.copy()  # Store as 2D object
         self.E = E
         self.forces = forces.copy()
+        self.qcout = qcout
         self.projectedDE = None
         self.Dq = None
         self.followedUnitVector = None
@@ -81,8 +82,8 @@ class History(object):
         del self.steps[index]
 
     # Add new step.  We will store geometry as 1D in history.
-    def append(self, geom, E, forces):
-        s = Step(geom, E, forces)
+    def append(self, geom, E, forces, qcout):
+        s = Step(geom, E, forces, qcout)
         self.steps.append(s)
         History.stepsSinceLastHessian += 1
 
@@ -101,39 +102,40 @@ class History(object):
 
     def summary(self, printoption=False):
         opt_summary = ''
-        steps = {}  # for json
-        for i in range(len(self.steps)):
-            if i == 0:
-                DE = self.steps[0].E
-            else:
-                DE = self.steps[i].E - self.steps[i - 1].E
+        steps = []
 
-            f = self.steps[i].forces
-            max_force = absMax(f)
-            rms_force = rms(f)
+        for i, step in enumerate(self.steps):
+            if i == 0:
+                DE = step.E
+            else:
+                DE = step.E - self.steps[i - 1].E
+
+            max_force = absMax(step.forces)
+            rms_force = rms(step.forces)
 
             # For the summary Dq, we do not want to +2*pi for example for the angles,
             # so we read old Dq used during step.
-            Dq = self.steps[i].Dq
-            max_disp = absMax(Dq)
-            rms_disp = rms(Dq)
-            if printoption is False:
-                steps['Step ' + str(i+1)] = {'Energy': self.steps[i].E, 'DE': DE, 'max_force':
-                                             max_force, 'max_disp': max_disp, 'rms_disp': rms_disp}
-            else:
-                opt_summary += (
-                    "\t  %4d %20.12lf  %18.12lf    %12.8lf    %12.8lf    %12.8lf    %12.8lf  ~\n"
-                    % ((i + 1), self.steps[i].E, DE, max_force, rms_force, max_disp,
-                        rms_disp))
+            max_disp = absMax(step.Dq)
+            rms_disp = rms(step.Dq)
 
-        if printoption: # Add footer of table
-            opt_summary += ("\t-------------------------------------------------------"
-                            + "--------------------------------------------------------"
-                                + "\n\n")
-        if printoption is False:
-            return steps
-        else:
+            steps.append({
+                'Energy': step.E,
+                'DE': DE,
+                'max_force': max_force,
+                'max_disp': max_disp,
+                'rms_disp': rms_disp,
+                'raw_output': step.qcout,
+            })
+
+            opt_summary += ("\t  %4d %20.12lf  %18.12lf    %12.8lf    %12.8lf    %12.8lf    %12.8lf  ~\n" % (
+                (i + 1), self.steps[i].E, DE, max_force, rms_force, max_disp, rms_disp))
+
+        opt_summary += ("\t" + "-" * 112 + "\n\n")
+
+        if printoption:
             return opt_summary
+        else:
+            return steps
 
     # Report on performance of last step
     # Eventually might have this function return False to reject a step

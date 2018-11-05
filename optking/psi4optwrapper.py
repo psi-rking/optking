@@ -16,7 +16,6 @@ def Psi4Opt(calcName, psi4_options):
 
     mol = psi4.core.get_active_molecule()
     oMolsys = molsys.Molsys.fromPsi4Molecule(mol)
-    
 
     #old way currently used for testing suite. need to comment out when working
     #with psi4.optimize()
@@ -26,11 +25,9 @@ def Psi4Opt(calcName, psi4_options):
     optking_user_options['PSI4'] = psi4_options_upper
     optking_user_options["PSI4"]['CALCNAME'] = calcName #change to psi4_options when using psi4.optimize()
 
-
     # all we should need to do for psi4.optimize
     #psi4_options["PSI4"]["CALCNAME"] = calcName
     #pass psi4_options directly optimize
-    
 
     optking_json_dict = optking.optimize(oMolsys, optking_user_options)
 
