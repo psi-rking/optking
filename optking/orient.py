@@ -80,7 +80,7 @@ def zmatPoint(A, B, C, R_CD, theta_BCD, phi_ABCD):
     sinABC = sqrt(1 - (cosABC * cosABC) )
     if (sinABC - 1.0e-14) < 0.0 :
         print("Z-matrix (reference) points cannot be colinear.")
-        raise optExceptions.AlgFail("Z-matrix (reference) points cannot be colinear.")
+        raise AlgError("Z-matrix (reference) points cannot be colinear.")
 
     eY = v3d.cross(eAB,eBC) / sinABC
     eX = v3d.cross(eY,eBC)

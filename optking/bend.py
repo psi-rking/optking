@@ -4,7 +4,7 @@ import logging
 import numpy as np
 import qcelemental as qcel
 
-from . import optExceptions
+from .exceptions import AlgError, OptError
 from . import v3d
 from .simple import Simple
 from .misc import delta, HguessLindhRho
@@ -84,7 +84,7 @@ class Bend(Simple):
         if intype in ["REGULAR", "LINEAR", "COMPLEMENT"]:
             self._bendType = intype
         else:
-            raise optExceptions.OptFail(
+            raise OptError(
                 "Bend.bendType must be REGULAR, LINEAR, or COMPLEMENT")
 
     def compute_axes(self, geom):
@@ -149,13 +149,13 @@ class Bend(Simple):
         origin = np.zeros(3, float)
         try:
             phi = v3d.angle(u, origin, self._x)
-        except optExceptions.AlgFail as error:
+        except AlgError as error:
             logger.error("Bend.q could not compute linear bend")
             raise
 
         try:
             phi2 = v3d.angle(self._x, origin, v)
-        except optExceptions.AlgFail as error:
+        except AlgError as error:
             logger.error("Bend.q could not compute linear bend")
             raise
         else:

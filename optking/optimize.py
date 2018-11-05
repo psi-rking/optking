@@ -9,7 +9,7 @@ from . import hessian
 from . import stepAlgorithms
 from . import caseInsensitiveDict
 from . import optparams as op
-from . import optExceptions
+from .exceptions import OptError, AlgError
 from . import addIntcos
 from . import history
 from . import intcosMisc
@@ -178,7 +178,7 @@ def optimize(oMolsys, options_in, json_in=None):
                                               + "Dynamic level is off.\n")
                             pass
                         else:
-                            raise optExceptions.AlgFail(
+                            raise AlgError(
                                 "Bad step, and no more backsteps allowed.")
 
                     # Produce guess Hessian or update existing Hessian..
@@ -248,7 +248,7 @@ def optimize(oMolsys, options_in, json_in=None):
                     optimize_log.error("\tNumber of steps (%d) exceeds maximum allowed (%d).\n"
                                        % (stepNumber + 1, op.Params.geom_maxiter))
                     history.oHistory.summary()
-                    raise optExceptions.AlgFail("Maximum number of steps exceeded.")
+                    raise OptError("Maximum number of steps exceeded.")
 
                 # This should be called at the end of each iteration of the while loop
                 if op.Params.opt_type == 'IRC' and not atMinimum:
@@ -261,8 +261,8 @@ def optimize(oMolsys, options_in, json_in=None):
                     qPivot, qPrime, Dq = IRCFollowing.takeGradientHalfStep(
                         oMolsys, E, Hq, B, op.Params.irc_step_size, gX)
 
-            except optExceptions.AlgFail as AF:
-                optimize_log.error("\n\tCaught AlgFail exception\n")
+            except AlgError as AF:
+                optimize_log.error("\n\tCaught AlgError exception\n")
                 eraseHistory = False
                 eraseIntcos = False
 
@@ -281,7 +281,7 @@ def optimize(oMolsys, options_in, json_in=None):
                                           % op.Params.dynamic_level)
                     optimize_log.critical("\n\t Alternative approaches are not available or"
                                           + "turned on.\n")
-                    raise optExceptions.OptFail("Maximum dynamic_level reached.")
+                    raise OptError("Maximum dynamic_level reached.")
                 else:
                     op.Params.dynamic_level += 1
                     optimize_log.warning("\n\t Increasing dynamic_level algorithm to %d.\n"

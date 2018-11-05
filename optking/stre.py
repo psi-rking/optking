@@ -3,7 +3,7 @@ import logging
 import numpy as np
 import qcelemental as qcel
 
-from . import optExceptions
+from .exceptions import AlgError, OptError
 from . import v3d
 from .misc import delta, HguessLindhRho
 from .simple import Simple
@@ -90,8 +90,8 @@ class Stre(Simple):
     def DqDx(self, geom, dqdx, mini=False):
         try:
             eAB = v3d.eAB(geom[self.A], geom[self.B])  # A->B
-        except optExceptions.AlgFail as error:
-            raise optExceptions.AlgFail("Stre.DqDx: could not normalize s vector") from error
+        except AlgError as error:
+            raise AlgError("Stre.DqDx: could not normalize s vector") from error
 
         if mini:
             startA = 0
@@ -113,8 +113,8 @@ class Stre(Simple):
     def Dq2Dx2(self, geom, dq2dx2):
         try:
             eAB = v3d.eAB(geom[self.A], geom[self.B])  # A->B
-        except optExceptions.AlgFail:
-            raise optExceptions.AlgFail("Stre.Dq2Dx2: could not normalize s vector") from error
+        except AlgError:
+            raise AlgError("Stre.Dq2Dx2: could not normalize s vector") from error
 
         if not self._inverse:
             length = self.q(geom)

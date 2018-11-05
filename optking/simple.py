@@ -1,5 +1,5 @@
 from abc import ABCMeta, abstractmethod
-from . import optExceptions
+from .exceptions import AlgError, OptError
 
 
 class Simple(object):
@@ -20,9 +20,9 @@ class Simple(object):
         try:
             for v in values:
                 if int(v) < 0:
-                    raise optExceptions.OptFail('Atom identifier cannot be negative.')
+                    raise OptError('Atom identifier cannot be negative.')
         except TypeError:
-            raise optExceptions.OptFail('Atoms must be iterable list of whole numbers.')
+            raise OptError('Atoms must be iterable list of whole numbers.')
         self._atoms = values
 
     @property
@@ -51,7 +51,7 @@ class Simple(object):
             try:
                 float(qTarget)
             except:
-                raise optExceptions.OptFail("Eq. value must be a float or None.")
+                raise OptError("Eq. value must be a float or None.")
         self._fixedEqVal = qTarget
 
     @property
@@ -59,28 +59,28 @@ class Simple(object):
         try:
             return self.atoms[0]
         except:
-            raise optExceptions.OptFail("A() called but atoms[0] does not exist")
+            raise OptError("A() called but atoms[0] does not exist")
 
     @property
     def B(self):
         try:
             return self.atoms[1]
         except:
-            raise optExceptions.OptFail("B() called but atoms[1] does not exist")
+            raise OptError("B() called but atoms[1] does not exist")
 
     @property
     def C(self):
         try:
             return self.atoms[2]
         except:
-            raise optExceptions.OptFail("C() called but atoms[2] does not exist")
+            raise OptError("C() called but atoms[2] does not exist")
 
     @property
     def D(self):
         try:
             return self.atoms[3]
         except:
-            raise optExceptions.OptFail("D() called but atoms[3] does not exist")
+            raise OptError("D() called but atoms[3] does not exist")
 
     # ** constructor + 7 abstract methods are currently required **
     @abstractmethod  # Given geometry, return value in Bohr or radians
@@ -108,7 +108,7 @@ class Simple(object):
     # then, e.g, DqDx is 2x6.
     @abstractmethod
     def DqDx(self, geom, dqdx, mini=False):
-        raise optExceptions.AlgFail('no DqDx for this coordinate')
+        raise AlgError('no DqDx for this coordinate')
 
     # Modify provided Dq2Dx2 array with second derivative of value wrt cartesians
     #  i.e., provide derivative B matrix for coordinate.
@@ -116,8 +116,8 @@ class Simple(object):
     # cartesian by cartesian - of minimum size.
     @abstractmethod  # Derivative of value wrt cartesians, i.e., B-matrix elements.
     def Dq2Dx2(self, geom, dq2dx2):
-        raise optExceptions.AlgFail('no Dq2Dx2 for this coordinate')
+        raise AlgError('no Dq2Dx2 for this coordinate')
 
     @abstractmethod  # Diagonal hessian guess
     def diagonalHessianGuess(geom, Z, connectivity, guessType):
-        raise optExceptions.AlgFail('no hessian guess for this coordinate')
+        raise AlgError('no hessian guess for this coordinate')

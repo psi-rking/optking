@@ -1,6 +1,6 @@
 import qcelemental as qcel
 
-from . import optExceptions
+from .exceptions import AlgError, OptError
 from .simple import Simple
 
 
@@ -50,7 +50,7 @@ class Cart(Simple):
         elif setval in [2, 'z', 'Z']:
             self._xyz = 2
         else:
-            raise optExceptions.OptFail("Cartesian coordinate must be set to 0-2 or X-Z")
+            raise OptError("Cartesian coordinate must be set to 0-2 or X-Z")
 
     def q(self, geom):
         return geom[self.A, self._xyz]
