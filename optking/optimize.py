@@ -42,8 +42,8 @@ def optimize(oMolsys, options_in, json_in=None):
     -------
     float, float or dict
         energy and nuclear repulsion energy or MolSSI qc_schema_output as dict
-    """
 
+    """
     try:
         optimize_log = logging.getLogger(__name__)
 
@@ -248,7 +248,7 @@ def optimize(oMolsys, options_in, json_in=None):
                     optimize_log.error("\tNumber of steps (%d) exceeds maximum allowed (%d).\n"
                                        % (stepNumber + 1, op.Params.geom_maxiter))
                     history.oHistory.summary()
-                    raise OptError("Maximum number of steps exceeded.")
+                    raise OptError("Maximum number of steps exceeded: {}.".format(op.Params.geom_maxiter))
 
                 # This should be called at the end of each iteration of the while loop
                 if op.Params.opt_type == 'IRC' and not atMinimum:
@@ -311,10 +311,10 @@ def optimize(oMolsys, options_in, json_in=None):
 
         if op.Params.opt_type == 'linesearch':
             (gX), qcjson = get_gradient(oMolsys.geom, o_json, nuc=False)
-            
+
         if op.Params.trajectory:
             # history doesn't contain atomic numbers so pass them in
-            output_dict['properties']['trajectory'] = history.oHistory.trajectory(oMolsys.Z) 
+            output_dict['properties']['trajectory'] = history.oHistory.trajectory(oMolsys.Z)
         else:
             returnVal = history.oHistory[-1].E
 
@@ -326,7 +326,7 @@ def optimize(oMolsys, options_in, json_in=None):
         del history.oHistory[:]
         del oMolsys
         del op.Params
-        json_original.update(output_dict)         
+        json_original.update(output_dict)
         return json_original
 
     except Exception as error:
@@ -336,12 +336,20 @@ def optimize(oMolsys, options_in, json_in=None):
                                "optimizations from failing\n"))
         optimize_log.exception("Error Type:" + str(type(error)))
         optimize_log.exception("Error caught:" + str(error))
+
+        output_dict = o_json.generate_json_output(history.oHistory[-1].geom, gX)
+        json_original = o_json._get_original(oMolsys.geom)
+        json_original.update(output_dict)
+        json_original["error"] = repr(error)
+        json_original["success"] = False
+
         del history.oHistory[:]
         del o_json
         # had been deleting oMolsys and Fragments here but IDE complained they
         # were not declared
         del op.Params
 
+        return json_original
 
 # TODO need to activate printResults for get_x methods
 def get_gradient(new_geom, o_json, printResults=False, nuc=True, QM='psi4'):
@@ -354,9 +362,9 @@ def get_gradient(new_geom, o_json, printResults=False, nuc=True, QM='psi4'):
         (nat, 3) current geometry of molecule
     o_json : object
         instance of optking's jsonSchema class
-    printResults : Boolean, optional
+    printResults : bool, optional
         flag to print the gradient
-    nuc : Boolean
+    nuc : bool
         flag to return the nuclear repulsion energy as well
     QM : str
         NYI will have options for programs other than psi4 eventually
