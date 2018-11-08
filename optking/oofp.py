@@ -3,7 +3,7 @@ import logging
 
 import qcelemental as qcel
 
-from . import optExceptions
+from .exceptions import AlgError, OptError
 from . import optparams as op
 from . import v3d
 from .simple import Simple
@@ -93,7 +93,7 @@ class Oofp(Simple):
         """
         try:
             tau = v3d.oofp(geom[self.A], geom[self.B], geom[self.C], geom[self.D])
-        except optExceptions.AlgFail as error:
+        except AlgError as error:
             raise
 
         # Extend domain of out-of-plane angles to beyond pi
@@ -152,7 +152,7 @@ class Oofp(Simple):
             - dqdx[3*self.C:3*self.C+3] - dqdx[3*self.D:3*self.D+3])
 
     def Dq2Dx2(self, geom, dqdx):
-        raise optExceptions.AlgFail('no derivative B matrices for out-of-plane angles')
+        raise AlgError('no derivative B matrices for out-of-plane angles')
 
     def diagonalHessianGuess(self, geom, Z, guess="SIMPLE"):
         """ Generates diagonal empirical Hessians in a.u. such as

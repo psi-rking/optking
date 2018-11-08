@@ -5,7 +5,7 @@ import numpy as np
 import qcelemental as qcel
 
 from . import frag
-from . import optExceptions
+from .exceptions import AlgError, OptError
 from . import v3d
 from .addIntcos import connectivityFromDistances, addCartesianIntcos
 
@@ -153,7 +153,7 @@ class Molsys(object):  # new-style classes required for getter/setters
         for iF, F in enumerate(self._fragments):
             if atom_index in self.frag_atom_range(iF):
                 return iF
-        raise optExceptions.OptFail("atom2frag_index: atom_index impossibly large")
+        raise OptError("atom2frag_index: atom_index impossibly large")
 
     # Given a list of atoms, return all the fragments to which they belong
     def atomList2uniqueFragList(self, atomList):

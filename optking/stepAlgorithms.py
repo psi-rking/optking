@@ -6,7 +6,7 @@ from math import sqrt, fabs
 import logging
 
 from . import v3d
-from . import optExceptions
+from .exceptions import AlgError, OptError
 from . import optparams as op
 from . import optimize
 from .history import oHistory
@@ -69,7 +69,7 @@ def Dq(oMolsys, E, qForces, H, stepType=None, o_json=None):
     elif stepType == 'LINESEARCH':
         return Dq_LINESEARCH(oMolsys, E, qForces, H, o_json)
     else:
-        raise optExceptions.OptFail('Dq: step type not yet implemented')
+        raise OptError('Dq: step type not yet implemented')
 
 
 # TODO this method was described as crude do we need to revisit?
@@ -92,7 +92,7 @@ def DE_projected(model, step, grad, hess):
     elif model == 'RFO':
         return (step * grad + 0.5 * step * step * hess) / (1 + step * step)
     else:
-        raise optExceptions.OptFail("DE_projected does not recognize model.")
+        raise OptError("DE_projected does not recognize model.")
 
 
 # TODO why store the attemtped dq?
@@ -159,7 +159,7 @@ def Dq_NR(oMolsys, E, fq, H):
     # Can check full geometry, but returned indices will correspond then to that.
     linearList = linearBendCheck(oMolsys.intcos, oMolsys.geom, dq)
     if linearList:
-        raise optExceptions.AlgFail("New linear angles", newLinearBends=linearList)
+        raise AlgError("New linear angles", newLinearBends=linearList)
 
     return dq
 
@@ -444,12 +444,12 @@ def Dq_RFO(oMolsys, E, fq, H):
     oHistory.appendRecord(DEprojected, dq, rfo_u, rfo_g, rfo_h)
     linearList = linearBendCheck(oMolsys.intcos, oMolsys.geom, dq)
     if linearList:
-        raise optExceptions.AlgFail("New linear angles", newLinearBends=linearList)
+        raise AlgError("New linear angles", newLinearBends=linearList)
 
     # Before quitting, make sure step is reasonable.  It should only be
     # screwball if we are using the "First Guess" after the back-transformation failed.
     if sqrt(np.dot(dq, dq)) > 10 * trust:
-        raise optExceptions.AlgFail("opt.py: Step is far too large.")
+        raise AlgError("opt.py: Step is far too large.")
 
     return dq
 
@@ -606,12 +606,12 @@ def Dq_P_RFO(oMolsys, E, fq, H):
 
     linearList = linearBendCheck(oMolsys.intcos, oMolsys.geom, dq)
     if linearList:
-        raise optExceptions.AlgFail("New linear angles", newLinearBends=linearList)
+        raise AlgError("New linear angles", newLinearBends=linearList)
 
     # Before quitting, make sure step is reasonable.  It should only be
     # screwball if we are using the "First Guess" after the back-transformation failed.
     if sqrt(np.dot(dq, dq)) > 10 * trust:
-        raise optExceptions.AlgFail("opt.py: Step is far too large.")
+        raise AlgError("opt.py: Step is far too large.")
 
     return dq
 
@@ -682,7 +682,7 @@ def Dq_SD(oMolsys, E, fq):
 
     linearList = linearBendCheck(oMolsys.intcos, oMolsys.geom, dq)
     if linearList:
-        raise optExceptions.AlgFail("New linear angles", newLinearBends=linearList)
+        raise AlgError("New linear angles", newLinearBends=linearList)
 
     return dq
 
@@ -719,7 +719,7 @@ def Dq_BACKSTEP(oMolsys):
 
     # Calling function shouldn't let this happen; this is a check for developer
     if len(oHistory.steps) < 2:
-        raise optExceptions.OptFail("Backstep called, but no history is available.")
+        raise OptError("Backstep called, but no history is available.")
 
     # Erase last, partial step data for current step.
     del oHistory.steps[-1]
@@ -763,7 +763,7 @@ def Dq_BACKSTEP(oMolsys):
 
     linearList = linearBendCheck(oMolsys.intcos, oMolsys.geom, dq)
     if linearList:
-        raise optExceptions.AlgFail("New linear angles", newLinearBends=linearList)
+        raise AlgError("New linear angles", newLinearBends=linearList)
 
     return dq
 
@@ -913,7 +913,7 @@ def Dq_LINESEARCH(oMolsys, E, fq, H, o_json):
     # Can check full geometry, but returned indices will correspond then to that.
     linearList = linearBendCheck(oMolsys.intcos, oMolsys.geom, dq)
     if linearList:
-        raise optExceptions.AlgFail("New linear angles", newLinearBends=linearList)
+        raise AlgError("New linear angles", newLinearBends=linearList)
 
     oHistory.nuclear_repulsion_energy = nuc
 

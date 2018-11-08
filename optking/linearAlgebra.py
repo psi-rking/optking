@@ -2,7 +2,7 @@ from math import fabs, sqrt
 import numpy as np
 import operator
 
-from . import optExceptions
+from .exceptions import AlgError, OptError
 #  Linear algebra routines. #
 
 
@@ -36,7 +36,7 @@ def symmMatEig(mat):
     try:
         evals, evects = np.linalg.eigh(mat)
     except:
-        raise optExceptions.OptFail("symmMatEig: could not compute eigenvectors")
+        raise OptError("symmMatEig: could not compute eigenvectors")
         # could be ALG_FAIL ?
     evects = evects.T
     return evals, evects
@@ -58,14 +58,14 @@ def asymmMatEig(mat):
 
     Raises
     ------
-    OptFail
+    OptError
         When eigenvalue computation does not converge.
 
     """
     try:
         evals, evects = np.linalg.eig(mat)
     except np.LinAlgError as e:
-        raise optExceptions.OptFail("asymmMatEig: could not compute eigenvectors") from e
+        raise OptError("asymmMatEig: could not compute eigenvectors") from e
 
     idx = np.argsort(evals)
     evals = evals[idx]
@@ -85,14 +85,14 @@ def symmMatInv(A, redundant=False, redundant_eval_tol=1.0e-10):
     try:
         evals, evects = symmMatEig(A)
     except LinAlgError:
-        raise optExceptions.OptFail("symmMatrixInv: could not compute eigenvectors")
+        raise OptError("symmMatrixInv: could not compute eigenvectors")
         # could be LinAlgError?
 
     for i in range(dim):
         det *= evals[i]
 
     if not redundant and fabs(det) < 1E-10:
-        raise optExceptions.OptFail(
+        raise OptError(
             "symmMatrixInv: non-generalized inverse failed; very small determinant")
         # could be LinAlgError?
 
@@ -119,7 +119,7 @@ def symmMatRoot(A, Inverse=None):
         # Eigenvectors of A are in columns of evects
         # Evals in ascending order
     except LinAlgError:
-        raise optExceptions.OptFail("symmMatRoot: could not compute eigenvectors")
+        raise OptError("symmMatRoot: could not compute eigenvectors")
 
     evals[ np.abs(evals) < 5*np.finfo(np.float).resolution ] = 0.0
     evects[ np.abs(evects) < 5*np.finfo(np.float).resolution ] = 0.0

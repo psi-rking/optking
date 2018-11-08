@@ -2,7 +2,7 @@ import numpy as np
 import logging
 
 from . import intcosMisc
-from . import optExceptions
+from .exceptions import AlgError, OptError
 from . import optparams as op
 from .linearAlgebra import absMax, rms, symmMatInv
 
@@ -239,7 +239,7 @@ def stepIter(intcos, geom, dq,
         geom[:] = best_geom
 
     if op.Params.opt_type == "IRC" and not bt_converged:
-        raise optExceptions.OptFail(
+        raise OptError(
             "Could not take constrained step in an IRC computation.")
 
     return bt_converged

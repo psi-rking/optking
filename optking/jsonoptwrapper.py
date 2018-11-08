@@ -1,5 +1,7 @@
 # wrapper class for optimize in order to get JSON input/output fully functioning.
+import os
 import json
+import uuid
 import logging
 import optking
 
@@ -39,3 +41,20 @@ def run_json(json_file):
         input_data.seek(0)
         input_data.truncate()
         json.dump(json_output, input_data, indent=2)
+
+
+def run_json_dict(json_dict):
+    """Wrapper to run_json to pass and return as dictionary"""
+
+    tempfile = str(uuid.uuid4())
+    with open(tempfile, 'w') as handle:
+        json.dump(json_dict, handle)
+
+    run_json(tempfile)
+
+    with open(tempfile) as handle:
+        json_output = json.load(handle)
+
+    os.unlink(tempfile)
+
+    return json_output

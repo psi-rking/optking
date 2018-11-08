@@ -9,7 +9,7 @@ from . import hessian
 from . import stepAlgorithms
 from . import caseInsensitiveDict
 from . import optparams as op
-from . import optExceptions
+from .exceptions import OptError, AlgError
 from . import addIntcos
 from . import history
 from . import intcosMisc
@@ -42,8 +42,8 @@ def optimize(oMolsys, options_in, json_in=None):
     -------
     float, float or dict
         energy and nuclear repulsion energy or MolSSI qc_schema_output as dict
-    """
 
+    """
     try:
         optimize_log = logging.getLogger(__name__)
 
@@ -119,7 +119,7 @@ def optimize(oMolsys, options_in, json_in=None):
                     optimize_log.debug("Initial internal coordinates\n")
                     printArrayString(qZero)
                     Hcart = get_hessian(oMolsys.geom, o_json, printResults=False)
-                    e, gX = get_gradient(oMolsys.geom, o_json, nuc=False)
+                    (e, gX), qcjson = get_gradient(oMolsys.geom, o_json, nuc=False)
                     fq = intcosMisc.qForces(oMolsys.intcos, oMolsys.geom, gX)
                     Hq = intcosMisc.convertHessianToInternals(Hcart, oMolsys.intcos, oMolsys.geom)
                     B = intcosMisc.Bmat(oMolsys.intcos, oMolsys.geom, oMolsys.masses)
@@ -132,7 +132,7 @@ def optimize(oMolsys, options_in, json_in=None):
                 for stepNumber in range(op.Params.geom_maxiter):
                     # compute energy and gradient
                     xyz = oMolsys.geom.copy()
-                    E, gX, nuc = get_gradient(xyz, o_json, printResults=False, nuc=True)
+                    (E, gX, nuc), qcjson = get_gradient(xyz, o_json, printResults=False, nuc=True)
                     oMolsys.geom = xyz  # use setter function to save data in fragments
                     printGeomGrad(oMolsys.geom, gX)
                     energies.append(E)
@@ -150,7 +150,7 @@ def optimize(oMolsys, options_in, json_in=None):
                     if op.Params.print_lvl > 1:
                         optimize_log.info(printArrayString(fq, title="Internal forces in au"))
 
-                    history.oHistory.append(oMolsys.geom, E, fq)  # Save initial step info.
+                    history.oHistory.append(oMolsys.geom, E, fq, qcjson)  # Save initial step info.
                     history.oHistory.nuclear_repulsion_energy = nuc
                     # Analyze previous step performance; adjust trust radius accordingly.
                     # Returns true on first step (no history)
@@ -178,7 +178,7 @@ def optimize(oMolsys, options_in, json_in=None):
                                               + "Dynamic level is off.\n")
                             pass
                         else:
-                            raise optExceptions.AlgFail(
+                            raise AlgError(
                                 "Bad step, and no more backsteps allowed.")
 
                     # Produce guess Hessian or update existing Hessian..
@@ -219,7 +219,7 @@ def optimize(oMolsys, options_in, json_in=None):
                     intcosMisc.qShowValues(oMolsys.intcos, oMolsys.geom)
 
                     if op.Params.opt_type == 'IRC':
-                        E, g = get_gradient(oMolsys.geom, False)
+                        (E, g), qcjson = get_gradient(oMolsys.geom, False)
                         Dq = IRCFollowing.Dq(oMolsys, g, E, Hq, B, op.Params.irc_step_size,
                                              qPrime, dqPrime)
                     else:  # Displaces and adds step to history.
@@ -248,7 +248,7 @@ def optimize(oMolsys, options_in, json_in=None):
                     optimize_log.error("\tNumber of steps (%d) exceeds maximum allowed (%d).\n"
                                        % (stepNumber + 1, op.Params.geom_maxiter))
                     history.oHistory.summary()
-                    raise optExceptions.AlgFail("Maximum number of steps exceeded.")
+                    raise OptError("Maximum number of steps exceeded: {}.".format(op.Params.geom_maxiter))
 
                 # This should be called at the end of each iteration of the while loop
                 if op.Params.opt_type == 'IRC' and not atMinimum:
@@ -256,13 +256,13 @@ def optimize(oMolsys, options_in, json_in=None):
                     ircStepList.append(history.IRC_step(qPivot, oMolsys.geom, ircNumber))
                     history.oHistory.hessianUpdate(H, oMolsys.intcos)
                     Hq = H
-                    E, gX = get_gradient(xyz, printResults=False)
+                    (E, gX), qcjson = get_gradient(xyz, printResults=False)
                     B = intcosMisc.Bmat(oMolsys.intcos, oMolsys.geom, oMolsys.masses)
                     qPivot, qPrime, Dq = IRCFollowing.takeGradientHalfStep(
                         oMolsys, E, Hq, B, op.Params.irc_step_size, gX)
 
-            except optExceptions.AlgFail as AF:
-                optimize_log.error("\n\tCaught AlgFail exception\n")
+            except AlgError as AF:
+                optimize_log.error("\n\tCaught AlgError exception\n")
                 eraseHistory = False
                 eraseIntcos = False
 
@@ -281,7 +281,7 @@ def optimize(oMolsys, options_in, json_in=None):
                                           % op.Params.dynamic_level)
                     optimize_log.critical("\n\t Alternative approaches are not available or"
                                           + "turned on.\n")
-                    raise optExceptions.OptFail("Maximum dynamic_level reached.")
+                    raise OptError("Maximum dynamic_level reached.")
                 else:
                     op.Params.dynamic_level += 1
                     optimize_log.warning("\n\t Increasing dynamic_level algorithm to %d.\n"
@@ -310,11 +310,11 @@ def optimize(oMolsys, options_in, json_in=None):
         json_original = o_json._get_original(oMolsys.geom)
 
         if op.Params.opt_type == 'linesearch':
-            gX = get_gradient(oMolsys.geom, o_json, nuc=False)
-            
+            (gX), qcjson = get_gradient(oMolsys.geom, o_json, nuc=False)
+
         if op.Params.trajectory:
             # history doesn't contain atomic numbers so pass them in
-            output_dict['properties']['trajectory'] = history.oHistory.trajectory(oMolsys.Z) 
+            output_dict['properties']['trajectory'] = history.oHistory.trajectory(oMolsys.Z)
         else:
             returnVal = history.oHistory[-1].E
 
@@ -326,7 +326,7 @@ def optimize(oMolsys, options_in, json_in=None):
         del history.oHistory[:]
         del oMolsys
         del op.Params
-        json_original.update(output_dict)         
+        json_original.update(output_dict)
         return json_original
 
     except Exception as error:
@@ -336,12 +336,20 @@ def optimize(oMolsys, options_in, json_in=None):
                                "optimizations from failing\n"))
         optimize_log.exception("Error Type:" + str(type(error)))
         optimize_log.exception("Error caught:" + str(error))
+
+        output_dict = o_json.generate_json_output(history.oHistory[-1].geom, gX)
+        json_original = o_json._get_original(oMolsys.geom)
+        json_original.update(output_dict)
+        json_original["error"] = repr(error)
+        json_original["success"] = False
+
         del history.oHistory[:]
         del o_json
         # had been deleting oMolsys and Fragments here but IDE complained they
         # were not declared
         del op.Params
 
+        return json_original
 
 # TODO need to activate printResults for get_x methods
 def get_gradient(new_geom, o_json, printResults=False, nuc=True, QM='psi4'):
@@ -354,9 +362,9 @@ def get_gradient(new_geom, o_json, printResults=False, nuc=True, QM='psi4'):
         (nat, 3) current geometry of molecule
     o_json : object
         instance of optking's jsonSchema class
-    printResults : Boolean, optional
+    printResults : bool, optional
         flag to print the gradient
-    nuc : Boolean
+    nuc : bool
         flag to return the nuclear repulsion energy as well
     QM : str
         NYI will have options for programs other than psi4 eventually
@@ -372,7 +380,7 @@ def get_gradient(new_geom, o_json, printResults=False, nuc=True, QM='psi4'):
     """
 
     json_output = psi4methods.psi4_calculation(new_geom, o_json)
-    return o_json.get_JSON_result(json_output, 'gradient', nuc)
+    return o_json.get_JSON_result(json_output, 'gradient', nuc), json_output
 
 
 def get_hessian(new_geom, o_json, printResults=False, QM='psi4'):

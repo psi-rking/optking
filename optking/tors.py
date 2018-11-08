@@ -4,7 +4,7 @@ import logging
 import numpy as np
 import qcelemental as qcel
 
-from . import optExceptions
+from .exceptions import AlgError, OptError
 from . import optparams as op
 from . import v3d
 from .misc import HguessLindhRho
@@ -72,7 +72,7 @@ class Tors(Simple):
     def q(self, geom):
         try:
             tau = v3d.tors(geom[self.A], geom[self.B], geom[self.C], geom[self.D])
-        except optExceptions.AlgFail as error:
+        except AlgError as error:
             raise RuntimeError("Tors.q: unable to compute torsion value") from error
 
         # Extend values domain of torsion angles beyond pi or -pi, so that
