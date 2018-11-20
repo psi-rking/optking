@@ -36,7 +36,7 @@ def psi4_calculation(new_geom, o_json, driver='gradient'):
     """ Call psi4 to perform a calculation"""
 
     logger = logging.getLogger(__name__)
-    logger.debug("\tGetting %s from Psi4 through JSON interface\n" % (driver))
+    logger.debug("Getting %s from Psi4 through JSON interface\n" % (driver))
     geom = o_json.to_JSON_geom(new_geom)
     json_input = o_json.update_geom_and_driver(geom, driver)
     return json_wrapper.run_json(json_input, True)

@@ -22,7 +22,7 @@ from .printTools import printArrayString, printMatString
 # By default, checks maximum force and (Delta(E) or maximum disp)
 
 
-def convCheck(iterNum, oMolsys, dq, f, energies, qPivot=None, masses=None):
+def convCheck(iterNum, oMolsys, dq, f, energies, q_irc=None, masses=None):
     logger = logging.getLogger(__name__)
     max_disp = absMax(dq)
     rms_disp = rms(dq)
@@ -43,7 +43,7 @@ def convCheck(iterNum, oMolsys, dq, f, energies, qPivot=None, masses=None):
     # Remove arbitrary forces for user-specified equilibrium values.
     if has_fixed:
         logger.info(
-            "\tForces used to impose fixed constraints are not included in convergence check.\n"
+            "Forces used to impose fixed constraints are not included in convergence check.\n"
         )
         for i, ints in enumerate(oMolsys.intcos):
             if ints.fixedEqVal:
@@ -55,15 +55,13 @@ def convCheck(iterNum, oMolsys, dq, f, energies, qPivot=None, masses=None):
         Ginv = np.linalg.inv(G)
 
         # compute p_m, mass-weighted hypersphere vector
-        q_pivot = qPivot
-        x = oMolsys.geom
         logger.info("B matrix\n" + printMatString(B))
-        logger.info("geom\n" + printArrayString(x))
+        logger.info("geom\n" + printMatString(oMolsys.geom))
         q = qValues(oMolsys.intcos, oMolsys.geom)
         # q = np.dot(Ginv, np.dot(B, np.dot(np.identity(oMolsys.Natom * 3), x)))
         logger.info("q\n" + printArrayString(q))
-        logger.info("q-pivot\n" + printArrayString(q_pivot))
-        p = np.subtract(q, q_pivot)
+        logger.info("Geom on constrained hypersphere\n" + printArrayString(q_irc))
+        p = np.subtract(q, q_irc)
 
         # gradient perpendicular to p and tangent to hypersphere is:
         # g_m' = g_m - (g_m^t p_m / p_m^t p_m) p_m, or
@@ -78,7 +76,7 @@ def convCheck(iterNum, oMolsys, dq, f, energies, qPivot=None, masses=None):
             f[i] -= overlap * Ginv_p[i]
 
         if op.Params.print_lvl > 1:
-            logger.info("\tForces perpendicular to hypersphere.\n" + printArrayString(f))
+            logger.info("Forces perpendicular to hypersphere.\n" + printArrayString(f))
 
     # Compute forces after projection and removal above.
     max_force = absMax(f)
@@ -169,7 +167,9 @@ def test_for_convergence(DE, max_force, rms_force, max_disp, rms_disp):
 
     """ These are all the possible booleans for convergence """
     logger = logging.getLogger(__name__)
-    logger.debug(r"\Testing for convergence\n")
+
+    logger.debug("Testing for convergence\n")
+
     converge = op.Params.g_convergence
     untampered = op.Params.i_untampered  # i_untampered see note below
     conv_max_force = (max_force < op.Params.conv_max_force)

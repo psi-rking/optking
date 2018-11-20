@@ -131,7 +131,7 @@ def displace(intcos, geom, dq, fq, atom_offset=0, ensure_convergence=False):
     q_final = intcosMisc.qValues(intcos, geom)
     dq[:] = q_final - q_orig
 
-    if op.Params.print_lvl > 1:
+    if op.Params.print_lvl >= 1:
         back_trans_report = ("\tReport of back-transformation: (au)\n")
         back_trans_report += ("\n\t  int       q_target          Error\n")
         back_trans_report += ("\t-----------------------------------\n")
