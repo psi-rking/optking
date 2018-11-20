@@ -1,0 +1,22 @@
+name: test
+channels:
+  - default
+  - psi4
+dependencies:
+    # Base depends
+  - numpy
+  - python
+  - qcelemental >=0.1.2
+
+    # Testing
+  - pytest
+  - pytest-cov
+
+    # Pip depends
+  - pip:
+      # Base depends
+#    - pint
+
+      # Testing
+    - codecov
+    - deepdiff

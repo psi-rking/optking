@@ -2,7 +2,7 @@ from math import fabs, sqrt
 import numpy as np
 import operator
 
-from . import optExceptions
+from .exceptions import AlgError, OptError
 #  Linear algebra routines. #
 
 
@@ -36,27 +36,42 @@ def symmMatEig(mat):
     try:
         evals, evects = np.linalg.eigh(mat)
     except:
-        raise optExceptions.OptFail("symmMatEig: could not compute eigenvectors")
+        raise OptError("symmMatEig: could not compute eigenvectors")
         # could be ALG_FAIL ?
     evects = evects.T
     return evals, evects
 
 
-# returns eigenvectors as rows; orders evals
 def asymmMatEig(mat):
+    """Compute the eigenvalues and right eigenvectors of a square array.
+    Wraps numpy.linalg.eig to sort eigenvalues, put eigenvectors in rows, and suppress complex.
+
+    Parameters
+    ----------
+    mat : ndarray
+        (n, n) Square matrix to diagonalize.
+
+    Returns
+    -------
+    ndarray, ndarray
+        (n, ), (n, n) sorted eigenvalues and normalized corresponding eigenvectors in rows.
+
+    Raises
+    ------
+    OptError
+        When eigenvalue computation does not converge.
+
+    """
     try:
         evals, evects = np.linalg.eig(mat)
-    except:
-        raise optExceptions.OptFail("asymmMatEig: could not compute eigenvectors")
-        # could be ALG_FAIL ?
+    except np.LinAlgError as e:
+        raise OptError("asymmMatEig: could not compute eigenvectors") from e
 
-    evects = evects.T
-    evalsSorted, evectsSorted = zip(*sorted(
-        zip(evals, evects), key=operator.itemgetter(0)))
-    # convert from tuple to array
-    evalsSorted = np.array(evalsSorted, float)
-    evectsSorted = np.array(evectsSorted, float)
-    return evalsSorted, evectsSorted
+    idx = np.argsort(evals)
+    evals = evals[idx]
+    evects = evects[:, idx]
+
+    return evals.real, evects.real.T
 
 
 #  Return the inverse of a real, symmetric matrix.  If "redundant" == true,
@@ -70,14 +85,14 @@ def symmMatInv(A, redundant=False, redundant_eval_tol=1.0e-10):
     try:
         evals, evects = symmMatEig(A)
     except LinAlgError:
-        raise optExceptions.OptFail("symmMatrixInv: could not compute eigenvectors")
+        raise OptError("symmMatrixInv: could not compute eigenvectors")
         # could be LinAlgError?
 
     for i in range(dim):
         det *= evals[i]
 
     if not redundant and fabs(det) < 1E-10:
-        raise optExceptions.OptFail(
+        raise OptError(
             "symmMatrixInv: non-generalized inverse failed; very small determinant")
         # could be LinAlgError?
 
@@ -97,26 +112,27 @@ def symmMatInv(A, redundant=False, redundant_eval_tol=1.0e-10):
     return AInv
 
 
+# Compute A^(1/2) for a positive-definite matrix.  A^(-1/2) if Inverse == True
 def symmMatRoot(A, Inverse=None):
     try:
         evals, evects = np.linalg.eigh(A)
+        # Eigenvectors of A are in columns of evects
+        # Evals in ascending order
     except LinAlgError:
-        raise optExceptions.OptFail("symmMatRoot: could not compute eigenvectors")
-        # could be ALG_FAIL ?
+        raise OptError("symmMatRoot: could not compute eigenvectors")
+
+    evals[ np.abs(evals) < 5*np.finfo(np.float).resolution ] = 0.0
+    evects[ np.abs(evects) < 5*np.finfo(np.float).resolution ] = 0.0
 
     rootMatrix = np.zeros((len(evals), len(evals)), float)
     if Inverse:
         for i in range(0, len(evals)):
             evals[i] = 1 / evals[i]
 
-    Q = np.zeros((len(evals), len(evals)), float)
-    for i in range(len(evals)):
-        for j in range(len(evects)):
-            Q[j][i] = evects[i][j]
-
     for i in range(0, len(evals)):
         rootMatrix[i][i] = sqrt(evals[i])
 
-    A = np.dot(Q, np.dot(rootMatrix, Q.T))
+    A = np.dot(evects, np.dot(rootMatrix, evects.T))
 
     return A
+

@@ -1,11 +1,11 @@
-import numpy as np
 import logging
 
-from . import covRadii
-from . import optExceptions
-from . import physconst as pc
+import numpy as np
+import qcelemental as qcel
+
+from .exceptions import AlgError, OptError
 from . import v3d
-from .misc import delta, ZtoPeriod, HguessLindhRho
+from .misc import delta, HguessLindhRho
 from .simple import Simple
 
 
@@ -79,19 +79,19 @@ class Stre(Simple):
 
     @property
     def qShowFactor(self):
-        return pc.bohr2angstroms
+        return qcel.constants.bohr2angstroms
 
     @property
     def fShowFactor(self):
-        return pc.hartree2aJ / pc.bohr2angstroms
+        return qcel.constants.hartree2aJ / qcel.constants.bohr2angstroms
 
     # If mini == False, dqdx is 1x(3*number of atoms in fragment).
     # if mini == True, dqdx is 1x6.
     def DqDx(self, geom, dqdx, mini=False):
         try:
             eAB = v3d.eAB(geom[self.A], geom[self.B])  # A->B
-        except optExceptions.AlgFail as error:
-            raise optExceptions.AlgFail("Stre.DqDx: could not normalize s vector") from error
+        except AlgError as error:
+            raise AlgError("Stre.DqDx: could not normalize s vector") from error
 
         if mini:
             startA = 0
@@ -113,8 +113,8 @@ class Stre(Simple):
     def Dq2Dx2(self, geom, dq2dx2):
         try:
             eAB = v3d.eAB(geom[self.A], geom[self.B])  # A->B
-        except optExceptions.AlgFail:
-            raise optExceptions.AlgFail("Stre.Dq2Dx2: could not normalize s vector") from error
+        except AlgError:
+            raise AlgError("Stre.Dq2Dx2: could not normalize s vector") from error
 
         if not self._inverse:
             length = self.q(geom)
@@ -156,8 +156,8 @@ class Stre(Simple):
 
         if guessType == "SCHLEGEL":
             R = v3d.dist(geom[self.A], geom[self.B])
-            PerA = ZtoPeriod(Z[self.A])
-            PerB = ZtoPeriod(Z[self.B])
+            PerA = qcel.periodictable.to_period(Z[self.A])
+            PerB = qcel.periodictable.to_period(Z[self.B])
 
             AA = 1.734
             if PerA == 1:
@@ -186,8 +186,7 @@ class Stre(Simple):
             return F
 
         elif guessType == "FISCHER":
-            Rcov = (
-                covRadii.R[int(Z[self.A])] + covRadii.R[int(Z[self.B])]) / pc.bohr2angstroms
+            Rcov = qcel.covalentradii.get(Z[self.A], missing=4.0) + qcel.covalentradii.get(Z[self.B], missing=4.0)
             R = v3d.dist(geom[self.A], geom[self.B])
             AA = 0.3601
             BB = 1.944

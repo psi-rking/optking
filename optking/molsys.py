@@ -1,13 +1,12 @@
-import numpy as np
 import json
 import logging
 
-from . import covRadii
+import numpy as np
+import qcelemental as qcel
+
 from . import frag
-from . import optExceptions
-from . import physconst as pc
+from .exceptions import AlgError, OptError
 from . import v3d
-from . import atomData
 from .addIntcos import connectivityFromDistances, addCartesianIntcos
 
 
@@ -110,11 +109,11 @@ class Molsys(object):  # new-style classes required for getter/setters
         geom = np.asarray(molecule['geometry'])
         geom = geom.reshape(-1, 3)
 
-        Z_list = [atomData.symbol_to_Z[atom.upper()] for atom in molecule['symbols']]
+        Z_list = [qcel.periodictable.to_Z(atom) for atom in molecule['symbols']]
 
         masses_list = molecule.get('masses')
         if masses_list is None:
-            masses_list = [atomData.el2mass.get(atom) for atom in molecule['symbols']]
+            masses_list = [qcel.periodictable.to_mass(atom) for atom in molecule['symbols']]
 
         frags = []
         if 'fragments' in molecule:
@@ -130,10 +129,7 @@ class Molsys(object):  # new-style classes required for getter/setters
 
     @property
     def Natom(self):
-        s = 0
-        for F in self._fragments:
-            s += F.Natom
-        return s
+        return sum(F.Natom for F in self._fragments)
 
     @property
     def Nfragments(self):
@@ -157,7 +153,7 @@ class Molsys(object):  # new-style classes required for getter/setters
         for iF, F in enumerate(self._fragments):
             if atom_index in self.frag_atom_range(iF):
                 return iF
-        raise optExceptions.OptFail("atom2frag_index: atom_index impossibly large")
+        raise OptError("atom2frag_index: atom_index impossibly large")
 
     # Given a list of atoms, return all the fragments to which they belong
     def atomList2uniqueFragList(self, atomList):
@@ -344,8 +340,8 @@ class Molsys(object):  # new-style classes required for getter/setters
                                 j = f2_atom
 
                     Rij = v3d.dist(geom[i], geom[j])
-                    R_i = covRadii.R[int(Z[i])] / pc.bohr2angstroms
-                    R_j = covRadii.R[int(Z[j])] / pc.bohr2angstroms
+                    R_i = qcel.covalentradii.get(Z[i], missing=4.0)
+                    R_j = qcel.covalentradii.get(Z[j], missing=4.0)
                     if Rij > scale_dist * (R_i + R_j):
                         # ignore this as too far - for starters.  may have A-B-C situation.
                         continue

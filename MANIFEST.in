@@ -1,0 +1,2 @@
+include versioneer.py
+include optking/_version.py

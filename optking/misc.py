@@ -1,7 +1,9 @@
 import numpy as np
 import logging
 
-from . import optExceptions
+import qcelemental as qcel
+
+from .exceptions import AlgError, OptError
 
 
 def delta(i, j):
@@ -23,20 +25,6 @@ def symmetrizeXYZ(XYZ):
     # TODO add symmetrize function
     logger.debug('\tTODO add symmetrize XYZ\n')
     return XYZ
-
-
-# return period from atomic number
-def ZtoPeriod(Z):
-    if Z <= 2:
-        return 1
-    elif Z <= 10:
-        return 2
-    elif Z <= 18:
-        return 3
-    elif Z <= 36:
-        return 4
-    else:
-        return 5
 
 
 # "Average" bond length given two periods
@@ -80,8 +68,8 @@ def HguessLindhAlpha(perA, perB):
 
 # rho_ij = e^(alpha (r^2,ref - r^2))
 def HguessLindhRho(ZA, ZB, RAB):
-    perA = ZtoPeriod(ZA)
-    perB = ZtoPeriod(ZB)
+    perA = qcel.periodictable.to_period(ZA)
+    perB = qcel.periodictable.to_period(ZB)
 
     alpha = HguessLindhAlpha(perA, perB)
     r_ref = AverageRFromPeriods(perA, perB)
@@ -106,7 +94,7 @@ def intList(inList):
 
 def intIntFloatList(inList):
     if len(inList) % 3 != 0:
-        raise optExceptions.OptFail("List is not comprised of int-int-float elements")
+        raise OptError("List is not comprised of int-int-float elements")
     outList = []
     for i in range(0, len(inList), 3):
         outList.append(int(inList[i + 0]))
@@ -117,7 +105,7 @@ def intIntFloatList(inList):
 
 def intIntIntFloatList(inList):
     if len(inList) % 4 != 0:
-        raise optExceptions.OptFail(
+        raise OptError(
             "List is not comprised of int-int-int-float elements")
     outList = []
     for i in range(0, len(inList), 4):
@@ -130,7 +118,7 @@ def intIntIntFloatList(inList):
 
 def intIntIntIntFloatList(inList):
     if len(inList) % 5 != 0:
-        raise optExceptions.OptFail(
+        raise OptError(
             "List is not comprised of int-int-int-int-float elements")
     outList = []
     for i in range(0, len(inList), 5):
@@ -144,16 +132,16 @@ def intIntIntIntFloatList(inList):
 
 def int_XYZ_list(inList):
     if len(inList) % 2 != 0:
-        raise optExceptions.OptFail("int-XYZ list does not have even number of entries")
+        raise OptError("int-XYZ list does not have even number of entries")
     outList = []
     for i in range(0, len(inList), 2):
         outList.append(int(inList[i + 0]))
         cart_string = str(inList[i + 1]).upper()
         if len(cart_string) > 3 or len(cart_string) < 1:
-            raise optExceptions.OptFail("Could not decipher xyz coordinate string")
+            raise OptError("Could not decipher xyz coordinate string")
         for c in cart_string:
             if c not in ('X', 'Y', 'Z'):
-                raise optExceptions.OptFail("Could not decipher xyz coordinate string")
+                raise OptError("Could not decipher xyz coordinate string")
         cart_string = sorted(cart_string)  # x , then y, then z
         outList.append(cart_string)
     return outList

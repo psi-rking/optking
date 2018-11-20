@@ -7,7 +7,7 @@ import numpy as np
 from math import fabs, sin, acos, asin, fsum
 
 from . import optparams as op
-from . import optExceptions
+from .exceptions import AlgError, OptError
 
 # a couple of obscure parameters used in torsion computation:
 #  phi_lim = op.Params.v3d_tors_angle_lim
@@ -45,7 +45,7 @@ def normalize(v1, Rmin=1.0e-8, Rmax=1.0e15):
     """
     n = norm(v1)
     if n < Rmin or n > Rmax:
-        raise optExceptions.AlgFail("Could not normalize vector. Vector norm beyond tolerance")
+        raise AlgError("Could not normalize vector. Vector norm beyond tolerance")
     else:
         v1 /= n
 
@@ -123,15 +123,15 @@ def angle(A, B, C, tol=1.0e-14):
     logger = logging.getLogger(__name__)
     try:
         eBA = eAB(B, A)
-    except optExceptions.AlgFail as error:
+    except AlgError as error:
         logger.warning("Could not normalize eBA in angle()\n")
-        raise optExcpetions.AlgFail from error
+        raise optExcpetions.AlgError from error
 
     try:
         eBC = eAB(B, C)
-    except optExceptions.AlgFail as error:
+    except AlgError as error:
         logger.warning("Could not normalize eBC in angle()\n")
-        raise optExceptions.AlgFail from error
+        raise AlgError from error
 
     return _calc_angle(eBA, eBC, tol)
 
@@ -167,7 +167,7 @@ def _calc_angle(vec_1, vec_2, tol=1.0e-14):
 
 def tors(A, B, C, D):
     """ Compute and return angle in dihedral angle in radians A-B-C-D
-    Raises AlgFail excpetion if bond angles are too large for good torsion definition
+    Raises AlgError exception if bond angles are too large for good torsion definition
     """
     logger = logging.getLogger(__name__)
     phi_lim = op.Params.v3d_tors_angle_lim
@@ -177,23 +177,23 @@ def tors(A, B, C, D):
     try:
         EBA = eAB(B, A)
         EAB = -1 * EBA
-    except optExceptions.AlgFail as error:
+    except AlgError as error:
         logger.warning("Could not normalize %d, %d vector in tors()\n" % (str(A), str(B)))
         raise
     try:
         EBC = eAB(B, C)
-    except optExceptions.AlgFail as error:
+    except AlgError as error:
         logger.warning("Could not normalize %d, %d vector in tors()\n" % (str(B), str(C)))
         raise
     try:
         ECB = eAB(C, B)
         EBC = -1 * ECB
-    except optExceptions.AlgFail as error:
+    except AlgError as error:
         logger.warning("Could not normalize %d, %d vector in tors()\n" % (str(C), str(D)))
         raise
     try:
         ECD = eAB(C, D)
-    except optExceptions.AlgFail as error:
+    except AlgError as error:
         logger.warning("Could not normalize %d, %d vector in tors()\n" % (str(C), str(D)))
         raise
 
@@ -204,7 +204,7 @@ def tors(A, B, C, D):
     up_lim = acos(-1) - phi_lim
 
     if phi_123 < phi_lim or phi_123 > up_lim or phi_234 < phi_lim or phi_234 > up_lim:
-        raise optExceptions.AlgFail("Tors angle for %d, %d, %d, %d is too large for good "
+        raise AlgError("Tors angle for %d, %d, %d, %d is too large for good "
                                     + "definition" % (str(A), str(B), str(C), str(D)))
 
     tmp = cross(EAB, EBC)
@@ -235,17 +235,17 @@ def oofp(A, B, C, D):
     logger = logging.getLogger(__name__)
     try:
         eBA = eAB(B, A)
-    except optExceptions.AlgFail as error:
+    except AlgError as error:
         logger.warning("Could not normalize %d, %d vector in tors()\n" % (str(B), str(A)))
         raise
     try:
         eBC = eAB(B, C)
-    except optExceptions.AlgFail as error:
+    except AlgError as error:
         logger.warning("Could not normalize %d, %d vector in tors()\n" % (str(B), str(C)))
         raise
     try:
         eBD = eAB(B, D)
-    except optExceptions.AlgFail as error:
+    except AlgError as error:
         logger.warning("Could not normalize %d, %d vector in tors()\n" % (str(B), str(D)))
         raise
 
@@ -253,7 +253,7 @@ def oofp(A, B, C, D):
 
     # This shouldn't happen unless angle B-C-D -> 0,
     if sin(phi_CBD) < op.Params.v3d_tors_cos_tol:  # reusing parameter
-        raise optExceptions.AlgFail("Angle: %d, %d, %d is to close to zero in oofp\n"
+        raise AlgError("Angle: %d, %d, %d is to close to zero in oofp\n"
                                     % (str(C), str(B), str(D)))
 
     dotprod = dot(cross(eBC, eBD), eBA) / sin(phi_CBD)

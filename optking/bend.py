@@ -1,10 +1,10 @@
-from math import sqrt, cos
+import math
 import logging
-import numpy as np
 
-from . import covRadii
-from . import optExceptions
-from . import physconst as pc  # has physical constants
+import numpy as np
+import qcelemental as qcel
+
+from .exceptions import AlgError, OptError
 from . import v3d
 from .simple import Simple
 from .misc import delta, HguessLindhRho
@@ -84,7 +84,7 @@ class Bend(Simple):
         if intype in ["REGULAR", "LINEAR", "COMPLEMENT"]:
             self._bendType = intype
         else:
-            raise optExceptions.OptFail(
+            raise OptError(
                 "Bend.bendType must be REGULAR, LINEAR, or COMPLEMENT")
 
     def compute_axes(self, geom):
@@ -149,13 +149,13 @@ class Bend(Simple):
         origin = np.zeros(3, float)
         try:
             phi = v3d.angle(u, origin, self._x)
-        except optExceptions.AlgFail as error:
+        except AlgError as error:
             logger.error("Bend.q could not compute linear bend")
             raise
 
         try:
             phi2 = v3d.angle(self._x, origin, v)
-        except optExceptions.AlgFail as error:
+        except AlgError as error:
             logger.error("Bend.q could not compute linear bend")
             raise
         else:
@@ -164,14 +164,14 @@ class Bend(Simple):
 
     @property
     def qShowFactor(self):
-        return 180.0 / pc.pi
+        return 180.0 / math.pi
 
     def qShow(self, geom):  # return in degrees
         return self.q(geom) * self.qShowFactor
 
     @property
     def fShowFactor(self):
-        return pc.hartree2aJ * pc.pi / 180.0
+        return qcel.constants.hartree2aJ * math.pi / 180.0
 
     @staticmethod
     def zeta(a, m, n):
@@ -234,12 +234,12 @@ class Bend(Simple):
                                 Bend.zeta(a, 2, 1) * wXv[0:3]/Lv
 
         val = self.q(geom)
-        cos_q = cos(val)  # cos_q = v3d_dot(u,v);
+        cos_q = math.cos(val)  # cos_q = v3d_dot(u,v);
 
         # leave 2nd derivatives empty - sin 0 = 0 in denominator
         if 1.0 - cos_q * cos_q <= 1.0e-12:
             return
-        sin_q = sqrt(1.0 - cos_q * cos_q)
+        sin_q = math.sqrt(1.0 - cos_q * cos_q)
 
         for a in range(3):
             for i in range(3):  # i = a_xyz
@@ -283,10 +283,8 @@ class Bend(Simple):
             b = 0.11
             c = 0.44
             d = -0.42
-            Rcov_AB = (
-                covRadii.R[int(Z[self.A])] + covRadii.R[int(Z[self.B])]) / pc.bohr2angstroms
-            Rcov_BC = (
-                covRadii.R[int(Z[self.C])] + covRadii.R[int(Z[self.B])]) / pc.bohr2angstroms
+            Rcov_AB = qcel.covalentradii.get(Z[self.A], missing=4.0) + qcel.covalentradii.get(Z[self.B], missing=4.0)
+            Rcov_BC = qcel.covalentradii.get(Z[self.C], missing=4.0) + qcel.covalentradii.get(Z[self.B], missing=4.0)
             R_AB = v3d.dist(geom[self.A], geom[self.B])
             R_BC = v3d.dist(geom[self.B], geom[self.C])
             return a + b / (np.power(Rcov_AB * Rcov_BC, d)) * np.exp(

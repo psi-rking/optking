@@ -1,5 +1,6 @@
-from . import physconst as pc
-from . import optExceptions
+import qcelemental as qcel
+
+from .exceptions import AlgError, OptError
 from .simple import Simple
 
 
@@ -49,21 +50,21 @@ class Cart(Simple):
         elif setval in [2, 'z', 'Z']:
             self._xyz = 2
         else:
-            raise optExceptions.OptFail("Cartesian coordinate must be set to 0-2 or X-Z")
+            raise OptError("Cartesian coordinate must be set to 0-2 or X-Z")
 
     def q(self, geom):
         return geom[self.A, self._xyz]
 
     @property
     def qShowFactor(self):
-        return pc.bohr2angstroms
+        return qcel.constants.bohr2angstroms
 
     def qShow(self, geom):
         return self.qShowFactor * self.q(geom)
 
     @property
     def fShowFactor(self):
-        return pc.hartree2aJ / pc.bohr2angstroms
+        return qcel.constants.hartree2aJ / qcel.constants.bohr2angstroms
 
     # Compute and return in-place array of first derivative (row of B matrix)
     def DqDx(self, geom, dqdx):

@@ -5,7 +5,7 @@
 # Option keys in the input dictionary are interpreted case-insensitively.
 # The enumerated string types are translated to all upper-case within the parameter object.
 import logging
-from . import optExceptions
+from .exceptions import AlgError, OptError
 from .misc import (intList,
                    intIntFloatList,
                    intIntIntFloatList,
@@ -23,7 +23,7 @@ def stringOption(storage_name):
         if value.upper() in allowedStringOptions[storage_name]:
             instance.__dict__[storage_name] = value.upper()
         else:
-            raise optExceptions.OptFail('Invalid value for ' + storage_name)
+            raise OptError('Invalid value for ' + storage_name)
 
     return property(stringOption_getter, stringOption_setter)
 
@@ -106,9 +106,9 @@ class optParams(object):
         # Starting level for dynamic optimization (0=nondynamic, higher=>more conservative)
         P.dynamic_level = uod.get('DYNAMIC_LEVEL', 0)
         if P.dynamic_level == 0:  # don't change parameters
-            P.dynamic_level_max = 1
+            P.dynamic_level_max = 0
         else:
-            P.dynamic_level_max = uod.get('DYNAMIC_LEVEL_MAX', 8)  # 7 level currently defined
+            P.dynamic_level_max = uod.get('DYNAMIC_LEVEL_MAX', 7)  # 7 level currently defined
         # IRC step size in bohr(amu)\ $^{1/2}$.
         P.irc_step_size = uod.get('IRC_STEP_SIZE', 0.2)
         # IRC mapping direction
@@ -629,7 +629,7 @@ class optParams(object):
                 "Moving to run_level 7: XYZ, SD, 1 backstep, smaller trust, smaller step.\n"
             )
         else:
-            raise optExceptions.OptFail("Unknown value of run_level")
+            raise OptError("Unknown value of run_level")
 
 
 Params = 0

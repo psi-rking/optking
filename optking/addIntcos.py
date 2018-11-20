@@ -1,13 +1,13 @@
 from itertools import combinations, permutations
 import logging
+
 import numpy as np
+import qcelemental as qcel
 
 from . import bend
 from . import cart
-from . import covRadii
-from . import optExceptions
+from .exceptions import AlgError, OptError
 from . import optparams as op
-from . import physconst as pc
 from . import stre
 from . import tors
 from . import v3d
@@ -36,9 +36,9 @@ def connectivityFromDistances(geom, Z):
     # logger = logging.getLogger(__name__)
     for i, j in combinations(range(nat), 2):
         R = v3d.dist(geom[i], geom[j])
-        Rcov = (covRadii.R[int(Z[i])] + covRadii.R[int(Z[j])]) / pc.bohr2angstroms
+        Rcov = qcel.covalentradii.get(Z[i], missing=4.0) + qcel.covalentradii.get(Z[j], missing=4.0)
         # logger.debug("Trying to connect atoms " + str(i) + ' and ' + str(j) + " distance is: " +
-        #            str((covRadii.R[int(Z[i])] + covRadii.R[int(Z[j])]) / pc.bohr2angstroms))
+        #            str(qcel.covalentradii.get(Z[i], missing=4.0) + qcel.covalentradii.get(Z[j], missing=4.0)))
         if R < op.Params.covalent_connect * Rcov:
             C[i, j] = C[j, i] = True
 
@@ -117,7 +117,7 @@ def addBendFromConnectivity(C, intcos, geom):
                 if C[j, k]:
                     try:
                         val = v3d.angle(geom[i], geom[j], geom[k])
-                    except optExceptions.AlgFail:
+                    except AlgError:
                         pass
                     else:
                         if val > op.Params.linear_bend_threshold:
@@ -223,7 +223,7 @@ def addTorsFromConnectivity(C, intcos, geom):
                                                 try:
                                                     val = v3d.tors(
                                                         geom[I], geom[J], geom[K], geom[L])
-                                                except optExceptions.AlgFail:
+                                                except AlgError:
                                                     pass
                                                 else:
                                                     t = tors.Tors(I, J, K, L)
@@ -328,7 +328,7 @@ def freezeStretchesFromInputAtomList(frozenStreList, oMolsys):
 
     logger = logging.getLogger(__name__)
     if len(frozenStreList) % 2 != 0:
-        raise optExceptions.OptFail(
+        raise OptError(
             "Number of atoms in frozen stretch list not divisible by 2.")
 
     for i in range(0, len(frozenStreList), 2):
@@ -354,7 +354,7 @@ def freezeBendsFromInputAtomList(frozenBendList, oMolsys):
     """
     logger = logging.getLogger(__name__)
     if len(frozenBendList) % 3 != 0:
-        raise optExceptions.OptFail(
+        raise OptError(
             "Number of atoms in frozen bend list not divisible by 3.")
 
     for i in range(0, len(frozenBendList), 3):
@@ -383,7 +383,7 @@ def freezeTorsionsFromInputAtomList(frozenTorsList, oMolsys):
         optking molecular system
     """
     if len(frozenTorsList) % 4 != 0:
-        raise optExceptions.OptFail(
+        raise OptError(
             "Number of atoms in frozen torsion list not divisible by 4.")
 
     for i in range(0, len(frozenTorsList), 4):
@@ -437,7 +437,7 @@ def checkFragment(atomList, oMolsys):
         logger.error(
             "Coordinate contains atoms in different fragments. Not currently supported.\n"
         )
-        raise optExceptions.OptFail("Atom list contains multiple fragments.")
+        raise OptError("Atom list contains multiple fragments.")
     return fragList[0]
 
 
