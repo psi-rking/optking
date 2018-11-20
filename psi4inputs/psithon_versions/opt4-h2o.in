@@ -14,16 +14,15 @@ molecule h2o {
 #  H           0.751206    0.000000   -0.474387
 }
 
-set {
-  basis cc-pvtz
-  e_convergence 10
-  d_convergence 10
-  scf_type pk
+psi4_options = {
+  'basis': 'cc-pvtz',
+  'e_convergence': 10,
+  'd_convergence': 10,
+  'scf_type': 'pk'
 }
 
-import Psi4Opt
-Psi4Opt.calcName = 'hf'
-thisenergy = Psi4Opt.Psi4Opt()
+import optking
+json_output = optking.Psi4Opt('hf', psi4_options)
 
 compare_values(nucenergy, h2o.nuclear_repulsion_energy(), 3, "Nuclear repulsion energy")    #TEST
 compare_values(refenergy, thisenergy, 6, "Reference energy")                                #TEST

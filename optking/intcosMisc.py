@@ -7,7 +7,7 @@ from . import optparams as op
 from . import bend
 from . import tors
 
-from .linearAlgebra import symmMatInv
+from .linearAlgebra import symmMatInv, symmMatRoot
 from .printTools import printMatString, printArrayString
 
 # Simple operations on internal :148
@@ -89,7 +89,8 @@ def Bmat(intcos, geom, masses=None):
     #   sqrtmmm = np.repeat(np.sqrt(mass), 3)
     #   sqrtmmminv = np.divide(1.0, sqrtmmm)
     #   mwhess = np.einsum('i,ij,j->ij', sqrtmmminv, nmwhess, sqrtmmminv)
-    if masses:
+
+    if type(masses) is np.ndarray:
         logger.debug("mass weighting B matrix\n")
         B = inv_mass_weighted(B, intcos, masses)
 
@@ -109,22 +110,29 @@ def Gmat(intcos, geom, masses=None):
     """
     B = Bmat(intcos, geom, masses)
 
-    if masses:
-        B = inv_mass_weighted(B, intcos, masses)
+    #if type(masses) is np.array:
+    #    B = inv_mass_weighted(B, intcos, masses)
 
     return np.dot(B, B.T)
 
 
-def Gmat_B(B, intcos, masses=None):
+def Gmat_B(B, intcos):
     """ Calculate G matrix (BuB^T) if B matrix has already been calculated """
-    if masses:
-        B = inv_mass_weighted(B, intcos, masses)
+   
+    logger = logging.getLogger(__name__)
+
+    #logger.info("Calculating G matrix from B matrix")
+    #logger.info("masses type" + str(type(masses)))
+    
+    #if type(masses) is np.array:
+    #    B = inv_mass_weighted(B, intcos, masses)
+    #    logger.info("masses: " + printArrayString(masses))
 
     return np.dot(B, B.T)
 
 
-def inv_mass_weighted(matrix, intcos, masses):
-    """ Mass weight a B or G matrix dqi/dxj mass weight wrt atom j
+def inv_mass_weighted(wilson_mat, intcos, masses):
+    """ Mass weight the wilson B matrix dqi/dxj mass weight wrt atom j
 
     Parameters
     ----------
@@ -137,12 +145,14 @@ def inv_mass_weighted(matrix, intcos, masses):
     ndarray
         mass weighted matrix
     """
-
+    logger = logging.getLogger(__name__)
     sqrtm = np.array([np.repeat(np.sqrt(masses), 3)]*len(intcos))
-    return np.divide(matrix, sqrtm)
+    logger.debug("sqrtm:" + printMatString(sqrtm))
+    logger.debug("masses array:" + printArrayString(masses))
+    return np.divide(wilson_mat, sqrtm)
 
 
-def qForces(intcos, geom, gradient_x):
+def qForces(intcos, geom, gradient_x, B=None):
     """Transforms cartesian gradient to internals
 
     Parameters
@@ -166,14 +176,15 @@ def qForces(intcos, geom, gradient_x):
     """
     if len(intcos) == 0 or len(geom) == 0:
         return np.zeros(0, float)
-    B = Bmat(intcos, geom)
-    fx = -1.0 * gradient_x  # gradient -> forces
-    temp_arr = np.dot(B, fx.T)
-    G = np.dot(B, B.T)
-    Ginv = symmMatInv(G, redundant=True)
-    fq = np.dot(Ginv, temp_arr.T)
-    return fq
 
+    if type(B) is type(None):
+        B = Bmat(intcos, geom)
+
+    fx = np.multiply(-1.0, gradient_x)  # gradient -> forces
+    G = Gmat_B(B, intcos)
+    Ginv = symmMatInv(G, redundant=True)
+    fq = np.dot(np.dot(Ginv, B), fx)
+    return fq
 
 def qShowForces(intcos, forces):
     """ Returns scaled forces (does not recompute)
@@ -210,13 +221,13 @@ def projectRedundanciesAndConstraints(intcos, geom, fq, H):
     G = Gmat(intcos, geom)
     G_inv = symmMatInv(G, redundant=True)
     Pprime = np.dot(G, G_inv)
-    if op.Params.print_lvl >= 3:
-        logger.debug("\tProjection matrix for redundancies.\n\n" + printMatString(Pprime))
+    #if op.Params.print_lvl >= 3:
+    logger.debug("\tProjection matrix for redundancies.\n\n" + printMatString(Pprime))
     # Add constraints to projection matrix
     C = constraint_matrix(intcos)
 
     if np.any(C):
-        logger.info("Adding constraints for projection.\n" + printMatString(C))
+        logger.debug("Adding constraints for projection.\n" + printMatString(C))
         # print_opt(np.dot(C, np.dot(Pprime, C)))
         CPC = np.zeros((len(intcos), len(intcos)), float)
         CPC[:, :] = np.dot(C, np.dot(Pprime, C))
@@ -230,8 +241,8 @@ def projectRedundanciesAndConstraints(intcos, geom, fq, H):
     # fq~ = P fq
     fq[:] = np.dot(P, fq.T)
 
-    if op.Params.print_lvl >= 3:
-        logger.info("\tInternal forces in au, after projection of redundancies"
+    #if op.Params.print_lvl >= 3:
+    logger.debug("\tInternal forces in au, after projection of redundancies"
                     + "and constraints.\n" + printArrayString(fq))
     # Project redundancies out of Hessian matrix.
     # Peng, Ayala, Schlegel, JCC 1996 give H -> PHP + 1000(1-P)
@@ -293,13 +304,29 @@ def applyFixedForces(oMolsys, fq, H, stepNumber):
 # """
 
 
-def convertHessianToInternals(H, intcos, geom, masses=None, g_x=None):
+def convertHessianToInternals(H, intcos, geom, g_x=None):
+    """ converts the hessian from cartesian coordinates into internal coordinates 
+    
+    Parameters
+    ----------
+    H : ndarray
+        Hessian in cartesians
+    B : ndarray
+        Wilson B matrix
+    intcos : list 
+        internal coordinates (stretches, bends, etc...)
+    geom : ndarray
+        nat, 3 cartesian geometry
+    
+    Returns
+    -------
+    Hq : ndarray
+    """
     logger = logging.getLogger(__name__)
     logger.info("Converting Hessian from cartesians to internals.\n")
-
-    G = Gmat(intcos, geom, masses)
+    B = Bmat(intcos, geom)
+    G = Gmat_B(B, intcos)
     Ginv = symmMatInv(G, redundant=True)
-    B = Bmat(intcos, geom, masses)
     Atranspose = np.dot(Ginv, B)
 
     Hworking = H.copy()
@@ -322,9 +349,45 @@ def convertHessianToInternals(H, intcos, geom, masses=None, g_x=None):
                     # adjust indices for multiple fragments
                     Hworking[a, b] -= g_q[I] * dq2dx2[a, b] 
 
+
+    
     Hq = np.dot(Atranspose, np.dot(Hworking, Atranspose.T))
     return Hq
 
+def mass_weight_hessian_internals(Hq, B, intcos, masses):
+    """ Mass weights the internal coordinate hessian
+    
+    Parameters
+    ----------
+    Hq : ndarray
+        hessian in internal coordinates
+    B : ndarray
+        Wilson B matrix
+    intcos : list 
+        internal coordinates (stretches, bends, etc...)
+    massses : ndarray
+
+    Returns
+    -------
+    Hq : ndarray
+
+    Notes
+    -----
+    Mass weights the hessian by (G^1/2 Hq G^1/2.T) where G is the mass weighted wilson G matrix. 
+    
+    """
+    
+    logger = logging.getLogger(__name__)
+
+    BM = inv_mass_weighted(B, intcos, masses)
+    GM = Gmat_B(BM, intcos)
+    #GMinv = symmMatInv(G, redundant=True)
+    #GM_inv_root = symmMatRoot(GMinv)
+    import scipy
+    GM_root = scipy.linalg.sqrtm(GM)
+    HqM = np.dot(np.dot(GM_root, Hq), GM_root.T)
+    
+    return HqM
 
 def convertHessianToCartesians(Hint, intcos, geom, masses=None, g_q=None):
     logger = logging.getLogger(__name__)
