@@ -13,8 +13,8 @@ import numpy as np
 from math import fabs
 
 from . import optparams as op
-from .linearAlgebra import absMax, rms
-from .intcosMisc import Gmat, Bmat, qValues
+from .linearAlgebra import absMax, rms, symmMatRoot
+from .intcosMisc import Gmat_B, Bmat, qValues
 from .printTools import printArrayString, printMatString
 
 # Check convergence criteria and print status to output file.
@@ -22,7 +22,7 @@ from .printTools import printArrayString, printMatString
 # By default, checks maximum force and (Delta(E) or maximum disp)
 
 
-def convCheck(iterNum, oMolsys, dq, f, energies, q_irc=None, masses=None):
+def convCheck(iterNum, oMolsys, dq, f, energies, q_pivot=None, masses=None):
     logger = logging.getLogger(__name__)
     max_disp = absMax(dq)
     rms_disp = rms(dq)
@@ -50,25 +50,38 @@ def convCheck(iterNum, oMolsys, dq, f, energies, q_irc=None, masses=None):
                 f[i] = 0
 
     if op.Params.opt_type == 'IRC':
-        G = Gmat(oMolsys.intcos, oMolsys.geom, masses)
-        B = Bmat(oMolsys.intcos, oMolsys.geom, masses)
-        Ginv = np.linalg.inv(G)
+        B_m = Bmat(oMolsys.intcos, oMolsys.geom, masses)
+        G_m = Gmat_B(B_m, oMolsys.intcos)
+        G_m_root = symmMatRoot(G_m)
+        G_m_inv = np.linalg.inv(G_m)
 
         # compute p_m, mass-weighted hypersphere vector
-        logger.info("B matrix\n" + printMatString(B))
+        logger.info("B matrix\n" + printMatString(B_m))
         logger.info("geom\n" + printMatString(oMolsys.geom))
         q = qValues(oMolsys.intcos, oMolsys.geom)
         # q = np.dot(Ginv, np.dot(B, np.dot(np.identity(oMolsys.Natom * 3), x)))
         logger.info("q\n" + printArrayString(q))
-        logger.info("Geom on constrained hypersphere\n" + printArrayString(q_irc))
-        p = np.subtract(q, q_irc)
+        logger.info("Geom on constrained hypersphere\n" + printArrayString(q_pivot))
+        p = np.subtract(q, q_pivot)
+
+        g = np.multiply(-1, f)
+        #g_m = np.dot(G_m_root, g_q)
 
         # gradient perpendicular to p and tangent to hypersphere is:
         # g_m' = g_m - (g_m^t p_m / p_m^t p_m) p_m, or
         # g'   = g   - (g^t p / (p^t G^-1 p)) G^-1 p
         # Ginv_p = np.array(Nintco, float)
+
+        #minimized_hypersphere = np.subtract(g_m, np.divide(np.dot(p, g_m), np.linalg.norm(p)**2)) 
+
+        g_prime = np.subtract(g, np.dot(np.divide(np.dot(g, p), np.dot(np.dot(p, G_m_inv), p)), np.dot(G_m_inv, p))) 
+        
+        logger.debug("Determining cutoff for constrained minimization: " + printArrayString(g_prime))
+        logger.debug(str(absMax(g_prime)))
+        logger.debug(str(rms(g_prime)))
+
         for i in range(Nintco):
-            Ginv_p = np.dot(Ginv, p)
+            Ginv_p = np.dot(G_m_inv, p)
 
         overlap = np.dot(f, p) / np.dot(p, Ginv_p)
 
@@ -81,6 +94,9 @@ def convCheck(iterNum, oMolsys, dq, f, energies, q_irc=None, masses=None):
     # Compute forces after projection and removal above.
     max_force = absMax(f)
     rms_force = rms(f)
+
+    logger.debug(str(max_force))
+    logger.debug(str(rms_force))
 
     if op.Params.opt_type != 'IRC':
         conv_str = """\n\t==> Convergence Check <==
