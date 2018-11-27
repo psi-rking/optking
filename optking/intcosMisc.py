@@ -147,8 +147,6 @@ def inv_mass_weighted(wilson_mat, intcos, masses):
     """
     logger = logging.getLogger(__name__)
     sqrtm = np.array([np.repeat(np.sqrt(masses), 3)]*len(intcos))
-    logger.debug("sqrtm:" + printMatString(sqrtm))
-    logger.debug("masses array:" + printArrayString(masses))
     return np.divide(wilson_mat, sqrtm)
 
 
@@ -383,8 +381,7 @@ def mass_weight_hessian_internals(Hq, B, intcos, masses):
     GM = Gmat_B(BM, intcos)
     #GMinv = symmMatInv(G, redundant=True)
     #GM_inv_root = symmMatRoot(GMinv)
-    import scipy
-    GM_root = scipy.linalg.sqrtm(GM)
+    GM_root = symmMatRoot(GM)
     HqM = np.dot(np.dot(GM_root, Hq), GM_root.T)
     
     return HqM

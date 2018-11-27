@@ -34,19 +34,16 @@ def take_half_step(oMolsys, HqM, fq, s, gX, initial=False, direction='forward'):
 
     Returns: qPivot
     """
-    import scipy
     #FOR TEST PURPOSES
     direction = 'backward'
     logger = logging.getLogger(__name__)
-    IRC_starting = (
-        "==================================================================================\n")
-    IRC_starting += ("Taking Hessian IRC HalfStep and Guess Step\n")
+    logger.info("Taking Hessian IRC HalfStep and Guess Step\n")
     # Calculate G, G^-1/2
     B = intcosMisc.Bmat(oMolsys.intcos, oMolsys.geom)
     Bm = intcosMisc.inv_mass_weighted(B, oMolsys.intcos, oMolsys.masses)
     Gm = intcosMisc.Gmat_B(Bm, oMolsys.intcos)
     GmInv = symmMatInv(Gm)
-    GmRoot = scipy.linalg.sqrtm(Gm)
+    GmRoot = symmMatRoot(Gm)
     GmRootInv = symmMatInv(GmRoot)
 
     # PrintStartingMatrices
@@ -92,64 +89,59 @@ def take_half_step(oMolsys, HqM, fq, s, gX, initial=False, direction='forward'):
     # TODO add cartesian coordinate for pivot point
 
     logger.info("Dq to Pivot Point\n" + printArrayString(dqPivot))
-    logger.info("Dq to Guess Point\n" + printArrayString(dqGuess) +
-                "\n================================================================="
-                + "==================\n")
+    logger.info("Dq to Guess Point\n" + printArrayString(dqGuess))
     
     displaceIRCStep(oMolsys, dqGuess, HqM, fq, ensure_convergence=True)
 
     return [dqPivot, qPivot, dqGuess, qGuess]
 
 
-"""
+# def takeGradientHalfStep(oMolsys, H, B, s, gX):
+#     Takes a half step from starting geometry along the gradient, then takes an additional
+#     half step as a guess
+#     Returns dq: displacement in internals as a numpy array
+# 
+#     # Calculate G, G^-1/2 and G-1/2
+#     G = intcosMisc.Gmat(oMolsys.intcos, oMolsys.geom, oMolsys.masses)
+#     GInv = symmMatInv(G)
+#     GRoot = symmMatRoot(G)
+#     GRootInv = symmMatInv(GRoot)
+# 
+#     qZero = intcosMisc.qValues(oMolsys.intcos, oMolsys.geom)
+# 
+#     # convert gradient to Internals
+#     gQ = np.dot(GInv, np.dot(B, gX))
+# 
+#     # To solve N = (gk^t * G * gk)^-1/2
+#     N = symmMatRoot(symmMatInv(np.dot(gQ.T, np.dot(G, gQ)), True))
+#     
+#     # g*k+1 = qk - 1/2 * s * (N*G*gk)
+#     # N*G*gk
+#     # q*k+1 = qk -  1/2 * s* (N*G*gk)
+#     qPivot = np.subtract(qZero, (np.multiply(0.5, np.dot(np.dot(N, G), gQ))))
+#     # applying weight 1/2 s to product (N*G*gk)
+#     # then applies vector addition q -  1/2 * s* (N*G*gk)
+#         
+#     dqPivot = np.subtract(qPivot, qZero)
+#     
+#     displaceIRCStep(oMolsys.intcos, oMolsys.geom,dqPivot, H, g, ensure_convergence=True)
+# 
+#     qPrime = np.dot(N, np.dot(G, gQ)) #duplication of above why are we looping through this?
+#     for i in range(len(gQ)):
+#         qPrime[i] = 0.5 * s * qPrime[i]
+#         qPrime[i] = qPivot[i] - qPrime[i]
+# 
+#     dq = np.subtract(qPrime, qZero)
+#     dq = sqrt(np.dot(dq, dq))
+# 
+#     return dqPivot, qPrime, dq
 
-def takeGradientHalfStep(oMolsys, H, B, s, gX):
-    Takes a half step from starting geometry along the gradient, then takes an additional
-    half step as a guess
-    Returns dq: displacement in internals as a numpy array
-
-    # Calculate G, G^-1/2 and G-1/2
-    G = intcosMisc.Gmat(oMolsys.intcos, oMolsys.geom, oMolsys.masses)
-    GInv = symmMatInv(G)
-    GRoot = symmMatRoot(G)
-    GRootInv = symmMatInv(GRoot)
-
-    qZero = intcosMisc.qValues(oMolsys.intcos, oMolsys.geom)
-
-    # convert gradient to Internals
-    gQ = np.dot(GInv, np.dot(B, gX))
-
-    # To solve N = (gk^t * G * gk)^-1/2
-    N = scipy.linalg.sqrtm(symmMatInv(np.dot(gQ.T, np.dot(G, gQ)), True))
-    
-    # g*k+1 = qk - 1/2 * s * (N*G*gk)
-    # N*G*gk
-    # q*k+1 = qk -  1/2 * s* (N*G*gk)
-    qPivot = np.subtract(qZero, (np.multiply(0.5, np.dot(np.dot(N, G), gQ))))
-    # applying weight 1/2 s to product (N*G*gk)
-    # then applies vector addition q -  1/2 * s* (N*G*gk)
-        
-    dqPivot = np.subtract(qPivot, qZero)
-    
-    displaceIRCStep(oMolsys.intcos, oMolsys.geom,dqPivot, H, g, ensure_convergence=True)
-
-    qPrime = np.dot(N, np.dot(G, gQ)) #duplication of above why are we looping through this?
-    for i in range(len(gQ)):
-        qPrime[i] = 0.5 * s * qPrime[i]
-        qPrime[i] = qPivot[i] - qPrime[i]
-
-    dq = np.subtract(qPrime, qZero)
-    dq = sqrt(np.dot(dq, dq))
-
-    return dqPivot, qPrime, dq
-
-"""
 
 def Dq(oMolsys, g, E, H_q, B, s, dqGuess):
     """ Before Dq_IRC is called, the goemetry must be updated to the guess point
     Returns Dq from qk+1 to gprime.
     """
-    import scipy
+    
     logger = logging.getLogger(__name__)
     logger.debug("Starting IRC constrained optimization\n")
 
@@ -157,8 +149,8 @@ def Dq(oMolsys, g, E, H_q, B, s, dqGuess):
     G_prime = intcosMisc.Gmat_B(B_m, oMolsys.intcos)
     logger.debug("Mass weighted Gmatrix at hypersphere point: " + printMatString(G_prime))
     G_prime_inv = symmMatInv(G_prime)
-    G_prime_root = scipy.linalg.sqrtm(G_prime)
-    G_prime_root_inv = scipy.linalg.sqrtm(G_prime_inv)
+    G_prime_root = symmMatRoot(G_prime)
+    G_prime_root_inv = symmMatRoot(G_prime_inv)
 
     # Hq = intcosMisc.convertHessianToInternals(Hq, oMolsys.intcos, oMolsys.geom)
     # Hq = intcosMisc.convertHessianToInternals(H, oMolsys.intcos, oMolsys.geom)
@@ -214,7 +206,7 @@ def Dq(oMolsys, g, E, H_q, B, s, dqGuess):
     # array of lagrangian derivatives to solve Householder method with weights to solve derivative
     lagIter = 0
 
-    while lagrangian - prev_lagrangian > 10**-16:
+    while Lambda - prev_lambda > 10**-16:
         prev_lagrangian = lagrangian
         for i in range(4):
             d_lagrangian[i] *= calc_lagrangian(Lambda, HMEigValues, HMEigVects, g_m, pM, s)
@@ -252,14 +244,12 @@ def Dq(oMolsys, g, E, H_q, B, s, dqGuess):
     # constructing Lambda * intcosxintcosI
     LambdaI = np.identity(len(oMolsys.intcos))
 
-    deltaQM = symmMatInv(-np.subtract(H_m, LambdaI))
-    deltaQM = np.dot(deltaQM, np.subtract(g_m, np.multiply(Lambda, pM)))
+    deltaQM = np.multiply(-1, symmMatInv(np.subtract(H_m, LambdaI)))
+    deltaQM = np.dot(deltaQM, np.subtract(np.multiply(Lambda, pM), g_m))
     #logger.info("initial geometry\n" + printArrayString(qPrime))
     dq = np.dot(G_prime_root, deltaQM)
     logger.info("dq to next geometry\n" + printArrayString(dq))
     displaceIRCStep(oMolsys, dq, H_q, np.multiply(-1, g_q))
-    q_new = np.add(dqGuess, dq)
-    logger.info("New internal coordinates\n" + printArrayString(q_new))
 
     # save values in step data
     logger.info("IRC Constrained optimization finished\n")
@@ -296,9 +286,10 @@ def displaceIRCStep(oMolsys, dq, H, fq, ensure_convergence=False):
     ircH = np.dot(ircU, np.dot(H, ircU))
 
     # if op.Params.print_lvl > 1:
-    logger.debug('\n\t|IRC target step|: %15.10f\n' % ircDqNorm)
-    logger.debug('\n\tIRC gradient     : %15.10f\n' % ircG)
-    logger.debug('\n\tIRC hessian      : %15.10f\n' % ircH)
+    irc_displace_info = ('\n\t|IRC target step|: %15.10f\n'
+                         '\tIRC gradient     : %15.10f\n' 
+                         '\tIRC hessian      : %15.10f\n' % ( ircDqNorm, ircG, ircH))
+    logger.debug(irc_displace_info)
     DEprojected = stepAlgorithms.DE_projected('RFO', ircDqNorm, ircG, ircH)
     logger.debug("Projected energy change by quadratic approximation: %20.10lf\n" % DEprojected)
 

@@ -133,7 +133,7 @@ def optimize(oMolsys, options_in, json_in=None):
                     HM = intcosMisc.mass_weight_hessian_internals(H, B, oMolsys.intcos, oMolsys.masses)
 
                     #need to save inital information, for step Alg to add append to.
-                    history.oHistory.append(oMolsys.geom, E, fq)
+                    history.oHistory.append(oMolsys.geom, E, fq, qcjson)
                 
                     irc_dqs_geoms = IRCFollowing.take_half_step(oMolsys, H, fq, 
                                                                 op.Params.irc_step_size, gX,
@@ -255,7 +255,7 @@ def optimize(oMolsys, options_in, json_in=None):
                     if op.Params.opt_type == "IRC":
 
                         converged = convCheck.convCheck(stepNumber, oMolsys, Dq, fq, energies,
-                                                        irc_step_list[-1][3])
+                                                        irc_step_list[-1][1])
                         if converged:
                             converged = False
                             # TODO add check for minimum
