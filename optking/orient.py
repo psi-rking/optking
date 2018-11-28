@@ -347,32 +347,5 @@ def orient_fragment(double *dq, double *fq) {
   return true;
 }
 
-/* Given the xyz coordinates for three points and R, theta, and phi, returns the
-coordinates of a fourth point; angles in radians */
-void zmat_point(double *A, double *B, double *C, double R_CD, double theta_BCD,
-  double phi_ABCD, double *D) {
-
-  double eAB[3],eBC[3],eX[3],eY[3], cosABC, sinABC;
-
-  v3d_eAB(A,B,eAB); /* vector B->A */
-  v3d_eAB(B,C,eBC); /* vector C->B */
-  cosABC = -v3d_dot(eBC,eAB);
-
-  sinABC = sqrt(1 - (cosABC * cosABC) );
-  if ( (sinABC - 1.0e-14) < 0.0 ) {
-    printf("Reference points cannot be colinear.");
-    throw(INTCO_EXCEPT("Reference points cannot be colinear.", true));
-  }
-
-  eY = v3d.cross(eAB,eBC)
-  for(int xyz=0;xyz<3;xyz++)
-    eY[xyz] /= sinABC;
-  eX = v3d.cross(eY,eBC)
-  for (int xyz=0;xyz<3;xyz++)
-    D[xyz] = C[xyz] + R_CD * ( - eBC[xyz] * cos(theta_BCD) +
-                                 eX[xyz] * sin(theta_BCD) * cos(phi_ABCD) +
-                                 eY[xyz] * sin(theta_BCD) * sin(phi_ABCD) );
-  return;
-}
 """
 

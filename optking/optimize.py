@@ -54,7 +54,7 @@ def optimize(oMolsys, options_in, json_in=None):
         # Create full list of parameters from user options plus defaults.
         optimize_log.info(welcome())  # print header
         optimize_log.debug("\n\tProcessing user input options...\n")
-        op.Params = op.optParams(userOptions)
+        op.Params = op.OptParams(userOptions)
         optimize_log.debug(str(op.Params))
 
         # if op.Params.logging_lvl == 'DEBUG' or op.Params.print_lvl == 5:

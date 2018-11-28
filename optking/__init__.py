@@ -21,7 +21,7 @@ from . import optparams as op
 from .exceptions import OptError, AlgError
 
 # this was on my TODO list, but now im not sure its working
-op.Params = op.optParams({})
+op.Params = op.OptParams({})
 
 try:
     with open(os.path.join(os.getcwd(), sys.argv[0][:-3]) + ".out", "r+") as output_file:

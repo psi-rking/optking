@@ -2,7 +2,7 @@
 # Steepest Descent.
 import numpy as np
 from math import sqrt, fabs
-# from .optParams import Params # this will not cause changes in trust to persist
+# from .OptParams import Params # this will not cause changes in trust to persist
 import logging
 
 from . import v3d

@@ -1,4 +1,4 @@
-# optParams is a class to store all of the optimization parameters.
+# OptParams is a class to store all of the optimization parameters.
 # The init function will receive a User Option Dictionary (uod) which can
 # override default values.
 # P = parameters ('self')
@@ -50,7 +50,7 @@ allowedStringOptions = {
 #    printxopt([key for key, val in enum_type.__dir__.items() if val == value][0])
 
 
-class optParams(object):
+class OptParams(object):
     # define properties
     opt_type = stringOption('opt_type')
     step_type = stringOption('step_type')
