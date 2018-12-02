@@ -83,17 +83,16 @@ def take_half_step(oMolsys, HqM, fq, s, gX, initial=False, direction='forward'):
     # applying weight 1/2 s to product (N*G*gk)
     # then applies vector addition q -  1/2 * s* (N*G*gk)
     dqPivot = np.multiply(0.5, np.multiply(s, normalized_vector))
-    dqGuess = np.multiply(2,dqPivot)
     qPivot = np.subtract(qZero, dqPivot)
-    qGuess = np.subtract(qPivot, dqGuess)
+    qGuess = np.subtract(qPivot, 2 * dqPivot)
     # TODO add cartesian coordinate for pivot point
 
     logger.info("Dq to Pivot Point\n" + printArrayString(dqPivot))
-    logger.info("Dq to Guess Point\n" + printArrayString(dqGuess))
+    logger.info("Dq to Guess Point\n" + printArrayString(2 * dqPivot))
     
-    displaceIRCStep(oMolsys, dqGuess, HqM, fq, ensure_convergence=True)
+    displaceIRCStep(oMolsys, 2 * dqPivot, HqM, fq, ensure_convergence=True)
 
-    return [dqPivot, qPivot, dqGuess, qGuess]
+    return [dqPivot, qPivot, qGuess]
 
 
 # def takeGradientHalfStep(oMolsys, H, B, s, gX):
@@ -172,78 +171,85 @@ def Dq(oMolsys, g, E, H_q, B, s, dqGuess):
     logger.debug("H_m: " + printMatString(H_m))
     logger.debug("pM: " + printArrayString(pM))
     HMEigValues, HMEigVects = symmMatEig(H_m)
+
     # Variables for solving lagrangian function
     lower_b_lagrangian = -100
     upper_b_lagrangian = 100
-    lower_b_lambda = 0.5 * HMEigValues[0]
-    upper_b_lambda = 0.5 * HMEigValues[0]
-    Lambda = lower_b_lambda
-    prev_lambda = Lambda
-    prev_lagrangian = 1
-    lagrangian = 1
+    lower_b_lambda = 0
+    upper_b_lambda = 0
+    Lambda = 0.5 * HMEigValues[0]
+    prev_lambda = -999
 
     # Solves F(L) = Sum[(bj*pj - gj)/(bj-L)]^2 - 1/2s = 0
     # coarse search
+
+    lagrangian = calc_lagrangian(Lambda, HMEigValues, HMEigVects, g_m, pM, s, 0)
+    prev_lagrangian = lagrangian
+
     lagIter = 0
     while (prev_lagrangian * lagrangian > 0) and lagIter < 1000:
         prev_lagrangian = lagrangian
-        Lambda -= 1
-        lagrangian = calc_lagrangian(Lambda, HMEigValues, HMEigVects, g_m, pM, s)
-        if lagrangian < 0 and fabs(lagrangian) < fabs(lower_b_lagrangian):
+        lagrangian = calc_lagrangian(Lambda, HMEigValues, HMEigVects, g_m, pM, s, 0)
+        logger.debug("lagrangian: " + str(lagrangian))
+        if lagrangian < 0 and abs(lagrangian) < abs(lower_b_lagrangian):
             lower_b_lagrangian = lagrangian
             lower_b_lambda = Lambda
 
-        if lagrangian > 0 and fabs(lagrangian) < fabs(upper_b_lagrangian):
+        if lagrangian > 0 and abs(lagrangian) < abs(upper_b_lagrangian):
             upper_b_lagrangian = lagrangian
             upper_b_lambda = Lambda
         lagIter += 1
+        prev_lambda = Lambda
         Lambda -= 1
 
     # fine search
     # calulates next lambda using Householder method
 
-    d_lagrangian = np.array([2, 6, 24, 120])
-    # array of lagrangian derivatives to solve Householder method with weights to solve derivative
+    d_lagrangian = np.array([1.0, 2.0, 6.0, 24.0, 120.0])
+    # will contain an array of lagrangian derivatives to solve Householder method
+    # starts with weights to solve derivative
+    
     lagIter = 0
 
-    while Lambda - prev_lambda > 10**-16:
+    while abs(Lambda - prev_lambda) > 10**-16:
+        for lag_order in range(5):
+            d_lagrangian[lag_order] *= calc_lagrangian(Lambda, HMEigValues, HMEigVects, g_m, pM, 
+                                                       s, lag_order)
         prev_lagrangian = lagrangian
-        for i in range(4):
-            d_lagrangian[i] *= calc_lagrangian(Lambda, HMEigValues, HMEigVects, g_m, pM, s)
+        lagrangian = d_lagrangian[0]
+        
+        h_f = -1 * d_lagrangian[0] / d_lagrangian[1]
 
-        h_f = -lagrangian / d_lagrangian[1]
-
-        if lagrangian < 0 and (fabs(lagrangian) < fabs(lower_b_lagrangian)):
+        if lagrangian < 0 and (abs(lagrangian) < abs(lower_b_lagrangian)):
             lower_b_lagrangian = lagrangian
             lower_b_lambda = Lambda
-        elif lagrangian > 0 and fabs(lagrangian) < fabs(upper_b_lagrangian):
+        elif lagrangian > 0 and abs(lagrangian) < abs(upper_b_lagrangian):
             upper_b_lagrangian = lagrangian
             upper_b_lambda = Lambda
-
         elif lagrangian * prev_lagrangian < 0:
-            lagrangian = (lagrangian + prev_lagrangian) / 2
-            # Lagrangian found
+            current_lambda = Lambda
+            Lambda = (prev_lambda + Lambda ) / 2
+            prev_lambda = current_lambda
         else:
             prev_lambda = Lambda
-            Lambda += h_f * (24 * d_lagrangian[0] * 24 * d_lagrangian[1] * 8 * h_f +
-                             4 * d_lagrangian[2] * 8 * h_f**2) / (
-                                 24 * d_lagrangian[0] + 36 * h_f * d_lagrangian[1] + 6 *
-                                 (d_lagrangian[1]**2 / d_lagrangian[0]) * 8 * h_f**2 +
-                                 8 * d_lagrangian[2] * h_f**2 + d_lagrangian[3] * h_f**3)
-        lagIter += 1
+            Lambda += (h_f * (24 * d_lagrangian[1] * 24 * d_lagrangian[2] * h_f +
+                              4 * d_lagrangian[3] * h_f**2)) / (
+                              24 * d_lagrangian[1] + 36 * h_f * d_lagrangian[2] +
+                              6 * (d_lagrangian[2]**2 * h_f**2 / d_lagrangian[1]) +
+                              8 * d_lagrangian[3] * h_f**2 + d_lagrangian[4] * h_f**3)
 
+        lagIter += 1
         if lagIter > 50:
             prev_lambda = Lambda
-            Lambda = (lower_b_lambda + upper_b_lambda) / 2  # check this later. these may not
-            # be the correct variables
+            Lambda = (lower_b_lambda + upper_b_lambda) / 2 #Try a bisection after 50 attempts
 
         if lagIter > 200:
-            print("Exception should have been thrown")
+            logger.warning("Exception should have been thrown")
             # TODO needs to throw failure to converge exception
 
-    # constructing Lambda * intcosxintcosI
+    # constructing Lambda * intcosxintcos
     LambdaI = np.identity(len(oMolsys.intcos))
-
+    LambdaI = np.multiply(Lambda, LambdaI)
     deltaQM = np.multiply(-1, symmMatInv(np.subtract(H_m, LambdaI)))
     deltaQM = np.dot(deltaQM, np.subtract(np.multiply(Lambda, pM), g_m))
     #logger.info("initial geometry\n" + printArrayString(qPrime))
@@ -258,16 +264,16 @@ def Dq(oMolsys, g, E, H_q, B, s, dqGuess):
 
 # calculates Lagrangian function of Lambda
 # returns value of lagrangian function
-def calc_lagrangian(Lambda, HMEigValues, HMEigVects, gM, pM, s):
+def calc_lagrangian(Lambda, HMEigValues, HMEigVects, gM, pM, s, order):
     lagrangian = 0
     numerator = HMEigValues
     for i in range(len(HMEigValues)):
         numerator = np.subtract(np.multiply(HMEigValues[i], np.dot(pM.T, HMEigVects[i])), np.dot(
-            gM.T, HMEigVects[i]))
+                    gM.T, HMEigVects[i]))
         denominator = HMEigValues[i] - Lambda
-        lagrangian += (numerator / denominator) **2
+        lagrangian += (numerator / denominator) ** 2 / (denominator**order) 
     lagrangian -= (0.5 * s)**2
-
+    logger = logging.getLogger(__name__)
     return lagrangian
 
 
@@ -306,7 +312,7 @@ def displaceIRCStep(oMolsys, dq, H, fq, ensure_convergence=False):
     oHistory.appendRecord(DEprojected, dq, ircU, ircG, ircH)
 
     dq_actual = sqrt(np.dot(dq, dq))
-    logger.info("\tNorm of achieved step-size %15.10f\n" % dq_actual)
+    logger.info("Norm of achieved step-size %15.10f\n" % dq_actual)
 
     oHistory.appendRecord(DEprojected, dq, ircU, ircG, ircH)
 
