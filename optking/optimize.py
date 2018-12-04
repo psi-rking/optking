@@ -120,19 +120,20 @@ def optimize(oMolsys, options_in, json_in=None):
                     optimize_log.debug("Initial internal coordinates\n" + printArrayString(qZero))
 
                     #Prepare for IRC Step
-                    # Hcart = get_hessian(oMolsys.geom, o_json, printResults=False)
+                    Hcart = get_hessian(oMolsys.geom, o_json, printResults=False)
+                    # Need to add qcjson_hess to history
                     (E, gX), qcjson  = get_gradient(oMolsys.geom, o_json, nuc=False)
                     B = intcosMisc.Bmat(oMolsys.intcos, oMolsys.geom)
 
                     fq = intcosMisc.qForces(oMolsys.intcos, oMolsys.geom, gX)
-                    H = hessian.guess(oMolsys.intcos, oMolsys.geom, oMolsys.Z, C,
-                                      op.Params.intrafrag_hess)
-                    # Hq = intcosMisc.convertHessianToInternals(Hcart, oMolsys.intcos, 
-                    #        oMolsys.geom)
+                    # H = hessian.guess(oMolsys.intcos, oMolsys.geom, oMolsys.Z, C,
+                    #                  op.Params.intrafrag_hess)
+                    H = intcosMisc.convertHessianToInternals(Hcart, oMolsys.intcos, 
+                                                              oMolsys.geom)
                     intcosMisc.projectRedundanciesAndConstraints(oMolsys.intcos, oMolsys.geom, fq, H)
                     HM = intcosMisc.mass_weight_hessian_internals(H, B, oMolsys.intcos, oMolsys.masses)
 
-                    #need to save inital information, for step Alg to add append to.
+                    #need to save inital information, for step Alg to append to.
                     history.oHistory.append(oMolsys.geom, E, fq, qcjson)
                 
                     irc_dqs_geoms = IRCFollowing.take_half_step(oMolsys, H, fq, 
@@ -142,13 +143,11 @@ def optimize(oMolsys, options_in, json_in=None):
                     optimize_log.debug("irc_dqs_geoms: " + str(irc_dqs_geoms))
                     optimize_log.debug("irc_dqs_geoms: " + str(type(irc_dqs_geoms)))
                     irc_step_list.append(irc_dqs_geoms)
-                    #irc_dqs_geoms contains dqPivot, qPivot, dqGuess, qGuess
-                    #Do we actually want the B matrix mass weighed her?
-                    # Need to take a look at what we actually want coming back here
+                    # irc_dqs_geoms contains dqPivot, qPivot, qGuess
 
                 
-                # At this point, we should have already updated the geometry to the guess point. 
-                # Need to (at this point) update the hessian, get the new gradient
+                    # At this point, we should have already updated the geometry to the guess point. 
+                    # Need to (at this point) update the hessian, get the new gradient
 
 
                 # Loop over geometry steps.
@@ -245,7 +244,7 @@ def optimize(oMolsys, options_in, json_in=None):
                         #New geom and new gradient at point on hypersphere
                         #E, gX = get_gradient(oMolsys.geom, o_json, nuc=False)
                         #B = intcosMisc.Bmat(oMolsys.intcos, oMolsys.geom)
-                        Dq = IRCFollowing.Dq(oMolsys, gX, E, H, B, op.Params.irc_step_size, irc_step_list[-1][2])
+                        Dq = IRCFollowing.Dq(oMolsys, gX, E, H, B, op.Params.irc_step_size, irc_step_list[-1][0])
                     
                     else:  # Displaces and adds step to history.
                         Dq = stepAlgorithms.Dq(oMolsys, E, fq, H, op.Params.step_type, o_json)
