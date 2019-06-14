@@ -9,22 +9,23 @@ from . import hessian
 from . import stepAlgorithms
 from . import caseInsensitiveDict
 from . import optparams as op
-from .exceptions import OptError, AlgError
+from .exceptions import OptError, AlgError, IRCendReached
 from . import addIntcos
 from . import history
 from . import intcosMisc
 from . import convCheck
 from . import testB
-from . import IRCFollowing
+from . import IRCfollowing
 from . import psi4methods
+from . import IRCdata
+from .linearAlgebra import lowestEigenvectorSymmMat, symmMatRoot, symmMatInv
 from .qcdbjson import jsonSchema
 from .printTools import (printGeomGrad,
                          printMatString,
                          printArrayString,
                          welcome)
 
-pp = PrettyPrinter(indent=4)
-
+pp = PrettyPrinter(indent=4)  # ask AH does this do anything?
 
 def optimize(oMolsys, options_in, json_in=None):
     """Driver for OptKing's optimization procedure
@@ -44,115 +45,125 @@ def optimize(oMolsys, options_in, json_in=None):
         energy and nuclear repulsion energy or MolSSI qc_schema_output as dict
 
     """
-    try:
+    try:  # Try to optimize one structure OR set of IRC points. OptError and all Exceptions caught below.
         optimize_log = logging.getLogger(__name__)
 
         userOptions = caseInsensitiveDict.CaseInsensitiveDict(options_in)
-        # Save copy of original user options. Commented out because it was never used
+        # Save copy of original user options. Commented out until it is used
         # origOptions = copy.deepcopy(userOptions)
 
         # Create full list of parameters from user options plus defaults.
-        optimize_log.info(welcome())  # print header
+        optimize_log.info(welcome())
         optimize_log.debug("\n\tProcessing user input options...\n")
         op.Params = op.OptParams(userOptions)
         optimize_log.debug(str(op.Params))
 
-        # if op.Params.logging_lvl == 'DEBUG' or op.Params.print_lvl == 5:
-        #    log_file.setLevel(logging.DEBUG)
-        # elif op.Params.logging_lvl == 'INFO' or op.Params.print_lvl >= 3:
-
-        converged = False
-
-        # generates a json dictionary if optking is not being called directly by json.
+        # Construct a json dictionary if optking was not provided one.
         o_json = 0
         if json_in is None:
             QM_method, basis, keywords = psi4methods.collect_psi4_options(options_in)
-            atom_list = oMolsys.get_atom_list()
-            o_json = jsonSchema.make_qcschema(oMolsys.geom, atom_list, QM_method, basis, keywords)
+            o_json = jsonSchema.make_qcschema(oMolsys.geom, oMolsys.atom_symbols, QM_method, basis, keywords)
         else:
             o_json = json_in
 
-        # For IRC computations:
-        ircNumber = 0
-        dqPivot = None  # Dummy argument for non-IRC
-        # TODO if i'm remembering correctly, we need a way to determine if we have converged a
-        # TODO constrained optimization or have successfully found the global minimum
+        # Prepare for multiple IRC computation
+        if op.Params.opt_type == 'IRC':
+            IRCstepNumber = 0
+            IRCdata.history = IRCdata.IRCdata()
+            IRCdata.history.set_atom_symbols(oMolsys.atom_symbols)
+            IRCdata.history.set_step_size_and_direction(op.Params.irc_step_size, op.Params.irc_direction)
+            optimize_log.info("\tIRC data object created\n")
 
-        atMinimum = False
-        while not converged:  # may contain multiple algorithms
-
+        converged = False
+        totalStepsTaken = -1
+        # following loop may repeat over multiple algorithms OR over IRC points
+        while not converged:
             try:
-                optimize_log.info("\tStarting optimization algorithm.\n")
+                optimize_log.info("Starting optimization algorithm.\n")
                 optimize_log.info(str(oMolsys))
 
-                # Set internal or cartesian coordinates.
+                # if optimization coordinates are absent, choose them.
                 if not oMolsys.intcos:
-                    C = addIntcos.connectivityFromDistances(oMolsys.geom, oMolsys.Z)
-                    optimize_log.debug("Connectivity Matrix\n" + printMatString(C))
+                    connectivity = addIntcos.connectivityFromDistances(oMolsys.geom, oMolsys.Z)
+                    optimize_log.debug("Connectivity Matrix\n" + printMatString(connectivity))
+
                     if op.Params.frag_mode == 'SINGLE':
-                        # Splits existing fragments if they are not connected.
                         oMolsys.splitFragmentsByConnectivity()
-                        # Add to connectivity to make sure all fragments connected.
-                        oMolsys.augmentConnectivityToSingleFragment(C)
-                        # print_opt("Connectivity\n")
-                        # printMat(C)
-                        # Bring fragments together into one.
+                        oMolsys.augmentConnectivityToSingleFragment(connectivity)
                         oMolsys.consolidateFragments()
                     elif op.Params.frag_mode == 'MULTI':
-                        # should do nothing if fragments are already split by calling
-                        # program / constructor.
-                        oMolsys.splitFragmentsByConnectivity()
+                        oMolsys.splitFragmentsByConnectivity() # does nothing if already split
 
                     if op.Params.opt_coordinates in ['REDUNDANT', 'BOTH']:
-                        oMolsys.addIntcosFromConnectivity(C)
+                        oMolsys.addIntcosFromConnectivity(connectivity)
 
                     if op.Params.opt_coordinates in ['CARTESIAN', 'BOTH']:
                         oMolsys.addCartesianIntcos()
 
-                    addIntcos.addFrozenAndFixedIntcos(oMolsys)
+                    addIntcos.addFrozenAndFixedIntcos(oMolsys) # make sure these are in the set
                     oMolsys.printIntcos()
 
-                # Special code for first step of IRC. Compute Hessian and take step along eigen vec
-                if op.Params.opt_type == 'IRC' and ircNumber == 0:
-                    irc_step_list = []  # Holds data points for IRC steps
-                    qZero = intcosMisc.qValues(oMolsys.intcos, oMolsys.geom)
+                # Do special initial step-0 for each IRC point.
+                # For IRC point, we form/get the Hessian now.
+                if op.Params.opt_type == 'IRC':
+                    if IRCstepNumber == 0: # Step along lowest eigenvector of mass-weighted Hessian.
+                        optimize_log.info("Beginning IRC from the transition state.\n")
+                        optimize_log.info("Stepping along lowest Hessian eigenvector.\n")
 
-                    optimize_log.debug("Initial internal coordinates\n" + printArrayString(qZero))
+                        #H = hessian.guess(oMolsys.intcos, oMolsys.geom, oMolsys.Z, False, op.Params.intrafrag_hess)
 
-                    #Prepare for IRC Step
-                    Hcart = get_hessian(oMolsys.geom, o_json, printResults=False)
-                    # Need to add qcjson_hess to history
-                    (E, gX), qcjson  = get_gradient(oMolsys.geom, o_json, nuc=False)
-                    B = intcosMisc.Bmat(oMolsys.intcos, oMolsys.geom)
+                        # TODO: Use computed Hessian.
+                        Hcart = get_hessian(oMolsys.geom, o_json, printResults=False)
+                        E = get_energy(oMolsys.geom, o_json, nuc=False)
+                        (E, gX), qcjson  = get_gradient(oMolsys.geom, o_json, nuc=False)
+                        H = intcosMisc.convertHessianToInternals(Hcart, oMolsys.intcos, oMolsys.geom)
+                        optimize_log.debug(printMatString(H, title="Transformed Hessian in internal coordinates."))
 
-                    fq = intcosMisc.qForces(oMolsys.intcos, oMolsys.geom, gX)
-                    # H = hessian.guess(oMolsys.intcos, oMolsys.geom, oMolsys.Z, C,
-                    #                  op.Params.intrafrag_hess)
-                    H = intcosMisc.convertHessianToInternals(Hcart, oMolsys.intcos, 
-                                                              oMolsys.geom)
-                    intcosMisc.projectRedundanciesAndConstraints(oMolsys.intcos, oMolsys.geom, fq, H)
-                    HM = intcosMisc.mass_weight_hessian_internals(H, B, oMolsys.intcos, oMolsys.masses)
+                        # Add the transition state as the first IRC point
+                        x_0 = oMolsys.geom
+                        q_0 = intcosMisc.qValues(oMolsys.intcos, x_0)
+                        f_x = np.zeros(len(oMolsys.geom))
+                        f_q = np.zeros(len(oMolsys.intcos))
+                        #f_q = np.array( for debugging with C++ code
+                        #    [0.000003625246638, -0.000060308327958, 0.000003625246638,
+                        #    -0.000019735265755, -0.000019735265755, 0.000000009192292] )
 
-                    #need to save inital information, for step Alg to append to.
-                    history.oHistory.append(oMolsys.geom, E, fq, qcjson)
-                
-                    irc_dqs_geoms = IRCFollowing.take_half_step(oMolsys, H, fq, 
-                                                                op.Params.irc_step_size, gX,
-                                                                initial=True)
+                        IRCdata.history.add_irc_point(0, q_0, x_0, f_q, f_x, E)
+                        IRCstepNumber += 1
 
-                    optimize_log.debug("irc_dqs_geoms: " + str(irc_dqs_geoms))
-                    optimize_log.debug("irc_dqs_geoms: " + str(type(irc_dqs_geoms)))
-                    irc_step_list.append(irc_dqs_geoms)
-                    # irc_dqs_geoms contains dqPivot, qPivot, qGuess
+                        # Lowest eigenvector of mass-weighted Hessian.
+                        G = intcosMisc.Gmat(oMolsys.intcos, oMolsys.geom, oMolsys.masses)
+                        G_root = symmMatRoot(G)
+                        H_q_m = np.dot(np.dot(G_root, H), G_root.T)
+                        vM = lowestEigenvectorSymmMat(H_q_m)
+                        optimize_log.info(printArrayString(vM, title="Lowest evect of H_q_M"))
 
-                
-                    # At this point, we should have already updated the geometry to the guess point. 
-                    # Need to (at this point) update the hessian, get the new gradient
+                        # Un mass-weight vector.
+                        G_root_inv = symmMatInv(G_root)
+                        v = np.dot(G_root_inv, vM)
 
+                        if op.Params.irc_direction == 'BACKWARD':
+                            v *= -1
+                        ## hardwired to match bofill update from C++ code done with TS gradient
+                        #H[:] = [
+                        #[  0.585155,  0.000074, -0.000016,  0.000062,  0.000062, -0.000619],
+                        #[  0.000074,  0.459684,  0.000074, -0.000286, -0.000286,  0.002836],
+                        #[ -0.000016,  0.000074,  0.585155,  0.000062,  0.000062, -0.000619],
+                        #[  0.000062, -0.000286,  0.000062,  0.159759, -0.000241,  0.002388],
+                        #[  0.000062, -0.000286,  0.000062, -0.000241,  0.159759,  0.002388],
+                        #[ -0.000619,  0.002836, -0.000619,  0.002388,  0.002388, -0.020493]]
 
-                # Loop over geometry steps.
-                energies = []  # should be moved into history
-                for stepNumber in range(op.Params.geom_maxiter):
+                    else: # Step along gradient.
+                        optimize_log.info("\tBeginning search for next IRC point.\n")
+                        optimize_log.info("\tStepping along gradient.\n")
+                        v = IRCdata.history.f_q()
+
+                    IRCfollowing.computePivotAndGuessPoints(oMolsys, v, op.Params.irc_step_size)
+
+                energies = []  # should be moved into history TODO get rid of this!
+                for stepNumber in range(op.Params.alg_geom_maxiter):
+                    optimize_log.info("Beginning algorithm loop, step number %d" % stepNumber) 
+                    totalStepsTaken += 1
                     # compute energy and gradient
                     xyz = oMolsys.geom.copy()
                     (E, gX, nuc), qcjson = get_gradient(xyz, o_json, printResults=False, nuc=True)
@@ -168,11 +179,17 @@ def optimize(oMolsys, options_in, json_in=None):
                     B = intcosMisc.Bmat(oMolsys.intcos, oMolsys.geom)
                     optimize_log.debug(printMatString(B, title="B matrix"))
 
-                    fq = intcosMisc.qForces(oMolsys.intcos, oMolsys.geom, gX)
-                    if op.Params.print_lvl > 1:
-                        optimize_log.info(printArrayString(fq, title="Internal forces in au"))
+                    f_q = intcosMisc.qForces(oMolsys.intcos, oMolsys.geom, gX)
+                    # Check if forces indicate we are approaching minimum.
+                    if op.Params.opt_type == "IRC" and IRCstepNumber > 2:
+                        if ( IRCdata.history.testForIRCminimum(f_q) ):
+                            optimize_log.info("A mininum has been reached on the IRC.  Stopping here.")
+                            raise IRCendReached()
+                    #f_q = np.array( [ 0.000019538372495, 0.000213081515583,  0.000019538372495, 0.001090978572604,
+                    #0.001090978572604,  -0.003640029745080], float)
+                    optimize_log.info(printArrayString(f_q, title="Internal forces in au"))
 
-                    history.oHistory.append(oMolsys.geom, E, fq, qcjson)  # Save initial step info.
+                    history.oHistory.append(oMolsys.geom, E, f_q, qcjson)  # Save initial step info.
                     history.oHistory.nuclear_repulsion_energy = nuc
                     # Analyze previous step performance; adjust trust radius accordingly.
                     # Returns true on first step (no history)
@@ -191,7 +208,7 @@ def optimize(oMolsys, options_in, json_in=None):
                             optimize_log.info("\tCalling for consecutive backstep number %d.\n"
                                               % history.History.consecutiveBacksteps)
                             # IDE complains about H not being declared. Should be fine
-                            Dq = stepAlgorithms.Dq(oMolsys, E, fq, H, stepType="BACKSTEP")
+                            Dq = stepAlgorithms.Dq(oMolsys, E, f_q, H, stepType="BACKSTEP")
                             optimize_log.info("\tStructure for next step (au):\n")
                             oMolsys.showGeom()
                             continue
@@ -200,97 +217,116 @@ def optimize(oMolsys, options_in, json_in=None):
                                               + "Dynamic level is off.\n")
                             pass
                         else:
-                            raise AlgError(
-                                "Bad step, and no more backsteps allowed.")
+                            raise AlgError("Bad step, and no more backsteps allowed.")
 
-                    # Produce guess Hessian or update existing Hessian..
-                    if stepNumber == 0 and op.Params.opt_type != "IRC":
-                        if op.Params.full_hess_every > -1:
-                            xyz = oMolsys.geom.copy()
-                            Hcart = get_hessian(
-                                xyz, o_json, printResults=True)  # don't let function move geometry
-                            H = intcosMisc.convertHessianToInternals(Hcart, oMolsys.intcos, 
-                                                                     xyz)
-                        else:
-                            H = hessian.guess(oMolsys.intcos, oMolsys.geom, oMolsys.Z, C,
-                                              op.Params.intrafrag_hess)
-                            if op.Params.print_lvl >= 4:
-                                optimize_log.info(printMatString(H, title="Initial Hessian Guess"))
-                    else:
-                        # that is, compute hessian never or only once.
-                        if op.Params.full_hess_every < 1:
-                            history.oHistory.hessianUpdate(H, oMolsys.intcos)
-                        elif stepNumber % op.Params.full_hess_every == 0:
-                            xyz = copy.deepcopy(oMolsys.geom)
-                            Hcart = get_hessian( xyz, o_json, printResults=False)
-                            # it's possible function moves geometry
-                            H = intcosMisc.convertHessianToInternals(
-                                Hcart, oMolsys.intcos, xyz)
-                        else:
-                            history.oHistory.hessianUpdate(H, oMolsys.intcos)
-                        # print_opt("Hessian (in au) is:\n")
-                        # printMat(H)
-                        # print_opt("Hessian in aJ/Ang^2 or aJ/deg^2\n")
-                        # hessian.show(H, oMolsys.intcos)
-                        # handle user defined forces, redundances and constraints
+                    # Produce Hessian via guess, update, or transformation.
+                    if op.Params.opt_type != "IRC":
+                        if stepNumber == 0:
+                            if op.Params.full_hess_every > -1: # compute hessian at least once. 
+                                xyz = oMolsys.geom.copy()
+                                Hcart = get_hessian( xyz, o_json, printResults=True)
+                                H = intcosMisc.convertHessianToInternals(Hcart, oMolsys.intcos, xyz)
+                            else:
+                                H = hessian.guess(oMolsys.intcos, oMolsys.geom, oMolsys.Z, C,
+                                                  op.Params.intrafrag_hess)
+                        else: # not IRC, not first step
+                            if op.Params.full_hess_every < 1:
+                                history.oHistory.hessianUpdate(H, oMolsys.intcos)
+                            elif stepNumber % op.Params.full_hess_every == 0:
+                                xyz = copy.deepcopy(oMolsys.geom)
+                                Hcart = get_hessian( xyz, o_json, printResults=False)
+                                H = intcosMisc.convertHessianToInternals(
+                                    Hcart, oMolsys.intcos, xyz)
+                            else:
+                                history.oHistory.hessianUpdate(H, oMolsys.intcos)
+                    else: # IRC
+                        if stepNumber == 0:
+                            if IRCstepNumber == 0:
+                                pass  # Initial H chosen in pre-optimization.
+                            #else:     # update with one preserved point from previous rxnpath pt..
+                                #history.oHistory.hessianUpdate(H, oMolsys.intcos)
+                        else: # IRC, not first step
+                            if op.Params.full_hess_every < 1:
+                                history.oHistory.hessianUpdate(H, oMolsys.intcos)
+                            elif stepNumber % op.Params.full_hess_every == 0:
+                                xyz = copy.deepcopy(oMolsys.geom)
+                                Hcart = get_hessian( xyz, o_json, printResults=False)
+                                H = intcosMisc.convertHessianToInternals(
+                                    Hcart, oMolsys.intcos, xyz)
+                            else:
+                                history.oHistory.hessianUpdate(H, oMolsys.intcos)
 
-                    intcosMisc.applyFixedForces(oMolsys, fq, H, stepNumber)
+
+                    if op.Params.print_lvl >= 4:
+                        hessian.show(H, oMolsys.intcos)
+
+                    intcosMisc.applyFixedForces(oMolsys, f_q, H, stepNumber)
                     intcosMisc.projectRedundanciesAndConstraints(oMolsys.intcos, oMolsys.geom,
-                                                                 fq, H)
+                                                                 f_q, H)
                     intcosMisc.qShowValues(oMolsys.intcos, oMolsys.geom)
 
                     if op.Params.opt_type == 'IRC':
-
-                        #New geom and new gradient at point on hypersphere
-                        #E, gX = get_gradient(oMolsys.geom, o_json, nuc=False)
-                        #B = intcosMisc.Bmat(oMolsys.intcos, oMolsys.geom)
-                        Dq = IRCFollowing.Dq(oMolsys, gX, E, H, B, op.Params.irc_step_size, irc_step_list[-1][0])
-                    
+                        DqGuess = IRCdata.history.q_pivot() - IRCdata.history.q()
+                        Dq = IRCfollowing.Dq_IRC(oMolsys, E, f_q, H, op.Params.irc_step_size, DqGuess)
                     else:  # Displaces and adds step to history.
-                        Dq = stepAlgorithms.Dq(oMolsys, E, fq, H, op.Params.step_type, o_json)
-                    # else statement paried with above IRC if was removed
-
+                        Dq = stepAlgorithms.Dq(oMolsys, E, f_q, H, op.Params.step_type, o_json)
 
                     if op.Params.opt_type == "IRC":
+                        converged = convCheck.convCheck(stepNumber, oMolsys, Dq, f_q, energies, IRCdata.history.q_pivot())
+                        optimize_log.info("\tConvergence check returned %s." % converged)
 
-                        converged = convCheck.convCheck(stepNumber, oMolsys, Dq, fq, energies,
-                                                        irc_step_list[-1][1])
                         if converged:
-                            converged = False
-                            # TODO add check for minimum
-                            if atMinimum:
-                                converged = True
-                    else:    
-                        converged = convCheck.convCheck(stepNumber, oMolsys, Dq, fq, energies)
+
+                            lineDistStep = IRCfollowing.calcLineDistStep(oMolsys)
+                            arcDistStep  = IRCfollowing.calcArcDistStep(oMolsys)
+
+                            IRCdata.history.add_irc_point(IRCstepNumber,
+                                intcosMisc.qValues(oMolsys.intcos, oMolsys.geom),
+                                oMolsys.geom,
+                                intcosMisc.qForces(oMolsys.intcos, oMolsys.geom, gX),
+                                np.multiply(-1, gX),
+                                energies[-1], lineDistStep, arcDistStep)
+                            IRCdata.history.progress_report()
+
+                    else:  #not IRC.
+                        converged = convCheck.convCheck(stepNumber, oMolsys, Dq, f_q, energies)
+                        optimize_log.info("\tConvergence check returned %s" % converged)
                     
                     if converged:  # changed from elif when above if statement active
                         optimize_log.info("\tConverged in %d steps!" % (stepNumber + 1))
                         optimize_log.info("\tFinal energy is %20.13f" % E)
                         optimize_log.info("\tFinal structure (Angstroms): \n\n"
                                           + oMolsys.showGeom())
-                        break
+                        break # break out of stepNumber loop
 
                     optimize_log.info("\tStructure for next step (au):\n" + oMolsys.showGeom())
 
-                else:  # executes if step limit is reached
-                    optimize_log.error("\tNumber of steps (%d) exceeds maximum allowed (%d).\n"
-                                       % (stepNumber + 1, op.Params.geom_maxiter))
-                    history.oHistory.summary()
-                    raise OptError("Maximum number of steps exceeded: {}.".format(op.Params.geom_maxiter))
+                    # Hard quit if too many total steps taken (inc. all IRC points and algorithms).
+                    if (totalStepsTaken == op.Params.geom_maxiter):
+                        optimize_log.error("\tTotal number of steps (%d) exceeds maximum allowed (%d).\n"
+                                           % (totalStepsTaken, op.Params.geom_maxiter))
+                        raise OptError("Maximum number of steps exceeded: {}.".format(op.Params.geom_maxiter))
 
-                # This should be called at the end of each iteration of the while loop
-                if op.Params.opt_type == 'IRC' and not atMinimum:
-                    ircNumber += 1
-                    ircStepList.append(history.IRC_step(qPivot, oMolsys.geom, ircNumber))
+                else:  # executes if stepNumber reaches alg_geom_maxiter
+                    optimize_log.error("\tNumber of steps (%d) exceeds maximum for algorithm (%d).\n"
+                                       % (stepNumber + 1, op.Params.alg_geom_maxiter))
+                    raise AlgError("Maximum number of steps exceeded for algorithm")
 
-                    H = history.oHistory.hessianUpdate(H, oMolsys.intcos)
-                    (E, gX), qcjson = get_gradient(xyz, o_json, printResults=False, nuc=False)
+                # For IRC, save and queue up for the optimization of the next point. 
+                if op.Params.opt_type == 'IRC':
+                    IRCstepNumber += 1
+                    if IRCstepNumber == op.Params.irc_points:
+                        optimize_log.info("\tThe requested (%d) IRC points have been obtained."
+                                           % op.Params.irc_points)
+                        raise IRCendReached()
+                    else:
+                        optimize_log.info("\tStarting search for next IRC point.")
+                        optimize_log.info("\tClearing old constrained optimization history.")
+                        history.oHistory.resetToMostRecent() # delete old steps
+                        converged = False
 
-                    B = intcosMisc.Bmat(oMolsys.intcos, oMolsys.geom, oMolsys.masses)
-                    irc_dqs_geoms = IRCFollowing.take_half_step(oMolsys, E, H, B, 
-                                                                op.Params.irc_step_size, gX)
-                    irc_step_list.append(irc_dqs_geoms)
-
+            # Catch non-fatal algorithm errors and try modifying internals,
+            # changing run-levels, optimization parameters, etc. and start over again.
             except AlgError as AF:
                 optimize_log.error("\n\tCaught AlgError exception\n")
                 eraseHistory = False
@@ -335,9 +371,10 @@ def optimize(oMolsys, options_in, json_in=None):
                     history.oHistory.consecutiveBacksteps = 0
 
         # print summary
-        logging.info("\tOptimization Finished\n" + history.generate_file_output())
+        logging.info("\tOptimization Finished\n" + history.summaryString())
         output_dict = o_json.generate_json_output(history.oHistory[-1].geom, gX)
         json_original = o_json._get_original(oMolsys.geom)
+        json_original["success"] = True
 
         if op.Params.opt_type == 'linesearch':
             (gX), qcjson = get_gradient(oMolsys.geom, o_json, nuc=False)
@@ -348,39 +385,84 @@ def optimize(oMolsys, options_in, json_in=None):
         else:
             returnVal = history.oHistory[-1].E
 
-        # clean up
         del H
-        for f in oMolsys._fragments:
-            del f._intcos[:]
-            del f
         del history.oHistory[:]
-        del oMolsys
+        oMolsys.clear()
         del op.Params
         json_original.update(output_dict)
         return json_original
 
-    except Exception as error:
-        # TODO needs some improvements
-        optimize_log.critical("\tA non-optimization error has occured\n")
-        optimize_log.critical(("\tResetting all optimzation options to prevent queued" +
-                               "optimizations from failing\n"))
-        optimize_log.exception("Error Type:" + str(type(error)))
+    except IRCendReached:
+        optimize_log.info("Tabulating rxnpath results.")
+        IRCdata.history.progress_report()
+        output_dict = o_json.generate_json_output(IRCdata.history.x(-1),
+         np.multiply(-1,IRCdata.history.f_x(-1)))
+        json_original = o_json._get_original(IRCdata.history.x(-1))
+        json_original.update(output_dict)
+        rxnpath = IRCdata.history.rxnpathDict()
+        optimize_log.debug(rxnpath)
+        json_original['properties']['IRC'] = rxnpath
+        json_original["success"] = True
+
+        # delete some stuff
+        del H
+        del history.oHistory[:]
+        oMolsys.clear()
+        del op.Params
+        return json_original
+
+    except OptError as error:  # We are quitting for an optimization problem reason.
+        optimize_log.critical("\tA critical optimization-specific error has occured.\n")
+        optimize_log.critical("\tResetting all optimization options for potential queued jobs.\n")
+        optimize_log.exception("Error Type:  " + str(type(error)))
         optimize_log.exception("Error caught:" + str(error))
+        # Dump histories if possible
+        try:
+            logging.debug("\tDumping history: Warning last point not converged.\n" + history.summaryString())
+            if op.Params.opt_type == 'IRC':
+                logging.info("\tDumping IRC points completed")
+                IRCdata.history.progress_report()
+        except:
+            pass
 
         output_dict = o_json.generate_json_output(history.oHistory[-1].geom, gX)
         json_original = o_json._get_original(oMolsys.geom)
-        json_original.update(output_dict)
+        json_original.update(output_dict)  # may not be wise or feasable in all cases
+        json_original["error"] = repr(error)
+        json_original["success"] = False
+        if op.Params.opt_type == 'IRC':
+            rxnpath = IRCdata.history.rxnpathDict()
+            optimize_log.debug(rxnpath)
+            json_original['properties']['IRC'] = rxnpath
+
+        del history.oHistory[:]
+        oMolsys.clear()
+        del op.Params
+        del o_json
+
+        return json_original
+
+    except Exception as error:
+        optimize_log.critical("\tA non-optimization-specific error has occured.\n")
+        optimize_log.critical("\tResetting all optimization options for potential queued jobs.\n")
+        optimize_log.exception("Error Type:  " + str(type(error)))
+        optimize_log.exception("Error caught:" + str(error))
+
+        json_original = o_json._get_original(oMolsys.geom)
+        if history.oHistory:
+            output_dict = o_json.generate_json_output(history.oHistory[-1].geom, gX)
+            json_original.update(output_dict)
         json_original["error"] = repr(error)
         json_original["success"] = False
 
         del history.oHistory[:]
-        del o_json
-        # had been deleting oMolsys and Fragments here but IDE complained they
-        # were not declared
+        oMolsys.clear()
         del op.Params
+        del o_json
 
         return json_original
 
+# TODO move these elsewhere
 # TODO need to activate printResults for get_x methods
 def get_gradient(new_geom, o_json, printResults=False, nuc=True, QM='psi4'):
     """Use JSON interface to have QM program perform gradient calculation
@@ -464,3 +546,5 @@ def get_energy(new_geom, o_json, printResults=False, nuc=True, QM='psi4'):
 
     json_output = psi4methods.psi4_calculation(new_geom, o_json, driver='energy')
     return o_json.get_JSON_result(json_output, 'energy', nuc)
+
+

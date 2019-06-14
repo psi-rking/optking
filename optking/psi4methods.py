@@ -1,6 +1,7 @@
 """ various methods for interacting with psi4. i.e. getting gradients, hessians, options etc """
 import logging
 from psi4.driver import json_wrapper
+from . import printTools
 
 
 # TODO delete this method once psi4 writes a method that does this (just better)

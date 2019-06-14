@@ -35,12 +35,24 @@ def signOfDouble(d):
 def symmMatEig(mat):
     try:
         evals, evects = np.linalg.eigh(mat)
+        if abs(min(evects[:,0])) > abs(max(evects[:,0])):
+            evects[:,0] *= -1.0
     except:
         raise OptError("symmMatEig: could not compute eigenvectors")
         # could be ALG_FAIL ?
     evects = evects.T
     return evals, evects
 
+# Returns eigenvector with lowest eigenvalues; makes the largest
+# magnitude element positive.
+def lowestEigenvectorSymmMat(mat):
+    try:
+        evals, evects = np.linalg.eigh(mat)
+        if abs(min(evects[:,0])) > abs(max(evects[:,0])):
+            evects[:,0] *= -1.0
+    except:
+        raise OptError("symmMatEig: could not compute eigenvectors")
+    return evects[:,0]
 
 def asymmMatEig(mat):
     """Compute the eigenvalues and right eigenvectors of a square array.

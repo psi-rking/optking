@@ -1,4 +1,6 @@
 # HF SCF CC-PVDZ geometry optimization of HOOH with Z-matrix input
+import sys
+sys.path.append('/Users/rking/psi4/objdir/stage/lib')
 
 import psi4
 import optking

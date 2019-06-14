@@ -1,8 +1,5 @@
-# independent, miscellaneous functions
-
 import collections
 import copy
-
 
 class CaseInsensitiveDict(collections.Mapping):
     def __init__(self, d):

@@ -10,13 +10,6 @@ from .linearAlgebra import absMax, rms, signOfDouble
 from .printTools import printMatString, printArrayString
 
 
-class IRC_step(object):
-    def __init__(self, pivot_point, new_geom, IRC_number):
-        self.pivot_point = pivot_point
-        self.new_geom = new_geom
-        self.iteration = IRC_number
-
-
 class Step(object):
     def __init__(self, geom, E, forces, qcout=None):
         self.geom = geom.copy()  # Store as 2D object
@@ -100,6 +93,7 @@ class History(object):
             t.append((S.E, list(Zstring), S.geom.copy()))
         return t
 
+    # Summarize key quantities and return steps or string
     def summary(self, printoption=False):
         opt_summary = ''
         steps = []
@@ -115,8 +109,12 @@ class History(object):
 
             # For the summary Dq, we do not want to +2*pi for example for the angles,
             # so we read old Dq used during step.
-            max_disp = absMax(step.Dq)
-            rms_disp = rms(step.Dq)
+            try:
+                max_disp = absMax(step.Dq)
+                rms_disp = rms(step.Dq)
+            except:
+                max_disp = -99.0
+                rms_disp = -99.0
 
             steps.append({
                 'Energy': step.E,
@@ -150,10 +148,14 @@ class History(object):
         projectedChange = self.steps[-2].projectedDE
 
         opt_step_report += "\tEnergy change for the previous step:\n"
-        opt_step_report += "\t\tProjected    : %20.10lf\n" % projectedChange
         opt_step_report += "\t\tActual       : %20.10lf\n" % energyChange
+        if projectedChange is not None:
+            opt_step_report += "\t\tProjected    : %20.10lf\n" % projectedChange
 
         logger.info("\tCurrent Step Report \n %s" % opt_step_report)
+
+        if projectedChange is None:
+            return True # no previous projection; could be first step?
 
         Energy_ratio = energyChange / projectedChange
 
@@ -177,11 +179,22 @@ class History(object):
 
         return True
 
+    # Keep only most recent step
+    def resetToMostRecent(self):
+        self.steps = self.steps[-1:]
+        History.stepsSinceLastHessian = 0
+        consecutiveBacksteps = 0
+        nuclear_repulsion_energy = 0
+        # The step included is not taken in an IRC.
+        self.steps[0].projectedDE = None
+        return
+
     # Use History to update Hessian
     def hessianUpdate(self, H, intcos):
         logger = logging.getLogger(__name__)
-        if op.Params.hess_update == 'NONE':
+        if op.Params.hess_update == 'NONE' or len(self.steps) < 2:
             return
+
         logger.info("\tPerforming %s update." % op.Params.hess_update)
         Nintco = len(intcos)  # working dimension
 
@@ -206,14 +219,14 @@ class History(object):
         # Don't go further back than the last Hessian calculation
         numToUse = min(op.Params.hess_update_use_last,
                        len(self.steps) - 1, History.stepsSinceLastHessian)
-        logger.info("\tUsing last %d steps for update." % numToUse)
+        logger.info("\tUsing %d previous steps for update." % numToUse)
 
         # Make list of old geometries to update with.
-        # Check each one to see if it is too close for stable denominators.
-        checkStart = len(self.steps) - numToUse - 1
+        # Check each one to see if it is too close (so stable denominators).
         use_steps = []
-        for i in range(len(self.steps) - 2, checkStart - 1, -1):
-            oldStep = self.steps[i]
+        iStep = len(self.steps)-2 # just in case called with only 1 pt.
+        while iStep > -1 and len(use_steps) < numToUse:
+            oldStep = self.steps[iStep]
             f_old = oldStep.forces
             x_old = oldStep.geom
             q_old[:] = intcosMisc.qValues(intcos, x_old)
@@ -221,27 +234,24 @@ class History(object):
             dg[:] = f_old - f  # gradients -- not forces!
             gq = np.dot(dq, dg)
             qq = np.dot(dq, dq)
+            max_change = absMax(dq)
 
             # If there is only one left, take it no matter what.
-            if len(use_steps) == 0 and i == (len(self.steps) - 1):
-                use_steps.append(i)
-
-            if (math.fabs(gq) < op.Params.hess_update_den_tol or
+            if len(use_steps) == 0 and iStep == 0:
+                use_steps.append(iStep)
+            elif (math.fabs(gq) < op.Params.hess_update_den_tol or
                 math.fabs(qq) < op.Params.hess_update_den_tol):
                 logger.warning("\tDenominators (dg)(dq) or (dq)(dq) are very small.")
-                logger.warning("\tSkipping Hessian update for step %d." % (i + 1))
-                continue
-
-            max_change = absMax(dq)
-            logger.debug("\tLargest coordinate change for step %d : %15.10lf"
-                         % ((i + 1), (absMax(dq))))
-            if max_change > op.Params.hess_update_dq_tol:
+                logger.warning("\tSkipping Hessian update for step %d." % (iStep + 1))
+                pass
+            elif max_change > op.Params.hess_update_dq_tol:
                 logger.warning("\tChange in internal coordinate of %5.2e exceeds limit of %5.2e."
                                % (max_change, op.Params.hess_update_dq_tol))
-                logger.warning("\tSkipping Hessian update for step %d." % (i + 1))
-                continue
-
-            use_steps.append(i)
+                logger.warning("\tSkipping Hessian update for step %d." % (iStep + 1))
+                pass
+            else:
+                use_steps.append(iStep)
+            iStep -= 1
 
         hessian_steps = ("\tSteps to be used in Hessian update: ")
         for i in use_steps:
@@ -344,7 +354,7 @@ class History(object):
         return
 
 
-def generate_file_output():
+def summaryString():
     output_string = """\n\t==> Optimization Summary <==\n
     \n\tMeasures of convergence in internal coordinates in au. (Any backward steps not shown.)
     \n\t---------------------------------------------------------------------------------------------------------------  ~

@@ -1,6 +1,7 @@
 from __future__ import print_function
 import numpy as np
 import logging
+import qcelemental as qcel
 # from sys import stdout
 
 def printMatString(M, Ncol=7, title="\n"):
@@ -23,7 +24,7 @@ def printMatString(M, Ncol=7, title="\n"):
     #    title = title + "\n"
     #return np.array2string(M, max_line_width=100, precision=6, prefix=title, suffix="\n")
     s = '\t'
-    if title:
+    if title != '\n':
         s += title + '\n\t'
     for row in range(M.shape[0]):
         tab = 0
@@ -56,7 +57,7 @@ def printArrayString(M, Ncol=7, title="\n"):
     #    title = title + "\n"
     #return np.array2string(M, max_line_width=100, precision=6, prefix=title, suffix="\n")
     s = ''
-    if title:
+    if title != '\n':
         s = title + '\n'
     tab = 0
     for i, entry in enumerate(M):
@@ -82,6 +83,31 @@ def printGeomGrad(geom, grad):
                                                         grad[3 * i + 2]))
     logger.info(geometry_str)
     logger.info(gradient_str)
+
+def printGeomString(symbols, geom, unit=None):
+    if unit == "Angstrom" or unit == "Angstroms":
+        geom_str = "\n\tCartesian Geometry (in Angstroms)\n"
+        for i in range(geom.shape[0]):
+            geom_str += ("\t%5s%20.10f%20.10f%20.10f\n" % (symbols[i],
+                qcel.constants.bohr2angstroms * geom[i,0],
+                qcel.constants.bohr2angstroms * geom[i,1],
+                qcel.constants.bohr2angstroms * geom[i,2]))
+    else:
+        geom_str = "\n\tCartesian Geometry\n"
+        for i in range(geom.shape[0]):
+            geom_str += ("\t%5s%20.10f%20.10f%20.10f\n" % (symbols[i], geom[i,0], geom[i,1], geom[i,2]))
+    return geom_str
+
+def welcome():
+    welcome_string = """
+    \t\t\t-----------------------------------------\n
+    \t\t\t OPTKING 3.0: for geometry optimizations \n
+    \t\t\t     By R.A. King, Bethel University     \n
+    \t\t\t        with contributions from          \n
+    \t\t\t    A.V. Copan, J. Cayton, A. Heide      \n
+    \t\t\t-----------------------------------------\n
+    """
+    return welcome_string
 
 
 def welcome():

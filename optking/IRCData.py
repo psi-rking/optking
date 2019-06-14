@@ -1,5 +1,8 @@
 ### Class to store points on the IRC
 import logging
+from .printTools import printGeomString
+import numpy as np
+from .exceptions import OptError
 
 class IRCpoint(object):
     """Holds data for one step on the IRC.
@@ -8,9 +11,9 @@ class IRCpoint(object):
     step_number : int
         step number
     q_pivot :    ndarray
-        pivot point for step
+        pivot point for next step 
     x_pivot :    ndarray
-        pivot point for step; we save so that q_pivot can be recomputed if necessary
+        pivot point for next step; save so that q_pivot can be recomputed if desired
     q       :    ndarray
         internal coordinate values
     x       :    ndarray
@@ -26,49 +29,106 @@ class IRCpoint(object):
     line_dist :  float
     """
 
-    def __init__(self, step_number, q_pivot, x_pivot, q, x, f_q, f_x, energy, step_dist, arc_dist, line_dist):
+    def __init__(self, step_number, q, x, f_q, f_x, energy, q_pivot, x_pivot, step_dist, arc_dist, line_dist):
         self.step_number = step_number
-        self.q_pivot = q_pivot
-        self.x_pivot = x_pivot
         self.q = q
         self.x = x
         self.f_q = f_q
         self.f_x = f_x
         self.energy = energy
+        self.q_pivot = q_pivot
+        self.x_pivot = x_pivot
         self.step_dist = step_dist
         self.arc_dist = arc_dist
         self.line_dist = line_dist
 
+    def add_pivot(self, q_p, x_p):
+        self.q_pivot = q_p
+        self.x_pivot = x_p
+
+    def dictOutput(self):
+        s = {}
+        s['Step Number']      = self.step_number
+        s['Intco Values']     = self.q
+        s['Geometry']         = self.x
+        s['Internal Forces']  = self.f_q
+        s['Cartesian Forces'] = self.f_x
+        s['Energy']           = self.energy
+        s['Pivot Intco Values'] = self.q_pivot
+        s['Pivot Geometry']   = self.x_pivot
+        s['Step Distance']    = self.step_dist
+        s['Arc Distance' ]    = self.arc_dist
+        s['Line Distance']    = self.line_dist
+        return s
+
 class IRCdata(object):
     """ Stores obtained points along the IRC as well as information about
         the status of the IRC computation"""
+    __step_size = 0.0
+    __direction = None
+    __running_step_dist = 0.0
+    __running_arc_dist  = 0.0
+    __running_line_dist = 0.0
 
     def __init__(self):
         self.go = True
-        self.in_min_range = False
-        self.step_length = 0.4 # TODO: fill with parameter value 
-        self.sphere_step = 0
-        self.running_arc_dist = 0.0
-        self.running_line_dist = 0.0
-        # If not too inconvenient, require as arguments in add_irc_point()
-        self.arc_length = 0.0  # temporary storage for current step length
-        self.line_length = 0.0  # temporary storage for current step length
-
         self.irc_points = []
+        self.atom_symbols = None
 
-    def add_irc_point(self, step_number, q_p, x_p, q, x, f_q, f_x, E):
-        step_dist = step_number * self.step_length
-        arc_dist  = self.running_arc_dist + self.arc_length # optionally computed
-        line_dist = self.running_line_dist + self.line_length # optionally computed
+    def set_atom_symbols(self, atom_symbols): # just for printing
+        self.atom_symbols = atom_symbols.copy()# just for printing
 
-        onepoint = IRCpoint(step_number, q_p, x_p, q, x, f_q, f_x, E,
-                            step_dist, arc_dist, line_dist)
+    def set_step_size_and_direction(self, step_size, direction):
+        self.__step_size = step_size
+        self.__direction = direction
+
+    def add_irc_point(self, step_number, q_in, x_in, f_q, f_x, E, lineDistStep=0, arcDistStep=0):
+        if len(self.irc_points) != 0:
+            if self.__direction == 'FORWARD':
+                sign = 1
+            elif self.__direction == 'BACKWARD':
+                sign = -1
+                step_number *= -1
+            else:
+                raise OptError("IRC direction must be set to FORWARD or BACKWARD")
+            # step_dist = sum of all steps to and from pivot points, a multiple of
+            # the step_size
+            self.__running_step_dist += sign * self.__step_size
+            # line distance is sum of all steps directly between rxnpath points, ignoring
+            # pivot points
+            self.__running_line_dist += sign * lineDistStep
+            # distance along a circular arc connecting rxnpath points
+            self.__running_arc_dist  += sign * arcDistStep
+
+        onepoint = IRCpoint(step_number, q_in, x_in, f_q, f_x, E, None, None,
+            self.__running_step_dist, self.__running_arc_dist, self.__running_line_dist)
         self.irc_points.append(onepoint)
+
+        logger = logging.getLogger(__name__)
+        pindex = (len(self.irc_points)-1)
+        outstr = "\nAdding IRC point %d\n" % pindex
+        outstr += printGeomString(self.atom_symbols, x_in, "Angstroms")
+        logger.info(outstr)
+
+
+    def add_pivot_point(self, q_p, x_p, step=None):
+        index = -1 if step is None else step
+        logger = logging.getLogger(__name__)
+        pindex = (len(self.irc_points)-1) if step is None else step
+        logger.debug("Adding pivot point (index %d) for finding rxnpath point %d" % (pindex,pindex+1))
+        self.irc_points[index].add_pivot(q_p, x_p)
 
     # Return most recent IRC step data unless otherwise specified
     def step_number(self, step=None):
         index = -1 if step is None else step
         return self.irc_points[index].step_number
+
+    @property
+    def step_size(self):
+        return self.__step_size
+
+    def current_step_number(self):
+        return len(self.irc_points)
 
     def q_pivot(self, step=None):
         index = -1 if step is None else step
@@ -110,25 +170,35 @@ class IRCdata(object):
         index = -1 if step is None else step
         return self.irc_points[index].step_dist
 
-    def set_arc_length(self, arc_length_in, step=None):
-        index = -1 if step is None else step
-        self.irc_points[index].arc_length = arc_length_in 
+    # Given current forces, checks if we are at/near a minimum
+    # For now, checks if forces are opposite those are previous pivot point
+    def testForIRCminimum(self, f_q):
+        unit_f     = f_q   / np.linalg.norm(f_q)  # current forces
+        f_rxn      = self.f_q()                   # forces at most recent rxnpath point
+        unit_f_rxn = f_rxn / np.linalg.norm(f_rxn)
+        overlap = np.dot(unit_f, unit_f_rxn)
 
-    def set_line_length(self, line_length_in, step=None):
-        index = -1 if step is None else step
-        self.irc_points[index].line_length = line_length_in 
+        logger = logging.getLogger(__name__)
+        logger.info("Overlap of forces with previous rxnpath point %8.4f" % overlap)
+    
+        if overlap < -0.7:
+            return True
+
+        # TODO  Look at line distance criterion when distances are working.
+        #elif:
+        #    g_line_dist(p_irc_data->size()-1) - g_line_dist(p_irc_data->size()-2)) < s*10e-03)
+        #    return True
+
+        return False
 
     def progress_report(self):
         blocks = 4 # TODO: make dynamic
         sign = 1
-        # TODO: if OptParams.IRC_direction == 'backward': sign = -1
         Ncoord = len(self.q())
 
         logging.basicConfig(filename='ircprogress.log',level=logging.DEBUG)
 
-        out = '\n' #string for output
-
-        #Print Energies and Energy Changes for Each Step
+        out = '\n'
         out += "@IRC ----------------------------------------------\n"
         out += "@IRC            ****      IRC Report      ****\n"
         out += "@IRC ----------------------------------------------\n"
@@ -193,10 +263,13 @@ class IRCdata(object):
         
         out += "\n"
         out += "\n"
-
-        #print(out,end="")
         logging.info(out)
 
         #out += mol.print_coords(psi_outfile, qc_outfile)
         #out += mol.print_simples(psi_outfile, qc_outfile)
 
+    def rxnpathDict(self):
+        rp = [ self.irc_points[i].dictOutput() for i in range(len(self.irc_points)) ]
+        return rp
+
+history = 0
