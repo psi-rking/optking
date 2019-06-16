@@ -106,7 +106,7 @@ class jsonSchema:
         return j_geom
 
     @staticmethod
-    def get_JSON_result(json_data, driver, nuc=False):
+    def get_JSON_result(json_data, driver, wantNuc=False):
         """ Parse JSON file from QM program for result of calculation
 
         Parameters
@@ -114,7 +114,7 @@ class jsonSchema:
         json_data : dict
         driver : str
             gradient, hessian, or energy
-        nuc : boolean, optional
+        wantNuc : boolean, optional
             return nuclar repulsion energy as well
 
         Returns
@@ -137,11 +137,11 @@ class jsonSchema:
                 return_result = json_data['return_result']
 
             return_nuc = json_data['properties']['nuclear_repulsion_energy']
-            if driver == 'gradient' and nuc:
+            if driver == 'gradient' and wantNuc:
                 return return_energy, return_result, return_nuc
             elif driver == 'gradient':
                 return return_energy, return_result
-            elif nuc:
+            elif wantNuc:
                 return return_result, return_nuc
             else:
                 return return_result

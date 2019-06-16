@@ -237,7 +237,7 @@ class Tors(Simple):
                         dq2dx2[3*self.atoms[b]+j][3*self.atoms[a]+i] = tval
         return
 
-    def diagonalHessianGuess(self, geom, Z, connectivity=False, guessType="SIMPLE"):
+    def diagonalHessianGuess(self, geom, Z, connectivity, guessType="SIMPLE"):
         """ Generates diagonal empirical Hessians in a.u. such as 
           Schlegel, Theor. Chim. Acta, 66, 333 (1984) and
           Fischer and Almlof, J. Phys. Chem., 96, 9770 (1992).

@@ -10,7 +10,7 @@ def test_input_through_json_dict():
     refnucenergy = 8.9064890670
     refenergy = -74.965901192
 
-    json_dict_in = {"schema_name": "qc_schema_input", "schema_version": 1, "molecule": { "geometry": [ 0.0, 0.0, 0.28100228, 0.0, 1.42674323, -0.8431958, 0.0, -1.42674323, -0.8431958 ], "symbols": [ "O", "H", "H" ], "masses": [ 15.994915, 1.007825, 1.007825 ] }, "driver": "optimize", "model": { "method": "hf", "basis": "sto-3g" }, "keywords": { "diis": False, "e_convergence": 10, "d_convergence": 10, "scf_type": "pk", "optimizer": { "output_type": "JSON" }}}
+    json_dict_in = {"schema_name": "qcschema_input", "schema_version": 1, "molecule": { "geometry": [ 0.0, 0.0, 0.28100228, 0.0, 1.42674323, -0.8431958, 0.0, -1.42674323, -0.8431958 ], "symbols": [ "O", "H", "H" ], "masses": [ 15.994915, 1.007825, 1.007825 ] }, "driver": "optimize", "model": { "method": "hf", "basis": "sto-3g" }, "keywords": { "diis": False, "e_convergence": 10, "d_convergence": 10, "scf_type": "pk", "optimizer": { "output_type": "JSON" }}}
 
     json_dict = optking.run_json_dict(json_dict_in)
 

@@ -110,12 +110,13 @@ def optimize(oMolsys, options_in, json_in=None):
                         optimize_log.info("Beginning IRC from the transition state.\n")
                         optimize_log.info("Stepping along lowest Hessian eigenvector.\n")
 
-                        #H = hessian.guess(oMolsys.intcos, oMolsys.geom, oMolsys.Z, False, op.Params.intrafrag_hess)
+                        #C = addIntcos.connectivityFromDistances(oMolsys.geom, oMolsys.Z)
+                        #H = hessian.guess(oMolsys.intcos, oMolsys.geom, oMolsys.Z, C, op.Params.intrafrag_hess)
 
                         # TODO: Use computed Hessian.
                         Hcart = get_hessian(oMolsys.geom, o_json, printResults=False)
                         E = get_energy(oMolsys.geom, o_json, nuc=False)
-                        (E, gX), qcjson  = get_gradient(oMolsys.geom, o_json, nuc=False)
+                        (E, gX), qcjson  = get_gradient(oMolsys.geom, o_json, wantNuc=False)
                         H = intcosMisc.convertHessianToInternals(Hcart, oMolsys.intcos, oMolsys.geom)
                         optimize_log.debug(printMatString(H, title="Transformed Hessian in internal coordinates."))
 
@@ -166,7 +167,7 @@ def optimize(oMolsys, options_in, json_in=None):
                     totalStepsTaken += 1
                     # compute energy and gradient
                     xyz = oMolsys.geom.copy()
-                    (E, gX, nuc), qcjson = get_gradient(xyz, o_json, printResults=False, nuc=True)
+                    (E, gX, nuc), qcjson = get_gradient(xyz, o_json, printResults=False, wantNuc=True)
                     oMolsys.geom = xyz  # use setter function to save data in fragments
                     printGeomGrad(oMolsys.geom, gX)
                     energies.append(E)
@@ -227,6 +228,7 @@ def optimize(oMolsys, options_in, json_in=None):
                                 Hcart = get_hessian( xyz, o_json, printResults=True)
                                 H = intcosMisc.convertHessianToInternals(Hcart, oMolsys.intcos, xyz)
                             else:
+                                C = addIntcos.connectivityFromDistances(oMolsys.geom, oMolsys.Z)
                                 H = hessian.guess(oMolsys.intcos, oMolsys.geom, oMolsys.Z, C,
                                                   op.Params.intrafrag_hess)
                         else: # not IRC, not first step
@@ -377,7 +379,7 @@ def optimize(oMolsys, options_in, json_in=None):
         json_original["success"] = True
 
         if op.Params.opt_type == 'linesearch':
-            (gX), qcjson = get_gradient(oMolsys.geom, o_json, nuc=False)
+            (E, gX), qcjson = get_gradient(oMolsys.geom, o_json, wantNuc=False)
 
         if op.Params.trajectory:
             # history doesn't contain atomic numbers so pass them in
@@ -464,7 +466,7 @@ def optimize(oMolsys, options_in, json_in=None):
 
 # TODO move these elsewhere
 # TODO need to activate printResults for get_x methods
-def get_gradient(new_geom, o_json, printResults=False, nuc=True, QM='psi4'):
+def get_gradient(new_geom, o_json, printResults=False, wantNuc=True, QM='psi4'):
     """Use JSON interface to have QM program perform gradient calculation
     Only Psi4 is currently implemented
 
@@ -492,7 +494,7 @@ def get_gradient(new_geom, o_json, printResults=False, nuc=True, QM='psi4'):
     """
 
     json_output = psi4methods.psi4_calculation(new_geom, o_json)
-    return o_json.get_JSON_result(json_output, 'gradient', nuc), json_output
+    return o_json.get_JSON_result(json_output, 'gradient', wantNuc), json_output
 
 
 def get_hessian(new_geom, o_json, printResults=False, QM='psi4'):

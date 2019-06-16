@@ -18,7 +18,7 @@ def show(H, intcos):
     logger.info("Hessian in [aJ/Ang^2], etc.\n" + printMatString(scaled_H))
 
 
-def guess(intcos, geom, Z, connectivity=False, guessType="SIMPLE"):
+def guess(intcos, geom, Z, connectivity=None, guessType="SIMPLE"):
     """ Generates diagonal empirical Hessian in a.u.
 
     Parameters

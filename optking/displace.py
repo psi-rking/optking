@@ -156,7 +156,7 @@ def displace(intcos, geom, dq, fq=None, atom_offset=0, ensure_convergence=False)
     coordinate_change_report += (
         "\t         ----------      --------        ------        ------\n")
 
-    if fq == None:
+    if type(fq) == type(None):
         for i, intco in enumerate(intcos):
             coordinate_change_report += ("\t%19s%14.5f%14.5f%14.5f\n"
                                          % (intco, qShow_orig[i], dqShow[i], qShow_final[i]))
