@@ -147,7 +147,7 @@ class jsonSchema:
                 return return_result
 
     @classmethod
-    def make_qcschema(cls, geom, symbols, QM_method, basis, keywords):
+    def make_qcschema(cls, geom, symbols, QM_method, basis, keywords, multiplicity=1):
         """ Creates a qcschema according to MolSSI qcschema_input version 1
 
         Parameters
@@ -161,10 +161,16 @@ class jsonSchema:
         keywords : dict of str
             all options
         """
-        qcschema = {"schema_name": "qcschema_input", "schema_version": 1, "molecule":
-                    {"geometry": geom, "symbols": symbols, "fix_com": True,
-                     "fix_orientation": True},
-                    "driver": "", "model": {"method": QM_method, "basis": basis},
-                    "keywords": keywords}
+        qcschema = {"schema_name": "qcschema_input",
+                 "schema_version": 1,
+                       "molecule": {"geometry": geom,
+                                    "symbols": symbols,
+                                    "fix_com": True,
+                                    "fix_orientation": True,
+                                    "molecular_multiplicity": multiplicity},
+                         "driver": "",
+                          "model": {"method": QM_method,
+                                    "basis": basis},
+                                    "keywords": keywords}
 
         return cls(qcschema)

@@ -41,7 +41,13 @@ def psi4_calculation(new_geom, o_json, driver='gradient'):
     geom = o_json.to_JSON_geom(new_geom)
     json_input = o_json.update_geom_and_driver(geom, driver)
     logger.debug("Getting %s from Psi4 through JSON interface\n" % (driver))
-    return json_wrapper.run_json(json_input, True)
+    #qc_input = "Input to run_json\n"
+    #for k,v in json_input.items():
+    #    qc_input += "%s,%s\n" % (k, v)
+    #logger.debug(qc_input)
+    rval = json_wrapper.run_json(json_input, True)
+    logger.debug("Return from run_json: %s" % str(rval))
+    return rval
 
 
 #################

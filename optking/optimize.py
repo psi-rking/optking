@@ -62,7 +62,8 @@ def optimize(oMolsys, options_in, json_in=None):
         o_json = 0
         if json_in is None:
             QM_method, basis, keywords = psi4methods.collect_psi4_options(options_in)
-            o_json = jsonSchema.make_qcschema(oMolsys.geom, oMolsys.atom_symbols, QM_method, basis, keywords)
+            o_json = jsonSchema.make_qcschema(oMolsys.geom, oMolsys.atom_symbols,
+                         QM_method, basis, keywords, oMolsys.multiplicity)
         else:
             o_json = json_in
 

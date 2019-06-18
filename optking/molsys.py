@@ -21,7 +21,7 @@ class Molsys(object):
     intcos : list(Simple), optional
 
     """
-    def __init__(self, fragments, fb_fragments=None, intcos=None):
+    def __init__(self, fragments, fb_fragments=None, intcos=None, multiplicity=1):
         # ordinary fragments with internal structure
         self.logger = logging.getLogger(__name__)
         self._fragments = []
@@ -31,6 +31,7 @@ class Molsys(object):
         self._fb_fragments = []
         if fb_fragments:
             self._fb_fragments = fb_fragments
+        self._multiplicity = multiplicity
 
     def __str__(self):
         s = ''
@@ -81,7 +82,9 @@ class Molsys(object):
                 fragMasses.append(fragMol.mass(i))
 
             frags.append(frag.Frag(fragZ, fragGeom, fragMasses))
-        return cls(frags)
+
+        m = mol.multiplicity()
+        return cls(frags, multiplicity=m)
 
     @classmethod
     def from_JSON_molecule(cls, JSON_string):
@@ -127,6 +130,10 @@ class Molsys(object):
     @property
     def Natom(self):
         return sum(F.Natom for F in self._fragments)
+
+    @property
+    def multiplicity(self):
+        return self._multiplicity
 
     @property
     def Nfragments(self):
