@@ -23,6 +23,7 @@ if __name__ == "__main__":
         install_requires=[
             'numpy>=1.7',
             'qcelemental>=0.1.2',
+            'qcengine=0.6.4'
         ],
         extras_require={
             'docs': [
