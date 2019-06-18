@@ -35,7 +35,6 @@ allowedStringOptions = {
     'opt_coordinates': ('REDUNDANT', 'INTERNAL', 'DELOCALIZED', 'NATURAL', 'CARTESIAN',
                         'BOTH'),
     'irc_direction': ('FORWARD', 'BACKWARD'),
-    'irc_stop': ('ASK', 'STOP', 'GO'),
     'g_convergence': ('QCHEM', 'MOLPRO', 'GAU', 'GAU_LOOSE', 'GAU_TIGHT', 'GAU_VERYTIGHT',
                       'TURBOMOLE', 'CFOUR', 'NWCHEM_LOOSE'),
     'hess_update': ('NONE', 'BFGS', 'MS', 'POWELL', 'BOFILL'),
@@ -56,7 +55,6 @@ class OptParams(object):
     step_type = stringOption('step_type')
     opt_coordinates = stringOption('opt_coordinates')
     irc_direction = stringOption('irc_direction')
-    # irc_stop        = stringOption( 'irc_step' )
     g_convergence = stringOption('g_convergence')
     hess_update = stringOption('hess_update')
     intrafrag_hess = stringOption('intrafrag_hess')
@@ -117,7 +115,6 @@ class OptParams(object):
         P.irc_direction = uod.get('IRC_DIRECTION', 'FORWARD')
         # Decide when to stop IRC calculations
         P.irc_points = uod.get('IRC_POINTS', '10')
-        # P.irc_stop = uod.get('IRC_STOP', 'STOP')
         #
         # Initial maximum step size in bohr or radian along an internal coordinate
         P.intrafrag_trust = uod.get('INTRAFRAG_STEP_LIMIT', 0.5)
