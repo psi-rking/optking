@@ -3,6 +3,7 @@ import logging
 import os
 import sys
 
+from .optimize import optimize
 from . import lj_functions
 from . import loggingconfig
 from .psi4optwrapper import Psi4Opt
@@ -18,7 +19,6 @@ from .qcdbjson import jsonSchema
 from .displace import displace
 from . import optparams as op
 from .exceptions import OptError, AlgError
-from .optimize import optimize
 
 # this was on my TODO list, but now im not sure its working
 op.Params = op.OptParams({})
