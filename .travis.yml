@@ -37,8 +37,7 @@ install:
   - source activate test
 
     # Extra upstream for testing
-  - conda install qcengine=0.6.4
-  - conda install ci-psi4 psi4 -c psi4/label/dev
+  - conda install qcengine=0.6.4 ci-psi4 psi4 -c psi4/label/dev
 
     # Build and install package
   - python setup.py develop --no-deps
