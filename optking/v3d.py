@@ -178,23 +178,23 @@ def tors(A, B, C, D):
         EBA = eAB(B, A)
         EAB = -1 * EBA
     except AlgError as error:
-        logger.warning("Could not normalize %d, %d vector in tors()\n" % (str(A), str(B)))
+        logger.warning("Could not normalize {}, {} vector in tors()\n".format(str(A), str(B)))
         raise
     try:
         EBC = eAB(B, C)
     except AlgError as error:
-        logger.warning("Could not normalize %d, %d vector in tors()\n" % (str(B), str(C)))
+        logger.warning("Could not normalize {}, {} vector in tors()\n".format(str(B), str(C)))
         raise
     try:
         ECB = eAB(C, B)
         EBC = -1 * ECB
     except AlgError as error:
-        logger.warning("Could not normalize %d, %d vector in tors()\n" % (str(C), str(D)))
+        logger.warning("Could not normalize {}, {} vector in tors()\n".format(str(C), str(B)))
         raise
     try:
         ECD = eAB(C, D)
     except AlgError as error:
-        logger.warning("Could not normalize %d, %d vector in tors()\n" % (str(C), str(D)))
+        logger.warning("Could not normalize {}, {} vector in tors()\n".format(str(C), str(D)))
         raise
 
     # Compute bond angles
@@ -202,10 +202,12 @@ def tors(A, B, C, D):
     phi_234 = _calc_angle(ECB, ECD)
 
     up_lim = acos(-1) - phi_lim
+    
 
     if phi_123 < phi_lim or phi_123 > up_lim or phi_234 < phi_lim or phi_234 > up_lim:
-        raise AlgError("Tors angle for %d, %d, %d, %d is too large for good "
-                                    + "definition" % (str(A), str(B), str(C), str(D)))
+        #raise AlgError("Tors angle for %d, %d, %d, %d is too large for good "
+        #                            + "definition" % (str(A), str(B), str(C), str(D)))
+        raise AlgError("Tors angle is too large for good definition")        
 
     tmp = cross(EAB, EBC)
     tmp2 = cross(EBC, ECD)
@@ -236,25 +238,25 @@ def oofp(A, B, C, D):
     try:
         eBA = eAB(B, A)
     except AlgError as error:
-        logger.warning("Could not normalize %d, %d vector in tors()\n" % (str(B), str(A)))
+        logger.warning("Could not normalize {}, {} vector in tors()\n".format(str(B), str(A)))
         raise
     try:
         eBC = eAB(B, C)
     except AlgError as error:
-        logger.warning("Could not normalize %d, %d vector in tors()\n" % (str(B), str(C)))
+        logger.warning("Could not normalize {}, {} vector in tors()\n".format(str(B), str(C)))
         raise
     try:
         eBD = eAB(B, D)
     except AlgError as error:
-        logger.warning("Could not normalize %d, %d vector in tors()\n" % (str(B), str(D)))
+        logger.warning("Could not normalize {}, {} vector in tors()\n".format(str(B), str(D)))
         raise
 
     phi_CBD = _calc_angle(eBC, eBD)
 
     # This shouldn't happen unless angle B-C-D -> 0,
     if sin(phi_CBD) < op.Params.v3d_tors_cos_tol:  # reusing parameter
-        raise AlgError("Angle: %d, %d, %d is to close to zero in oofp\n"
-                                    % (str(C), str(B), str(D)))
+        raise AlgError("Angle: {}, {}, {} is to close to zero in oofp\n".format(
+            str(C), str(B), str(D)))
 
     dotprod = dot(cross(eBC, eBD), eBA) / sin(phi_CBD)
 

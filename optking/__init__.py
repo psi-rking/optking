@@ -4,6 +4,9 @@ import os
 import sys
 
 from .optimize import optimize
+from .optimize import get_gradient
+from .optimize import get_hessian
+from .optimize import get_energy
 from . import lj_functions
 from . import loggingconfig
 from .psi4optwrapper import Psi4Opt
