@@ -8,18 +8,18 @@ sudo: false
 
 matrix:
   include:
-    - os: linux
-      python: 3.5
-      env:
-        - PYTHON_VER=3.5
+    #- os: linux
+    #  python: 3.5
+    #  env:
+    #    - PYTHON_VER=3.5
     - os: linux
       python: 3.6
       env:
         - PYTHON_VER=3.6
-    - os: linux
-      #python: 3.7
-      env:
-        - PYTHON_VER=3.7
+    #- os: linux
+    #  #python: 3.7
+    #  env:
+    #    - PYTHON_VER=3.7
 
 before_install:
   - uname -a
@@ -37,7 +37,7 @@ install:
   - source activate test
 
     # Extra upstream for testing
-  - conda install ci-psi4 psi4 -c psi4/label/dev
+  - conda install qcengine=0.6.4 ci-psi4 psi4 -c psi4/label/dev
 
     # Build and install package
   - python setup.py develop --no-deps

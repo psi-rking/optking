@@ -441,7 +441,7 @@ def checkFragment(atomList, oMolsys):
     return fragList[0]
 
 
-# TODO Length mod 3 should be checked in optParams
+# TODO Length mod 3 should be checked in OptParams
 def fixStretchesFromInputList(fixedStreList, oMolsys):
     logger = logging.getLogger(__name__)
     for i in range(0, len(fixedStreList), 3):  # loop over fixed stretches

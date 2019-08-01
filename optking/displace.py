@@ -14,7 +14,7 @@ from .linearAlgebra import absMax, rms, symmMatInv
 #   Reduce step size as necessary until back-transformation converges.
 
 
-def displace(intcos, geom, dq, fq, atom_offset=0, ensure_convergence=False):
+def displace(intcos, geom, dq, fq=None, atom_offset=0, ensure_convergence=False):
     """ Converts internal coordinate step into the new cartesian geometry
 
     Parameters
@@ -140,7 +140,7 @@ def displace(intcos, geom, dq, fq, atom_offset=0, ensure_convergence=False):
             back_trans_report += ("\t%5d%15.10lf%15.10lf\n"
                                   % (i + 1, q_target[i], (q_final - q_target)[i]))
         back_trans_report += ("\t-----------------------------------\n")
-        logger.info(back_trans_report)
+        logger.debug(back_trans_report)
 
     # Set dq to final, total displacement ACHIEVED
     qShow_final = intcosMisc.qShowValues(intcos, geom)
@@ -152,13 +152,18 @@ def displace(intcos, geom, dq, fq, atom_offset=0, ensure_convergence=False):
     coordinate_change_report += (
         "\t-----------------------------------------------------------------------------\n")
     coordinate_change_report += (
-        "\t         Coordinate      Previous         Force        Change          New \n")
+        "\t         Coordinate      Previous         Change          New \n")
     coordinate_change_report += (
-        "\t         ----------      --------        ------        ------        ------\n")
+        "\t         ----------      --------        ------        ------\n")
 
-    for i, intco in enumerate(intcos):
-        coordinate_change_report += ("\t%19s%14.5f%14.5f%14.5f%14.5f\n"
-                                     % (intco, qShow_orig[i], fq[i], dqShow[i], qShow_final[i]))
+    if type(fq) == type(None):
+        for i, intco in enumerate(intcos):
+            coordinate_change_report += ("\t%19s%14.5f%14.5f%14.5f\n"
+                                         % (intco, qShow_orig[i], dqShow[i], qShow_final[i]))
+    else:
+        for i, intco in enumerate(intcos):
+            coordinate_change_report += ("\t%19s%14.5f%14.5f%14.5f%14.5f\n"
+                                         % (intco, qShow_orig[i], fq[i], dqShow[i], qShow_final[i]))
     coordinate_change_report += (
         "\t-----------------------------------------------------------------------------\n")
 
@@ -269,7 +274,7 @@ def oneStep(intcos, geom, dq, printDetails=False):
         absolute maximum of cartesian displacement
     """
     B = intcosMisc.Bmat(intcos, geom)
-    G = intcosMisc.Gmat_B(B, intcos)
+    G = np.dot(B, B.T)
     Ginv = symmMatInv(G, redundant=True)
     tmp_v_Nint = np.dot(Ginv, dq)
     # dx = np.zeros(geom.shape[0] * geom.shape[1], float)  # dx is 1D here

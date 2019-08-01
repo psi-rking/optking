@@ -6,9 +6,6 @@ import qcelemental as qcel
 from . import addIntcos
 from .printTools import printArrayString, printMatString
 
-# Geometry is 2D object (atom,xyz)
-
-
 class Frag:
     """ Group of bonded atoms
 
@@ -139,8 +136,8 @@ class Frag:
         geometry += ("\n")
         return geometry
 
-    def get_atom_list(self):
-        frag_atom_list = []
+    def get_atom_symbol_list(self):
+        frag_atom_symbol_list = []
         for i in range(self._geom.shape[0]):
-            frag_atom_list.append(qcel.periodictable.to_E(self._Z[i]))
-        return frag_atom_list
+            frag_atom_symbol_list.append(qcel.periodictable.to_E(self._Z[i]))
+        return frag_atom_symbol_list

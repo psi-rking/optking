@@ -1,4 +1,4 @@
-# optParams is a class to store all of the optimization parameters.
+# OptParams is a class to store all of the optimization parameters.
 # The init function will receive a User Option Dictionary (uod) which can
 # override default values.
 # P = parameters ('self')
@@ -35,7 +35,6 @@ allowedStringOptions = {
     'opt_coordinates': ('REDUNDANT', 'INTERNAL', 'DELOCALIZED', 'NATURAL', 'CARTESIAN',
                         'BOTH'),
     'irc_direction': ('FORWARD', 'BACKWARD'),
-    'irc_stop': ('ASK', 'STOP', 'GO'),
     'g_convergence': ('QCHEM', 'MOLPRO', 'GAU', 'GAU_LOOSE', 'GAU_TIGHT', 'GAU_VERYTIGHT',
                       'TURBOMOLE', 'CFOUR', 'NWCHEM_LOOSE'),
     'hess_update': ('NONE', 'BFGS', 'MS', 'POWELL', 'BOFILL'),
@@ -50,13 +49,12 @@ allowedStringOptions = {
 #    printxopt([key for key, val in enum_type.__dir__.items() if val == value][0])
 
 
-class optParams(object):
+class OptParams(object):
     # define properties
     opt_type = stringOption('opt_type')
     step_type = stringOption('step_type')
     opt_coordinates = stringOption('opt_coordinates')
     irc_direction = stringOption('irc_direction')
-    # irc_stop        = stringOption( 'irc_step' )
     g_convergence = stringOption('g_convergence')
     hess_update = stringOption('hess_update')
     intrafrag_hess = stringOption('intrafrag_hess')
@@ -78,7 +76,9 @@ class optParams(object):
         # SUBSECTION Optimization Algorithm
 
         # Maximum number of geometry optimization steps
-        P.geom_maxiter = uod.get('geom_maxiter', 50)
+        P.geom_maxiter = uod.get('geom_maxiter', 40)
+        # Maximum number of geometry optimization steps for one algorithm
+        P.alg_geom_maxiter = uod.get('alg_geom_maxiter', 20)
         # Print level.  1 = normal
         # P.print_lvl = uod.get('print_lvl', 1)
         P.print_lvl = uod.get('print', 1)
@@ -114,7 +114,7 @@ class optParams(object):
         # IRC mapping direction
         P.irc_direction = uod.get('IRC_DIRECTION', 'FORWARD')
         # Decide when to stop IRC calculations
-        # P.irc_stop = uod.get('IRC_STOP', 'STOP')
+        P.irc_points = uod.get('IRC_POINTS', '10')
         #
         # Initial maximum step size in bohr or radian along an internal coordinate
         P.intrafrag_trust = uod.get('INTRAFRAG_STEP_LIMIT', 0.5)
@@ -222,7 +222,7 @@ class optParams(object):
         # Model Hessian to guess intrafragment force constants
         P.intrafrag_hess = uod.get('INTRAFRAG_HESS', 'SCHLEGEL')
         # Re-estimate the Hessian at every step, i.e., ignore the currently stored Hessian.
-        # P.h_guess_every = uod.get('H_GUESS_EVERY', False)
+        P.h_guess_every = uod.get('H_GUESS_EVERY', False)
 
         P.working_steps_since_last_H = 0
         #
@@ -263,7 +263,7 @@ class optParams(object):
         # General, maximum distance for the definition of H-bonds.
         # P.h_bond_connect = uod.get('h_bond_connect', 4.3)
         # Only generate the internal coordinates and then stop (boolean)
-        # P.intcos_generate_exit = uod.get('INTCOS_GENERATE_EXIT', False)
+        P.generate_intcos_exit = uod.get('GENERATE_INTCOS_EXIT', False)
         #
         #
         # SUBSECTION Misc.
@@ -277,7 +277,7 @@ class optParams(object):
         # Do test derivative B matrix?
         P.test_derivative_B = uod.get('TEST_DERIVATIVE_B', False)
         # Keep internal coordinate definition file.
-        # P.keep_intcos = uod.get('KEEP_INTCOS', False)
+        P.keep_intcos = uod.get('KEEP_INTCOS', False)
         # In constrained optimizations, for coordinates with user-specified
         # equilibrium values, this is the initial force constant (in au) used to apply an
         # additional force to each coordinate.
@@ -293,63 +293,63 @@ class optParams(object):
             if P.step_type == 'RFO' or 'STEP_TYPE' not in uod:
                 P.step_type = 'P_RFO'
 
-# INTERNAL is a synonym
-# if P.opt_coordinates == 'INTERNAL': P.opt_coordinates = 'REDUNDANT'
-#
-# Initial Hessian guess for cartesians with coordinates BOTH is stupid, so don't scale
-#   step size down too much.  Steepest descent has no good hessian either.
+        if 'GEOM_MAXITER' not in uod:
+            if P.opt_type == 'IRC':
+                P.geom_maxiter = P.irc_points * P.geom_maxiter
 
+        # Initial Hessian guess for cartesians with coordinates BOTH is stupid, so don't scale
+        #   step size down too much.  Steepest descent has no good hessian either.
         if 'INTRAFRAG_TRUST_MIN' not in uod:
             if P.opt_coordinates == 'BOTH':
                 P.intrafrag_trust_min = P.intrafrag_trust / 2.0
             elif P.step_type == 'SD':
                 P.intrafrag_trust_min = P.intrafrag_trust
 
-# Original Lindh specification was to redo at every step.
-# if 'H_GUESS_EVERY' not in uod and P.intrafrag_hess == 'LINDH':
-# P.h_guess_every = True
-#
-# Default for cartesians: use Lindh force field for initial guess, then BFGS.
+        # Original Lindh specification was to redo at every step.
+        if 'H_GUESS_EVERY' not in uod and P.intrafrag_hess == 'LINDH':
+            P.h_guess_every = True
 
+        # Default for cartesians: use Lindh force field for initial guess, then BFGS.
         if P.opt_coordinates == 'CARTESIAN':
             if 'INTRAFRAG_HESS' not in uod:
                 P.intrafrag_hess = 'LINDH'
-                # if 'H_GUESS_EVERY' not in uod:
-            # P.H_guess_every = False;
-            #
-            # Set Bofill as default for TS optimizations.
+                if 'H_GUESS_EVERY' not in uod:
+                    P.H_guess_every = False;
+
+        # Set Bofill as default for TS optimizations.
         if P.opt_type == 'TS' or P.opt_type == 'IRC':
             if 'HESS_UPDATE' not in uod:
                 P.hess_update = 'BOFILL'
-#
-# Make trajectory file printing the default for IRC.
+
+        # Make trajectory file printing the default for IRC.
         if P.opt_type == 'IRC' and 'PRINT_TRAJECTORY_XYZ_FILE' not in uod:
             P.print_trajectory_xyz_file = True
-#
-# Read cartesian Hessian by default for IRC.
+
+        # Read cartesian Hessian by default for IRC.
         if P.opt_type == 'IRC' and 'CART_HESS_READ' not in uod:
             P.read_cartesian_H = True
 
-# if P.generate_intcos_exit:
-# P.keep_intcos = True
-#
-# Set full_hess_every to 0 if -1
+        if P.generate_intcos_exit:
+            P.keep_intcos = True
 
+        # For IRC, we will need a Hessian.  Compute it if not provided.
+        # Set full_hess_every to 0 if -1
         if P.opt_type == 'IRC' and P.full_hess_every < 0:
             P.full_hess_every = 0
+            P.cart_hess_read = True # not sure about this one - test
 
-# if steepest-descent, then make much larger default
-# if P.step_type = 'SD' and 'CONSECUTIVE_BACKSTEPS' not in uod:
-# P.consecutive_backsteps_allowed = 10;
+        # if steepest-descent, then make much larger default
+        if P.step_type == 'SD' and 'CONSECUTIVE_BACKSTEPS' not in uod:
+            P.consecutive_backsteps_allowed = 10;
 
-# For RFO step, eigenvectors of augmented Hessian are divided by the last
-# element unless it is smaller than this value {double}.  Can be used to
-# eliminate asymmetric steps not otherwise detected (e.g. in degenerate
-# point groups). For multi-fragment modes, we presume that smaller
-#  Delta-E's are possible, and this threshold should be made larger.
-# if P.fragment_mode == 'MULTI' and 'RFO_NORMALIZATION_MAX' not in uod:
-# P.rfo_normalization_max = 1.0e5
-# Arbitrary user forces, so don't shrink stepsize if Delta(E) is poor..
+        # For RFO step, eigenvectors of augmented Hessian are divided by the last
+        # element unless it is smaller than this value {double}.  Can be used to
+        # eliminate asymmetric steps not otherwise detected (e.g. in degenerate
+        # point groups). For multi-fragment modes, we presume that smaller
+        #  Delta-E's are possible, and this threshold should be made larger.
+        # if P.fragment_mode == 'MULTI' and 'RFO_NORMALIZATION_MAX' not in uod:
+        # P.rfo_normalization_max = 1.0e5
+        # If arbitrary user forces, don't shrink step_size if Delta(E) is poor.
 
         if P.fixed_distance or P.fixed_bend or P.fixed_dihedral:
             if 'INTRAFRAGMENT_TRUST' not in uod:
@@ -358,34 +358,34 @@ class optParams(object):
                 P.intrafrag_trust_min = 0.1
             if 'INTRAFRAGMENT_TRUST_MAX' not in uod:
                 P.intrafrag_trust_max = 0.1
-#
-# -- Items are below unlikely to need modified
 
-# Boundary to guess if a torsion or out-of-plane angle has passed through 180
-# during a step.
+        # -- Items below are unlikely to need modified
 
+        # Boundary to guess if a torsion or out-of-plane angle has passed through 180
+        # during a step.
         P.fix_val_near_pi = 1.57
-        #
+
         # Only used for determining which atoms in a fragment are acceptable for use
         # as reference atoms.  We avoid collinear sets.
         # angle is 0/pi if the bond angle is within this fraction of pi from 0/pi
         # P.interfrag_collinear_tol = 0.01
-        #
+
         # Torsional angles will not be computed if the contained bond angles are within
         # this many radians of zero or 180. (< ~1 and > ~179 degrees)
         # only used in v3d.py
         P.v3d_tors_angle_lim = 0.017
-        #
+
         # cos(torsional angle) must be this close to -1/+1 for angle to count as 0/pi
         # only used in v3d.py
         P.v3d_tors_cos_tol = 1e-10
-        #
+
         # if bend exceeds this value, then also create linear bend complement
         P.linear_bend_threshold = 3.05  # about 175 degrees
+
         # If bend is smaller than this value, then never fix its associated vectors
         # this allows iterative steps through and near zero degrees.
-        # P.small_bend_fix_threshold = 0.35
-        #
+        P.small_bend_fix_threshold = 0.35
+
         # Threshold for which entries in diagonalized redundant matrix are kept and
         # inverted while computing a generalized inverse of a matrix
         P.redundant_eval_tol = 1.0e-10
@@ -485,8 +485,8 @@ class optParams(object):
             P.i_max_disp = True
             P.conv_rms_disp = 3.6e-3
             P.i_rms_disp = True
-#
-# ---  Specific optimization criteria
+
+        # ---  Specific optimization criteria
         if 'MAX_FORCE_G_CONVERGENCE' in uod:
             P.i_untampered = False
             P.i_max_force = True
@@ -507,10 +507,11 @@ class optParams(object):
             P.i_untampered = False
             P.i_rms_disp = True
             P.conv_rms_disp = P.rms_disp_g_convergence
-#
-# Even if a specific threshold were given, allow for Molpro/Qchem/G03 flex criteria
+
+        # Even if a specific threshold were given, allow for Molpro/Qchem/G03 flex criteria
         if P.flexible_g_convergence:
             P.i_untampered = True
+        # end __init__ finally !
 
     def increaseTrustRadius(P):
         logger = logging.getLogger(__name__)

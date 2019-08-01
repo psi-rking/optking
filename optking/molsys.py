@@ -10,7 +10,7 @@ from . import v3d
 from .addIntcos import connectivityFromDistances, addCartesianIntcos
 
 
-class Molsys(object):  # new-style classes required for getter/setters
+class Molsys(object):
     """ The molecular system consisting of a collection of fragments
 
     Parameters
@@ -21,7 +21,7 @@ class Molsys(object):  # new-style classes required for getter/setters
     intcos : list(Simple), optional
 
     """
-    def __init__(self, fragments, fb_fragments=None, intcos=None):
+    def __init__(self, fragments, fb_fragments=None, intcos=None, multiplicity=1):
         # ordinary fragments with internal structure
         self.logger = logging.getLogger(__name__)
         self._fragments = []
@@ -31,6 +31,7 @@ class Molsys(object):  # new-style classes required for getter/setters
         self._fb_fragments = []
         if fb_fragments:
             self._fb_fragments = fb_fragments
+        self._multiplicity = multiplicity
 
     def __str__(self):
         s = ''
@@ -38,7 +39,7 @@ class Molsys(object):  # new-style classes required for getter/setters
             s += "\n\tFragment %d\n" % (iF + 1)
             s += F.__str__()
         for iB, B in enumerate(self._fb_fragments):
-            s += "\tFixed boxy Fragment %d\n" % (iB + 1)
+            s += "\tFixed body Fragment %d\n" % (iB + 1)
             s += B.__str__()
         return s
 
@@ -60,7 +61,7 @@ class Molsys(object):  # new-style classes required for getter/setters
         logger.info("\tGenerating molecular system for optimization from PSI4.")
 
         NF = mol.nfragments()
-        logger.info("\t%d Fragments in PSI4 molecule object." % NF)
+        logger.info("\t%d fragments in PSI4 molecule object." % NF)
         frags = []
 
         for iF in range(NF):
@@ -72,18 +73,18 @@ class Molsys(object):  # new-style classes required for getter/setters
             fragGeom = np.zeros((fragNatom, 3), float)
             fragGeom[:] = fragMol.geometry()
 
-            # fragZ = np.zeros( fragNatom, int)
             fragZ = []
             for i in range(fragNatom):
                 fragZ.append(int(fragMol.Z(i)))
-                # fragZ[i] = fragMol.Z(i)
 
-            fragMasses = np.zeros(fragNatom, float)
+            fragMasses = []
             for i in range(fragNatom):
-                fragMasses[i] = fragMol.mass(i)
+                fragMasses.append(fragMol.mass(i))
 
             frags.append(frag.Frag(fragZ, fragGeom, fragMasses))
-        return cls(frags)
+
+        m = mol.multiplicity()
+        return cls(frags, multiplicity=m)
 
     @classmethod
     def from_JSON_molecule(cls, JSON_string):
@@ -101,7 +102,6 @@ class Molsys(object):  # new-style classes required for getter/setters
             molsys cls consists of list of Frags
         """
 
-        # TODO add no masses given implementation
         logger = logging.getLogger(__name__)
         logger.info("\tGenerating molecular system for optimization from QC Schema.\n")
         molecule = json.loads(JSON_string)
@@ -130,6 +130,10 @@ class Molsys(object):  # new-style classes required for getter/setters
     @property
     def Natom(self):
         return sum(F.Natom for F in self._fragments)
+
+    @property
+    def multiplicity(self):
+        return self._multiplicity
 
     @property
     def Nfragments(self):
@@ -241,13 +245,14 @@ class Molsys(object):  # new-style classes required for getter/setters
             molsys_geometry += F.showGeom()
         return molsys_geometry
 
-    def get_atom_list(self):
-        atom_symbol_list = []
-        for i in self._fragments:
-            frag_atom_list = i.get_atom_list()
-            for j in frag_atom_list:
-                atom_symbol_list.append(j)
-        return atom_symbol_list
+    @property
+    def atom_symbols(self):
+        symbol_list = []
+        for F in self._fragments:
+            frag_symbol_list = F.get_atom_symbol_list()
+            for j in frag_symbol_list:
+                symbol_list.append(j)
+        return symbol_list
 
     def consolidateFragments(self):
         if self.Nfragments == 1:
@@ -274,7 +279,7 @@ class Molsys(object):  # new-style classes required for getter/setters
                 while more_found:
                     more_found = False
                     addAtoms = []
-                    for A in frag_atoms:  # Is this actually a loop?
+                    for A in frag_atoms:
                         for B in atomsToAllocate:
                             if C[A, B]:
                                 if B not in addAtoms:
@@ -374,3 +379,8 @@ class Molsys(object):  # new-style classes required for getter/setters
                 self.logger.info(
                     "\tIncreasing scaling to %6.3f to connect fragments." % scale_dist)
         return
+
+    def clear(self):
+        self._fragments.clear()
+        self._fb_fragments.clear()
+

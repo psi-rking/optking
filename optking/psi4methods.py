@@ -1,6 +1,7 @@
 """ various methods for interacting with psi4. i.e. getting gradients, hessians, options etc """
 import logging
 from psi4.driver import json_wrapper
+from .printTools import (printArrayString, printMatString)
 
 
 # TODO delete this method once psi4 writes a method that does this (just better)
@@ -35,11 +36,27 @@ def get_optking_options_psi4(all_options):
 def psi4_calculation(new_geom, o_json, driver='gradient'):
     """ Call psi4 to perform a calculation"""
 
+    # is there something broken about dummy atoms here?
     logger = logging.getLogger(__name__)
-    logger.debug("Getting %s from Psi4 through JSON interface\n" % (driver))
     geom = o_json.to_JSON_geom(new_geom)
     json_input = o_json.update_geom_and_driver(geom, driver)
-    return json_wrapper.run_json(json_input, True)
+    logger.debug("Getting %s from Psi4 through JSON interface\n" % (driver))
+
+    qc_input = "Input to run_json\n"
+    for k,v in json_input.items():
+        if k != 'raw_output':
+            qc_input += "%s,%s\n" % (k, v)
+    logger.debug(qc_input)
+
+    rval = json_wrapper.run_json(json_input, True)
+
+    qc_output = "Return from run_json\n"
+    for k,v in rval.items():
+        if k != 'raw_output':
+            qc_output += "%s,%s\n" % (k, v)
+    logger.debug(qc_output)
+
+    return rval
 
 
 #################

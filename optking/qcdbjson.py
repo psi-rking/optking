@@ -11,18 +11,18 @@ class jsonSchema:
     Parameters
     ----------
     JSON_dict : dict
-        should match qc_schema_input format. version 1
+        should match qcschema_input format. version 1
 
     """
 
     def __init__(self, JSON_dict):
-        if JSON_dict['schema_name'] == 'qc_schema_input':
+        if JSON_dict['schema_name'] == 'qcschema_input':
             self.optking_json = copy.deepcopy(JSON_dict)
             self._original = copy.deepcopy(JSON_dict)
             self.optking_json['molecule']['fix_com'] = True
             self.optking_json['molecule']['fix_orientation'] = True
         else:
-            raise ValueError("JSON file must match the qc_schema_input")
+            raise ValueError("JSON file must match the qcschema_input")
 
     def __str__(self):
         return str(self.optking_json)
@@ -76,7 +76,7 @@ class jsonSchema:
         -------
         json_output : dict
         """
-        json_output = {'schema_name': 'qc_schema_output'}
+        json_output = {'schema_name': 'qcschema_output'}
         json_output['provenance'] = {'creator': 'optking', 'version': '3.0?',
                                      'routine': 'runoptkingjson'}
         json_output['return_result'] = {'geometry': self.to_JSON_geom(geom)}
@@ -106,7 +106,7 @@ class jsonSchema:
         return j_geom
 
     @staticmethod
-    def get_JSON_result(json_data, driver, nuc=False):
+    def get_JSON_result(json_data, driver, wantNuc=False):
         """ Parse JSON file from QM program for result of calculation
 
         Parameters
@@ -114,7 +114,7 @@ class jsonSchema:
         json_data : dict
         driver : str
             gradient, hessian, or energy
-        nuc : boolean, optional
+        wantNuc : boolean, optional
             return nuclar repulsion energy as well
 
         Returns
@@ -125,7 +125,7 @@ class jsonSchema:
         return_nuc : float
         """
 
-        if json_data['schema_name'] == 'qc_schema_output':
+        if json_data['schema_name'] == 'qcschema_output':
             if driver == 'gradient':
                 return_result = np.asarray(json_data['return_result'])
                 return_energy = json_data['properties']['return_energy']
@@ -137,18 +137,18 @@ class jsonSchema:
                 return_result = json_data['return_result']
 
             return_nuc = json_data['properties']['nuclear_repulsion_energy']
-            if driver == 'gradient' and nuc:
+            if driver == 'gradient' and wantNuc:
                 return return_energy, return_result, return_nuc
             elif driver == 'gradient':
                 return return_energy, return_result
-            elif nuc:
+            elif wantNuc:
                 return return_result, return_nuc
             else:
                 return return_result
 
     @classmethod
-    def make_qcschema(cls, geom, symbols, QM_method, basis, keywords):
-        """ Creates a qc_schmea according to MolSSI qc_schema_input version 1
+    def make_qcschema(cls, geom, symbols, QM_method, basis, keywords, multiplicity=1):
+        """ Creates a qcschema according to MolSSI qcschema_input version 1
 
         Parameters
         ----------
@@ -161,10 +161,16 @@ class jsonSchema:
         keywords : dict of str
             all options
         """
-        qcschema = {"schema_name": "qc_schema_input", "schema_version": 1, "molecule":
-                    {"geometry": geom, "symbols": symbols, "fix_com": True,
-                     "fix_orientation": True},
-                    "driver": "", "model": {"method": QM_method, "basis": basis},
-                    "keywords": keywords}
+        qcschema = {"schema_name": "qcschema_input",
+                 "schema_version": 1,
+                       "molecule": {"geometry": geom,
+                                    "symbols": symbols,
+                                    "fix_com": True,
+                                    "fix_orientation": True,
+                                    "molecular_multiplicity": multiplicity},
+                         "driver": "",
+                          "model": {"method": QM_method,
+                                    "basis": basis},
+                                    "keywords": keywords}
 
         return cls(qcschema)

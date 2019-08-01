@@ -18,3 +18,9 @@ class AlgError(Exception):
             optimize_log.error('AlgError: New bends detected.\n')
         self.linearBends = newLinearBends
         self.mesg = mesg
+
+class IRCendReached(Exception):
+    """Quit when we have found a minimum or completed the requested steps."""
+    def __init__(self, mesg='None given'):
+        optimize_log = logging.getLogger(__name__)
+
