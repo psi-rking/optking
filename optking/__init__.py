@@ -26,13 +26,9 @@ from .exceptions import OptError, AlgError
 # this was on my TODO list, but now im not sure its working
 op.Params = op.OptParams({})
 
-try:
-    with open(os.path.join(os.getcwd(), sys.argv[0][:-3]) + ".out", "r+") as output_file:
-        print(os.path.join(os.getcwd(), sys.argv[0][:-3]) + ".out")
-        output_file.seek(0)
-        output_file.truncate()
-except FileNotFoundError:
-    pass
+with open(os.path.join(os.getcwd(), 'opt_log.out'), "w") as output_file:
+    output_file.truncate(0)
+    print(os.path.join(os.getcwd(), 'opt_log.out'))
 
 logging.config.dictConfig(loggingconfig.logging_configuration)
 logger = logging.getLogger(__name__)

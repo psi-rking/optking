@@ -8,9 +8,12 @@ logging_configuration = {
         "time_severity_message": {
             "format": "%(asctime)s - %(levelname) - %(message)s"
             },
-        "severity_message": {
-            "format": "[%(asctime)s] [%(levelname)s] [%(name)s]: %(message)s"
+        "severity_name_message": {
+            "format": "[%(levelname)s] [%(name)s]: %(message)s"
             },
+        "severity_message":{
+            "format": "[%(levelname)s]: %(message)s"
+        },
         "message_format": {
             "format": "%(message)"
                 }
@@ -30,24 +33,25 @@ logging_configuration = {
             "class": "logging.FileHandler",
             "formatter": "severity_message",
             "level": "DEBUG",
-            "filename": os.path.join(os.getcwd(), sys.argv[0][:-3]) + ".out"
+            "filename": os.path.join(os.getcwd(), 'opt_log.out')
         },
         "file_log_info": {
             "class": "logging.FileHandler",
             "mode": "a",
             "formatter": "severity_message",
             "level": "INFO",
-            "filename": os.path.join(os.getcwd(), sys.argv[0][:-3]) + ".out"
+            "filename": os.path.join(os.getcwd(), 'opt_log.out')
         },
         "file_king_info": {
             "class": "logging.FileHandler",
             "formatter": "message_format",
             "level": "INFO",
-            "filename": os.path.join(os.getcwd(), sys.argv[0][:-3]) + ".out"
+            "filename": os.path.join(os.getcwd(), 'opt_log.out')
         }
     },
     "root": {
         "level": "DEBUG",
         "handlers": ["file_log_debug"]
+        
     }
 }

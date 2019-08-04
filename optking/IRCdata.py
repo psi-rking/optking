@@ -1,6 +1,6 @@
 ### Class to store points on the IRC
 import logging
-from .printTools import printGeomString
+from .printTools import printGeomString, printMatString
 import numpy as np
 from .exceptions import OptError
 
@@ -190,6 +190,25 @@ class IRCdata(object):
         #    return True
 
         return False
+
+    def final_geom_coords(self, intcos):
+        """ For clarity, display geometry and internal coordinates for the final IRC step
+            IRC algorithm will display an additional IRC step and constrained optimization
+            after this step has been reached """
+        
+        s = "Final Geometry: [Ang] \n"
+        s += printMatString(self.x())
+        s += "\n\n\tInternal Coordiantes: [Ang/Deg] \n"   
+        itr = 0
+        s += "\t - Coordinate -           - BOHR/RAD -       - ANG/DEG -\n"
+        
+        for x in intcos:
+            s += ("\t%-18s=%17.6f%19.6f\n" % (x, self.q()[itr], self.q()[itr] * x.qShowFactor))
+            #s += ("\t%-18s=%17.6f\n" % (x, IRCdata.history.q()[itr] * x.qShowFactor))
+            itr += 1
+        
+        return s
+        
 
     def progress_report(self):
         blocks = 4 # TODO: make dynamic
