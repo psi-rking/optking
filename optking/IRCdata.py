@@ -1,5 +1,7 @@
 ### Class to store points on the IRC
 import logging
+import os
+
 from .printTools import printGeomString, printMatString
 import numpy as np
 from .exceptions import OptError
@@ -215,7 +217,16 @@ class IRCdata(object):
         sign = 1
         Ncoord = len(self.q())
 
-        logging.basicConfig(filename='ircprogress.log',level=logging.DEBUG)
+        #logging.basicConfig(filename='ircprogress.log',level=logging.DEBUG)
+
+        irc_report = os.path.join(os.getcwd(), 'ircprogress.log') #prepare progress report
+        with open(irc_report, 'w') as irc_prog:
+            irc_prog.truncate(0)
+
+        irc_log = logging.getLogger('ircprogress')
+        irc_handle = logging.FileHandler(os.path.join(os.getcwd(), 'ircprogress.log'), 'w')  
+        irc_handle.setLevel(logging.DEBUG)
+        irc_log.addHandler(irc_handle)
 
         out = '\n'
         out += "@IRC ----------------------------------------------\n"
@@ -282,7 +293,7 @@ class IRCdata(object):
         
         out += "\n"
         out += "\n"
-        logging.info(out)
+        irc_log.info(out)
 
         #out += mol.print_coords(psi_outfile, qc_outfile)
         #out += mol.print_simples(psi_outfile, qc_outfile)

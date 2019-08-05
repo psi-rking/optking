@@ -10,7 +10,7 @@ from .optimize import get_energy
 from . import lj_functions
 from . import loggingconfig
 from .psi4optwrapper import Psi4Opt
-from .jsonoptwrapper import run_json, run_json_dict
+from .jsonoptwrapper import run_json_file, run_qcschema
 from .stre import Stre
 from .bend import Bend
 from .tors import Tors

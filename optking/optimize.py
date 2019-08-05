@@ -1,7 +1,6 @@
 import numpy as np
 import copy
 import logging
-from pprint import PrettyPrinter
 
 from psi4.driver import json_wrapper  # COMMENT FOR INDEP DOCS BUILD
 
