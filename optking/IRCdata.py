@@ -200,7 +200,7 @@ class IRCdata(object):
         
         s = "Final Geometry: [Ang] \n"
         s += printMatString(self.x())
-        s += "\n\n\tInternal Coordiantes: [Ang/Deg] \n"   
+        s += "\n\n\tInternal Coordinates: [Ang/Deg] \n"   
         itr = 0
         s += "\t - Coordinate -           - BOHR/RAD -       - ANG/DEG -\n"
         
