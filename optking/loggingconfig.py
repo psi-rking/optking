@@ -6,16 +6,20 @@ logging_configuration = {
     "disable_existing_loggers": False,
     "formatters": {
         "time_severity_message": {
-            "format": f"[{asctime}] - [{levelname}]: {message}"
+            "format": "[{asctime}] - [{levelname}]: {message}",
+            "style": "{"
             },
         "severity_name_message": {
-            "format": f"[{levelname}] [{name}]: {message}"
+            "format": "[{levelname}] [{name}]: {message}",
+            "style": "{"
             },
         "severity_message":{
-            "format": f"[{levelname}]: {message}"
+            "format": "[{levelname}]: {message}",
+            "style": "{"
         },
         "message_format": {
-            "format": f"{message}"
+            "format": "{message}",
+            "style": "{"
                 }
     },
     "handlers": {
