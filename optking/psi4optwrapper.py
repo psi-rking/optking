@@ -1,5 +1,6 @@
 # wrapper for optking's optimize function for input by psi4API
 # creates a moleuclar system from psi4s and generates optkings options from psi4's lsit of options
+import os
 
 import psi4
 import optking
@@ -13,7 +14,6 @@ def Psi4Opt(calcName, psi4_options):
     set the geometry in psi4, and functions to get the gradient, hessian, and
     energy from psi4. Returns energy or (energy, trajectory) if trajectory== True.
     """
-
     mol = psi4.core.get_active_molecule()
     oMolsys = molsys.Molsys.fromPsi4Molecule(mol)
 

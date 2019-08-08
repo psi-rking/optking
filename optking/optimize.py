@@ -1,7 +1,6 @@
 import numpy as np
 import copy
 import logging
-from pprint import PrettyPrinter
 
 from psi4.driver import json_wrapper  # COMMENT FOR INDEP DOCS BUILD
 
@@ -25,8 +24,6 @@ from .printTools import (printGeomGrad,
                          printArrayString,
                          welcome)
 
-pp = PrettyPrinter(indent=4)  # ask AH does this do anything?
-
 def optimize(oMolsys, options_in, json_in=None):
     """Driver for OptKing's optimization procedure
 
@@ -45,6 +42,7 @@ def optimize(oMolsys, options_in, json_in=None):
         energy and nuclear repulsion energy or MolSSI qc_schema_output as dict
 
     """
+
     try:  # Try to optimize one structure OR set of IRC points. OptError and all Exceptions caught below.
         optimize_log = logging.getLogger(__name__)
 
@@ -185,7 +183,7 @@ def optimize(oMolsys, options_in, json_in=None):
                     # Check if forces indicate we are approaching minimum.
                     if op.Params.opt_type == "IRC" and IRCstepNumber > 2:
                         if ( IRCdata.history.testForIRCminimum(f_q) ):
-                            optimize_log.info("A mininum has been reached on the IRC.  Stopping here.")
+                            optimize_log.info("A mininum has been reached on the IRC.  Stopping here.\n")
                             raise IRCendReached()
                     #f_q = np.array( [ 0.000019538372495, 0.000213081515583,  0.000019538372495, 0.001090978572604,
                     #0.001090978572604,  -0.003640029745080], float)
@@ -396,6 +394,7 @@ def optimize(oMolsys, options_in, json_in=None):
         return json_original
 
     except IRCendReached:
+        optimize_log.info(IRCdata.history.final_geom_coords(oMolsys.intcos)) 
         optimize_log.info("Tabulating rxnpath results.")
         IRCdata.history.progress_report()
         output_dict = o_json.generate_json_output(IRCdata.history.x(-1),

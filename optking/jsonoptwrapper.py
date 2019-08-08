@@ -9,7 +9,7 @@ from .molsys import Molsys
 from . import qcdbjson
 
 
-def run_json(json_file):
+def run_json_file(json_file):
     """ wrapper for run_json_dict to read json input file and create json output file 
     formattted according to the MolSSI QCSchema
 
@@ -27,7 +27,7 @@ def run_json(json_file):
     with open(json_file) as input_file:
         json_dict = json.load(input_file)
     
-    json_out = run_json_dict(json_dict)
+    json_out = run_qcschema(json_dict)
     
     with open(json_file, "r+") as input_file:
         input_file.seek(0)
@@ -35,8 +35,8 @@ def run_json(json_file):
         json.dump(json_out, input_file, indent=2)
 
 
-def run_json_dict(json_dict):
-    """Wrapper to optking.optimize() will perform an optimization based
+def run_qcschema(json_dict):
+    """Wrapper to optking.optimize() will perform an optimization based on this input
     
     Paramters
     ---------

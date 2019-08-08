@@ -4,10 +4,13 @@ import os
 import sys
 
 from .optimize import optimize
+from .optimize import get_gradient
+from .optimize import get_hessian
+from .optimize import get_energy
 from . import lj_functions
 from . import loggingconfig
 from .psi4optwrapper import Psi4Opt
-from .jsonoptwrapper import run_json, run_json_dict
+from .jsonoptwrapper import run_json_file, run_qcschema
 from .stre import Stre
 from .bend import Bend
 from .tors import Tors
@@ -23,13 +26,9 @@ from .exceptions import OptError, AlgError
 # this was on my TODO list, but now im not sure its working
 op.Params = op.OptParams({})
 
-try:
-    with open(os.path.join(os.getcwd(), sys.argv[0][:-3]) + ".out", "r+") as output_file:
-        print(os.path.join(os.getcwd(), sys.argv[0][:-3]) + ".out")
-        output_file.seek(0)
-        output_file.truncate()
-except FileNotFoundError:
-    pass
+with open(os.path.join(os.getcwd(), 'opt_log.out'), "w") as output_file:
+    output_file.truncate(0)
+    print(os.path.join(os.getcwd(), 'opt_log.out'))
 
 logging.config.dictConfig(loggingconfig.logging_configuration)
 logger = logging.getLogger(__name__)
