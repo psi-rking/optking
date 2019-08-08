@@ -178,23 +178,23 @@ def tors(A, B, C, D):
         EBA = eAB(B, A)
         EAB = -1 * EBA
     except AlgError as error:
-        logger.warning("Could not normalize {}, {} vector in tors()\n".format(str(A), str(B)))
+        logger.warning(f"Could not normalize {A}, {B} vector in tors()\n")
         raise
     try:
         EBC = eAB(B, C)
     except AlgError as error:
-        logger.warning("Could not normalize {}, {} vector in tors()\n".format(str(B), str(C)))
+        logger.warning(f"Could not normalize {B}, {C} vector in tors()\n")
         raise
     try:
         ECB = eAB(C, B)
         EBC = -1 * ECB
     except AlgError as error:
-        logger.warning("Could not normalize {}, {} vector in tors()\n".format(str(C), str(B)))
+        logger.warning(f"Could not normalize {C}, {B} vector in tors()\n")
         raise
     try:
         ECD = eAB(C, D)
     except AlgError as error:
-        logger.warning("Could not normalize {}, {} vector in tors()\n".format(str(C), str(D)))
+        logger.warning(f"Could not normalize {C}, {D} vector in tors()\n")
         raise
 
     # Compute bond angles
@@ -238,25 +238,24 @@ def oofp(A, B, C, D):
     try:
         eBA = eAB(B, A)
     except AlgError as error:
-        logger.warning("Could not normalize {}, {} vector in tors()\n".format(str(B), str(A)))
+        logger.warning(f"Could not normalize {B}, {C} vector in tors()\n")
         raise
     try:
         eBC = eAB(B, C)
     except AlgError as error:
-        logger.warning("Could not normalize {}, {} vector in tors()\n".format(str(B), str(C)))
+        logger.warning(f"Could not normalize {B}, {C} vector in tors()\n")
         raise
     try:
         eBD = eAB(B, D)
     except AlgError as error:
-        logger.warning("Could not normalize {}, {} vector in tors()\n".format(str(B), str(D)))
+        logger.warning(f"Could not normalize {B}, {D} vector in tors()\n")
         raise
 
     phi_CBD = _calc_angle(eBC, eBD)
 
     # This shouldn't happen unless angle B-C-D -> 0,
     if sin(phi_CBD) < op.Params.v3d_tors_cos_tol:  # reusing parameter
-        raise AlgError("Angle: {}, {}, {} is to close to zero in oofp\n".format(
-            str(C), str(B), str(D)))
+        raise AlgError(f"Angle: {C}, {B}, {D} is to close to zero in oofp\n")
 
     dotprod = dot(cross(eBC, eBD), eBA) / sin(phi_CBD)
 
