@@ -18,7 +18,7 @@ from .oofp import Oofp
 from .frag import Frag 
 from .molsys import Molsys
 from .history import History
-from .qcdbjson import jsonSchema
+from .engine_wrappers import EngineWrapper
 from .displace import displace
 from . import optparams as op
 from .exceptions import OptError, AlgError

@@ -18,7 +18,7 @@ from . import IRCfollowing
 from . import psi4methods
 from . import IRCdata
 from .linearAlgebra import lowestEigenvectorSymmMat, symmMatRoot, symmMatInv
-from .qcdbjson import jsonSchema
+from .engine_wrappers import EngineWrapper
 from .printTools import (printGeomGrad,
                          printMatString,
                          printArrayString,
@@ -60,8 +60,8 @@ def optimize(oMolsys, options_in, json_in=None):
         o_json = 0
         if json_in is None:
             QM_method, basis, keywords = psi4methods.collect_psi4_options(options_in)
-            o_json = jsonSchema.make_qcschema(oMolsys.geom, oMolsys.atom_symbols,
-                         QM_method, basis, keywords, oMolsys.multiplicity)
+            o_json = EngineWrapper.make_qcschema(oMolsys.geom, oMolsys.atom_symbols,
+                                                 QM_method, basis, keywords, oMolsys.multiplicity)
         else:
             o_json = json_in
 
@@ -475,7 +475,7 @@ def get_gradient(new_geom, o_json, printResults=False, wantNuc=True, QM='psi4'):
     new_geom : ndarray
         (nat, 3) current geometry of molecule
     o_json : object
-        instance of optking's jsonSchema class
+        instance of optking's EngineWrapper class
     printResults : bool, optional
         flag to print the gradient
     nuc : bool
@@ -506,7 +506,7 @@ def get_hessian(new_geom, o_json, printResults=False, QM='psi4'):
     new_geom : ndarray
         (nat, 3) current geometry of molecule
     o_json : object
-        instance of optking's jsonSchema class
+        instance of optking's EngineWrapper class
     printResults : Boolean, optional
         flag to print the gradient
     QM : str
@@ -530,7 +530,7 @@ def get_energy(new_geom, o_json, printResults=False, nuc=True, QM='psi4'):
     new_geom : ndarray
         (nat, 3) current geometry of molecule
     o_json : object
-        instance of optking's jsonSchema class
+        instance of optking's EngineWrapper class
     printResults : Boolean, optional
         flag to print the gradient
     nuc : Boolean

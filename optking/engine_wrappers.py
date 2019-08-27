@@ -5,7 +5,7 @@ import numpy as np
 from . import history
 
 
-class jsonSchema:
+class EngineWrapper:
     """ An implementation of MolSSI's qc schema
 
     Parameters
@@ -32,7 +32,7 @@ class jsonSchema:
         return self._original
 
     def update_geom_and_driver(self, geom, driver='gradient'):
-        """Updates jsonSchema for requesting calculation
+        """Updates EngineWrapper for requesting calculation
 
         Parameters
         ----------

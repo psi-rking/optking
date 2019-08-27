@@ -6,7 +6,7 @@ import logging
 import optking
 
 from .molsys import Molsys
-from . import qcdbjson
+from . import engine_wrappers
 
 
 def run_json_file(json_file):
@@ -53,7 +53,7 @@ def run_qcschema(json_dict):
     if json_dict['driver'] != "optimize":
         logger.error('optking is not meant to run this input please use your favorite QC program')
  
-    o_json = qcdbjson.jsonSchema(json_dict)
+    o_json = engine_wrappers.EngineWrapper(json_dict)
     optking_options = o_json.find_optking_options()
     oMolsys = Molsys.from_JSON_molecule(json.dumps(json_dict['molecule']))
     json_output = optking.optimize(oMolsys, optking_options, o_json)

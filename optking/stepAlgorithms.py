@@ -36,7 +36,7 @@ def Dq(oMolsys, E, qForces, H, stepType=None, o_json=None):
     stepType : string, optional
         defaults to stepType in options
     o_json : dict, optional
-        instance of jsonSchema (required for line search)
+        instance of EngineWrapper (required for line search)
 
     Returns
     -------
@@ -783,7 +783,7 @@ def Dq_LINESEARCH(oMolsys, E, fq, H, o_json):
     H : ndarray
         hessian in internal coordinates
     o_json : object
-        optking's jsonSchema
+        optking's EngineWrapper
 
     """
     logger = logging.getLogger(__name__)
