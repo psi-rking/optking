@@ -2,8 +2,6 @@ import numpy as np
 import copy
 import logging
 
-from psi4.driver import json_wrapper  # COMMENT FOR INDEP DOCS BUILD
-
 from . import hessian
 from . import stepAlgorithms
 from . import caseInsensitiveDict
@@ -18,7 +16,6 @@ from . import IRCfollowing
 from . import psi4methods
 from . import IRCdata
 from .linearAlgebra import lowestEigenvectorSymmMat, symmMatRoot, symmMatInv
-from .engine_wrappers import EngineWrapper
 from .printTools import (printGeomGrad,
                          printMatString,
                          printArrayString,

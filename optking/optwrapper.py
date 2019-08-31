@@ -8,7 +8,7 @@ import optking
 from . import molsys
 from . import psi4methods
 
-def Psi4Opt(calcName, psi4_options):
+def Psi4Optimizer(calcName, psi4_options):
     """Method call for optimizing a molecule. Gives pyOptking a molsys from
     psi4s molecule class, a set containing all optking keywords, a function to
     set the geometry in psi4, and functions to get the gradient, hessian, and
@@ -32,3 +32,6 @@ def Psi4Opt(calcName, psi4_options):
     optking_json_dict = optking.optimize(oMolsys, optking_user_options)
 
     return optking_json_dict
+
+def QCEngineOptimizer(calcName, psi4_options):
+    pass
