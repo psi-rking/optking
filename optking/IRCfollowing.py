@@ -139,7 +139,7 @@ def Dq_IRC(oMolsys, E, f_q, H_q, s, dqGuess):
     logger.debug("for Lagrangian %10.5f to  %10.5f" % (lb_lagrangian,up_lagrangian))
 
     # Calulate lambda using Householder method
-    prev_lambda = -999
+    prev_lambda = Lambda
     lagIter = 0
     Lambda = (lb_lambda + up_lambda)/2 # start in middle of coarse range
 
