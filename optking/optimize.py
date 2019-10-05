@@ -138,8 +138,8 @@ def optimize(oMolsys, options_in, json_in=None):
                         vM = lowestEigenvectorSymmMat(H_q_m)
                         optimize_log.info(printArrayString(vM, title="Lowest evect of H_q_M"))
 
-                        # Un mass-weight vector.
-                        G_root_inv = symmMatInv(G_root)
+                        # Un mass-weight vector. Remember that we could have redundant coordinates.
+                        G_root_inv = symmMatInv(G_root, redundant=True)
                         v = np.dot(G_root_inv, vM)
 
                         if op.Params.irc_direction == 'BACKWARD':

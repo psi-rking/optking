@@ -13,7 +13,7 @@ import numpy as np
 from math import fabs
 
 from . import optparams as op
-from .linearAlgebra import absMax, rms, symmMatRoot
+from .linearAlgebra import absMax, rms, symmMatInv, symmMatRoot
 from .intcosMisc import Gmat, Bmat, qValues
 from .printTools import printArrayString, printMatString
 
@@ -45,7 +45,7 @@ def convCheck(iterNum, oMolsys, dq, f, energies, q_pivot=None):
 
     if op.Params.opt_type == 'IRC':
         G_m = Gmat(oMolsys.intcos, oMolsys.geom, oMolsys.masses)
-        G_m_inv = np.linalg.inv(G_m)
+        G_m_inv = symmMatInv(G_m, redundant = True)        
         q = qValues(oMolsys.intcos, oMolsys.geom)
         logger.info("Projecting out forces parallel to reaction path.")
 

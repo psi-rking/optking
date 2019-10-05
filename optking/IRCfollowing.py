@@ -68,7 +68,7 @@ def Dq_IRC(oMolsys, E, f_q, H_q, s, dqGuess):
     G_prime = intcosMisc.Gmat(oMolsys.intcos, oMolsys.geom, oMolsys.masses)
     logger.debug("Mass-weighted Gmatrix at hypersphere point: \n" + printMatString(G_prime))
     G_prime_root = symmMatRoot(G_prime)
-    G_prime_inv = symmMatInv(G_prime)
+    G_prime_inv = symmMatInv(G_prime, redundant = True)
     G_prime_root_inv = symmMatRoot(G_prime_inv)
 
     logger.debug("G prime root matrix: \n" + printMatString(G_prime_root))
@@ -189,7 +189,7 @@ def Dq_IRC(oMolsys, E, f_q, H_q, s, dqGuess):
     # dq_M = (H_M - lambda I)^(-1) [lambda * p_M - g_M]
     LambdaI = np.identity(len(oMolsys.intcos))
     LambdaI = np.multiply(Lambda, LambdaI)
-    deltaQM = symmMatInv(np.subtract(H_M, LambdaI))
+    deltaQM = symmMatInv(np.subtract(H_M, LambdaI), redundant=True)
     deltaQM = np.dot(deltaQM, np.subtract(np.multiply(Lambda, p_M), g_M))
     logger.debug("dq_M to next geometry\n" + printArrayString(deltaQM))
 
@@ -250,7 +250,7 @@ def calcLagrangianDerivs(Lambda, HMEigValues, HMEigVects, g_M, p_M, s):
 def calcLineDistStep(oMolsys):
     G      = intcosMisc.Gmat(oMolsys.intcos, oMolsys.geom, oMolsys.masses)
     G_root = symmMatRoot(G)
-    G_inv  = symmMatInv(G_root)
+    G_inv  = symmMatInv(G_root, redundant = True)
     G_root_inv  = symmMatRoot(G_inv)
 
     rxn_Dq  = np.subtract(intcosMisc.qValues(oMolsys.intcos, oMolsys.geom), IRCdata.history.q())
@@ -274,7 +274,7 @@ def calcArcDistStep(oMolsys):
     # mass-weight
     G      = intcosMisc.Gmat(oMolsys.intcos, oMolsys.geom, oMolsys.masses)
     G_root = symmMatRoot(G)
-    G_inv  = symmMatInv(G_root)
+    G_inv  = symmMatInv(G_root, redundant = True)
     G_root_inv  = symmMatRoot(G_inv)
     p[:]    = np.multiply( 1.0/np.linalg.norm(p),    p )
     line[:] = np.multiply( 1.0/np.linalg.norm(line), line )
