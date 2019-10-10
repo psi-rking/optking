@@ -1,6 +1,7 @@
 import copy
 import math
 import numpy as np
+import pprint
 
 from . import history
 
@@ -16,11 +17,17 @@ class jsonSchema:
     """
 
     def __init__(self, JSON_dict):
-        if JSON_dict['schema_name'] == 'qcschema_input':
+        pprint.pprint(JSON_dict)
+        #if JSON_dict['schema_name'] == 'qcschema_input':
+        if JSON_dict['schema_name'] == 'qcschema_optimization_input':
             self.optking_json = copy.deepcopy(JSON_dict)
             self._original = copy.deepcopy(JSON_dict)
-            self.optking_json['molecule']['fix_com'] = True
-            self.optking_json['molecule']['fix_orientation'] = True
+            self.optking_json['initial_molecule']['fix_com'] = True
+            self.optking_json['initial_molecule']['fix_orientation'] = True
+            self.engine_qcsk = copy.deepcopy(JSON_dict['input_specification'])
+            self.engine_qcsk['molecule'] = copy.deepcopy(JSON_dict['initial_molecule'])
+            self.engine_qcsk['molecule']['fix_com'] = True
+            self.engine_qcsk['molecule']['fix_orientation'] = True
         else:
             raise ValueError("JSON file must match the qcschema_input")
 
@@ -28,7 +35,7 @@ class jsonSchema:
         return str(self.optking_json)
 
     def _get_original(self, geom, driver = 'gradient'):
-        self._original['molecule']['geometry'] = self.to_JSON_geom(geom)
+        self._original['initial_molecule']['geometry'] = self.to_JSON_geom(geom)
         return self._original
 
     def update_geom_and_driver(self, geom, driver='gradient'):
@@ -45,22 +52,24 @@ class jsonSchema:
         -------
         json_for_input : dict
         """
-        self.optking_json['molecule']['geometry'] = geom
-        json_for_input = copy.deepcopy(self.optking_json)
+        #self.optking_json['initial_molecule']['geometry'] = geom
+        self.engine_qcsk['molecule']['geometry'] = geom
+        #json_for_input = copy.deepcopy(self.optking_json)
+        json_for_input = copy.deepcopy(self.engine_qcsk)
         json_for_input['driver'] = driver
 
         return json_for_input
 
     # TODO revist once options for optimizer is finalized
-    def find_optking_options(self):
-        """ Parse JSON dict for optking specific options"""
+    #def find_optking_options(self):
+    #    """ Parse JSON dict for optking specific options"""
 
-        if 'optimizer' in self.optking_json['keywords']:
-            optking_options = self.optking_json['keywords']['optimizer']
-            del self.optking_json['keywords']['optimizer']  # remove to preserve json file for QM
-            return optking_options
-        else:
-            return {}
+    #    if 'optimizer' in self.optking_json['keywords']:
+    #        optking_options = self.optking_json['keywords']['optimizer']
+    #        del self.optking_json['keywords']['optimizer']  # remove to preserve json file for QM
+    #        return optking_options
+    #    else:
+    #        return {}
 
     # TODO turn off logging_file if using json
     # TODO error output to json_output file
@@ -124,6 +133,9 @@ class jsonSchema:
         return_energy : float
         return_nuc : float
         """
+        #import pprint
+        #print('\nget_JSON_res')
+        #pprint.pprint(json_data)
 
         if json_data['schema_name'] == 'qcschema_output':
             if driver == 'gradient':
@@ -146,31 +158,31 @@ class jsonSchema:
             else:
                 return return_result
 
-    @classmethod
-    def make_qcschema(cls, geom, symbols, QM_method, basis, keywords, multiplicity=1):
-        """ Creates a qcschema according to MolSSI qcschema_input version 1
+    #@classmethod
+    #def make_qcschema(cls, geom, symbols, QM_method, basis, keywords, multiplicity=1):
+    #    """ Creates a qcschema according to MolSSI qcschema_input version 1
 
-        Parameters
-        ----------
-        geom : list of float
-            cartesian geom (1D list)
-        symbols : list of str
-             atomic symbols (1D list)
-        QM_method: str
-        basis : str
-        keywords : dict of str
-            all options
-        """
-        qcschema = {"schema_name": "qcschema_input",
-                 "schema_version": 1,
-                       "molecule": {"geometry": geom,
-                                    "symbols": symbols,
-                                    "fix_com": True,
-                                    "fix_orientation": True,
-                                    "molecular_multiplicity": multiplicity},
-                         "driver": "",
-                          "model": {"method": QM_method,
-                                    "basis": basis},
-                                    "keywords": keywords}
+    #    Parameters
+    #    ----------
+    #    geom : list of float
+    #        cartesian geom (1D list)
+    #    symbols : list of str
+    #         atomic symbols (1D list)
+    #    QM_method: str
+    #    basis : str
+    #    keywords : dict of str
+    #        all options
+    #    """
+    #    qcschema = {"schema_name": "qcschema_input",
+    #             "schema_version": 1,
+    #                   "molecule": {"geometry": geom,
+    #                                "symbols": symbols,
+    #                                "fix_com": True,
+    #                                "fix_orientation": True,
+    #                                "molecular_multiplicity": multiplicity},
+    #                     "driver": "",
+    #                      "model": {"method": QM_method,
+    #                                "basis": basis},
+    #                                "keywords": keywords}
 
-        return cls(qcschema)
+    #    return cls(qcschema)

@@ -104,7 +104,10 @@ class Molsys(object):
 
         logger = logging.getLogger(__name__)
         logger.info("\tGenerating molecular system for optimization from QC Schema.\n")
-        molecule = json.loads(JSON_string)
+        if isinstance(JSON_string, str):
+            molecule = json.loads(JSON_string)
+        else:
+            molecule = JSON_string
 
         geom = np.asarray(molecule['geometry'])
         geom = geom.reshape(-1, 3)
@@ -117,11 +120,8 @@ class Molsys(object):
 
         frags = []
         if 'fragments' in molecule:
-            for iF in range(len(molecule['fragments'])):
-                frag_geom = geom[iF[0]:iF[-1] + 1]
-                frag_masses = masses_list[iF[0]:(iF[-1] + 1)]
-                frag_Z_list = Z_list[iF[0]:(iF[-1] + 1)]
-                frags.append(frag.Frag(frag_Z_list, frag_geom, frag_masses))
+            for fr in molecule['fragments']:
+                frags.append(frag.Frag(np.array(Z_list)[fr], geom[fr], np.array(masses_list)[fr]))
         else:
             frags.append(frag.Frag(Z_list, geom, masses_list))
 

@@ -48,7 +48,9 @@ def psi4_calculation(new_geom, o_json, driver='gradient'):
             qc_input += "%s,%s\n" % (k, v)
     logger.debug(qc_input)
 
-    rval = json_wrapper.run_json(json_input, True)
+    #rval = json_wrapper.run_json(json_input, True)
+    import qcengine
+    rval = qcengine.compute(json_input, 'psi4', return_dict=True)
 
     qc_output = "Return from run_json\n"
     for k,v in rval.items():
