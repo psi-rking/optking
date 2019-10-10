@@ -14,7 +14,7 @@ from .oofp import Oofp
 from .frag import Frag
 from .molsys import Molsys
 from .history import History
-from .compute_wrappers import Psi4Computer, QCEngineComputer
+from .compute_wrappers import optimize_psi4, optimize_qcengine
 from .displace import displace
 from . import optparams as op
 from .exceptions import OptError, AlgError
