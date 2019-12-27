@@ -73,12 +73,14 @@ class OptParams(object):
         return s
 
     def __init__(P, uod):
+        P.program = uod.get('program', 'psi4')
+
         # SUBSECTION Optimization Algorithm
 
         # Maximum number of geometry optimization steps
-        P.geom_maxiter = uod.get('geom_maxiter', 40)
+        P.geom_maxiter = uod.get('geom_maxiter', 50)
         # Maximum number of geometry optimization steps for one algorithm
-        P.alg_geom_maxiter = uod.get('alg_geom_maxiter', 20)
+        P.alg_geom_maxiter = uod.get('alg_geom_maxiter', 50)
         # Print level.  1 = normal
         # P.print_lvl = uod.get('print_lvl', 1)
         P.print_lvl = uod.get('print', 1)

@@ -1,16 +1,19 @@
 #! SCF CC-PVTZ geometry optimzation, with Z-matrix input
-
-finalEnergy = -76.05776970 #TEST
+import pytest
 import psi4
 import optking
 
-def test_h2o_rfo():
+finalEnergy = -76.05776970 #TEST
+
+@pytest.mark.parametrize("option, expected", [('RFO', finalEnergy), ('NR', finalEnergy), ('SD', finalEnergy)])
+def test_h2o_rfo(option, expected):
     h2o = psi4.geometry("""
      O
      H 1 1.0
      H 1 1.0 2 104.5
     """)
-    
+
+    psi4.core.clean_options()    
     psi4options = {
       'basis': 'cc-pvtz',
       'e_convergence': '10',
@@ -18,56 +21,10 @@ def test_h2o_rfo():
       'scf_type': 'pk',  
     }
 
-    psi4.set_options(psi4options)
+    psi4.set_module_options('Optking', {'step_type': option})
     
-    psi4.set_module_options('Optking', {'step_type': 'rfo'})
-    json_output = optking.Psi4Opt('hf', psi4options)
-    E = json_output['properties']['return_energy']
-    assert psi4.compare_values(finalEnergy, E, 6, "RFO Step Final Energy")                                #TEST
-
-def test_h2o_nr():
-    h2o = psi4.geometry("""
-     O
-     H 1 1.0
-     H 1 1.0 2 104.5
-    """)
-   
- 
-    psi4options = {
-      'basis': 'cc-pvtz',
-      'e_convergence': '10',
-      'd_convergence': '10',
-      'scf_type': 'pk',  
-    }
-
-    psi4.set_options(psi4options)
+    json_output = optking.optimize_psi4('hf', psi4options) # Uses default program (psi4)
+    E = json_output['energies'][-1]
     
-    psi4.set_module_options('Optking', {'step_type': 'nr'})
-    
-    json_output = optking.Psi4Opt('hf', psi4options)
-    E = json_output['properties']['return_energy']
-    assert psi4.compare_values(finalEnergy, E, 6, "NR Step Final Energy")                                #TEST
-
-def test_h2o_SD():    
-    h2O = psi4.geometry("""
-    O
-    H 1 1.0
-    H 1 1.0 2 104.5
-    """)
-    
-    psi4options = { 
-      'basis': 'cc-pvtz',
-      'e_convergence': '10',
-      'd_convergence': '10',
-      'scf_type': 'pk',  
-    }
-
-    psi4.set_options(psi4options)
-    
-    psi4.set_module_options('Optking', {'step_type': 'SD'})
-    
-    json_output = optking.Psi4Opt('hf', psi4options)
-    E = json_output['properties']['return_energy']
-    assert psi4.compare_values(finalEnergy, E, 6, "SD Step Final Energy")                                #TEST
-
+    assert psi4.compare_values(finalEnergy, E, 6, f"{option} Step Final Energy")                                #TEST
 

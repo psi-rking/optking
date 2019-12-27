@@ -1,7 +1,12 @@
 {
-  "schema_name": "qcschema_input",
+  "schema_name": "qcschema_optimization_input",
   "schema_version": 1,
-  "molecule": {
+  "keywords": {
+    "program": "psi4",
+    "frozen_bend": "1 2 3 2 3 4",
+    "g_convergence": "gau_verytight"
+  },
+  "initial_molecule": {
     "geometry": [
       1.635264,
       1.392752,
@@ -23,17 +28,17 @@
       "H"
     ]
   },
-  "driver": "optimize",
-  "model": {
-    "method": "HF",
-    "basis": "cc-pvdz"
-  },
-  "keywords": {
-    "diis": false,
-    "scf_type": "pk",
-    "g_convergence": "gau_verytight",
-    "optimizer": {
-      "frozen_bend": "1 2 3 2 3 4"
+  "input_specification": {
+    "schema_name": "qcschema_input",
+    "schema_version": 1, 
+    "driver": "gradient",
+    "model": {
+      "method": "HF",
+      "basis": "cc-pvdz"
+    },
+    "keywords": {
+      "diis": false,
+      "scf_type": "pk"
     }
   }
 }

@@ -1,7 +1,10 @@
 {
-  "schema_name": "qcschema_input",
+  "schema_name": "qcschema_optimization_input",
   "schema_version": 1,
-  "molecule": {
+  "keywords": {
+    "program": "psi4"
+  },
+  "initial_molecule": {
     "geometry": [
       1.549128,
       -1.714673,
@@ -111,10 +114,14 @@
       "H"
     ]
   },
-  "driver": "optimize",
-  "model": {
-    "method": "HF",
-    "basis": "sto-3g"
-  },
-  "keywords": {}
-}
+  "input_specification": {
+    "schema_name": "qcschema_input",
+    "schema_version": 1,
+    "driver": "gradient",
+    "model": {
+      "method": "HF",
+      "basis": "sto-3g"
+    },
+    "keywords": {}
+  }
+} 

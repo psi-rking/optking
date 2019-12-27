@@ -3,9 +3,11 @@ import logging
 
 # We don't catch this one internallyclass OptFail(Exception):
 class OptError(Exception):
-    def __init__(self, mesg='None given'):
+    def __init__(self, mesg='None given', err_type='Not specified'):
         optimize_log = logging.getLogger(__name__)
         optimize_log.critical('OptError: Optimization has failed.')
+        self.mesg = mesg
+        self.err_type = err_type
         # Exception.__init__(self, mesg)
 
 

@@ -44,8 +44,8 @@ class Molsys(object):
         return s
 
     @classmethod
-    def fromPsi4Molecule(cls, mol):
-        """ Creates a optking molecular system from psi4 molsys
+    def from_psi4_molecule(cls, mol):
+        """ Creates a optking molecular system from psi4 mol. Note that not all information is preserved.
 
         Parameters
         ----------
@@ -57,8 +57,15 @@ class Molsys(object):
         cls :
             optking molecular system: list of fragments
         """
+    
+        import psi4
+
         logger = logging.getLogger(__name__)
         logger.info("\tGenerating molecular system for optimization from PSI4.")
+
+        if not isinstance(mol, psi4.core.Molecule):
+            logger.critical("from_psi4_molecule cannot handle a non psi4 molecule, why are you calling this method?")
+            raise OptError("Cannot make molecular system from this molecule")
 
         NF = mol.nfragments()
         logger.info("\t%d fragments in PSI4 molecule object." % NF)
@@ -87,13 +94,13 @@ class Molsys(object):
         return cls(frags, multiplicity=m)
 
     @classmethod
-    def from_JSON_molecule(cls, JSON_string):
+    def from_JSON_molecule(cls, qc_molecule):
         """ Creates optking molecular system from JSON input.
 
         Parameters
         ----------
-        JSON_string : string
-            Takes in a string of the molecule key from the QC JSON schema
+        qc_molecule: dict
+            molecule key in MOLSSI QCSchema
             see http://molssi-qc-schema.readthedocs.io/en/latest/auto_topology.html
 
         Returns
@@ -101,27 +108,22 @@ class Molsys(object):
         cls:
             molsys cls consists of list of Frags
         """
-
         logger = logging.getLogger(__name__)
         logger.info("\tGenerating molecular system for optimization from QC Schema.\n")
-        molecule = json.loads(JSON_string)
 
-        geom = np.asarray(molecule['geometry'])
+        geom = np.asarray(qc_molecule['geometry'])
         geom = geom.reshape(-1, 3)
 
-        Z_list = [qcel.periodictable.to_Z(atom) for atom in molecule['symbols']]
+        Z_list = [qcel.periodictable.to_Z(atom) for atom in qc_molecule['symbols']]
 
-        masses_list = molecule.get('masses')
+        masses_list = qc_molecule.get('masses')
         if masses_list is None:
-            masses_list = [qcel.periodictable.to_mass(atom) for atom in molecule['symbols']]
+            masses_list = [qcel.periodictable.to_mass(atom) for atom in qc_molecule['symbols']]
 
         frags = []
-        if 'fragments' in molecule:
-            for iF in range(len(molecule['fragments'])):
-                frag_geom = geom[iF[0]:iF[-1] + 1]
-                frag_masses = masses_list[iF[0]:(iF[-1] + 1)]
-                frag_Z_list = Z_list[iF[0]:(iF[-1] + 1)]
-                frags.append(frag.Frag(frag_Z_list, frag_geom, frag_masses))
+        if 'fragments' in qc_molecule:
+            for fr in qc_molecule['fragments']:
+                frags.append(frag.Frag(np.array(Z_list)[fr], geom[fr], np.array(masses_list)[fr]))
         else:
             frags.append(frag.Frag(Z_list, geom, masses_list))
 
@@ -253,6 +255,24 @@ class Molsys(object):
             for j in frag_symbol_list:
                 symbol_list.append(j)
         return symbol_list
+
+
+    def molsys_to_qc_molecule(self) -> qcel.models.Molecule:
+            """
+                Creates a qcschema molecule. version 1
+    
+            """
+            logger = logging.getLogger(__name__)
+            logger.debug(str(self.atom_symbols))
+            geom = [i for i in self.geom.flat]
+    
+            qc_molecule = {"symbols": self.atom_symbols, "geometry": geom, "masses": self.masses.tolist(),
+                           "molecular_multiplicity": self.multiplicity, 
+                           #"molecular_charge": self.charge, Should be unnessecary
+                           "fix_com": True, "fix_orientation": True}
+    
+            return qc_molecule
+    
 
     def consolidateFragments(self):
         if self.Nfragments == 1:
