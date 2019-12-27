@@ -20,7 +20,7 @@ from .linearAlgebra import absMax, symmMatEig, asymmMatEig, symmMatInv, norm
 
 # TODO I'd like to move the displace call and wrap up here. Make this a proper wrapper
 # for the stepAlgorithgms
-def Dq(oMolsys, E, qForces, H, stepType=None, o_json=None):
+def take_step(oMolsys, E, qForces, H, stepType=None, o_json=None):
     """ Calls one of the optimization algorithms to take a step
 
     Parameters
@@ -786,6 +786,7 @@ def Dq_LINESEARCH(oMolsys, E, fq, H, o_json):
         optking's EngineWrapper
 
     """
+
     logger = logging.getLogger(__name__)
     s = op.Params.linesearch_step
 
@@ -815,7 +816,8 @@ def Dq_LINESEARCH(oMolsys, E, fq, H, o_json):
             displace(oMolsys._fragments[0].intcos, oMolsys._fragments[0].geom, dq, fq_aJ)
             xyz = oMolsys.geom
             logger.debug("\tComputing energy at this point now.")
-            Eb, nuc = optimize.get_energy(xyz, o_json, nuc=True)
+            Eb = o_json.compute(xyz, driver='energy', return_full=False)
+            
             oMolsys.geom = geomA  # reset geometry to point A
 
         if Ec == 0:
@@ -825,7 +827,7 @@ def Dq_LINESEARCH(oMolsys, E, fq, H, o_json):
             displace(oMolsys._fragments[0].intcos, oMolsys._fragments[0].geom, dq, fq_aJ)
             xyz = oMolsys.geom
             logger.debug("\tComputing energy at this point now.")
-            Ec, nuc = optimize.get_energy(xyz, o_json, nuc=True)
+            Ec = o_json.compute(xyz, driver='energy', return_full=False)
             oMolsys.geom = geomA  # reset geometry to point A
 
         logger.info("\n\tCurrent linesearch bounds.\n")
@@ -861,7 +863,7 @@ def Dq_LINESEARCH(oMolsys, E, fq, H, o_json):
             displace(oMolsys._fragments[0].intcos, oMolsys._fragments[0].geom, dq, fq_aJ)
             xyz = oMolsys.geom
             logger.debug("\tComputing energy at projected point.")
-            Emin, nuc = optimize.get_energy(xyz, o_json, nuc=True)
+            Emin = o_json.compute(xyz, driver='energy', return_full=False)
             logger.info("\tProjected energy along line: %15.10f" % Emin_projected)
             logger.info("\t   Actual energy along line: %15.10f" % Emin)
 
@@ -915,6 +917,6 @@ def Dq_LINESEARCH(oMolsys, E, fq, H, o_json):
     if linearList:
         raise AlgError("New linear angles", newLinearBends=linearList)
 
-    oHistory.nuclear_repulsion_energy = nuc
+    oHistory.nuclear_repulsion_energy = o_json.trajectory[-1]['properties']['nuclear_repulsion_energy']
 
     return dq

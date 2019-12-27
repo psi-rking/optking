@@ -17,6 +17,7 @@ def test_hooh_TS():
      H 3 0.95 2 105.0 1 120.0
     """)
 
+    psi4.core.clean_options()
     psi4options = {
       'basis': 'cc-pvdz',
       'geom_maxiter': 20,
@@ -27,10 +28,11 @@ def test_hooh_TS():
     }    
 
     psi4.set_options(psi4options) 
-    
-    json_output = optking.Psi4Opt('hf', psi4options)
-    thisenergy = json_output['properties']['return_energy']    
-    assert psi4.compare_values(TORS_ENERGY, thisenergy, 6, "cc-pVDZ RHF transition-state opt. of HOOH (dihedral=180), energy") #TEST
+
+    json_output = optking.optimize_psi4('hf', psi4options) # Uses default program (psi4)
+    E = json_output['energies'][-1]
+
+    assert psi4.compare_values(TORS_ENERGY, E, 6, "cc-pVDZ RHF transition-state opt. of HOOH (dihedral=180), energy") #TEST
 
 def test_hooh_min():
     # Optimization to 0 degree torsion from 100
@@ -41,6 +43,7 @@ def test_hooh_min():
      H 3 0.95 2 105.0 1 100.0
     """)
     
+    psi4.core.clean_options()
     psi4options = {
       'basis': 'cc-pvdz',
       'geom_maxiter': 20,
@@ -50,8 +53,7 @@ def test_hooh_min():
     }
 
     psi4.set_options(psi4options)
-    
-    json_output = optking.Psi4Opt('hf', psi4options)
-    thisenergy = json_output['properties']['return_energy']    
-    assert psi4.compare_values(ZERO_TORS_ENERGY, thisenergy, 6, "cc-pVDZ RHF transition-state opt. of HOOH (dihedral=0), energy") #TEST
+    json_output = optking.optimize_psi4('hf', psi4options) # Uses default program (psi4)
+    E = json_output['energies'][-1]
+    assert psi4.compare_values(ZERO_TORS_ENERGY, E, 6, "cc-pVDZ RHF transition-state opt. of HOOH (dihedral=0), energy") #TEST
 

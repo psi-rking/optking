@@ -6,7 +6,7 @@ import sys
 from .optimize import optimize
 from . import lj_functions
 from . import loggingconfig
-from .optwrapper import Psi4Optimizer, QCEngineOptimizer
+from .optwrapper import optimize_psi4, optimize_qcengine
 from .stre import Stre
 from .bend import Bend
 from .tors import Tors
@@ -14,7 +14,6 @@ from .oofp import Oofp
 from .frag import Frag
 from .molsys import Molsys
 from .history import History
-from .compute_wrappers import optimize_psi4, optimize_qcengine
 from .displace import displace
 from . import optparams as op
 from .exceptions import OptError, AlgError

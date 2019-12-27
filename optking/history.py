@@ -11,11 +11,10 @@ from .printTools import printMatString, printArrayString
 
 
 class Step(object):
-    def __init__(self, geom, E, forces, qcout=None):
+    def __init__(self, geom, E, forces):
         self.geom = geom.copy()  # Store as 2D object
         self.E = E
         self.forces = forces.copy()
-        self.qcout = qcout
         self.projectedDE = None
         self.Dq = None
         self.followedUnitVector = None
@@ -75,8 +74,8 @@ class History(object):
         del self.steps[index]
 
     # Add new step.  We will store geometry as 1D in history.
-    def append(self, geom, E, forces, qcout):
-        s = Step(geom, E, forces, qcout)
+    def append(self, geom, E, forces):
+        s = Step(geom, E, forces)
         self.steps.append(s)
         History.stepsSinceLastHessian += 1
 
@@ -122,7 +121,6 @@ class History(object):
                 'max_force': max_force,
                 'max_disp': max_disp,
                 'rms_disp': rms_disp,
-                'raw_output': step.qcout,
             })
 
             opt_summary += ("\t  %4d %20.12lf  %18.12lf    %12.8lf    %12.8lf    %12.8lf    %12.8lf  ~\n" % (

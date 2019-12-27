@@ -1,67 +1,98 @@
 # wrapper for optking's optimize function for input by psi4API
 # creates a moleuclar system from psi4s and generates optkings options from psi4's lsit of options
 import os
+import logging
+import json
+
+from qcelemental.util.serialization import json_dumps
+from qcelemental.models import OptimizationInput, OptimizationResult
 
 import optking
 
 from . import molsys
 from .optimize import optimize
 
-def optimize_psi4(calcName, psi4_options):
-    """Method call for optimizing a molecule. Gives pyOptking a molsys from
-    psi4s molecule class, a set containing all optking keywords, a function to
-    set the geometry in psi4, and functions to get the gradient, hessian, and
-    energy from psi4. Returns energy or (energy, trajectory) if trajectory== True.
+
+def optimize_psi4(calc_name, psi4_options, program='psi4'):
+    """ Wrapper for optimize.optimize() Looks for an active psi4 molecule and optimizes.
+        Optkings options can be set normally according to psi4 input syntax. Psi4's options must
+        be passed to optking as a dictionary see psiAPI for details.   
+
+        Warning. Meant to be depracted. Users should just use psi4.optimize available.
+        Optking will try to use Psi4 if no program is provided in options
+
+        Parameters
+        ----------
+        calcName: str
+            level of theory for optimization. eg MP2
+        qm_options: dict
+            all options for the desired quantum chemistry package.
+        program: str
+            program used for gradients, hessians...
+            
+        Returns
+        -------
+        opt_output: dict
+            dictionary serialized MOLSSI OptimizationResult. 
+            see https://github.com/MolSSI/QCElemental/blob/master/qcelemental/models/procedures.py
+
+        Notes
+        -----
+        Must include basis in options dictionary. eg {'basis': 'sto-3g'} 
+
     """
 
     import psi4
 
+    logger = logging.getLogger(__name__)
     mol = psi4.core.get_active_molecule()
-    oMolsys = molsys.Molsys.fromPsi4Molecule(mol)
+    oMolsys = molsys.Molsys.from_psi4_molecule(mol)
 
-    # def collect_psi4_options(options):
-    """Is meant to look through the dictionary of psi4 options being passed in and
-    pick out the basis set and QM method used (Calcname)
-    which are appened to the list of psi4 options
-    """
-    keywords = {}
-    for opt in options['PSI4']:
-        keywords[opt] = options['PSI4'][opt]
-
-    basis = keywords['BASIS']
-    del keywords['BASIS']
-    QM_method = keywords['CALCNAME']
-    del keywords['CALCNAME']
-
-    # return QM_method, basis, keywords
-
-
-# def get_optking_options_psi4(all_options):
-    optking_user_options = {}
-    optking_options = all_options['OPTKING']
-    optking_user_options['OPTKING'] = {}
+    #Get optking options from psi4
+    module_options = psi4.driver.p4util.prepare_options_for_modules()
+    keywords = {'OPTKING': {}}
+    optking_options = module_options['OPTKING']
     for opt, optval in optking_options.items():
         if optval['has_changed']:
-            optking_user_options[opt] = optval['value']
+            keywords['OPTKING'][opt] = optval['value']
+    keywords['OPTKING'].update({'program': program})
+    
+    #Combine all options for optking and the QC package together
+    psi4_options_lower = {k.lower(): v for k, v in psi4_options.items()}
+    keywords.update({'QM': psi4_options_lower})
+    keywords['QM'].update({'method': calc_name})
+    logger.info(json.dumps(keywords, indent=2))
+    opt_output = optimize(oMolsys, keywords)    
+    return opt_output
 
-    # return optking_user_options
+def optimize_qcengine(opt_input):
+    """ Try to optimize, find TS, or find IRC of the system as specifed by a QCSchema OptimizationInput.
+        
+        Parameters
+        ----------
+        optimization_input: OptimizationInput, dict
+            Pydantic Schema of the OptimizationInput model.
+            see https://github.com/MolSSI/QCElemental/blob/master/qcelemental/models/procedures.py
+    
+        Returns
+        -------
+        dict
+            
+    """
+    
+    if isinstance(opt_input, OptimizationInput):
+        opt_input = opt_input.dict()  # Could fail if numpy elements present. Shouldn't be. 
+        # replace with qcelemental.util.serialization method json_dumps(). Then use json.loads() if fails
+    
+    # Make basic optking molecular system
+    oMolsys = molsys.Molsys.from_JSON_molecule(opt_input['initial_molecule'])  
+    keywords = {'OPTKING': opt_input['keywords'], 'QM': {}}  # store optking keywords leave QM blank
+    qc_input = opt_input['input_specification']  # will be used to create a QCSchema AtomicInput
 
-    #old way currently used for testing suite. need to comment out when working
-    #with psi4.optimize()
-    all_options = psi4.driver.p4util.prepare_options_for_modules()
-    optking_user_options = psi4methods.get_optking_options_psi4(all_options)
-    psi4_options_upper = {k.upper(): v for k, v in psi4_options.items()}
-    optking_user_options['PSI4'] = psi4_options_upper
-    optking_user_options["PSI4"]['CALCNAME'] = calcName #change to psi4_options when using psi4.optimize()
+    opt_output = optimize(oMolsys, keywords, qc_input)
+    opt_input.update(opt_output)
+    
+    # QCEngine.procedures.optking.py takes 'output_data', unpacks and creates Optimization Schema
+    # from qcel.models.procedures.py
+    return opt_input
 
-    # all we should need to do for psi4.optimize
-    #psi4_options["PSI4"]["CALCNAME"] = calcName
-    #pass psi4_options directly optimize
-
-    optking_json_dict = optimize(oMolsys, optking_user_options)
-
-    return optking_json_dict
-
-def optimize_qcengine(optimization_input):
-
-    pass

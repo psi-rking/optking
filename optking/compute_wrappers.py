@@ -1,11 +1,14 @@
 import copy
 import math
+import json
 import numpy as np
+import logging
 
-from qcelemental.models import ResultInput, Result
+from qcelemental.models import AtomicInput, Result, Molecule
+from qcelemental.util.serialization import json_dumps
 
 from . import history
-
+from .exceptions import OptError
 
 class ComputeWrapper:
     """ An implementation of MolSSI's qc schema
@@ -17,47 +20,77 @@ class ComputeWrapper:
 
     """
 
-    def __init__(self, molecule, model, keywords):
+    def __init__(self, molecule, model, keywords, program):
 
         self.molecule = molecule
         self.model = model
         self.keywords = keywords
+        self.program = program
         self.trajectory = []
         self.energies = []
 
-    def update_geometry(self, geom):
+    def update_geometry(self, geom: np.ndarray):
         """Updates EngineWrapper for requesting calculation
 
         Parameters
         ----------
-        geom : list of float
+        geom : np.ndarray
             cartesian geometry 1D list
-        driver : str, optional
-            deafult is gradient. Other options: hessian or energy
 
         Returns
         -------
         json_for_input : dict
         """
 
-        return json_for_input
+        self.molecule['geometry'] = [i for i in geom.flat]
 
     def generate_schema_input(self, driver):
 
-        inp = ResultInput(molecule=self.molecule, model=self.model, keywords=self.keywords, driver=driver)
+        molecule = Molecule(**self.molecule)
+        inp = AtomicInput(molecule=molecule, model=self.model, keywords=self.keywords, driver=driver)
 
         return inp
 
-    def compute(self, driver, return_full):
+    def _compute(self, driver):
+        """ Abstract style method for child classes"""
+        pass
 
+    def compute(self, geom, driver, return_full=True, print_result=False):
+        """ Perform calculation of type driver
+            
+            Parameters
+            ----------
+            geom: np.ndarray
+            driver: str
+            return_full: boolean
+            print_result: boolean
+            
+            Returns
+            -------
+            dict 
+        """
+
+        
+        logger = logging.getLogger(__name__)
+        
+        self.update_geometry(geom)
         ret = self._compute(driver)
-
+        # Decodes the Result Schema to remove numpy elements (Makes ret JSON serializable)
+        ret = json.loads(json_dumps(ret))
         self.trajectory.append(ret)
-        self.energies.append(ret.properties.return_energy)
+        
+        if print_result:
+            logger.debug(json.dumps(ret, indent=2))
+        
+        if ret['success']: 
+            self.energies.append(ret['properties']['return_energy'])
+        else:
+            logger.critical(f"Could not perform {driver} calc. {ret['error']['error_message']}")
+
         if return_full:
             return ret
         else:
-            return ret.return_result
+            return ret['return_result']
 
     def energy(self, return_full=False):
         return self._compute("energy", return_full)
@@ -79,6 +112,7 @@ class Psi4Computer(ComputeWrapper):
         ret = psi4.json_wrapper.run_json(inp.dict())
         ret = Result(**ret)
         return ret
+
 
 class QCEngineComputer(ComputeWrapper):
 
