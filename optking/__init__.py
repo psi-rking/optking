@@ -4,21 +4,16 @@ import os
 import sys
 
 from .optimize import optimize
-from .optimize import get_gradient
-from .optimize import get_hessian
-from .optimize import get_energy
 from . import lj_functions
 from . import loggingconfig
-from .psi4optwrapper import Psi4Opt
-from .jsonoptwrapper import run_json_file, run_qcschema
+from .optwrapper import optimize_psi4, optimize_qcengine
 from .stre import Stre
 from .bend import Bend
 from .tors import Tors
 from .oofp import Oofp
-from .frag import Frag 
+from .frag import Frag
 from .molsys import Molsys
 from .history import History
-from .qcdbjson import jsonSchema
 from .displace import displace
 from . import optparams as op
 from .exceptions import OptError, AlgError

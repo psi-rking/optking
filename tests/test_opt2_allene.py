@@ -19,6 +19,8 @@ def test_opt2_allene():
      H  0.92  0.00    1.8
      H -0.92  0.00    1.8
     """)
+
+    psi4.core.clean_options()
    
     psi4options = {
       'basis': 'DZ',
@@ -27,13 +29,11 @@ def test_opt2_allene():
       'scf_type': 'pk',
     }
 
-    psi4.set_options(psi4options)
-
-    json_output = optking.Psi4Opt('hf', psi4options)
-    thisenergy = json_output['properties']['return_energy']
-    nucenergy = json_output['properties']['nuclear_repulsion_energy']
+    json_output = optking.optimize_psi4('hf', psi4options)
+    E = json_output['energies'][-1]
+    nucenergy = json_output['trajectory'][-1]['properties']['nuclear_repulsion_energy']
     assert psi4.compare_values(refnucenergy, nucenergy, 2, "Nuclear repulsion energy")    #TEST
-    assert psi4.compare_values(refenergy, thisenergy, 6, "Reference energy")                                   #TEST
+    assert psi4.compare_values(refenergy, E, 6, "Reference energy")                                   #TEST
     
     # central C-C-C bond angle starts around 170 degrees to test the dynamic addition
     # of new linear bending coordinates, and the redefinition of dihedrals.
@@ -47,9 +47,8 @@ def test_opt2_allene():
      H -0.92  0.00    1.8
     """)
     
-    
-    json_output = optking.Psi4Opt('hf', psi4options)
-    thisenergy = json_output['properties']['return_energy']
-    nucenergy = json_output['properties']['nuclear_repulsion_energy']
+    json_output = optking.optimize_psi4('hf', psi4options)
+    E = json_output['energies'][-1]
+    nucenergy = json_output['trajectory'][-1]['properties']['nuclear_repulsion_energy']
     assert psi4.compare_values(refnucenergy, nucenergy, 2, "Nuclear repulsion energy")    #TEST
-    assert psi4.compare_values(refenergy, thisenergy, 6, "Reference energy")                                   #TEST
+    assert psi4.compare_values(refenergy, E, 6, "Reference energy")                                   #TEST

@@ -13,22 +13,22 @@ def test_B_dB_matrices():
       H 3 0.9 2 100.0 1 114.0
     """)
 
+    psi4.core.clean_options()
     psi4options = {
       'basis': 'cc-pvdz',
       'g_convergence': 'gau_tight',
       'scf_type': 'pk'
     }
 
-    psi4.set_options(psi4options)
-
+    
     psi4.set_module_options('OPTKING', {'TEST_B': True, 'TEST_DERIVATIVE_B': True, "G_CONVERGENCE": "gau_tight"})
 
-    json_output = optking.Psi4Opt('hf', psi4options)
-    thisenergy = json_output['properties']['return_energy']
-    nucenergy = json_output['properties']['nuclear_repulsion_energy']
+    json_output = optking.optimize_psi4('hf', psi4options) # Uses default program (psi4)
+    E = json_output['energies'][-1]
+    nucenergy = json_output['trajectory'][-1]['properties']['nuclear_repulsion_energy']
 
     assert psi4.compare_values(refnucenergy, nucenergy, 4, "Nuclear repulsion energy") #TEST
-    assert psi4.compare_values(refenergy, thisenergy, 8, "Reference energy")           #TEST
+    assert psi4.compare_values(refenergy, E , 8, "Reference energy")           #TEST
 
 
 def test_maxiter():
@@ -39,7 +39,9 @@ def test_maxiter():
      H 1 1.0 2 104.5
     """)
 
+    psi4.core.clean_options()
     psi4options = {
+        #Throw a bunch of options at psi4
         'diis': 0,
         'basis': 'STO-3G',
         'e_convergence': 1e-10,
@@ -49,6 +51,7 @@ def test_maxiter():
     }
     psi4.set_options(psi4options)
 
-    json_output = optking.Psi4Opt('hf', psi4options)
+    json_output = optking.optimize_psi4('hf', psi4options)
 
-    assert "Maximum number of steps exceeded" in json_output['error']
+    assert "Maximum number of steps exceeded" in json_output['error']['error_message']
+    assert "OptError" in json_output['error']['error_type']

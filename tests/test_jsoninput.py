@@ -5,19 +5,21 @@ import pytest
 import optking
 import psi4
 
+from qcelemental.models import OptimizationInput
 
-def test_input_through_run_qcschema():
-    refnucenergy = 8.9064890670
-    refenergy = -74.965901192
-
-    json_dict_in = {"schema_name": "qcschema_input", "schema_version": 1, "molecule": { "geometry": [ 0.0, 0.0, 0.28100228, 0.0, 1.42674323, -0.8431958, 0.0, -1.42674323, -0.8431958 ], "symbols": [ "O", "H", "H" ], "masses": [ 15.994915, 1.007825, 1.007825 ] }, "driver": "optimize", "model": { "method": "hf", "basis": "sto-3g" }, "keywords": { "diis": False, "e_convergence": 10, "d_convergence": 10, "scf_type": "pk", "optimizer": { "output_type": "JSON" }}}
-
-    json_dict = optking.run_qcschema(json_dict_in)
-
-    assert psi4.compare_values(refnucenergy, json_dict['properties']['nuclear_repulsion_energy'], 3,
-         "Nuclear repulsion energy")
-    assert psi4.compare_values(refenergy, json_dict['properties']['return_energy'], 6,
-        "Reference energy")
+# Old test. This is not a valid optimizationInput
+#def test_input_through_run_qcschema():
+#    refnucenergy = 8.9064890670
+#    refenergy = -74.965901192
+#
+#    json_dict_in = {"schema_name": "qcschema_input", "schema_version": 1, "molecule": { "geometry": [ 0.0, 0.0, 0.28100228, 0.0, 1.42674323, -0.8431958, 0.0, -1.42674323, -0.8431958 ], "symbols": [ "O", "H", "H" ], "masses": [ 15.994915, 1.007825, 1.007825 ] }, "driver": "optimize", "model": { "method": "hf", "basis": "sto-3g" }, "keywords": { "diis": False, "e_convergence": 10, "d_convergence": 10, "scf_type": "pk", "optimizer": { "output_type": "JSON" }}}
+#
+#    json_dict = optking.run_qcschema(json_dict_in)
+#
+#    assert psi4.compare_values(refnucenergy, json_dict['properties']['nuclear_repulsion_energy'], 3,
+#         "Nuclear repulsion energy")
+#    assert psi4.compare_values(refenergy, json_dict['properties']['return_energy'], 6,
+#        "Reference energy")
 
 
 @pytest.mark.parametrize("inp,expected", [
@@ -28,19 +30,22 @@ def test_input_through_run_qcschema():
 def test_input_through_json(inp, expected):
     with open(os.path.join(os.path.dirname(__file__), inp)) as input_data:
         input_copy = json.load(input_data)
-    optking.run_json_file(os.path.join(os.path.dirname(__file__), inp))
+        opt_schema = OptimizationInput(**input_copy)
+    
+    #optking.run_json_file(os.path.join(os.path.dirname(__file__), inp))
+    json_dict = optking.optimize_qcengine(input_copy)
 
     #For testing purposes. If this works, we have properly returned the output, and added the result
     #to the original file. In order to preserve the form of the test suite, we now resore the input
     #to its original state
-    with open(os.path.join(os.path.dirname(__file__), inp)) as input_data:
-        json_dict = json.load(input_data)
-    assert psi4.compare_values(expected[0], json_dict['properties']['nuclear_repulsion_energy'], 3,
+    #with open(os.path.join(os.path.dirname(__file__), inp)) as input_data:
+    #    json_dict = json.load(input_data)
+    assert psi4.compare_values(expected[0], json_dict['trajectory'][-1]['properties']['nuclear_repulsion_energy'], 3,
          "Nuclear repulsion energy")
-    assert psi4.compare_values(expected[1], json_dict['properties']['return_energy'], 6,
+    assert psi4.compare_values(expected[1], json_dict['trajectory'][-1]['properties']['return_energy'], 6,
         "Reference energy")
 
-    with open(os.path.join(os.path.dirname(__file__), inp), 'r+') as input_data:
-        input_data.seek(0)
-        input_data.truncate()
-        json.dump(input_copy, input_data, indent=2)
+    #with open(os.path.join(os.path.dirname(__file__), inp), 'r+') as input_data:
+    #    input_data.seek(0)
+    #    input_data.truncate()
+    #    json.dump(input_copy, input_data, indent=2)

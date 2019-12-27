@@ -37,7 +37,8 @@ install:
   - source activate test
 
     # Extra upstream for testing
-  - conda install qcengine=0.6.4 ci-psi4 psi4 -c psi4/label/dev
+  - conda install qcengine=0.12.0 ci-psi4 psi4 -c psi4/label/dev
+  - conda install msgpack-python
 
     # Build and install package
   - python setup.py develop --no-deps

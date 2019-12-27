@@ -1,7 +1,10 @@
 {
-  "schema_name": "qcschema_input",
+  "schema_name": "qcschema_optimization_input",
   "schema_version": 1,
-  "molecule": {
+  "keywords": {
+    "program": "psi4"
+  },
+  "initial_molecule": {
     "geometry": [
       0.0,
       0.0,
@@ -24,18 +27,19 @@
       1.007825
     ]
   },
-  "driver": "optimize",
-  "model": {
-    "method": "hf",
-    "basis": "sto-3g"
-  },
-  "keywords": {
-    "diis": false,
-    "e_convergence": 10,
-    "d_convergence": 10,
-    "scf_type": "pk",
-    "optimizer": {
-      "output_type": "JSON"
+  "input_specification": {
+    "schema_name": "qcschema_input",
+    "schema_version": 1,  
+    "driver": "gradient",
+    "model": {
+      "method": "hf",
+      "basis": "sto-3g"
+    },
+    "keywords": {
+      "diis": false,
+      "e_convergence": 10,
+      "d_convergence": 10,
+      "scf_type": "pk"
     }
   }
 }

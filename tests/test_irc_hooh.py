@@ -10,15 +10,14 @@ def test_hooh_irc():
       O     0.0000000000   0.6988545188   0.0536419016
       O     0.0000000000  -0.6988545188   0.0536419016
       H     0.0000000000  -0.9803530335  -0.8498671785
-      noreorient
     """)
     # Necessary since IRC will break C2h.
     h2o2.reset_point_group('c2')
     
+    psi4.core.clean_options()
+    
     psi4_options = { 'basis': 'dzp',
                      'scf_type': 'pk' }
-    
-    psi4.set_options(psi4_options)
     
     psi4.set_module_options( "OPTKING", {
       "g_convergence": "gau_verytight",
@@ -27,9 +26,9 @@ def test_hooh_irc():
       #'irc_direction': "backward"
       } )
     
-    json_output = optking.Psi4Opt('hf', psi4_options)
+    json_output = optking.optimize_psi4('hf', psi4_options)
     
-    IRC = json_output['properties']['IRC']
+    IRC = json_output['extras']['irc_rxn_path']
     
     print("%15s%15s%20s%15s" % ('Step Number', 'Arc Distance', 'Energy', 'HOOH dihedral'))
     for step in IRC:
@@ -37,5 +36,4 @@ def test_hooh_irc():
                                            step['Energy'],      step['Intco Values'][5] ))
 
     assert psi4.compare_values(energy_5th_IRC_pt, IRC[5]['Energy'], 6, "Energy of 5th IRC point.") #TEST
-
 
