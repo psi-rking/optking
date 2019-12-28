@@ -31,3 +31,4 @@ logger = logging.getLogger(__name__)
 from ._version import get_versions
 __version__ = get_versions()['version']
 del get_versions
+_optking_provenance_stamp = {"creator": "optking", "routine": None, "version": __version__}

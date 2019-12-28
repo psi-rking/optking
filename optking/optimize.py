@@ -3,11 +3,12 @@ import copy
 import logging
 import json
 
+from qcelemental.models import Molecule
+
 from . import hessian
 from . import stepAlgorithms
 from . import caseInsensitiveDict
 from . import optparams as op
-from .exceptions import OptError, AlgError, IRCendReached
 from . import addIntcos
 from . import history
 from . import intcosMisc
@@ -16,6 +17,7 @@ from . import testB
 from . import IRCfollowing
 from . import psi4methods
 from . import IRCdata
+from .exceptions import OptError, AlgError, IRCendReached
 from .linearAlgebra import lowestEigenvectorSymmMat, symmMatRoot, symmMatInv
 from .compute_wrappers import QCEngineComputer
 from .printTools import (printGeomGrad,
@@ -23,7 +25,6 @@ from .printTools import (printGeomGrad,
                          printArrayString,
                          welcome)
 
-from .exceptions import OptError, AlgError, IRCendReached
 from .molsys import Molsys
 
 
@@ -497,15 +498,16 @@ def make_internal_coords(oMolsys):
 def prepare_opt_output(oMolsys, o_json, rxnpath=False, error=None):
     logger = logging.getLogger(__name__)
     logger.debug("Preparing OptimizationResult")
-    final_molecule = oMolsys.molsys_to_qc_molecule()
+    # Get molecule from most recent step. Add provenance and fill in non-required fills. Turn back to dict
+    final_molecule = Molecule(**oMolsys.molsys_to_qc_molecule()).dict()
 
     qc_output = {"schema_name": 'qcschema_optimization_output', "trajectory": o_json.trajectory,
                  "energies": o_json.energies, "final_molecule": final_molecule,
-                 "extras": {}, "success": True}
+                 "extras": {}, "success": True,}
 
     if error:
         qc_output.update({"success": False, "error": {"error_type": error.err_type, "error_message": error.mesg}})
-
+    
     if rxnpath:
         qc_output['extras'].update({"irc_rxn_path": rxnpath})
 
