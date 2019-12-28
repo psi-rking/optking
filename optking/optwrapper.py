@@ -62,7 +62,8 @@ def optimize_psi4(calc_name, psi4_options, program='psi4'):
     keywords.update({'QM': psi4_options_lower})
     keywords['QM'].update({'method': calc_name})
     logger.info(json.dumps(keywords, indent=2))
-    opt_output = optimize(oMolsys, keywords)    
+    opt_output = optimize(oMolsys, keywords)
+    opt_input['provenance']['creator'] = 'optking'
     return opt_output
 
 def optimize_qcengine(opt_input):
@@ -91,7 +92,7 @@ def optimize_qcengine(opt_input):
 
     opt_output = optimize(oMolsys, keywords, qc_input)
     opt_input.update(opt_output)
-    
+    opt_input['provenance']['creator'] = "optking"
     # QCEngine.procedures.optking.py takes 'output_data', unpacks and creates Optimization Schema
     # from qcel.models.procedures.py
     return opt_input
