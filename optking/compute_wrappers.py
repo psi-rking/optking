@@ -85,8 +85,8 @@ class ComputeWrapper:
         if ret['success']: 
             self.energies.append(ret['properties']['return_energy'])
         else:
-           raise OptError(f"Error encountered for {driver} calc. ret['error']['error_message']",
-                          qc_result['error']['error_type'])
+           raise OptError(f"Error encountered for {driver} calc. {ret['error']['error_message']}",
+                          ret['error']['error_type'])
 
         if return_full:
             return ret
