@@ -262,15 +262,12 @@ class Molsys(object):
                 Creates a qcschema molecule. version 1
     
             """
-            logger = logging.getLogger(__name__)
-            logger.debug(str(self.atom_symbols))
             geom = [i for i in self.geom.flat]
-    
             qc_molecule = {"symbols": self.atom_symbols, "geometry": geom, "masses": self.masses.tolist(),
                            "molecular_multiplicity": self.multiplicity, 
                            #"molecular_charge": self.charge, Should be unnessecary
                            "fix_com": True, "fix_orientation": True}
-    
+
             return qc_molecule
     
 
