@@ -15,11 +15,81 @@
 # optking
 Python version of the PSI geometry optimization program by R.A. King
 
+Optking works with the quantum chemistry code of your choice through MolSSI's QCEngine.
+
+Optking is primarily written to perform minimizations but does have transition state and IRC capabilities as in the previous version of optking
 
 ## Installation
 To do a local install of the Python directory,
 ```
 pip install -e .
+```
+
+## Running
+### QCSchema
+Optking can be run through a MolSSI qcSchema by calling `optking.optimize_qcengine`
+
+```
+import qcelemental as qcel
+# Basic OptimizationInput
+input_dict = {
+  "schema_name": "qcschema_optimization_input",
+  "schema_version": 1,
+  "keywords": {
+    "program": "psi4"
+  },
+  "initial_molecule": {
+  "geometry": [
+    0.90,  0.80,  0.5,
+    0.00,  0.70,  0.0,
+    0.00, -0.70,  0.0,
+    -0.90, -0.80,  0.5],
+  "symbols": [
+    "H",
+    "O",
+    "O",
+    "H"
+  ],
+  },
+  "input_specification": {
+    "schema_name": "qcschema_input",
+    "schema_version": 1,
+    "driver": "gradient",
+    "model": {
+      "method": "HF",
+      "basis": "sto-3g"
+    },
+    "keywords": {
+      "soscf": True
+    }
+  }
+}
+
+input_Schema = qcel.models.OptimizationInput(**input_dict)  # Use model to fill out OptimizationInput
+output_dict = optking.optimize_qcengine(input_dict)
+```
+Calling optking through QCEngine is not currently supported officially
+
+### Psi4
+Alternatively, old psi4 optimization inputs can be easily altered to work with the new optimizer by adding import optking and changing `psi4.optimize` to `optking.optimize_psi4` Please note that `psi4.optimize` currently calls the c++ optking optimizer but this will be changed in a future, undetermined, release. At that time calling `psi4.optimize` will be recommended.
+
+```
+import optking
+molecule mol {
+  pubchem:hydrogen peroxide
+}
+
+set {
+  basis sto-3g
+  g_convergence gau_tight
+  e_convergence 1e-10
+  soscf true
+  intrafrag_step_limit_max 0.3
+}
+
+opt_result = optking.optimize_psi4('hf')
+print(len(opt_result['energies']))
+print(opt_result['energies'][-1])
 ```
 
 ## Testing
