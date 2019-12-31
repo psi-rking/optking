@@ -3,9 +3,9 @@ import json
 from qcelemental.models.procedures import OptimizationInput
 from qcelemental.util.serialization import json_dumps
 
-from optking.optwrapper import optimize_qcengine
+from optking.optwrapper import optimize_qcengine, optimize_psi4, initialize_options, make_computer
 from optking.molsys import Molsys
-from optking.optimize import initialize_options, create_qcengine_computer, prepare_opt_output
+from optking.optimize import prepare_opt_output
 
 from optking.compute_wrappers import QCEngineComputer
 
@@ -47,15 +47,20 @@ def test_optimization_input():
             }
         }
     }
-    
-    opt_in = OptimizationInput(**opt_input_dict)  # Create Pydantic Model Fills all fields (including non-required)
+   
+    # Create Pydantic Model Fills all fields (including non-required) 
+    opt_in = OptimizationInput(**opt_input_dict)
 
-    full_model = json.loads(json_dumps(opt_in))
-    result_input = {'molecule': full_model['initial_molecule']}
-    result_input.update(full_model['input_specification'])
     # Convert back to plain python dictionary
+    full_model = json.loads(json_dumps(opt_in))
+    
     oMolsys = Molsys.from_JSON_molecule(full_model['initial_molecule'])  # Create Optking's molecular system
-    initialize_options({"OPTKING": full_model['keywords']}) 
-    o_json = create_qcengine_computer(oMolsys, None, result_input)
+    initialize_options(full_model['keywords']) 
+    computer = make_computer(full_model, 'qc')
     # Takes the o_json object and creates QCSchema formatted python dict. Has numpy elements
-    opt_output = prepare_opt_output(oMolsys, o_json)
+    opt_output = prepare_opt_output(oMolsys, computer)
+
+    assert 'success' in opt_output
+
+    psi_computer = make_computer(full_model, 'psi4')
+    opt_output = prepare_opt_output(oMolsys, computer)

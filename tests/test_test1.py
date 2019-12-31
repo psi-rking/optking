@@ -15,7 +15,7 @@ def test_opt1_h2o():
 
     psi4.core.clean_options()
 
-    psi4options = {
+    psi4_options = {
       'diis': False,
       'basis': 'sto-3g',
       'e_convergence': 10,
@@ -23,9 +23,9 @@ def test_opt1_h2o():
       'scf_type': 'pk'
     }    
 
-    psi4.set_options(psi4options)
+    psi4.set_options(psi4_options)
     
-    json_output = optking.optimize_psi4('hf', psi4options)
+    json_output = optking.optimize_psi4('hf')
     E = json_output['energies'][-1]
     nucenergy = json_output['trajectory'][-1]['properties']['nuclear_repulsion_energy']
     

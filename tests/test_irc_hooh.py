@@ -16,17 +16,15 @@ def test_hooh_irc():
     
     psi4.core.clean_options()
     
-    psi4_options = { 'basis': 'dzp',
-                     'scf_type': 'pk' }
-    
-    psi4.set_module_options( "OPTKING", {
-      "g_convergence": "gau_verytight",
-      'opt_type': 'irc',
-      'geom_maxiter': 20,
-      #'irc_direction': "backward"
-      } )
-    
-    json_output = optking.optimize_psi4('hf', psi4_options)
+    psi4_options = {
+        'basis': 'dzp',
+        'scf_type': 'pk',
+        "g_convergence": "gau_verytight",
+        'opt_type': 'irc',
+        'geom_maxiter': 20}
+   
+    psi4.set_options(psi4_options) 
+    json_output = optking.optimize_psi4('hf')
     
     IRC = json_output['extras']['irc_rxn_path']
     

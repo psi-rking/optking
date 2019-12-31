@@ -2,7 +2,10 @@ import json
 import logging
 
 import numpy as np
+
 import qcelemental as qcel
+from qcelemental.models import Molecule
+from qcelemental.util.serialization import json_dumps
 
 from . import frag
 from .exceptions import AlgError, OptError
@@ -263,12 +266,13 @@ class Molsys(object):
     
             """
             geom = [i for i in self.geom.flat]
-            qc_molecule = {"symbols": self.atom_symbols, "geometry": geom, "masses": self.masses.tolist(),
+            qc_mol = {"symbols": self.atom_symbols, "geometry": geom, "masses": self.masses.tolist(),
                            "molecular_multiplicity": self.multiplicity, 
                            #"molecular_charge": self.charge, Should be unnessecary
                            "fix_com": True, "fix_orientation": True}
-
-            return qc_molecule
+            qc_mol = Molecule(**qc_mol)
+            qc_mol = json.loads(json_dumps(qc_mol))
+            return qc_mol
     
 
     def consolidateFragments(self):

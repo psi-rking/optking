@@ -7,7 +7,6 @@ from qcelemental.models import Molecule
 
 from . import hessian
 from . import stepAlgorithms
-from . import caseInsensitiveDict
 from . import optparams as op
 from . import addIntcos
 from . import history
@@ -19,16 +18,12 @@ from . import psi4methods
 from . import IRCdata
 from .exceptions import OptError, AlgError, IRCendReached
 from .linearAlgebra import lowestEigenvectorSymmMat, symmMatRoot, symmMatInv
-from .compute_wrappers import QCEngineComputer
-from .printTools import (printGeomGrad,
-                         printMatString,
-                         printArrayString,
-                         welcome)
+from .printTools import printGeomGrad, printMatString, printArrayString
 
 from .molsys import Molsys
 
 
-def optimize(oMolsys, opt_keys, qc_result_input=None):
+def optimize(oMolsys, computer):
     """ Driver for OptKing's optimization procedure. Suggested that users use optimize_psi4 or optimize_qcengine
         to perform a normal (full) optimization
 
@@ -52,15 +47,6 @@ def optimize(oMolsys, opt_keys, qc_result_input=None):
     """
     logger = logging.getLogger(__name__)
     
-    try :
-        initialize_options(opt_keys) # This instatiates op.Params out options object
-    except OptError as e:
-        o_json = create_qcengine_computer(oMolsys, opt_keys['QM'], qc_result_input)
-        return prepare_opt_output(oMolsys, o_json)  # Quit
-        
-    # Construct Optking's internal qc_schema
-    o_json = create_qcengine_computer(oMolsys, opt_keys['QM'], qc_result_input)
-
     # Take care of some initial variable declarations
     stepNumber = 0 # number of steps taken. Partial. IRC alg uses two step counters
     H = 0 # hessian in internals
@@ -99,14 +85,14 @@ def optimize(oMolsys, opt_keys, qc_result_input=None):
                         logger.info("\tBeginning IRC from the transition state.\n")
                         logger.info("\tStepping along lowest Hessian eigenvector.\n")
 
-                        hess = o_json.compute(oMolsys.geom, driver='hessian', return_full=False, 
+                        hess = computer.compute(oMolsys.geom, driver='hessian', return_full=False,
                                               print_result=True)
                         Hcart = np.asarray(hess).reshape(oMolsys.geom.size,oMolsys.geom.size)  # 3N x 3N
 
                         # TODO see if gradient comes back with the hessian
-                        grad = o_json.compute(oMolsys.geom, driver='gradient', return_full=False)
+                        grad = computer.compute(oMolsys.geom, driver='gradient', return_full=False)
                         gX = np.asarray(grad)
-                        E = o_json.energies[-1]
+                        E = computer.energies[-1]
                         H = intcosMisc.convertHessianToInternals(Hcart, oMolsys.intcos, oMolsys.geom)
                         logger.debug(printMatString(H, title="Transformed Hessian in internal coordinates."))
 
@@ -147,9 +133,9 @@ def optimize(oMolsys, opt_keys, qc_result_input=None):
                     total_steps_taken += 1
                     # compute energy and gradient
                     xyz = oMolsys.geom.copy()
-                    grad = o_json.compute(xyz, driver='gradient', return_full=False)
+                    grad = computer.compute(xyz, driver='gradient', return_full=False)
                     gX = np.asarray(grad)
-                    E = o_json.energies[-1]
+                    E = computer.energies[-1]
                     oMolsys.geom = xyz  # use setter function to save data in fragments
                     printGeomGrad(oMolsys.geom, gX)
 
@@ -172,7 +158,7 @@ def optimize(oMolsys, opt_keys, qc_result_input=None):
 
                     history.oHistory.append(oMolsys.geom, E, f_q)  # Save initial step info.
                     history.oHistory.nuclear_repulsion_energy = \
-                        (o_json.trajectory[-1]['properties']['nuclear_repulsion_energy'])
+                        (computer.trajectory[-1]['properties']['nuclear_repulsion_energy'])
 
                     # Analyze previous step performance; adjust trust radius accordingly.
                     # Returns true on first step (no history)
@@ -206,7 +192,7 @@ def optimize(oMolsys, opt_keys, qc_result_input=None):
                         if stepNumber == 0:
                             if op.Params.full_hess_every > -1:  # compute hessian at least once.
                                 xyz = oMolsys.geom.copy()
-                                Hcart = o_json.compute(xyz, driver='hessian', return_full=False,
+                                Hcart = computer.compute(xyz, driver='hessian', return_full=False,
                                                        print_result=False)
                                 Hcart = np.asarray(Hcart).reshape(oMolsys.geom.size, oMolsys.geom.size)
                                 H = intcosMisc.convertHessianToInternals(Hcart, oMolsys.intcos, xyz)
@@ -219,7 +205,7 @@ def optimize(oMolsys, opt_keys, qc_result_input=None):
                                 history.oHistory.hessianUpdate(H, oMolsys.intcos)
                             elif stepNumber % op.Params.full_hess_every == 0:
                                 xyz = copy.deepcopy(oMolsys.geom)
-                                Hcart = o_json.compute(xyz, driver='hessian', return_full=False,
+                                Hcart = computer.compute(xyz, driver='hessian', return_full=False,
                                                        print_result=False)
                                 Hcart = np.asarray(Hcart).reshape(oMolsys.geom.size, oMolsys.geom.size)
                                 H = intcosMisc.convertHessianToInternals(Hcart, oMolsys.intcos, xyz)
@@ -236,7 +222,7 @@ def optimize(oMolsys, opt_keys, qc_result_input=None):
                                 history.oHistory.hessianUpdate(H, oMolsys.intcos)
                             elif stepNumber % op.Params.full_hess_every == 0:
                                 xyz = copy.deepcopy(oMolsys.geom)
-                                Hcart = o_json.compute(xyz, driver='hessian', return_full=False,
+                                Hcart = computer.compute(xyz, driver='hessian', return_full=False,
                                                        print_result=False)
                                 Hcart = np.asarray(Hcart).reshape(oMolsys.geom.size, oMolsys.geom.size)
                                 H = intcosMisc.convertHessianToInternals(Hcart, oMolsys.intcos, xyz)
@@ -254,10 +240,10 @@ def optimize(oMolsys, opt_keys, qc_result_input=None):
                         DqGuess = IRCdata.history.q_pivot() - IRCdata.history.q()
                         Dq = IRCfollowing.Dq_IRC(oMolsys, E, f_q, H, op.Params.irc_step_size, DqGuess)
                     else:  # Displaces and adds step to history.
-                        Dq = stepAlgorithms.take_step(oMolsys, E, f_q, H, op.Params.step_type, o_json)
+                        Dq = stepAlgorithms.take_step(oMolsys, E, f_q, H, op.Params.step_type, computer)
 
                     if op.Params.opt_type == "IRC":
-                        converged = convCheck.convCheck(stepNumber, oMolsys, Dq, f_q, o_json.energies,
+                        converged = convCheck.convCheck(stepNumber, oMolsys, Dq, f_q, computer.energies,
                                                         IRCdata.history.q_pivot())
                         logger.info("\tConvergence check returned %s." % converged)
 
@@ -268,12 +254,12 @@ def optimize(oMolsys, opt_keys, qc_result_input=None):
                             arcDistStep = IRCfollowing.calcArcDistStep(oMolsys)
 
                             IRCdata.history.add_irc_point(IRCstepNumber, q_irc_point, oMolsys.geom, forces_irc_point,
-                                                          np.multiply(-1, gX), o_json.energies[-1],
+                                                          np.multiply(-1, gX), computer.energies[-1],
                                                           lineDistStep, arcDistStep)
                             IRCdata.history.progress_report()
 
                     else:  # not IRC.
-                        converged = convCheck.convCheck(stepNumber, oMolsys, Dq, f_q, o_json.energies)
+                        converged = convCheck.convCheck(stepNumber, oMolsys, Dq, f_q, computer.energies)
                         logger.info("\tConvergence check returned %s" % converged)
                     
                     if converged:  # changed from elif when above if statement active
@@ -358,9 +344,9 @@ def optimize(oMolsys, opt_keys, qc_result_input=None):
         if op.Params.opt_type == 'linesearch':
             logger.info("\tObtaining gradient at the final geometry for line-search optimization\n")
             # Calculate gradient to show user
-            gX = o_json.compute(oMolsys.geom, driver='gradient', return_full=False)
+            gX = computer.compute(oMolsys.geom, driver='gradient', return_full=False)
             del gX
-        qc_output = prepare_opt_output(oMolsys, o_json, error=None)
+        qc_output = prepare_opt_output(oMolsys, computer, error=None)
 
         del H
         del history.oHistory[:]
@@ -377,7 +363,7 @@ def optimize(oMolsys, opt_keys, qc_result_input=None):
         rxnpath = IRCdata.history.rxnpathDict()
         logger.debug(rxnpath)
 
-        qc_output = prepare_opt_output(oMolsys, o_json, rxnpath=rxnpath, error=None)
+        qc_output = prepare_opt_output(oMolsys, computer, rxnpath=rxnpath, error=None)
 
         # delete some stuff
         del H
@@ -407,12 +393,12 @@ def optimize(oMolsys, opt_keys, qc_result_input=None):
             rxnpath = IRCdata.history.rxnpathDict()
             logger.debug(rxnpath)
 
-        qc_output = prepare_opt_output(oMolsys, o_json, rxnpath=rxnpath, error=error)
+        qc_output = prepare_opt_output(oMolsys, computer, rxnpath=rxnpath, error=error)
 
         del history.oHistory[:]
         oMolsys.clear()
         del op.Params
-        del o_json
+        del computer
 
         return qc_output
 
@@ -429,12 +415,12 @@ def optimize(oMolsys, opt_keys, qc_result_input=None):
                 rxnpath = IRCdata.history.rxnpathDict()
                 logger.debug(rxnpath)
 
-        qc_output = prepare_opt_output(oMolsys, o_json, rxnpath=rxnpath, error=error)
+        qc_output = prepare_opt_output(oMolsys, computer, rxnpath=rxnpath, error=error)
 
         del history.oHistory[:]
         oMolsys.clear()
         del op.Params
-        del o_json
+        del computer
 
         return qc_output
 
@@ -495,14 +481,14 @@ def make_internal_coords(oMolsys):
     return oMolsys
 
 
-def prepare_opt_output(oMolsys, o_json, rxnpath=False, error=None):
+def prepare_opt_output(oMolsys, computer, rxnpath=False, error=None):
     logger = logging.getLogger(__name__)
     logger.debug("Preparing OptimizationResult")
     # Get molecule from most recent step. Add provenance and fill in non-required fills. Turn back to dict
-    final_molecule = Molecule(**oMolsys.molsys_to_qc_molecule()).dict()
+    final_molecule = oMolsys.molsys_to_qc_molecule()
 
-    qc_output = {"schema_name": 'qcschema_optimization_output', "trajectory": o_json.trajectory,
-                 "energies": o_json.energies, "final_molecule": final_molecule,
+    qc_output = {"schema_name": 'qcschema_optimization_output', "trajectory": computer.trajectory,
+                 "energies": computer.energies, "final_molecule": final_molecule,
                  "extras": {}, "success": True,}
 
     if error:
@@ -512,35 +498,4 @@ def prepare_opt_output(oMolsys, o_json, rxnpath=False, error=None):
         qc_output['extras'].update({"irc_rxn_path": rxnpath})
 
     return qc_output
-
-
-def create_qcengine_computer(oMolsys: Molsys, options, qc_result_input):
-    """ Create Optking's internal qc schema
-
-    Parameters
-    ----------
-    oMolsys : object
-    options : dict
-        of form {OPTKING: {}, 'QM': {}}
-    qc_result_input : dict
-    """
-
-    logger = logging.getLogger(__name__)
-
-    molecule = oMolsys.molsys_to_qc_molecule()
-    program = op.Params.program
-
-
-    # Might be getting the options from the qcschema. Could be getting the options as a dictionary input
-    # take options from appropriate source
-    if qc_result_input is None:
-        method = options.pop('method')
-        basis = options.pop('basis')
-        model = {'method': method, 'basis': basis}
-
-    else:
-        model = qc_result_input['model']
-        options = qc_result_input['keywords']
-
-    return QCEngineComputer(molecule, model, options, program)
 

@@ -22,8 +22,8 @@ if __name__ == "__main__":
         packages=setuptools.find_packages(),
         install_requires=[
             'numpy>=1.7',
-            'qcelemental>=0.7.0',
-            'qcengine>=0.9.0',
+            'qcelemental>=0.12.0',
+            'qcengine>=0.12.0',
         ],
         extras_require={
             'docs': [

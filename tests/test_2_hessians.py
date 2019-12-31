@@ -20,14 +20,15 @@ def test_hess_every(every, expected):
         """)
     
     psi4.core.clean_options()
-    psi4options = {
+    psi4_options = {
         'basis': 'cc-pvdz',
         'scf_type': 'pk',
+        'g_convergence': 'gau_verytight',
+        'full_hess_every': every
     }
     
-    psi4.set_module_options('Optking', {'g_convergence': 'gau_verytight', 'full_hess_every': every})
-    
-    json_output = optking.optimize_psi4('hf', psi4options) # Uses default program (psi4)
+    psi4.set_options(psi4_options)
+    json_output = optking.optimize_psi4('hf')  # Uses default program (psi4)
     E = json_output['energies'][-1]
     
     assert psi4.compare_values(expected, E, 8, "Final energy, every step Hessian")  # TEST
@@ -45,14 +46,15 @@ def test_hess_guess(guess, expected):
         """)
 
     psi4.core.clean_options()
-    psi4options = {
+    psi4_options = {
         'basis': 'cc-pvdz',
         'scf_type': 'pk',
+        'g_convergence': 'gau_verytight',
+        'intrafrag_hess': guess
     }
 
-    psi4.set_module_options('Optking', {'g_convergence': 'gau_verytight', 'intrafrag_hess': guess})
-
-    json_output = optking.optimize_psi4('hf', psi4options) # Uses default program (psi4)
+    psi4.set_options(psi4_options)
+    json_output = optking.optimize_psi4('hf') # Uses default program (psi4)
     E = json_output['energies'][-1]
     print(f"Number of steps taken {len(json_output['trajectory'])}")
     assert psi4.compare_values(expected, E, 8, "Final energy, every step Hessian")  # TEST
@@ -69,14 +71,15 @@ def test_hess_update(update, expected):
         """)
 
     psi4.core.clean_options()
-    psi4options = {
+    psi4_options = {
         'basis': 'cc-pvdz',
         'scf_type': 'pk',
+        'g_convergence': 'gau_verytight', 
+        'hess_update': update
     }
 
-    psi4.set_module_options('Optking', {'g_convergence': 'gau_verytight', 'hess_update': update})
-
-    json_output = optking.optimize_psi4('hf', psi4options) # Uses default program (psi4)
+    psi4.set_options(psi4_options)
+    json_output = optking.optimize_psi4('hf') # Uses default program (psi4)
     E = json_output['energies'][-1]
     
     print(f"Number of steps taken {len(json_output['trajectory'])}")
