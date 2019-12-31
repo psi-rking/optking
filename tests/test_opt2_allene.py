@@ -22,14 +22,15 @@ def test_opt2_allene():
 
     psi4.core.clean_options()
    
-    psi4options = {
+    psi4_options = {
       'basis': 'DZ',
       'e_convergence': 10,
       'd_convergence': 10,
       'scf_type': 'pk',
     }
+    psi4.set_options(psi4_options)
 
-    json_output = optking.optimize_psi4('hf', psi4options)
+    json_output = optking.optimize_psi4('hf')
     E = json_output['energies'][-1]
     nucenergy = json_output['trajectory'][-1]['properties']['nuclear_repulsion_energy']
     assert psi4.compare_values(refnucenergy, nucenergy, 2, "Nuclear repulsion energy")    #TEST
@@ -47,7 +48,8 @@ def test_opt2_allene():
      H -0.92  0.00    1.8
     """)
     
-    json_output = optking.optimize_psi4('hf', psi4options)
+    psi4.set_options(psi4_options)
+    json_output = optking.optimize_psi4('hf')
     E = json_output['energies'][-1]
     nucenergy = json_output['trajectory'][-1]['properties']['nuclear_repulsion_energy']
     assert psi4.compare_values(refnucenergy, nucenergy, 2, "Nuclear repulsion energy")    #TEST

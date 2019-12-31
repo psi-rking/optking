@@ -20,7 +20,7 @@ from .linearAlgebra import absMax, symmMatEig, asymmMatEig, symmMatInv, norm
 
 # TODO I'd like to move the displace call and wrap up here. Make this a proper wrapper
 # for the stepAlgorithgms
-def take_step(oMolsys, E, qForces, H, stepType=None, o_json=None):
+def take_step(oMolsys, E, qForces, H, stepType=None, computer=None):
     """ Calls one of the optimization algorithms to take a step
 
     Parameters
@@ -35,8 +35,7 @@ def take_step(oMolsys, E, qForces, H, stepType=None, o_json=None):
         hessian in internal coordinates
     stepType : string, optional
         defaults to stepType in options
-    o_json : dict, optional
-        instance of EngineWrapper (required for line search)
+    computer : computeWrapper, optional
 
     Returns
     -------
@@ -67,7 +66,7 @@ def take_step(oMolsys, E, qForces, H, stepType=None, o_json=None):
     elif stepType == 'P_RFO':
         return Dq_P_RFO(oMolsys, E, qForces, H)
     elif stepType == 'LINESEARCH':
-        return Dq_LINESEARCH(oMolsys, E, qForces, H, o_json)
+        return Dq_LINESEARCH(oMolsys, E, qForces, H, computer)
     else:
         raise OptError('Dq: step type not yet implemented')
 
@@ -769,7 +768,7 @@ def Dq_BACKSTEP(oMolsys):
 
 
 # Take Rational Function Optimization step
-def Dq_LINESEARCH(oMolsys, E, fq, H, o_json):
+def Dq_LINESEARCH(oMolsys, E, fq, H, computer):
     """ performs linesearch in direction of gradient
 
     Parameters
@@ -782,9 +781,7 @@ def Dq_LINESEARCH(oMolsys, E, fq, H, o_json):
         forces in internal coordinates
     H : ndarray
         hessian in internal coordinates
-    o_json : object
-        optking's EngineWrapper
-
+    computer : computeWrapper
     """
 
     logger = logging.getLogger(__name__)
@@ -816,7 +813,7 @@ def Dq_LINESEARCH(oMolsys, E, fq, H, o_json):
             displace(oMolsys._fragments[0].intcos, oMolsys._fragments[0].geom, dq, fq_aJ)
             xyz = oMolsys.geom
             logger.debug("\tComputing energy at this point now.")
-            Eb = o_json.compute(xyz, driver='energy', return_full=False)
+            Eb = computer.compute(xyz, driver='energy', return_full=False)
             
             oMolsys.geom = geomA  # reset geometry to point A
 
@@ -827,7 +824,7 @@ def Dq_LINESEARCH(oMolsys, E, fq, H, o_json):
             displace(oMolsys._fragments[0].intcos, oMolsys._fragments[0].geom, dq, fq_aJ)
             xyz = oMolsys.geom
             logger.debug("\tComputing energy at this point now.")
-            Ec = o_json.compute(xyz, driver='energy', return_full=False)
+            Ec = computer.compute(xyz, driver='energy', return_full=False)
             oMolsys.geom = geomA  # reset geometry to point A
 
         logger.info("\n\tCurrent linesearch bounds.\n")
@@ -863,7 +860,7 @@ def Dq_LINESEARCH(oMolsys, E, fq, H, o_json):
             displace(oMolsys._fragments[0].intcos, oMolsys._fragments[0].geom, dq, fq_aJ)
             xyz = oMolsys.geom
             logger.debug("\tComputing energy at projected point.")
-            Emin = o_json.compute(xyz, driver='energy', return_full=False)
+            Emin = computer.compute(xyz, driver='energy', return_full=False)
             logger.info("\tProjected energy along line: %15.10f" % Emin_projected)
             logger.info("\t   Actual energy along line: %15.10f" % Emin)
 
@@ -917,6 +914,6 @@ def Dq_LINESEARCH(oMolsys, E, fq, H, o_json):
     if linearList:
         raise AlgError("New linear angles", newLinearBends=linearList)
 
-    oHistory.nuclear_repulsion_energy = o_json.trajectory[-1]['properties']['nuclear_repulsion_energy']
+    oHistory.nuclear_repulsion_energy = computer.trajectory[-1]['properties']['nuclear_repulsion_energy']
 
     return dq

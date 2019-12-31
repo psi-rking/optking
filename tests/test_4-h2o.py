@@ -14,16 +14,16 @@ def test_h2o_rfo(option, expected):
     """)
 
     psi4.core.clean_options()    
-    psi4options = {
-      'basis': 'cc-pvtz',
-      'e_convergence': '10',
-      'd_convergence': '10',
-      'scf_type': 'pk',  
+    psi4_options = {
+        'basis': 'cc-pvtz',
+        'e_convergence': '10',
+        'd_convergence': '10',
+        'scf_type': 'pk',
+        'step_type': option 
     }
 
-    psi4.set_module_options('Optking', {'step_type': option})
-    
-    json_output = optking.optimize_psi4('hf', psi4options) # Uses default program (psi4)
+    psi4.set_options(psi4_options)
+    json_output = optking.optimize_psi4('hf') # Uses default program (psi4)
     E = json_output['energies'][-1]
     
     assert psi4.compare_values(finalEnergy, E, 6, f"{option} Step Final Energy")                                #TEST

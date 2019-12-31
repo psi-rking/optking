@@ -29,17 +29,17 @@ def test_hooh_fixed_OH_stre(option, expected):
 
     psi4.core.clean_options()
 
-    psi4options = {
+    psi4_options = {
       'diis': 'false',
       'basis': 'cc-pvdz',
       'g_convergence': 'gau_verytight'
     }
     
-    psi4.set_options(psi4options)
+    psi4.set_options(psi4_options)
     
     psi4.set_module_options('Optking', option)
     
-    json_output = optking.optimize_psi4('hf', psi4options)
+    json_output = optking.optimize_psi4('hf')
     E = json_output['energies'][-1]
     assert psi4.compare_values(expected, E)  # TEST
 

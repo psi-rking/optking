@@ -27,16 +27,16 @@ def test_frozen_coords(option, expected):
 
     psi4.core.clean_options()
    
-    psi4options = {
+    psi4_options = {
       'diis': 'false',
       'basis': 'cc-PVDZ',
       'scf_type': 'pk',
+      'print': 4,
     }
-
-    psi4.set_module_options('OPTKING', {"print": 4})
+    psi4.set_options(psi4_options)
     psi4.set_module_options('OPTKING', option)
     
-    json_output = optking.optimize_psi4('hf', psi4options)
+    json_output = optking.optimize_psi4('hf')
     thisenergy = json_output['energies'][-1]
     
     assert psi4.compare_values(expected, thisenergy, 7)  # TEST

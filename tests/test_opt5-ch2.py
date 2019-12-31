@@ -20,7 +20,7 @@ def test_ch2_with_dummy_atoms():
 
     psi4.core.clean_options() 
 
-    psi4options = {
+    psi4_options = {
       'reference': 'uhf',
       'basis': '6-31G(d,p)',
       'docc': [2, 0, 0, 1],
@@ -29,9 +29,9 @@ def test_ch2_with_dummy_atoms():
     }
 
  
-    psi4.set_options(psi4options)
+    psi4.set_options(psi4_options)
     
-    json_output = optking.optimize_psi4('hf', psi4options)
+    json_output = optking.optimize_psi4('hf')
     thisenergy = json_output['energies'][-1]
     nucenergy = json_output['trajectory'][-1]['properties']['nuclear_repulsion_energy']   
  

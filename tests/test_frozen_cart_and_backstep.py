@@ -66,18 +66,17 @@ def test_hooh_freeze_xyz_Hs(options, expected):
     """)
 
     psi4.core.clean_options()   
-    psi4options = {
-     'basis': 'cc-pvdz',
-    }
-    
-    psi4.set_module_options('Optking', {'opt_coordinates': 'cartesian',
-                                        'g_convergence': 'gau_tight',
-                                        'geom_maxiter': 20,
-                                        'consecutive_backsteps': 1})
-    
-    psi4.set_module_options('Optking', options)
+    psi4_options = {
+        'basis': 'cc-pvdz',
+        'opt_coordinates': 'cartesian',
+        'g_convergence': 'gau_tight',
+        'geom_maxiter': 20,
+        'consecutive_backsteps': 1}
 
-    json_output = optking.optimize_psi4('hf', psi4options)
+    psi4.set_options(psi4_options)
+    psi4.set_module_options("OPTKING", options)
+
+    json_output = optking.optimize_psi4('hf')
     thisenergy = json_output['energies'][-1]
     assert psi4.compare_values(expected, thisenergy, 6)  #TEST
 
