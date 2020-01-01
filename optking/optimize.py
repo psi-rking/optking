@@ -14,7 +14,6 @@ from . import intcosMisc
 from . import convCheck
 from . import testB
 from . import IRCfollowing
-from . import psi4methods
 from . import IRCdata
 from .exceptions import OptError, AlgError, IRCendReached
 from .linearAlgebra import lowestEigenvectorSymmMat, symmMatRoot, symmMatInv
