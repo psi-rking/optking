@@ -1,0 +1,35 @@
+#! Geometry optimization that fails to converge within geom_maxiter steps.  The next-step geometry
+#! is placed in final_molecule, and its energy is tested.
+import optking
+
+molecule h2o {
+   O
+   H 1 1.0
+   H 1 1.0 2 104.5
+}
+
+set {
+   basis cc-pvdz
+   e_convergence 10
+   d_convergence 10
+   scf_type pk
+   g_convergence gau_verytight
+   geom_maxiter 2
+}
+
+result = optking.optimize_psi4('scf')
+compare_integers(0, int(result['success']), 'optking() hit maxiter gracefully')
+
+nextStepSchema   = result['final_molecule']
+nextStepMolecule = Molecule.from_schema( nextStepSchema )
+set_active_molecule( nextStepMolecule ) 
+nextStepEnergy   = energy('scf')
+
+compare_values(-76.0270534, nextStepEnergy, 6, 'Energy of next-step/final molecule')
+
+#         1     -76.021418445931    -76.021418445931      0.05227592      0.04279207      0.10706998      0.08921782  ~
+#         2     -76.026924207554     -0.005505761623      0.00639940      0.00521067      0.03551610      0.02119399  ~
+#         3     -76.027052076499     -0.000127868945      0.00069761      0.00065158      0.00274272      0.00186582  ~
+#         4     -76.027053484650     -0.000001408151      0.00013145      0.00010801      0.00022518      0.00018425  ~
+#         5     -76.027053512590     -0.000000027940      0.00000849      0.00000726      0.00002709      0.00002046  ~
+#         6     -76.027053512764     -0.000000000174      0.00000069      0.00000057      0.00000161      0.00000138  ~

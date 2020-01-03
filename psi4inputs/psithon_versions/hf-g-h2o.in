@@ -1,0 +1,28 @@
+#! SCF STO-3G geometry optimzation, with Z-matrix input
+import optking
+
+#REF_nucenergy =   8.9064890670                                                         
+REF_energy = -74.965901192                                                             
+
+molecule h2o {
+     O
+     H 1 1.0
+     H 1 1.0 2 104.5
+}
+
+set {
+  diis false
+  basis sto-3g
+  e_convergence 10
+  d_convergence 10
+  scf_type pk
+}
+
+#thisenergy = optking.optimize_psi4('scf')
+result = optking.optimize_psi4('scf')
+compare_values(REF_energy, result['energies'][-1], 6, "Reference energy")
+
+#print(result['trajectory'][-1]['properties'])
+#computedNucenergy  = result['trajectory'][-1]['properties']['nuclear_repulsion_energy']
+#compare_values(nucenergy, computedNucenergy, 3, "Nuclear repulsion energy")    #TEST
+
