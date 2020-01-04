@@ -1,0 +1,33 @@
+#! ROHF-CCSD/cc-pVDZ $^{3}B@@1$ CH2 geometry optimization via analytic gradients
+import optking
+
+molecule ch2 {
+  0 3
+  C
+  H 1 1.1
+  H 1 1.1 2 109.0
+}
+
+set {
+  reference rohf
+  basis cc-pvdz
+  max_disp_g_convergence  1e-6
+  max_force_g_convergence 1.0e-6
+  max_energy_g_convergence    7
+  e_convergence 10
+  r_convergence 10
+}
+
+result = optking.optimize_psi4('CCSD')
+
+this_scf     = result['trajectory'][-1]['properties']['scf_total_energy']
+this_ccsd    = result['trajectory'][-1]['properties']['ccsd_correlation_energy']
+this_total   = result['trajectory'][-1]['properties']['return_energy']
+
+REF_scf = -38.921394733562281
+REF_cor =  -0.120484098351036
+REF_tot = -39.041878831913316
+
+compare_values(REF_scf, this_scf,   6, "SCF energy")
+compare_values(REF_cor, this_ccsd,  6, "CCSD contribution")
+compare_values(REF_tot, this_total, 6, "Total energy")
