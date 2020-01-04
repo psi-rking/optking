@@ -1,0 +1,29 @@
+#! SCF DZ allene geometry optimization in Cs symmetry from a non-linear starting point.
+import optking
+
+REF_energy = -115.8302823663
+
+# central C-C-C bond angle starts around 170 degrees to test the dynamic addition
+# of new linear bending coordinates, and the redefinition of dihedrals.
+molecule allene {
+ H  0.0  -0.92   -1.8
+ H  0.0   0.92   -1.8
+ C  0.0   0.00   -1.3
+ C  0.0   0.10    0.0
+ C  0.0   0.00    1.3
+ H  0.92  0.00    1.8
+ H -0.92  0.00    1.8
+}
+
+set {
+  basis DZ
+  e_convergence 10
+  d_convergence 10
+  scf_type pk
+}
+
+result = optking.optimize_psi4('scf')
+thisenergy = result['energies'][-1]
+
+compare_values(REF_energy, thisenergy, 6, "Reference energy")
+

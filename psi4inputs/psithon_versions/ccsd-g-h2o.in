@@ -1,0 +1,26 @@
+#! RHF-CCSD 6-31G** all-electron optimization of the H2O molecule
+import optking
+
+molecule h2o {
+    O
+    H 1 0.97
+    H 1 0.97 2 103.0
+}
+
+set {
+    basis 6-31G**
+}
+
+result = optking.optimize_psi4('ccsd')
+
+this_scf     = result['trajectory'][-1]['properties']['scf_total_energy']
+this_ccsd    = result['trajectory'][-1]['properties']['ccsd_correlation_energy']
+this_total   = result['trajectory'][-1]['properties']['return_energy']
+
+REF_scf   = -76.0229427274435  #TEST
+REF_ccsd  =  -0.20823570806196  #TEST
+REF_total = -76.2311784355056  #TEST
+
+compare_values(REF_scf,   this_scf,   5, "SCF energy")               #TEST
+compare_values(REF_ccsd,  this_ccsd,  5, "CCSD contribution")        #TEST
+compare_values(REF_total, this_total, 5, "Total energy")             #TEST

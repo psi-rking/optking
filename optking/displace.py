@@ -151,16 +151,20 @@ def displace(intcos, geom, dq, fq=None, atom_offset=0, ensure_convergence=False)
         "\n\n\t       --- Internal Coordinate Step in ANG or DEG, aJ/ANG or AJ/DEG ---\n")
     coordinate_change_report += (
         "\t-----------------------------------------------------------------------------\n")
-    coordinate_change_report += (
-        "\t         Coordinate      Previous         Change          New \n")
-    coordinate_change_report += (
-        "\t         ----------      --------        ------        ------\n")
 
     if type(fq) == type(None):
+        coordinate_change_report += (
+            "\t         Coordinate      Previous         Change          New \n")
+        coordinate_change_report += (
+            "\t         ----------      --------        ------        ------\n")
         for i, intco in enumerate(intcos):
             coordinate_change_report += ("\t%19s%14.5f%14.5f%14.5f\n"
                                          % (intco, qShow_orig[i], dqShow[i], qShow_final[i]))
     else:
+        coordinate_change_report += (
+            "\t         Coordinate      Previous         Force          Change          New \n")
+        coordinate_change_report += (
+            "\t         ----------      --------        ------          ------        ------\n")
         for i, intco in enumerate(intcos):
             coordinate_change_report += ("\t%19s%14.5f%14.5f%14.5f%14.5f\n"
                                          % (intco, qShow_orig[i], fq[i], dqShow[i], qShow_final[i]))
