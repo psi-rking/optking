@@ -1,0 +1,55 @@
+#! DC-06 calculation for the O2 molecule (triplet ground state). This performs 
+#! geometry optimization using two-step and simultaneous solution of the 
+#! response equations for the analytic gradient.
+import optking
+
+REF_uhf      = -149.65205193206810
+REF_mp2      = -150.01099865665492
+REF_dctscf  = -149.24779428002528
+REF_dct     = -150.02279378629558
+150.022793786307
+
+molecule O2 {
+0 3
+O
+O 1 R
+R = 1.230
+}
+
+set {
+    r_convergence            10
+    algorithm                twostep
+    response_algorithm       twostep
+    basis                    dzp
+    max_disp_g_convergence   1e-6
+    rms_force_g_convergence  1e-6
+    max_energy_g_convergence 1e-6
+    reference                uhf
+}
+
+set dct_functional dc-06
+result = optking.optimize_psi4('dct')
+
+this_uhf = result['trajectory'][-1]['properties']['scf_total_energy']
+this_mp2 = result['trajectory'][-1]['properties']['mp2_total_energy']
+this_dct = result['energies'][-1]
+
+compare_values(REF_uhf, this_uhf, 6, "UHF Energy");
+compare_values(REF_mp2, this_mp2, 6, "MP2 Energy");
+compare_values(REF_dct, this_dct, 6, "DC-06 Energy (two-step response)");
+#compare_values(REF_dctscf, variable("DCT SCF ENERGY"), 6, "DC-06 SCF Energy (two-step response)");
+
+set response_algorithm simultaneous
+O2.R = 1.232
+
+result = optking.optimize_psi4('dct')
+
+this_uhf = result['trajectory'][-1]['properties']['scf_total_energy']
+this_mp2 = result['trajectory'][-1]['properties']['mp2_total_energy']
+this_dct = result['energies'][-1]
+
+compare_values(REF_uhf, this_uhf, 6, "UHF Energy");
+compare_values(REF_mp2, this_mp2, 6, "MP2 Energy");
+compare_values(REF_dct, this_dct, 6, "DC-06 Energy (simultaneous response)");
+#compare_values(REF_dctscf, variable("DCT SCF ENERGY"), 6, "DC-06 SCF Energy (simultaneous response)");
+

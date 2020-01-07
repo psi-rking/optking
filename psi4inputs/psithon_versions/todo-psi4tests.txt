@@ -1,13 +1,6 @@
 * Input filename here   * Previous directory name in psi4/tests
 TODO: keep adding
-dcft-g-o2               dcft5
-mp2-g-h2o               mp2-1
-hf-g-h2oTrimer-freq     nbody-freq
-scsomp2-g-h2o           omp2-4
-sosomp2-g-h2o           omp2-5
-scsomp3-g-h2o           omp3-4
-sosomp3-g-h2o           omp3-5
-hf-g-h2o-frozenCart     opt-freeze-coords
+
 hf-h-h2o-fullHessEvery  opt-full-hess-every
 ccsd-g-h2o-freqs        cc3
 hf-g-h2o-freq           tu4-h2o-freq
@@ -20,6 +13,7 @@ mp2-g-ch4Dimer-fragsFrozen opt-multi-frozen-dimer-c2h
 hf-g-h2o-freqIsotope1   freq-isotope1
 hf-g-h2o-freqIsotope2   freq-isotope2
 hf-g-several-gibbs      gibbs
+hf-g-h2oTrimer-freq     nbody-freq
 
 TODO: get finite differences of energies working
 hf-e-alleneLinear      opt2-fd

@@ -1,0 +1,27 @@
+#! SOS-OMP3 cc-pVDZ geometry optimization for the H2O molecule.
+import optking
+
+REF_nuc      =  9.11294430202143
+REF_scf      = -76.02611710513384
+REF_sosomp3  = -76.22772062866821 
+
+molecule h2o { 
+0 1
+o
+h 1 0.958
+h 1 0.958 2 104.4776 
+}
+
+set {
+    basis cc-pvdz
+}
+
+result = optking.optimize_psi4('sos-omp3')
+this_nuc      = result['trajectory'][-1]['properties']['nuclear_repulsion_energy']
+this_scf      = result['trajectory'][-1]['properties']['scf_total_energy']
+this_energy   = result['energies'][-1]
+
+compare_values(REF_nuc, this_nuc, 5, "Nuclear Repulsion Energy (a.u.)");
+compare_values(REF_scf, this_scf, 6, "SCF Energy (a.u.)");
+compare_values(REF_sosomp3, this_energy, 6, "SOS-OMP3 Total Energy (a.u.)");
+

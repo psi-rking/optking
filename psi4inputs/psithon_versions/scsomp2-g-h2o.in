@@ -1,0 +1,28 @@
+#! SCS-OMP2 cc-pVDZ geometry optimization for the H2O molecule.
+import optking
+
+REF_nuc      =  9.11180990045111
+REF_scf      = -76.02608509946806
+REF_scsomp2  = -76.22804532525168
+
+molecule h2o { 
+0 1
+o
+h 1 0.958
+h 1 0.958 2 104.4776 
+}
+
+set {
+    basis cc-pvdz
+}
+
+result = optking.optimize_psi4('scs-omp2')
+
+this_nucenergy = result['trajectory'][-1]['properties']['nuclear_repulsion_energy']
+this_scf       = result['trajectory'][-1]['properties']['scf_total_energy']
+this_energy    = result['energies'][-1]
+
+compare_values(REF_nuc, this_nucenergy,  5, "Nuclear Repulsion Energy (a.u.)");
+compare_values(REF_scf, this_scf,        6, "SCF Energy (a.u.)");
+compare_values(REF_scsomp2, this_energy, 6, "SCS-OMP2 Total Energy (a.u.)");
+
