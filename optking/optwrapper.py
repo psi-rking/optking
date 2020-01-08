@@ -16,7 +16,7 @@ from .compute_wrappers import QCEngineComputer, Psi4Computer
 from .printTools import welcome
 from . exceptions import OptError
 
-def optimize_psi4(calc_name, program='psi4'):
+def optimize_psi4(calc_name, program='psi4', dertype=None):
     """
     Wrapper for optimize.optimize() Looks for an active psi4 molecule and optimizes.
     This is the written warning that Optking will try to use psi4 if no program is provided
@@ -51,6 +51,8 @@ def optimize_psi4(calc_name, program='psi4'):
     all_options = psi4.core.get_global_option_list()
     opt_keys = {'program': program}
     qc_keys = {}
+    if dertype is not None:
+        qc_keys['dertype'] = 0
 
     optking_options = module_options['OPTKING']
     for opt, optval in optking_options.items():

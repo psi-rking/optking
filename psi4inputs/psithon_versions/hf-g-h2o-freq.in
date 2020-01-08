@@ -1,0 +1,30 @@
+#! Optimization followed by frequencies H2O HF/cc-pVDZ
+import optking
+
+molecule h2o {
+  O 
+  H 1 0.96
+  H 1 0.96 2 104.5
+}
+
+set basis cc-pVDZ
+result = optking.optimize_psi4('scf')
+
+nextStepSchema   = result['final_molecule']
+nextStepMolecule = Molecule.from_schema( nextStepSchema )
+set_active_molecule( nextStepMolecule )
+
+scf_e, scf_wfn = frequencies('scf', return_wfn=True, dertype=1)
+fd_freqs = scf_wfn.frequencies()
+
+ref_freqs = psi4.Vector(3)
+ref_freqs.set(0, 0, 1776.15)
+ref_freqs.set(0, 1, 4113.69)
+ref_freqs.set(0, 2, 4212.12)
+
+#ref_freqs.set(0, 0, 1775.65)  These were not correct for closer/tight to minimum.
+#ref_freqs.set(0, 1, 4113.38)    The values above came from C++ optimizer with tight convergence.
+#ref_freqs.set(0, 2, 4212.18)
+
+compare_vectors(ref_freqs, fd_freqs, 1, "Reference vs computed frequencies to 0.1 cm^-1")
+
