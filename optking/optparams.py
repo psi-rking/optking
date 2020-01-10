@@ -230,7 +230,7 @@ class OptParams(object):
         #
         # SUBSECTION Backtransformation to Cartesian Coordinates Control
         P.bt_max_iter = uod.get('bt_max_iter', 25)
-        P.bt_dx_conv = uod.get('bt_dx_conv', 1.0e-6)
+        P.bt_dx_conv = uod.get('bt_dx_conv', 1.0e-7)
         P.bt_dx_rms_change_conv = uod.get('bt_dx_rms_change_conv', 1.0e-12)
         #
         # For multi-fragment molecules, treat as single bonded molecule or via interfragment

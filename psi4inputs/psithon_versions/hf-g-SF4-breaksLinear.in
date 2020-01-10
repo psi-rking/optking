@@ -1,0 +1,32 @@
+#! 6-31G(d) optimization of SF4 starting from linear bond angle
+#! that is not linear in the optimized structure but is in a 
+#! symmetry plane of the molecule.
+# Difficult case.  It runs fine for ~7 steps but won't converge
+# until we get a symmetrization of our steps to keep C2v.
+import optking
+SCF_E  = -795.1433964231258
+
+molecule {
+0 1
+ S  0.00000000  0.00000000  0.00000000
+ F  0.03923814 -1.73955752  0.00000000
+ F -1.73955752 -0.03923814  0.00000000
+ F  1.73955752  0.03923814  0.00000000
+ F -0.01961907  0.86977876 -1.50688420
+}
+
+set {
+  scf_type pk
+  basis 6-31G(d)
+  reference rhf
+  geom_maxiter 15
+}
+
+set optking intrafrag_step_limit_max 0.3
+
+result = optking.optimize_psi4('SCF')
+thisenergy = result['energies'][-1]
+print( result['trajectory'][-1]['stdout'] )
+
+compare_values(SCF_E, thisenergy, 5, "6-31G(D) SCF optimization of SF4")
+

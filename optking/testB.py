@@ -24,7 +24,7 @@ def testB(intcos, geom):
 
     if op.Params.print_lvl >= 3:
         logger.debug("Analytic B matrix in au")
-        logger.debug(printMatString)
+        logger.debug(printMatString(B_analytic))
 
     B_fd = np.zeros((Nintco, 3 * Natom), float)
 

@@ -99,7 +99,7 @@ class Bend(Simple):
             return
 
         tv1 = np.array([1, 0, 0], float)  # hope not to create 2 bends that both break
-        tv2 = np.array([0, 1, 1], float)  # a symmetry plane, so 2nd is off-axis
+        tv2 = np.array([0, 0, 1], float)  # a symmetry plane, so 2nd is off-axis
         v3d.normalize(tv2)
 
         u_tv1 = v3d.are_parallel_or_antiparallel(u, tv1)
