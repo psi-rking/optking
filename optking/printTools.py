@@ -4,7 +4,7 @@ import logging
 import qcelemental as qcel
 # from sys import stdout
 
-def printMatString(M, Ncol=7, title="\n"):
+def printMatString(M, Ncol=7, title=None):
     """Formats a Matrix for Logging or Printing
 
     Parameters
@@ -24,7 +24,7 @@ def printMatString(M, Ncol=7, title="\n"):
     #    title = title + "\n"
     #return np.array2string(M, max_line_width=100, precision=6, prefix=title, suffix="\n")
     s = '\t'
-    if title != '\n':
+    if title != None:
         s += title + '\n\t'
     for row in range(M.shape[0]):
         tab = 0
@@ -32,12 +32,13 @@ def printMatString(M, Ncol=7, title="\n"):
             tab += 1
             s += " %10.6f" % M[row, col]
             if tab == Ncol and col != (M.shape[1] - 1):
-                s += '\n'
+                s += '\n\t'
                 tab = 0
         s += '\n\t'
+    s = s[:-1]
     return s
 
-def printArrayString(M, Ncol=7, title="\n"):
+def printArrayString(M, Ncol=7, title=None):
     """Formats Arrays for Logging or Printing
 
     Parameters
@@ -56,9 +57,9 @@ def printArrayString(M, Ncol=7, title="\n"):
     #if title != "\n":
     #    title = title + "\n"
     #return np.array2string(M, max_line_width=100, precision=6, prefix=title, suffix="\n")
-    s = ''
-    if title != '\n':
-        s = title + '\n'
+    s = '\t'
+    if title != None:
+        s += title + '\n\t'
     tab = 0
     for i, entry in enumerate(M):
         tab += 1

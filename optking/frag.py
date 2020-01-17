@@ -31,12 +31,12 @@ class Frag:
             self._intcos = intcos
 
     def __str__(self):
-        s = "\n\tZ (Atomic Numbers)\n\t"
-        s += printArrayString(self._Z)
-        s += "\tGeom\n\t"
-        s += printMatString(self._geom)
-        s += "\tMasses\n\t"
-        s += printArrayString(self._masses)
+        #s = "\n\tZ (Atomic Numbers)\n\t"
+        s = printArrayString(self._Z, title="Z (Atomic Numbers)")
+        #s += "\tGeom\n"
+        s += printMatString(self._geom, title="Geom")
+        #s += "\tMasses\n\t"
+        s += printArrayString(self._masses, title="Masses")
         s += "\t - Coordinate -           - BOHR/RAD -       - ANG/DEG -\n"
         for x in self._intcos:
             s += ("\t%-18s=%17.6f%19.6f\n" % (x, x.q(self._geom), x.qShow(self._geom)))

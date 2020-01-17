@@ -245,13 +245,13 @@ class OptParams(object):
         # P.inter_frag = uod.get('FREEZE_INTERFRAG', False)
         # When interfragment coordinates are present, use as reference points either
         # principal axes or fixed linear combinations of atoms.
-        # P.interfrag_mode = uod.get('INTERFRAG_MODE', 'FIXED')
+        P.interfrag_mode = uod.get('INTERFRAG_MODE', 'FIXED')
         # Do add bond coordinates at nearby atoms for non-bonded systems?
         # P.add_auxiliary_bonds = uod.get('ADD_AUXILIARY_BONDS', True)
         # This factor times standard covalent distance is used to add extra stretch coordinates.
         # P.auxiliary_bond_factor = uod.get('AUXILIARYBOND_FACTOR', 2.5)
         # Do use 1/R for the interfragment stretching coordinate instead of R?
-        # P.interfrag_dist_inv = uod.get('INTERFRAG_DIST_INV', False)
+        P.interfrag_dist_inv = uod.get('INTERFRAG_DIST_INV', False)
         # Model Hessian to guess interfragment force constants
         # P.interfrag_hess = uod.get('INTERFRAG_HESS', 'DEFAULT')
         # When determining connectivity, a bond is assigned if interatomic distance

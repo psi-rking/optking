@@ -39,15 +39,15 @@ def displace(intcos, geom, dq, fq=None, atom_offset=0, ensure_convergence=False)
     Nint = len(intcos)
 
     intcosMisc.updateDihedralOrientations(intcos, geom)
+    intcosMisc.fixBendAxes(intcos, geom)
     geom_orig = np.copy(geom)
     dq_orig = np.copy(dq)
-    intcosMisc.unfixBendAxes(intcos)
     q_orig = intcosMisc.qValues(intcos, geom_orig)
 
     best_geom = np.zeros(geom_orig.shape, float)
 
     # Do your best to backtransform all internal coordinate displacments.
-    logger.info("\tBeginnning displacement in cartesian coordinates...")
+    logger.info("\tBeginning displacement in cartesian coordinates...")
 
     if ensure_convergence:
         conv = False
@@ -101,6 +101,7 @@ def displace(intcos, geom, dq, fq=None, atom_offset=0, ensure_convergence=False)
     if any(intco.frozen for intco in intcos):
 
         # Set dq for unfrozen intcos to zero.
+        intcosMisc.fixBendAxes(intcos, geom)
         dq_adjust_frozen = q_orig - intcosMisc.qValues(intcos, geom)
 
         for i, intco in enumerate(intcos):
@@ -110,7 +111,6 @@ def displace(intcos, geom, dq, fq=None, atom_offset=0, ensure_convergence=False)
         success_of_back_trans = (
                 "\n\tBack-transformation to cartesian coordinates to adjust frozen coordinates: \n")
 
-        intcosMisc.fixBendAxes(intcos, geom)
         check = stepIter(
             intcos,
             geom,
@@ -133,16 +133,18 @@ def displace(intcos, geom, dq, fq=None, atom_offset=0, ensure_convergence=False)
 
     if op.Params.print_lvl >= 1:
         back_trans_report = ("\tReport of back-transformation: (au)\n")
-        back_trans_report += ("\n\t  int       q_target          Error\n")
-        back_trans_report += ("\t-----------------------------------\n")
+        back_trans_report += ("\n\t  int       q_final         q_target          Error\n")
+        back_trans_report += (  "\t---------------------------------------------------\n")
         q_target = q_orig + dq_orig
         for i in range(Nint):
-            back_trans_report += ("\t%5d%15.10lf%15.10lf\n"
-                                  % (i + 1, q_target[i], (q_final - q_target)[i]))
-        back_trans_report += ("\t-----------------------------------\n")
+            back_trans_report += ("\t%5d%15.10lf%15.10f%15.10lf\n"
+                                  % (i + 1, q_final[i], q_target[i], (q_final - q_target)[i]))
+        back_trans_report += ("\t--------------------------------------------------\n")
         logger.debug(back_trans_report)
 
     # Set dq to final, total displacement ACHIEVED
+    intcosMisc.fixBendAxes(intcos, geom)
+    intcosMisc.updateDihedralOrientations(intcos, geom)
     qShow_final = intcosMisc.qShowValues(intcos, geom)
     qShow_orig = intcosMisc.qShowValues(intcos, geom_orig)
     dqShow = qShow_final - qShow_orig
@@ -190,6 +192,13 @@ def stepIter(intcos, geom, dq,
     q_orig = intcosMisc.qValues(intcos, geom)
     q_target = q_orig + dq
 
+    if print_lvl > 2:
+        target_step_str = "Back-transformation in stepIter():\n"
+        target_step_str += "          Original         Target           Dq\n"
+        for i in range(len(dq)):
+            target_step_str += "%15.10f%15.10f%15.10f\n" % (q_orig[i], q_target[i], dq[i])
+        logger.info(target_step_str)
+
     if print_lvl > 1:
         step_iter_str = ("\n\n\t---------------------------------------------------\n")
         step_iter_str += ("\t Iter        RMS(dx)        Max(dx)        RMS(dq) \n")
@@ -204,7 +213,7 @@ def stepIter(intcos, geom, dq,
 
     while bt_iter_continue:
 
-        dq_rms = rms(dq)
+        #dq_rms = rms(dq)
         dx_rms, dx_max = oneStep(intcos, geom, dq, print_lvl > 2)
 
         # Met convergence thresholds
@@ -223,6 +232,7 @@ def stepIter(intcos, geom, dq,
         dq[:] = q_target - new_q
         del new_q
 
+        dq_rms = rms(dq)
         if bt_iter_cnt == 0 or dq_rms < best_dq_rms:  # short circuit evaluation
             best_geom[:] = geom
             best_dq_rms = dq_rms

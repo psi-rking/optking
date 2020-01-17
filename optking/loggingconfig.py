@@ -1,5 +1,4 @@
 import os
-import sys
 
 logging_configuration = {
     "version": 1,
