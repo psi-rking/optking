@@ -32,16 +32,16 @@ def rotateVector(rot_axis, phi, v):
     sin_phi = sin(phi)
     cp = 1.0 - cos_phi
 
-    R = np.ndarray( (3,3) )
-    R[0][0] =       cos_phi + wx * wx * cp;
-    R[0][1] = -wz * sin_phi + wx * wy * cp;
-    R[0][2] =  wy * sin_phi + wx * wz * cp;
-    R[1][0] =  wz * sin_phi + wx * wy * cp;
-    R[1][1] =       cos_phi + wy * wy * cp;
-    R[1][2] = -wx * sin_phi + wy * wz * cp;
-    R[2][0] = -wy * sin_phi + wx * wz * cp;
-    R[2][1] =  wx * sin_phi + wy * wz * cp;
-    R[2][2] =       cos_phi + wz * wz * cp;
+    R = np.ndarray( (3,3),float )
+    R[0,0] =       cos_phi + wx * wx * cp
+    R[0,1] = -wz * sin_phi + wx * wy * cp
+    R[0,2] =  wy * sin_phi + wx * wz * cp
+    R[1,0] =  wz * sin_phi + wx * wy * cp
+    R[1,1] =       cos_phi + wy * wy * cp
+    R[1,2] = -wx * sin_phi + wy * wz * cp
+    R[2,0] = -wy * sin_phi + wx * wz * cp
+    R[2,1] =  wx * sin_phi + wy * wz * cp
+    R[2,2] =       cos_phi + wz * wz * cp
 
     v_new = np.dot(R, v.T)  # vectors came in as rows!
     v[:] = v_new.T
@@ -88,4 +88,13 @@ def zmatPoint(A, B, C, R_CD, theta_BCD, phi_ABCD):
                         eX * sin(theta_BCD) * cos(phi_ABCD) +
                         eY * sin(theta_BCD) * sin(phi_ABCD) )
     return D
+
+#axis  = np.array( [0,0,1],float )
+#v     = np.array( [2,0,0],float )
+#angle = acos(-1)
+#print('v:', v)
+#print('axis:',axis)
+#print('angle: %15.10f' % angle)
+#rotateVector(axis, angle, v)
+#print('v:', v)
 

@@ -31,8 +31,9 @@ class RefPoint(object):
         if len(atoms) != len(coeff):
             raise OptError("Number of atoms and weights for ref. pt. differ")
 
-        # Normalize the weights.
-        norm = sqrt(sum(c*c for c in coeff))
+        # Normalize the weights.  It is assumed that the weights are positive.
+        #norm = sqrt(sum(c*c for c in coeff))
+        norm = sum(c for c in coeff)
         for i in range(len(atoms)):
             self._weights.append( Weight(atoms[i],coeff[i]/norm) )
 
@@ -442,18 +443,19 @@ class Interfrag(object):
             ref_B_final[2][:] = orient.zmatPoint(
                     ref_A[0], ref_B_final[0], ref_B_final[1], R_B2B3, B_angle, phi_B)
       
-        print("ref_B_final target:")
-        print(ref_B_final)
+        #print("ref_B_final target:")
+        #print(ref_B_final)
         # Can use to test if target reference points give correct values.
         #self.set_ref_geom(ref_A, ref_B_final)
         #print(self._pseudo_frag)
+        #quit()
         nBatoms = len(Bgeom_in)
         Bgeom = Bgeom_in.copy()
 
         self.update_reference_geometry(Ageom_in, Bgeom)
         ref_B[0:nBrefs] = self.BRefGeom()
-        print("initial ref_B")
-        print(ref_B)
+        #print("initial ref_B")
+        #print(ref_B)
 
         # 1) Translate B->geom to place B1 in correct location.
         for i in range(nBatoms):
@@ -462,8 +464,8 @@ class Interfrag(object):
         # recompute B reference points
         self.update_reference_geometry(Ageom_in, Bgeom)
         ref_B[0:nBrefs] = self.BRefGeom()
-        print("ref_B after positioning B1:")
-        print(ref_B)
+        #print("ref_B after positioning B1:")
+        #print(ref_B)
       
         # 2) Move fragment B to place reference point B2 in correct location
         if nBrefs>1:
@@ -489,8 +491,8 @@ class Interfrag(object):
                 # recompute current B reference points
                 self.update_reference_geometry(Ageom_in, Bgeom)
                 ref_B[0:nBrefs] = self.BRefGeom()
-                print("ref_B after positioning B2:");
-                print(ref_B)
+                #print("ref_B after positioning B2:");
+                #print(ref_B)
 
         # 3) Move fragment B to place reference point B3 in correct location.
         if nBrefs==3:
@@ -500,7 +502,6 @@ class Interfrag(object):
             # Calculate B3-B1-B2-B3' torsion angle
             B_angle = v3d.tors(ref_B[2], ref_B[0], ref_B[1], ref_B_final[2])
       
-            #oprintf_out("B_angle: %15.10lf\n",B_angle);
             if fabs(B_angle) > 1.0e-10:
       
                 # Move B to put B2 at origin
@@ -515,8 +516,8 @@ class Interfrag(object):
       
                 self.update_reference_geometry(Ageom_in, Bgeom)
                 ref_B[0:nBrefs] = self.BRefGeom()
-                print("ref_B after positioning B3:");
-                print(ref_B)
+                #print("ref_B after positioning B3:");
+                #print(ref_B)
       
         # Check to see if desired reference points were obtained.
         tval = 0.0
@@ -530,10 +531,13 @@ class Interfrag(object):
       
 
 # Construct a water dimer interfragment coordinate
-Xatoms = [[0],  [1],  [2]]
-Xw     = [[1.0],[1.0],[1.0]]
-Yatoms = [[1],  [0],  [2]]
-Yw     = [[1.0],[1.0],[1.0]]
+Xatoms = [[0,    1],[1,     2],[2]]
+Xw     = [[1.0,0.1],[1.0, 0.1],[1.0]]
+Yatoms = [[1,  0],  [0],       [2, 1]]
+Yw     = [[1.0,0.1],[1.0],     [1.0, 0.1]]
+
+#Yatoms = [[1],  [0],  [0,2]]
+#Yw     = [[1.0],[1.0],[1.0,1.0]]
 
 Itest = Interfrag(0, Xatoms, 1, Yatoms, Xw, Yw, "HOH-1", "HOH-2" )
 
@@ -550,14 +554,12 @@ Bxyz /= qcel.constants.bohr2angstroms
 
 Itest.update_reference_geometry(Axyz, Bxyz)
 print(Itest)
-# Starting coordinates
-#q_tar = np.array( [ 3.356432919134464, 2.973807349773256, 2.185812335680237,
-#                   -1.865265973964125, -0.000000000000000, -2.657620919244832] )
+#print(Itest.q())
+
 # Test to displace to these final coordinates. 
-q_tar = np.array( [ 3.36, 2.97, 2.19, -1.87, 0.01, -2.66] )
-
+q_tar = [3.36,2.97,2.19,-1.86,0.01,-2.74]
+#q_tar = np.array( [ 3.36, 2.97, 2.19, -1.87, 0.01, -2.66] )
 Bxyz_new = Itest.orient_fragment(Axyz, Bxyz, q_tar)
-
 Itest.update_reference_geometry(Axyz, Bxyz_new)
 print(Itest)
 
