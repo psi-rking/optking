@@ -207,7 +207,7 @@ def tors(A, B, C, D):
     if phi_123 < phi_lim or phi_123 > up_lim or phi_234 < phi_lim or phi_234 > up_lim:
         #raise AlgError("Tors angle for %d, %d, %d, %d is too large for good "
         #                            + "definition" % (str(A), str(B), str(C), str(D)))
-        raise AlgError("Tors angle is too large for good definition")        
+        raise AlgError("Interior angle is too large for good torsion definition.")        
 
     tmp = cross(EAB, EBC)
     tmp2 = cross(EBC, ECD)

@@ -199,61 +199,61 @@ class Interfrag(object):
             one_tors2 = tors.Tors(0, 1, 2, 3)  # phi_A
             one_tors3 = tors.Tors(2, 3, 4, 5)  # phi_B
         elif nA == 3 and nB == 2:
-            self._D_on[5] = False            # no phi_B
             one_stre  = stre.Stre(2, 3)        # RAB
             one_bend  = bend.Bend(1, 2, 3)     # theta_A
             one_bend2 = bend.Bend(2, 3, 4)     # theta_B
             one_tors  = tors.Tors(1, 2, 3, 4)  # tau
             one_tors2 = tors.Tors(0, 1, 2, 3)  # phi_A
+            self._D_on[5] = False              # NO phi_B
         elif nA == 2 and nB == 3:
-            self._D_on[4] = False            # no phi_A
             one_stre  = stre.Stre(2, 3)        # RAB
             one_bend  = bend.Bend(1, 2, 3)     # theta_A
             one_bend2 = bend.Bend(2, 3, 4)     # theta_B
             one_tors  = tors.Tors(1, 2, 3, 4)  # tau
+            self._D_on[4] = False              # NO phi_A
             one_tors3 = tors.Tors(2, 3, 4, 5)  # phi_B
         elif nA == 3 and nB == 1:
-            self._D_on[2] = False
-            self._D_on[3] = False
-            self._D_on[5] = False            # no theta_B, tau, phi_B
             one_stre  = stre.Stre(2, 3)        # RAB
             one_bend  = bend.Bend(1, 2, 3)     # theta_A
+            self._D_on[2] = False              # NO theta_B
+            self._D_on[3] = False              # NO tau
             one_tors2 = tors.Tors(0, 1, 2, 3)  # phi_A
+            self._D_on[5] = False              # NO phi_B
         elif nA == 1 and nB == 3:
-            self._D_on[1] = False
-            self._D_on[3] = False
-            self._D_on[4] = False            # no theta_A, tau, phi_A
             one_stre  = stre.Stre(2, 3)        # RAB
+            self._D_on[1] = False              # NO theta_A
             one_bend2 = bend.Bend(2, 3, 4)     # theta_B
+            self._D_on[3] = False              # NO tau
+            self._D_on[4] = False              # NO phi_A
             one_tors3 = tors.Tors(2, 3, 4, 5)  # phi_B
         elif nA == 2 and nB == 2:
-            self._D_on[4] = False
-            self._D_on[5] = False            # no phi_A, phi_B
             one_stre  = stre.Stre(2, 3)        # RAB
             one_bend  = bend.Bend(1, 2, 3)     # theta_A
             one_bend2 = bend.Bend(2, 3, 4)     # theta_B
             one_tors  = tors.Tors(1, 2, 3, 4)  # tau
+            self._D_on[4] = False              # NO phi_A
+            self._D_on[5] = False              # NO phi_B
         elif nA == 2 and nB == 1:
-            self._D_on[2] = False
-            self._D_on[4] = False 
-            self._D_on[5] = False            # no theta_B, phi_A, phi_B
             one_stre  = stre.Stre(2, 3)        # RAB
             one_bend  = bend.Bend(1, 2, 3)     # theta_A
-            one_tors  = tors.Tors(1, 2, 3, 4)  # tau
+            self._D_on[2] = False              # NO theta_B
+            self._D_on[3] = False              # NO tau
+            self._D_on[4] = False              # NO phi_A
+            self._D_on[5] = False              # NO phi_B
         elif nA == 1 and nB == 2:
-            self._D_on[1] = False
-            self._D_on[4] = False
-            self._D_on[5] = False  #          no theta_A, phi_A, phi_B
             one_stre  = stre.Stre(2, 3)        # RAB
+            self._D_on[1] = False              # NO phi_A
             one_bend2 = bend.Bend(2, 3, 4)     # theta_B
-            one_tors  = tors.Tors(1, 2, 3, 4)  # tau
+            self._D_on[3] = False              # NO tau
+            self._D_on[4] = False              # NO phi_A
+            self._D_on[5] = False              # NO phi_B
         elif nA == 1 and nB == 1:
+            one_stre  = stre.Stre(2, 3)        # RAB
             self._D_on[1] = False
             self._D_on[2] = False
             self._D_on[3] = False
             self._D_on[4] = False
             self._D_on[5] = False 
-            one_stre  = stre.Stre(2, 3)        # RAB
         else:
             raise OptError("No reference points present")
 
@@ -322,9 +322,10 @@ class Interfrag(object):
                 self._pseudo_frag._geom[3+i][:] += w.weight * Bgeom[w.atom]
         return
 
-    def ARefGeom(self):
+    def ARefGeom(self):  # returns reference atoms in order dA1, dA2, dA3
         x = np.zeros( (self.nArefs,3) )
-        x[:] = self._pseudo_frag._geom[self.nArefs-1::-1]
+        for i in range(self.nArefs):
+           x[i] = self._pseudo_frag._geom[2-i]
         return x
 
     def BRefGeom(self):
@@ -350,7 +351,7 @@ class Interfrag(object):
         return len(self._pseudo_frag._intcos)
 
 
-    def orient_fragment(self, Ageom_in, Bgeom_in, q_target):
+    def orient_fragment(self, Ageom_in, Bgeom_in, q_target, printCoords=False):
         """ orient_fragment() moves the geometry of fragment B so that the
             interfragment coordinates have the given values
  
@@ -370,7 +371,9 @@ class Interfrag(object):
             raise OptError("Unexpected number of target interfragment coordinates")
         dq_target = q_target - q_orig
 
-        # Assign and identify needed variables.
+        # These values are arbitrary; used to determine ref. point locations
+        # below only if a fragment doesn't have 3 of them.
+        R_AB, theta_A, theta_B, tau, phi_A, phi_B = 1.0, 0.8, 0.8, 0.8, 0.8, 0.8
         cnt = 0
         active_lbls = self.activeLabels()
         if self._D_on[0]:
@@ -392,26 +395,27 @@ class Interfrag(object):
             phi_B   = q_target[cnt]
             cnt += 1
     
-        print("\t---Interfragment coordinates between fragments %s and %s" % (self._A_lbl, self._B_lbl))
-        print("\t---Internal Coordinate Step in ANG or DEG, aJ/ANG or AJ/DEG ---")
-        print("\t ----------------------------------------------------------------------")
-        print("\t Coordinate             Previous     Change       Target")
-        print("\t ----------             --------      -----       ------")
-
-        for i in range(self.Ncoord):
-            c = self._pseudo_frag._intcos[i].qShowFactor # for printing to Angstroms/degrees
-            print("\t%-20s%12.5f%13.5f%13.5f" %
-                  (active_lbls[i], c * q_orig[i], c * dq_target[i], c * q_target[i]))
-        
-        print("\t ----------------------------------------------------------------------")
+        if printCoords:
+            print("\t---Interfragment coordinates between fragments %s and %s" % (self._A_lbl, self._B_lbl))
+            print("\t---Internal Coordinate Step in ANG or DEG, aJ/ANG or AJ/DEG ---")
+            print("\t ----------------------------------------------------------------------")
+            print("\t Coordinate             Previous     Change       Target")
+            print("\t ----------             --------      -----       ------")
+    
+            for i in range(self.Ncoord):
+                c = self._pseudo_frag._intcos[i].qShowFactor # for printing to Angstroms/degrees
+                print("\t%-20s%12.5f%13.5f%13.5f" %
+                      (active_lbls[i], c * q_orig[i], c * dq_target[i], c * q_target[i]))
+            
+            print("\t ----------------------------------------------------------------------")
       
         # From here on, for simplicity we include 3 reference atom rows, even if we don't
         # have 3 reference atoms.  So, stick SOMETHING non-linear/non-0 in for
         #  non-specified reference atoms so zmat function works.
         ref_A = np.zeros( (3,3) )
         ref_A[0:nArefs] = self.ARefGeom()
-        print("ref_A:")
-        print(ref_A)
+        #print("ref_A:")
+        #print(ref_A)
       
         if nArefs < 3:  # pad ref_A with arbitrary entries
             for xyz in range(3):
@@ -520,46 +524,103 @@ class Interfrag(object):
                 #print(ref_B)
       
         # Check to see if desired reference points were obtained.
+        #print("last ref_B:");
+        #print(ref_B)
         tval = 0.0
         for i in range(nBrefs):
             tval += np.dot(ref_B[i] - ref_B_final[i], ref_B[i] - ref_B_final[i])
         tval = sqrt(tval)
-        print("\tDifference from target, |x_target - x_achieved| = %.2e\n" % tval)
+        #print("orient_fragment: |x_target - x_achieved| = %.2e" % tval)
   
         return Bgeom
     # end def orient_fragment()
-      
 
-# Construct a water dimer interfragment coordinate
-Xatoms = [[0,    1],[1,     2],[2]]
-Xw     = [[1.0,0.1],[1.0, 0.1],[1.0]]
-Yatoms = [[1,  0],  [0],       [2, 1]]
-Yw     = [[1.0,0.1],[1.0],     [1.0, 0.1]]
+# Test the orient_fragment function to see if pre-determined target
+# coordinate values can be met.  Technically, this only tests consistency
+# within the class, i.e., whether computed values of the interfragment
+# coordinates match the target ones.  The point of this function is also
+# to ensure the code is robust for fragments with fewer than 3 reference atoms
+# (such as atoms, diatomics, linear molecules).
+#  - Chooses random geometries.
+#  - Chooses 1,2,or 3 random atoms to define reference points.
+#  Does not test a linear polyatomic.  Appears to fail at present only when
+# interior angles of torsions are too large or small (here by luck).
+def test_orient(NA, NB, printInfo=False) :
+    from random import random,shuffle,choice,sample
+    NAref = min(NA,3)
+    NBref = min(NB,3)
+    Albl = "A-%d-atoms" % NA
+    Blbl = "B-%d-atoms" % NB
 
-#Yatoms = [[1],  [0],  [0,2]]
-#Yw     = [[1.0],[1.0],[1.0,1.0]]
+    atom_list = list(range(NA))
+    Aatoms = []
+    Aweights = []
+    n = 0
+    while n < NAref:
+        ref_length = min(NAref, choice([1,2,3])) # of atoms used to define ref. pt.
+        l = sample(atom_list, ref_length)  # select random atoms in A
+        l.sort()
+        if l in Aatoms:
+            continue
+        n += 1
+        Aatoms.append(l)
+        Aweights.append( ref_length*[1.0] )
+    if printInfo: print(Aatoms)
+    if printInfo: print(Aweights)
 
-Itest = Interfrag(0, Xatoms, 1, Yatoms, Xw, Yw, "HOH-1", "HOH-2" )
+    atom_list = list(range(NB))
+    Batoms = []
+    Bweights = []
+    n = 0
+    while n < NBref:
+        ref_length = min(NBref, choice([1,2,3]))
+        l = sample(atom_list, ref_length)
+        l.sort()
+        if l in Batoms:
+            continue
+        n += 1
+        Batoms.append(l)
+        Bweights.append( ref_length*[1.0])
+    if printInfo: print(Batoms)
+    if printInfo: print(Bweights)
 
+    Itest = Interfrag(0, Aatoms, 1, Batoms, Aweights, Bweights, Albl, Blbl)
 
-Axyz = np.array( [[  0.282040,    -0.582562,    -1.151084],
-                  [  0.354794,    -0.619936,    -0.171523],
-                  [ -0.461895,    -0.173714,     0.096910]] )
+    Axyz = np.zeros( (NA,3) )
+    for i in range(NA): # insert random geometries
+        Axyz[i][:] = 5.0+3.0*random(), 3.0*random(), 3.0*random()
+    Bxyz = np.zeros( (NB,3) )
+    for i in range(NB):
+        Bxyz[i][:] = 3.0*random(), 3.0*random(), 3.0*random()
+    Itest.update_reference_geometry(Axyz, Bxyz)
+    #print(Itest)
+    q_tar = Itest.Ncoord*[0.8]
+    Bxyz_new = Itest.orient_fragment(Axyz, Bxyz, q_tar)
+    Itest.update_reference_geometry(Axyz, Bxyz_new)
+    print('Error in positioning dimer (%s/%s): %8.3e' %
+         ( Albl, Blbl, sqrt(sum(((q_tar - Itest.q())**2)))))
 
-Bxyz = np.array( [[ -0.398071,    -1.083028,    -3.470849],
-                  [ -0.107030,    -0.374364,    -2.871543],
-                  [  0.330163,     0.251712,    -3.474012]] )
-Axyz /= qcel.constants.bohr2angstroms
-Bxyz /= qcel.constants.bohr2angstroms
+# Will test_orient function
+#for i in range(1,4):
+#    for j in range(1,4):
+#        test_orient(i,j)
 
-Itest.update_reference_geometry(Axyz, Bxyz)
-print(Itest)
-#print(Itest.q())
+## Test to see if orient function will work for fragments of various size.
+## Example of how to use for water dimer
+#Xatoms = [[0,    1],[1,     2],[2]]
+#Xw     = [[1.0,0.1],[1.0, 0.1],[1.0]]
+#Yatoms = [[1,  0],  [0],       [2, 1]]
+#Yw     = [[1.0,0.1],[1.0],     [1.0, 0.1]]
+#Itest = Interfrag(0, Xatoms, 1, Yatoms, Xw, Yw, "HOH-1", "HOH-2" )
+#Axyz = np.array( [[ 0.53297836, -1.10088263, -2.17523351],
+#                  [ 0.67046349, -1.17150926, -0.32413149],
+#                  [-0.87285505, -0.32827188,  0.18313336]] )
+#Bxyz = np.array( [[-0.75224517, -2.04662631, -6.55895403],
+#                  [-0.20225739, -0.70744543, -5.42642983],
+#                  [ 0.62391765,  0.47566674, -6.56493124]] )
+#q_tar = [3.36,2.97,2.19,-1.86,0.01,-2.74]
+#Bxyz_new = Itest.orient_fragment(Axyz, Bxyz, q_tar)
+#Itest.update_reference_geometry(Axyz, Bxyz_new)
+#print('Error in positioning water dimer: %8.3e'%sqrt(sum(((q_tar - Itest.q())**2))))
 
-# Test to displace to these final coordinates. 
-q_tar = [3.36,2.97,2.19,-1.86,0.01,-2.74]
-#q_tar = np.array( [ 3.36, 2.97, 2.19, -1.87, 0.01, -2.66] )
-Bxyz_new = Itest.orient_fragment(Axyz, Bxyz, q_tar)
-Itest.update_reference_geometry(Axyz, Bxyz_new)
-print(Itest)
 
