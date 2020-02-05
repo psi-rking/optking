@@ -51,7 +51,7 @@ class RefPoint(object):
         return s
 
 
-class Interfrag(object):
+class DimerFrag(object):
     """ Set of (up to 6) coordinates between two distinct fragments.
     The fragments 'A' and 'B' have up to 3 reference atoms each (dA[3] and dB[3]).
     The reference atoms are defined in one of two ways:
@@ -105,10 +105,12 @@ class Interfrag(object):
         name for fragment B
     The arguments are potentially confusing, so we'll do a lot of checking.
     """
-    def __init__(self, A_frag_idx, A_atoms, B_frag_idx, B_atoms, A_weights=None, B_weights=None, \
+    def __init__(self, A_idx, A_atoms, B_idx, B_atoms, A_weights=None, B_weights=None, \
                  A_lbl="A", B_lbl="B"):
         self._A_lbl = A_lbl
         self._B_lbl = B_lbl
+        self._A_idx = A_idx
+        self._B_idx = B_idx
 
         if type(A_atoms) != list:
             print(type(A_atoms))
@@ -125,7 +127,7 @@ class Interfrag(object):
 
         if A_weights == None:
             A_weights = []
-            for i in len(range(A_atoms)):
+            for i in range(len(A_atoms)):
                 A_weights.append( len(A_atoms[i]) * [1.0] )
         else:
             if type(A_weights) == list:
@@ -139,7 +141,7 @@ class Interfrag(object):
 
         if B_weights == None:
             B_weights = []
-            for i in len(range(A_atoms)):
+            for i in range(len(B_atoms)):
                 B_weights.append( len(B_atoms[i]) * [1.0] )
         else:
             if type(B_weights) == list:
@@ -174,7 +176,7 @@ class Interfrag(object):
 
         # Construct a pseudofragment that contains the (up to) 6 reference atoms
         Z = 6 * [1]        # not used, except maybe Hessian guess ?
-        ref_geom = np.zeros((6, 3), float) # some rows may be unused
+        ref_geom = np.zeros((6, 3)) # some rows may be unused
         masses = 6 * [0.0] # not used
         self._pseudo_frag = frag.Frag(Z, ref_geom, masses)
 
@@ -296,6 +298,14 @@ class Interfrag(object):
     def nBrefs(self):
         return len(self._Brefs)
 
+    @property
+    def A_idx(self):
+        return self._A_idx
+
+    @property
+    def B_idx(self): 
+        return self._B_idx
+
     def D_on(self, i):
         return self._D_on[i]
 
@@ -308,10 +318,10 @@ class Interfrag(object):
         return
 
     def q(self):
-        return np.array( [i.q(self._pseudo_frag._geom) for i in self._pseudo_frag.intcos] )
+        return [i.q(self._pseudo_frag._geom) for i in self._pseudo_frag.intcos]
 
     def qShow(self):
-        return np.array( [i.qShow(self._pseudo_frag._geom) for i in self._pseudo_frag.intcos] )
+        return [i.qShow(self._pseudo_frag._geom) for i in self._pseudo_frag.intcos]
 
     def update_reference_geometry(self, Ageom, Bgeom):
         self._pseudo_frag._geom[:] = 0.0
@@ -351,7 +361,7 @@ class Interfrag(object):
         return lbls
 
     @property
-    def Ncoord(self):
+    def Nintcos(self):
         return len(self._pseudo_frag._intcos)
 
 
@@ -400,13 +410,13 @@ class Interfrag(object):
             cnt += 1
     
         if printCoords:
-            print("\t---Interfragment coordinates between fragments %s and %s" % (self._A_lbl, self._B_lbl))
+            print("\t---DimerFrag coordinates between fragments %s and %s" % (self._A_lbl, self._B_lbl))
             print("\t---Internal Coordinate Step in ANG or DEG, aJ/ANG or AJ/DEG ---")
             print("\t ----------------------------------------------------------------------")
             print("\t Coordinate             Previous     Change       Target")
             print("\t ----------             --------      -----       ------")
     
-            for i in range(self.Ncoord):
+            for i in range(self.Nintcos):
                 c = self._pseudo_frag._intcos[i].qShowFactor # for printing to Angstroms/degrees
                 print("\t%-20s%12.5f%13.5f%13.5f" %
                       (active_lbls[i], c * q_orig[i], c * dq_target[i], c * q_target[i]))
@@ -540,7 +550,7 @@ class Interfrag(object):
     # end def orient_fragment()
 
 
-    def compute_B(self, A_geom, B_geom, Bmat_in, A_off=None, B_off=None):
+    def compute_B(self, A_geom, B_geom, Bmat_in, A_xyz_off=None, B_xyz_off=None):
         """ This function adds interfragment rows into an existing B matrix.
             B is (internals, Cartesians).  Often, 6 x 3*(Natoms).
         Parameters
@@ -554,31 +564,42 @@ class Interfrag(object):
         intco_off : int
             index of first row of Bmatrix to start writing the interfragment rows.
         A_off : int
-            index of the first atom in A among all the atoms in the columns of Bmatrix.
+            Column of B matrix at which the cartesian coordinates of atoms in fragment A begin.
+            Needed since columns may span full molecular system.
         B_off : int
-            index of the first atom in B among all the atoms in the columns of Bmatrix.
+            Column of B matrix at which the cartesian coordinates of atoms in fragment B begin.
+        If A_off and B_off are not given, then the minimal (dimer-only) B-matrix is returned.
         """
+        print('compute_B:')
+        print('A_geom:')
+        print(A_geom)
+        print('B_geom:')
+        print(B_geom)
+        print('Bmat in:')
+        print(Bmat_in)
+        print("A_xyz_off: %d" % A_xyz_off)
+        print("B_xyz_off: %d" % B_xyz_off)
+        print(Bmat_in)
     
         NatomA = len(A_geom)
         NatomB = len(B_geom)
         Ncart = 3*(NatomA+NatomB)
 
-        if A_off == None:
-            A_off = 0
-        if B_off == None:
-            B_off = NatomA
-
-        A_xyz_off = 3*A_off
-        B_xyz_off = 3*B_off
+        if A_xyz_off == None:
+            A_xyz_off = 0
+        if B_xyz_off == None:
+            B_xyz_off = 3*NatomA
 
         self.update_reference_geometry(A_geom, B_geom);
        
         # Compute B-matrix for reference points
-        B_ref = np.zeros( (self.Ncoord, Ncart))
+        # Since the numbering of the atoms in the dimer coordinates (e.g. R(3,4)
+        # is canonical, the reference-point B matrix always has 6*3=18 columns.
+        B_ref = np.zeros( (self.Nintcos, 18) )
         for i, intco in enumerate(self._pseudo_frag._intcos):
             intco.DqDx( self.getRefGeom(), B_ref[i])
-        #print("B_ref")
-        #print(B_ref)
+        print("Reference point B matrix:")
+        print(B_ref)
 
         ## B_ref is derivative of interfragment D wrt reference point position
         cnt = 0
@@ -660,13 +681,13 @@ class Interfrag(object):
         MAX_ERROR = 1.0e-8
         NA = len(Axyz)
         Natoms = NA+len(Bxyz)
-        B_analytic = np.zeros( (self.Ncoord, 3*Natoms) )
+        B_analytic = np.zeros( (self.Nintcos, 3*Natoms) )
         Itest.compute_B(Axyz, Bxyz, B_analytic)
         if printInfo:
             print("Final B matrix")
             print(Bmat_in)
                 
-        B_fd = np.zeros((self.Ncoord, 3*Natoms))
+        B_fd = np.zeros((self.Nintcos, 3*Natoms))
         coord = np.concatenate( (Axyz,Bxyz) ).copy()
         #intcosMisc.updateDihedralOrientations(self._pseudo_frag._intcos, coord)
         #intcosMisc.fixBendAxes(self._pseudo_frag._intcos, coord)
@@ -686,7 +707,7 @@ class Interfrag(object):
                 self.update_reference_geometry(coord[:NA], coord[NA:])
                 q_p2 = Itest.q()
                 coord[atom, xyz] -= 2 * DISP_SIZE  # restore to original
-                for i in range(self.Ncoord):
+                for i in range(self.Nintcos):
                     B_fd[i, 3 * atom + xyz] = (
                         q_m2[i] - 8 * q_m[i] + 8 * q_p[i] - q_p2[i]) / (12.0 * DISP_SIZE)
         
@@ -696,7 +717,7 @@ class Interfrag(object):
 
         max_error = -1.0
         max_error_intco = -1
-        for i in range(self.Ncoord):
+        for i in range(self.Nintcos):
             for j in range(3*Natoms):
                 if fabs(B_analytic[i, j] - B_fd[i, j]) > max_error:
                     max_error = fabs(B_analytic[i][j] - B_fd[i][j])
@@ -766,7 +787,7 @@ def test_orient(NA, NB, printInfo=False) :
     if printInfo: print(Batoms)
     if printInfo: print(Bweights)
 
-    Itest = Interfrag(0, Aatoms, 1, Batoms, Aweights, Bweights, Albl, Blbl)
+    Itest = DimerFrag(0, Aatoms, 1, Batoms, Aweights, Bweights, Albl, Blbl)
 
     Axyz = np.zeros( (NA,3) )
     for i in range(NA): # insert random geometries
@@ -776,7 +797,7 @@ def test_orient(NA, NB, printInfo=False) :
         Bxyz[i][:] = 3.0*random(), 3.0*random(), 3.0*random()
     Itest.update_reference_geometry(Axyz, Bxyz)
     #print(Itest)
-    q_tar = Itest.Ncoord*[0.8]
+    q_tar = Itest.Nintcos*[0.8]
     Bxyz_new = Itest.orient_fragment(Axyz, Bxyz, q_tar)
     Itest.update_reference_geometry(Axyz, Bxyz_new)
     print('Error in positioning dimer (%s/%s): %8.3e' %
@@ -786,28 +807,25 @@ def test_orient(NA, NB, printInfo=False) :
 # for i in range(1,4):
 #    for j in range(1,4):
 #        test_orient(i,j)
-
-
-# Example of how to use for water dimer
-Xatoms = [[0,    1],[1,     2],[2]]
-Xw     = [[1.0,0.1],[1.0, 0.1],[1.0]]
-Yatoms = [[1,  0],  [0],       [2, 1]]
-Yw     = [[1.0,0.1],[1.0],     [1.0, 0.1]]
-Itest = Interfrag(0, Xatoms, 1, Yatoms, Xw, Yw, "HOH-1", "HOH-2" )
-Axyz = np.array( [[ 0.53297836, -1.10088263, -2.17523351],
-                  [ 0.67046349, -1.17150926, -0.32413149],
-                  [-0.87285505, -0.32827188,  0.18313336]] )
-Bxyz = np.array( [[-0.75224517, -2.04662631, -6.55895403],
-                  [-0.20225739, -0.70744543, -5.42642983],
-                  [ 0.62391765,  0.47566674, -6.56493124]] )
-
-# Displace to target coordinates
-q_tar = [3.36,2.97,2.19,-1.66,0.01,-2.74]
-Bxyz_new = Itest.orient_fragment(Axyz, Bxyz, q_tar)
-Itest.update_reference_geometry(Axyz, Bxyz_new)
-print(Itest)
-q = Itest.q()
-print('Error in positioning water dimer: %8.3e'%sqrt(sum((q_tar - q)**2)))
-Itest.test_B(Axyz,Bxyz_new)
-
-
+## Example of how to use for water dimer
+#Xatoms = [[0,    1],[1,     2],[2]]
+#Xw     = [[1.0,0.1],[1.0, 0.1],[1.0]]
+#Yatoms = [[1,  0],  [0],       [2, 1]]
+#Yw     = [[1.0,0.1],[1.0],     [1.0, 0.1]]
+#Itest = DimerFrag(0, Xatoms, 1, Yatoms, Xw, Yw, "HOH-1", "HOH-2" )
+#Axyz = np.array( [[ 0.53297836, -1.10088263, -2.17523351],
+#                  [ 0.67046349, -1.17150926, -0.32413149],
+#                  [-0.87285505, -0.32827188,  0.18313336]], float )
+#Bxyz = np.array( [[-0.75224517, -2.04662631, -6.55895403],
+#                  [-0.20225739, -0.70744543, -5.42642983],
+#                  [ 0.62391765,  0.47566674, -6.56493124]], float )
+#
+## Displace to target coordinates
+#q_tar = [3.36,2.97,2.19,-1.66,0.01,-2.74]
+#Bxyz_new = Itest.orient_fragment(Axyz, Bxyz, q_tar)
+#Itest.update_reference_geometry(Axyz, Bxyz_new)
+#print(Itest)
+#q = Itest.q()
+#print('Error in positioning water dimer: %8.3e'%sqrt(sum((q_tar - q)**2)))
+#Itest.test_B(Axyz,Bxyz_new)
+#

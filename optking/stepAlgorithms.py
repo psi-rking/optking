@@ -10,7 +10,7 @@ from .exceptions import AlgError, OptError
 from . import optparams as op
 from . import optimize
 from .history import oHistory
-from .displace import displace
+from .displace import displaceMolsys
 from .intcosMisc import qShowForces
 from .addIntcos import linearBendCheck
 from .misc import isDqSymmetric
@@ -27,7 +27,7 @@ def take_step(oMolsys, E, qForces, H, stepType=None, computer=None):
     ----------
     oMolsys : object
         optking's molecular system
-    E : float
+    E : double
         energy [aO]
     qForces : ndarray
         forces in internal coordinates [aO]
@@ -50,7 +50,7 @@ def take_step(oMolsys, E, qForces, H, stepType=None, computer=None):
 
     """
     if len(H) == 0 or len(qForces) == 0:
-        return np.zeros((0), float)
+        return np.zeros((0))
 
     if not stepType:
         stepType = op.Params.step_type
@@ -102,7 +102,7 @@ def Dq_NR(oMolsys, E, fq, H):
     ----------
     oMolsys : object
         optking molecular system
-    E : float
+    E : double
         energy
     fq : ndarray
         forces in internal coordiantes
@@ -144,7 +144,7 @@ def Dq_NR(oMolsys, E, fq, H):
                 % DEprojected)
 
     # Scale fq into aJ for printing
-    fq_aJ = qShowForces(oMolsys.intcos, fq)
+    fq_aJ = qShowForces(oMolsys, fq)
     displace(oMolsys._fragments[0].intcos, oMolsys._fragments[0].geom, dq, fq_aJ)
     dq_actual = sqrt(np.dot(dq, dq))
     logger.info("\tNorm of achieved step-size %15.10f" % dq_actual)
@@ -156,7 +156,7 @@ def Dq_NR(oMolsys, E, fq, H):
     oHistory.appendRecord(DEprojected, dq, nr_u, nr_g, nr_h)
 
     # Can check full geometry, but returned indices will correspond then to that.
-    linearList = linearBendCheck(oMolsys.intcos, oMolsys.geom, dq)
+    linearList = linearBendCheck(oMolsys, dq)
     if linearList:
         raise AlgError("New linear angles", newLinearBends=linearList)
 
@@ -171,7 +171,7 @@ def Dq_RFO(oMolsys, E, fq, H):
     ----------
     oMolsys : object
         optking molecular system
-    E : float
+    E : double
         energy
     fq : ndarray
         forces in internal coordinates
@@ -183,7 +183,7 @@ def Dq_RFO(oMolsys, E, fq, H):
     logger = logging.getLogger(__name__)
     logger.info("\tTaking RFO optimization step.")
     dim = len(fq)
-    dq = np.zeros((dim), float)  # To be determined and returned.
+    dq = np.zeros((dim))  # To be determined and returned.
     trust = op.Params.intrafrag_trust  # maximum step size
     max_projected_rfo_iter = 25  # max. # of iterations to try to converge RS-RFO
     rfo_follow_root = op.Params.rfo_follow_root  # whether to follow root
@@ -193,7 +193,7 @@ def Dq_RFO(oMolsys, E, fq, H):
     Hevals, Hevects = symmMatEig(H)
 
     # Build the original, unscaled RFO matrix.
-    RFOmat = np.zeros((dim + 1, dim + 1), float)
+    RFOmat = np.zeros((dim + 1, dim + 1))
     for i in range(dim):
         for j in range(dim):
             RFOmat[i, j] = H[i, j]
@@ -204,12 +204,12 @@ def Dq_RFO(oMolsys, E, fq, H):
                      printMatString(RFOmat))
 
     symm_rfo_step = False
-    SRFOmat = np.zeros((dim + 1, dim + 1), float)  # For scaled RFO matrix.
+    SRFOmat = np.zeros((dim + 1, dim + 1))  # For scaled RFO matrix.
     converged = False
     dqtdq = 10  # square of norm of step
     alpha = 1.0  # scaling factor for RS-RFO, scaling matrix is sI
 
-    last_iter_evect = np.zeros((dim), float)
+    last_iter_evect = np.zeros((dim))
     if rfo_follow_root and len(oHistory.steps) > 1:
         last_iter_evect[:] = oHistory.steps[
             -2].followedUnitVector  # RFO vector from previous geometry step
@@ -282,7 +282,7 @@ def Dq_RFO(oMolsys, E, fq, H):
                     # Check symmetry of root.
                     dq[:] = SRFOevects[i, 0:dim]
                     if not op.Params.accept_symmetry_breaking:
-                        symm_rfo_step = isDqSymmetric(oMolsys.intcos, oMolsys.geom, dq)
+                        symm_rfo_step = isDqSymmetric(oMolsys, dq)
 
                         if not symm_rfo_step:  # Root is assymmetric so reject it.
                             logger.warning("\tRejecting RFO root %d because it breaks \
@@ -413,13 +413,9 @@ def Dq_RFO(oMolsys, E, fq, H):
         logger.info('\tRFO hessian = %15.10f' % rfo_h)
     logger.info("\tProjected energy change by RFO approximation %15.5f\n" % DEprojected)
 
-    # Scale fq into aJ for printing
-    fq_aJ = qShowForces(oMolsys.intcos, fq)
+    fq_aJ = qShowForces(oMolsys, fq)
 
-    # TODO multi fragment treatment for dq and fq
-    # this won't work for multiple fragments yet until dq and fq get cut up.
-    for F in oMolsys._fragments:
-        displace(F.intcos, F.geom, dq, fq_aJ)
+    displaceMolsys(oMolsys, dq, fq_aJ)
     # For now, saving RFO unit vector and using it in projection to match C++ code,
     # could use actual Dq instead.
     dqnorm_actual = sqrt(np.dot(dq, dq))
@@ -441,7 +437,7 @@ def Dq_RFO(oMolsys, E, fq, H):
     # printxopt("\tSymmetrizing new geometry\n")
     # geom = symmetrizeXYZ(geom)
     oHistory.appendRecord(DEprojected, dq, rfo_u, rfo_g, rfo_h)
-    linearList = linearBendCheck(oMolsys.intcos, oMolsys.geom, dq)
+    linearList = linearBendCheck(oMolsys, dq)
     if linearList:
         raise AlgError("New linear angles", newLinearBends=linearList)
 
@@ -472,7 +468,7 @@ def Dq_P_RFO(oMolsys, E, fq, H):
         logger.info("\tEigenvectors of Hessian (rows)\n" + printMatString(hEigVectors))
 
     # Construct diagonalized Hessian with evals on diagonal
-    HDiag = np.zeros((Hdim, Hdim), float)
+    HDiag = np.zeros((Hdim, Hdim))
     for i in range(Hdim):
         HDiag[i, i] = hEigValues[i]
 
@@ -505,7 +501,7 @@ def Dq_P_RFO(oMolsys, E, fq, H):
     logger.info("\tInternal forces in au, in Hevect basis:\n\n\t"
                 + printArrayString(fqTransformed))
     # Build RFO max
-    maximizeRFO = np.zeros((mu + 1, mu + 1), float)
+    maximizeRFO = np.zeros((mu + 1, mu + 1))
     for i in range(mu):
         maximizeRFO[i, i] = hEigValues[i]
         maximizeRFO[i, -1] = -fqTransformed[i]
@@ -514,7 +510,7 @@ def Dq_P_RFO(oMolsys, E, fq, H):
         logger.info("\tRFO max\n" + printMatString(maximizeRFO))
 
     # Build RFO min
-    minimizeRFO = np.zeros((Hdim - mu + 1, Hdim - mu + 1), float)
+    minimizeRFO = np.zeros((Hdim - mu + 1, Hdim - mu + 1))
     for i in range(0, Hdim - mu):
         minimizeRFO[i, i] = HDiag[i + mu, i + mu]
         minimizeRFO[i, -1] = -fqTransformed[i + mu]
@@ -558,7 +554,7 @@ def Dq_P_RFO(oMolsys, E, fq, H):
     logger.debug("\tVector N\n\n\t" + printArrayString(VectorN))
 
     # Combines the eignvectors from RFO max and min
-    PRFOEVector = np.zeros(Hdim, float)
+    PRFOEVector = np.zeros(Hdim)
     PRFOEVector[0:len(VectorP)] = VectorP
     PRFOEVector[len(VectorP):] = VectorN
 
@@ -603,7 +599,7 @@ def Dq_P_RFO(oMolsys, E, fq, H):
 
     oHistory.appendRecord(DEprojected, dq, rfo_u, rfo_g, rfo_h)
 
-    linearList = linearBendCheck(oMolsys.intcos, oMolsys.geom, dq)
+    linearList = linearBendCheck(oMolsys, dq)
     if linearList:
         raise AlgError("New linear angles", newLinearBends=linearList)
 
@@ -623,7 +619,7 @@ def Dq_SD(oMolsys, E, fq):
     ----------
     oMolsys : object
         optking molecular system
-    E : float
+    E : double
         energy
     fq : ndarray
         forces in internal coordinates
@@ -679,7 +675,7 @@ def Dq_SD(oMolsys, E, fq):
 
     oHistory.appendRecord(DEprojected, dq, sd_u, sd_g, sd_h)
 
-    linearList = linearBendCheck(oMolsys.intcos, oMolsys.geom, dq)
+    linearList = linearBendCheck(oMolsys, dq)
     if linearList:
         raise AlgError("New linear angles", newLinearBends=linearList)
 
@@ -760,7 +756,7 @@ def Dq_BACKSTEP(oMolsys):
     oHistory.steps[-1].projectedDE = DEprojected
     oHistory.steps[-1].Dq[:] = dq
 
-    linearList = linearBendCheck(oMolsys.intcos, oMolsys.geom, dq)
+    linearList = linearBendCheck(oMolsys, dq)
     if linearList:
         raise AlgError("New linear angles", newLinearBends=linearList)
 
@@ -775,7 +771,7 @@ def Dq_LINESEARCH(oMolsys, E, fq, H, computer):
     ----------
     oMolsys : object
         optking molecular system
-    E : float
+    E : double
         energy
     fq : ndarray
         forces in internal coordinates
@@ -839,12 +835,12 @@ def Dq_LINESEARCH(oMolsys, E, fq, H, computer):
             Sb = s
             Sc = stepScale * s
 
-            A = np.zeros((2, 2), float)
+            A = np.zeros((2, 2))
             A[0, 0] = Sc * Sc - Sb * Sb
             A[0, 1] = Sc - Sb
             A[1, 0] = Sb * Sb - Sa * Sa
             A[1, 1] = Sb - Sa
-            B = np.zeros((2), float)
+            B = np.zeros((2))
             B[0] = Ec - Eb
             B[1] = Eb - Ea
             x = np.linalg.solve(A, B)
@@ -910,7 +906,7 @@ def Dq_LINESEARCH(oMolsys, E, fq, H, computer):
     oHistory.appendRecord(DEprojected, dq, ls_u, ls_g, ls_h)
 
     # Can check full geometry, but returned indices will correspond then to that.
-    linearList = linearBendCheck(oMolsys.intcos, oMolsys.geom, dq)
+    linearList = linearBendCheck(oMolsys, dq)
     if linearList:
         raise AlgError("New linear angles", newLinearBends=linearList)
 

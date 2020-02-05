@@ -6,7 +6,7 @@ from . import optparams as op
 from . import intcosMisc
 from . import stepAlgorithms
 from . import IRCdata
-from .displace import displace
+from .displace import displaceMolsys
 from .history import oHistory
 from .linearAlgebra import symmMatEig, symmMatInv, symmMatRoot
 from .printTools import printArrayString, printMatString
@@ -45,7 +45,10 @@ def computePivotAndGuessPoints(oMolsys, v, IRCstepSize):
     logger.debug("\n Dq to Pivot Point:" + printArrayString(dq_pivot))
 
     x_pivot = oMolsys.geom # starting geom but becomes pivot point on next line
-    displace(oMolsys.intcos, x_pivot, dq_pivot, ensure_convergence=True)
+
+    #displace(oMolsys.intcos, x_pivot, dq_pivot, ensure_convergence=True)
+    displaceMolsys(oMolsys, dq_pivot, ensure_convergence=True)
+
     q_pivot = intcosMisc.qValues(oMolsys.intcos, x_pivot)
     IRCdata.history.add_pivot_point(q_pivot, x_pivot)
 
@@ -53,7 +56,8 @@ def computePivotAndGuessPoints(oMolsys, v, IRCstepSize):
     logger.info("Computing Dq to First Guess Point")
     logger.debug(printArrayString(dq_pivot))
     x_guess = x_pivot.copy()
-    displace(oMolsys.intcos, x_guess, dq_pivot, ensure_convergence=True)
+    #displace(oMolsys.intcos, x_guess, dq_pivot, ensure_convergence=True)
+    displaceMolsys(oMolsys, dq_pivot, ensure_convergence=True)
     oMolsys.geom = x_guess
 
 
@@ -197,7 +201,8 @@ def Dq_IRC(oMolsys, E, f_q, H_q, s, dqGuess):
     dq = np.dot(G_prime_root, deltaQM)
     logger.info("dq to next geometry\n" + printArrayString(dq))
     # TODO write geometry for multiple fragments
-    displace(oMolsys.intcos, oMolsys._fragments[0].geom, dq)
+    #displace(oMolsys.intcos, oMolsys._fragments[0].geom, dq)
+    displaceMolsys(oMolsys, dq)
 
     # Complete history entry of step.
     # Compute gradient and hessian in step direction

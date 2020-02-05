@@ -20,7 +20,7 @@ class Stre(Simple):
         atom 2 (zero indexing)
     frozen : boolean, optional
         set stretch as frozen
-    fixedEqVal : float
+    fixedEqVal : double
         value to fix stretch at
     inverse : boolean
         identifies 1/R coordinate
@@ -133,7 +133,7 @@ class Stre(Simple):
         else:  # using 1/R
             val = self.q(geom)
 
-            dqdx = np.zeros((3 * len(self.atoms)), float)
+            dqdx = np.zeros((3 * len(self.atoms)) )
             self.DqDx(geom, dqdx, mini=True)  # returned matrix is 1x6 for stre
 
             for a in range(a):

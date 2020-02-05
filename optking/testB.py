@@ -26,7 +26,7 @@ def testB(intcos, geom):
         logger.debug("Analytic B matrix in au")
         logger.debug(printMatString(B_analytic))
 
-    B_fd = np.zeros((Nintco, 3 * Natom), float)
+    B_fd = np.zeros((Nintco, 3 * Natom) )
 
     intcosMisc.updateDihedralOrientations(intcos, geom)
     intcosMisc.fixBendAxes(intcos, geom)
@@ -88,8 +88,8 @@ def testDerivativeB(intcos, geom_in):
     DISP_SIZE = 0.01
     MAX_ERROR = 10 * DISP_SIZE * DISP_SIZE * DISP_SIZE * DISP_SIZE
 
-    dq2dx2_fd = np.zeros((3 * Natom, 3 * Natom), float)
-    dq2dx2_analytic = np.zeros((3 * Natom, 3 * Natom), float)
+    dq2dx2_fd = np.zeros((3 * Natom, 3 * Natom))
+    dq2dx2_analytic = np.zeros((3 * Natom, 3 * Natom))
     coord = np.copy(geom_in)
 
     logger.info("\n\tTesting Derivative B-matrix numerically...")

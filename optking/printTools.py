@@ -84,6 +84,9 @@ def printGeomGrad(geom, grad):
                                                         grad[3 * i + 2]))
     logger.info(geometry_str)
     logger.info(gradient_str)
+    print('printGeomGrad:')
+    print(geometry_str)
+    print(gradient_str)
 
 def printGeomString(symbols, geom, unit=None):
     if unit == "Angstrom" or unit == "Angstroms":

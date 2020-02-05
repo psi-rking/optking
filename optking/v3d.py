@@ -51,7 +51,7 @@ def normalize(v1, Rmin=1.0e-8, Rmax=1.0e15):
 
 
 #def axpy(a, X, Y):
-#    Z = np.zeros(Y.shape, float)
+#    Z = np.zeros(Y.shape)
 #    Z = a * X + Y
 #    return Z
 
@@ -66,7 +66,7 @@ def eAB(p1, p2):
 
 # Compute and return cross-product.
 def cross(u, v):
-    # X = np.zeros(3, float)
+    # X = np.zeros(3)
     X = np.cross(u, v)
     # X[0] = u[1] * v[2] - u[2] * v[1]
     # X[1] = -u[0] * v[2] + u[2] * v[0]
@@ -117,7 +117,7 @@ def angle(A, B, C, tol=1.0e-14):
 
     Returns
     -------
-    float
+    double
         angle in radians
     """
     logger = logging.getLogger(__name__)
@@ -149,7 +149,7 @@ def _calc_angle(vec_1, vec_2, tol=1.0e-14):
         first vector of an angle
     vec_2 : ndarray
         second vector on an angle
-    tol : float
+    tol : double
         nearness of cos to 1/-1 to set angle 0/pi.
     """
 

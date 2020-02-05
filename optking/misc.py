@@ -13,7 +13,7 @@ def delta(i, j):
         return 0
 
 
-def isDqSymmetric(intcos, geom, Dq):
+def isDqSymmetric(oMolsys, Dq):
     logger = logging.getLogger(__name__)
     # TODO add symmetry check
     logger.debug('\tTODO add isDqSymmetric\n')

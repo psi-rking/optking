@@ -91,7 +91,7 @@ def asymmMatEig(mat):
 def symmMatInv(A, redundant=False, redundant_eval_tol=1.0e-10):
     dim = A.shape[0]
     if dim == 0:
-        return np.zeros((0, 0), float)
+        return np.zeros((0, 0))
     det = 1.0
 
     try:
@@ -108,7 +108,7 @@ def symmMatInv(A, redundant=False, redundant_eval_tol=1.0e-10):
             "symmMatrixInv: non-generalized inverse failed; very small determinant")
         # could be LinAlgError?
 
-    diagInv = np.zeros((dim, dim), float)
+    diagInv = np.zeros((dim, dim))
 
     if redundant:
         for i in range(dim):
@@ -136,7 +136,7 @@ def symmMatRoot(A, Inverse=None):
     evals[ np.abs(evals) < 5*np.finfo(np.float).resolution ] = 0.0
     evects[ np.abs(evects) < 5*np.finfo(np.float).resolution ] = 0.0
 
-    rootMatrix = np.zeros((len(evals), len(evals)), float)
+    rootMatrix = np.zeros((len(evals), len(evals)))
     if Inverse:
         for i in range(0, len(evals)):
             evals[i] = 1 / evals[i]

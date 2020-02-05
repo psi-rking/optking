@@ -14,7 +14,7 @@ from math import fabs
 
 from . import optparams as op
 from .linearAlgebra import absMax, rms, symmMatRoot
-from .intcosMisc import Gmat, Bmat, qValues
+from .intcosMisc import Gmat
 from .printTools import printArrayString, printMatString
 
 # Check convergence criteria and print status to output file.
@@ -25,8 +25,13 @@ from .printTools import printArrayString, printMatString
 def convCheck(iterNum, oMolsys, dq, f, energies, q_pivot=None):
     logger = logging.getLogger(__name__)
     logger.info("Performing convergence check.")
-    Nintco = len(oMolsys.intcos)
-    has_fixed = any([ints.fixedEqVal for ints in oMolsys.intcos])
+    has_fixed = False
+    for F in oMolsys._fragments:
+        if any([ints.fixedEqVal for ints in F.intcos]):
+            has_fixed = True
+    for DI in oMolsys._dimer_intcos:
+        if any([ints.fixedEqVal for ints in DI._pseudo_frag._intcos]):
+            has_fixed = True
     energy = energies[-1]
     last_energy = energies[-2] if len(energies) > 1 else 0.0
 
@@ -44,7 +49,7 @@ def convCheck(iterNum, oMolsys, dq, f, energies, q_pivot=None):
                 f[i] = 0
 
     if op.Params.opt_type == 'IRC':
-        G_m = Gmat(oMolsys.intcos, oMolsys.geom, oMolsys.masses)
+        G_m = Gmat(oMolsys, oMolsys.masses)
         G_m_inv = np.linalg.inv(G_m)
         q = qValues(oMolsys.intcos, oMolsys.geom)
         logger.info("Projecting out forces parallel to reaction path.")
@@ -58,7 +63,7 @@ def convCheck(iterNum, oMolsys, dq, f, energies, q_pivot=None):
         # Gradient perpendicular to p and tangent to hypersphere is:
         # g_m' = g_m - (g_m^t p_m / (p_m^t p_m) p_m, or
         # g'   = g   - (g^t p / (p^t G^-1 p)) G^-1 p
-        # Ginv_p = np.array(Nintco, float)
+        # Ginv_p = np.array(oMolsys.Nintco, float)
         G_m_inv_p = np.dot(G_m_inv, p)
         f[:] = np.subtract(f, np.multiply(np.dot(f, p)/np.dot(p, G_m_inv_p), G_m_inv_p)) 
         logger.debug("\nForces perpendicular to hypersphere.\n"+ printArrayString(f))

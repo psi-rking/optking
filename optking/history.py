@@ -188,31 +188,33 @@ class History(object):
         return
 
     # Use History to update Hessian
-    def hessianUpdate(self, H, intcos):
+    def hessianUpdate(self, H, oMolsys):
         logger = logging.getLogger(__name__)
         if op.Params.hess_update == 'NONE' or len(self.steps) < 2:
             return
 
         logger.info("\tPerforming %s update." % op.Params.hess_update)
-        Nintco = len(intcos)  # working dimension
+        Nintco = oMolsys.Nintcos # working dimension
+        orig_save_geom = oMolsys.geom
 
-        f = np.zeros(Nintco, float)
-        # x = np.zeros(self.steps[-1].geom.shape,float)
-        q = np.zeros(Nintco, float)
+        f = np.zeros(Nintco)
+        # x = np.zeros(self.steps[-1].geom.shape)
+        q = np.zeros(Nintco)
 
         currentStep = self.steps[-1]
         f[:] = currentStep.forces
         # x[:] = currentStep.geom
         x = currentStep.geom
-        q[:] = intcosMisc.qValues(intcos, x)
+        oMolsys.geom = x
+        q[:] = oMolsys.qArray()
 
         # Fix configuration of torsions and out-of-plane angles,
         # so that Dq's are reasonable
-        intcosMisc.updateDihedralOrientations(intcos, x)
+        oMolsys.updateDihedralOrientations()
 
-        dq = np.zeros(Nintco, float)
-        dg = np.zeros(Nintco, float)
-        q_old = np.zeros(Nintco, float)
+        dq = np.zeros(Nintco)
+        dg = np.zeros(Nintco)
+        q_old = np.zeros(Nintco)
 
         # Don't go further back than the last Hessian calculation
         numToUse = min(op.Params.hess_update_use_last,
@@ -227,7 +229,8 @@ class History(object):
             oldStep = self.steps[iStep]
             f_old = oldStep.forces
             x_old = oldStep.geom
-            q_old[:] = intcosMisc.qValues(intcos, x_old)
+            oMolsys.geom = x_old
+            q_old[:] = oMolsys.qArray()
             dq[:] = q - q_old
             dg[:] = f_old - f  # gradients -- not forces!
             gq = np.dot(dq, dg)
@@ -258,13 +261,14 @@ class History(object):
 
         logger.info(hessian_steps)
 
-        H_new = np.zeros(H.shape, float)
+        H_new = np.zeros(H.shape)
         for i_step in use_steps:
             oldStep = self.steps[i_step]
 
             f_old = oldStep.forces
             x_old = oldStep.geom
-            q_old[:] = intcosMisc.qValues(intcos, x_old)
+            oMolsys.geom = x_old
+            q_old[:] = oMolsys.qArray()
             dq[:] = q - q_old
             dg[:] = f_old - f  # gradients -- not forces!
             gq = np.dot(dq, dg)
@@ -349,8 +353,9 @@ class History(object):
 
         if op.Params.print_lvl >= 2:
             logger.info("\tUpdated Hessian (in au) \n %s" % printMatString(H))
-        return
 
+        oMolsys.geom = orig_save_geom
+        return
 
 def summaryString():
     output_string = """\n\t==> Optimization Summary <==\n

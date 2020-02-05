@@ -42,8 +42,8 @@ class Bend(Simple):
 
         self.bendType = bendType
         self._axes_fixed = False
-        self._x = np.zeros(3, float)
-        self._w = np.zeros(3, float)
+        self._x = np.zeros(3)
+        self._w = np.zeros(3)
 
         Simple.__init__(self, atoms, frozen, fixedEqVal)
 
@@ -146,7 +146,7 @@ class Bend(Simple):
         v = v3d.eAB(geom[self.B], geom[self.C])  # B->C
 
         # linear bend is sum of 2 angles, u.x + v.x
-        origin = np.zeros(3, float)
+        origin = np.zeros(3)
         try:
             phi = v3d.angle(u, origin, self._x)
         except AlgError as error:
@@ -228,7 +228,7 @@ class Bend(Simple):
         wXv = v3d.cross(self._w, v)
 
         # packed, or mini dqdx where columns run only over 3 atoms
-        dqdx = np.zeros(9, float)
+        dqdx = np.zeros(9)
         for a in range(3):
             dqdx[3*a: 3*a+3] = Bend.zeta(a, 0, 1) * uXw[0:3]/Lu + \
                                 Bend.zeta(a, 2, 1) * wXv[0:3]/Lv

@@ -131,6 +131,7 @@ def optimize_qcengine(opt_input):
 
 
 def make_computer(opt_input: dict, computer_type='qc'): 
+    print("make_computer")
 
     program = op.Params.program
     # This gets updated so it shouldn't be a reference

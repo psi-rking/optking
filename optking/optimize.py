@@ -44,6 +44,8 @@ def optimize(oMolsys, computer):
         energy and nuclear repulsion energy or MolSSI qc_schema_output as dict
 
     """
+    print("optimize(oMolsys,computer)")
+    print(oMolsys)
     logger = logging.getLogger(__name__)
     
     # Take care of some initial variable declarations
@@ -64,16 +66,20 @@ def optimize(oMolsys, computer):
 
         converged = False
         total_steps_taken = -1
-        oMolsys = make_internal_coords(oMolsys)
+        #oMolsys = make_internal_coords(oMolsys)
+        if not oMolsys.intcos_present:
+            make_internal_coords(oMolsys)
 
         # following loop may repeat over multiple algorithms OR over IRC points
         while not converged:
             try:
                 # if optimization coordinates are absent, choose them. Could be erased after AlgError
-                if oMolsys.intcos is None:
-                    oMolsys = make_internal_coords(oMolsys)
+                if not oMolsys.intcos_present:
+                    make_internal_coords(oMolsys)
+                    #oMolsys = make_internal_coords(oMolsys)
 
                 logger.info("\tStarting optimization algorithm.\n")
+                print('Starting optimization algorithm')
                 logger.info(str(oMolsys))
 
                 # Do special initial step-0 for each IRC point.
@@ -119,6 +125,7 @@ def optimize(oMolsys, computer):
 
                         if op.Params.irc_direction == 'BACKWARD':
                             v *= -1
+                    # end if IRCStepNumber == 0
 
                     else:  # Step along gradient.
                         logger.info("\tBeginning search for next IRC point.\n")
@@ -126,6 +133,7 @@ def optimize(oMolsys, computer):
                         v = IRCdata.history.f_q()
 
                     IRCfollowing.computePivotAndGuessPoints(oMolsys, v, op.Params.irc_step_size)
+                #end if 'IRC'
 
                 for stepNumber in range(op.Params.alg_geom_maxiter):
                     logger.info("\tBeginning algorithm loop, step number %d" % stepNumber)
@@ -143,10 +151,10 @@ def optimize(oMolsys, computer):
                     if op.Params.test_derivative_B:
                         testB.testDerivativeB(oMolsys.intcos, oMolsys.geom)
 
-                    B = intcosMisc.Bmat(oMolsys.intcos, oMolsys.geom)
+                    B = intcosMisc.Bmat(oMolsys)
                     logger.debug(printMatString(B, title="B matrix"))
 
-                    f_q = intcosMisc.qForces(oMolsys.intcos, oMolsys.geom, gX)
+                    f_q = intcosMisc.qForces(oMolsys, gX)
                     # Check if forces indicate we are approaching minimum.
                     if op.Params.opt_type == "IRC" and IRCstepNumber > 2:
                         if IRCdata.history.testForIRCminimum(f_q):
@@ -196,12 +204,10 @@ def optimize(oMolsys, computer):
                                 Hcart = np.asarray(Hcart).reshape(oMolsys.geom.size, oMolsys.geom.size)
                                 H = intcosMisc.convertHessianToInternals(Hcart, oMolsys.intcos, xyz)
                             else:
-                                C = addIntcos.connectivityFromDistances(oMolsys.geom, oMolsys.Z)
-                                H = hessian.guess(oMolsys.intcos, oMolsys.geom, oMolsys.Z, C,
-                                                  op.Params.intrafrag_hess)
+                                H = hessian.guess(oMolsys, op.Params.intrafrag_hess)
                         else:  # not IRC, not first step
                             if op.Params.full_hess_every < 1:
-                                history.oHistory.hessianUpdate(H, oMolsys.intcos)
+                                history.oHistory.hessianUpdate(H, oMolsys)
                             elif stepNumber % op.Params.full_hess_every == 0:
                                 xyz = copy.deepcopy(oMolsys.geom)
                                 Hcart = computer.compute(xyz, driver='hessian', return_full=False,
@@ -209,16 +215,16 @@ def optimize(oMolsys, computer):
                                 Hcart = np.asarray(Hcart).reshape(oMolsys.geom.size, oMolsys.geom.size)
                                 H = intcosMisc.convertHessianToInternals(Hcart, oMolsys.intcos, xyz)
                             else:
-                                history.oHistory.hessianUpdate(H, oMolsys.intcos)
+                                history.oHistory.hessianUpdate(H, oMolsys)
                     else:  # IRC
                         if stepNumber == 0:
                             if IRCstepNumber == 0:
                                 pass  # Initial H chosen in pre-optimization.
                             # else:   # update with one preserved point from previous rxnpath pt..
-                                # history.oHistory.hessianUpdate(H, oMolsys.intcos)
+                                # history.oHistory.hessianUpdate(H, oMolsys)
                         else:  # IRC, not first step
                             if op.Params.full_hess_every < 1:
-                                history.oHistory.hessianUpdate(H, oMolsys.intcos)
+                                history.oHistory.hessianUpdate(H, oMolsys)
                             elif stepNumber % op.Params.full_hess_every == 0:
                                 xyz = copy.deepcopy(oMolsys.geom)
                                 Hcart = computer.compute(xyz, driver='hessian', return_full=False,
@@ -226,14 +232,14 @@ def optimize(oMolsys, computer):
                                 Hcart = np.asarray(Hcart).reshape(oMolsys.geom.size, oMolsys.geom.size)
                                 H = intcosMisc.convertHessianToInternals(Hcart, oMolsys.intcos, xyz)
                             else:
-                                history.oHistory.hessianUpdate(H, oMolsys.intcos)
+                                history.oHistory.hessianUpdate(H, oMolsys)
 
                     if op.Params.print_lvl >= 4:
                         hessian.show(H, oMolsys.intcos)
 
                     intcosMisc.applyFixedForces(oMolsys, f_q, H, stepNumber)
-                    intcosMisc.projectRedundanciesAndConstraints(oMolsys.intcos, oMolsys.geom, f_q, H)
-                    intcosMisc.qShowValues(oMolsys.intcos, oMolsys.geom)
+                    intcosMisc.projectRedundanciesAndConstraints(oMolsys, f_q, H)
+                    oMolsys.qShow()
 
                     if op.Params.opt_type == 'IRC':
                         DqGuess = IRCdata.history.q_pivot() - IRCdata.history.q()
@@ -441,12 +447,9 @@ def initialize_options(opt_keys):
 
 def make_internal_coords(oMolsys):
     """
-    Called if internal coordinates have not been added or have been removed
-    Creates a connectivity matrix - standard adjacency matrix from Graph theory using covalent radii
-    If there are multiple fragments - currently treated in single fragment approach by joining the two
-    fragments at their closest point
-
-    Adds internal coordinates to the molecular system
+    Add optimization coordinates to molecule system.
+    May be called if coordinates have not been added yet, or have been removed due to an
+    algorithm error (bend going linear, or energy increasing, etc.).
 
     Parameters
     ----------
@@ -457,27 +460,42 @@ def make_internal_coords(oMolsys):
     -------
     oMolsys: Molsys
         The molecular system updated with internal coordinates.
-        Meant to replace the molecular system that was passed in
+        TODO: why not just add them to existing one?
     """
     optimize_log = logging.getLogger(__name__)
     optimize_log.debug("\t Adding internal coordinates to molecular system")
 
+    # Use covalent radii to determine bond connectivity.
     connectivity = addIntcos.connectivityFromDistances(oMolsys.geom, oMolsys.Z)
     optimize_log.debug("Connectivity Matrix\n" + printMatString(connectivity))
+
     if op.Params.frag_mode == 'SINGLE':
-        oMolsys.splitFragmentsByConnectivity()
-        connectivity = addIntcos.connectivityFromDistances(oMolsys.geom, oMolsys.Z)
+        # Make a single, supermolecule.
+        oMolsys.consolidateFragments()          # collapse into one frag (if > 1)
+        oMolsys.splitFragmentsByConnectivity()  # separate by connectivity
+        # increase connectivity until all atoms are connected
         oMolsys.augmentConnectivityToSingleFragment(connectivity)
-        oMolsys.consolidateFragments()
+        oMolsys.consolidateFragments()          # collapse into one frag
     elif op.Params.frag_mode == 'MULTI':
-        oMolsys.splitFragmentsByConnectivity()  # does nothing if already split
+        # if provided multiple frags, then we use these.
+        # if not, then split them (if not connected).
+        if oMolsys.Nfragments == 1:
+            oMolsys.splitFragmentsByConnectivity()
+        if oMolsys.Nfragments > 1:
+            print('Nfragments > 1')
+            addIntcos.addDimerFragIntcos(oMolsys)
+        if oMolsys.Nfragments > 1:
+            oMolsys.purgeInterfragmentConnectivity(connectivity)
+
     if op.Params.opt_coordinates in ['REDUNDANT', 'BOTH']:
         oMolsys.addIntcosFromConnectivity(connectivity)
+
     if op.Params.opt_coordinates in ['CARTESIAN', 'BOTH']:
         oMolsys.addCartesianIntcos()
     addIntcos.addFrozenAndFixedIntcos(oMolsys)  # make sure these are in the set
-    oMolsys.printIntcos()
-    return oMolsys
+    print('end of make_internal_coords:')
+    print(oMolsys)
+    return
 
 
 def prepare_opt_output(oMolsys, computer, rxnpath=False, error=None):

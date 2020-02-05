@@ -1,8 +1,9 @@
 import logging
 
-# import numpy as np
+import numpy as np
 import qcelemental as qcel
 
+from . import bend, tors, oofp
 from . import addIntcos
 from .printTools import printArrayString, printMatString
 
@@ -32,6 +33,7 @@ class Frag:
 
     def __str__(self):
         #s = "\n\tZ (Atomic Numbers)\n\t"
+        #print('num of self._intcos: %d' % len(self._intcos))
         s = printArrayString(self._Z, title="Z (Atomic Numbers)")
         #s += "\tGeom\n"
         s += printMatString(self._geom, title="Geom")
@@ -46,7 +48,7 @@ class Frag:
 #    @classmethod
 #    def fromPsi4Molecule(cls, mol):
 #        mol.update_geometry()
-#        geom = np.array(mol.geometry())
+#        geom = np.array(mol.geometry(),float)
 #        Natom = mol.natom()
 #
 #        #Z = np.zeros( Natom, int)
@@ -54,7 +56,7 @@ class Frag:
 #        for i in range(Natom):
 #            Z.append(int(mol.Z(i)))
 #
-#        masses = np.zeros(Natom, float)
+#        masses = np.zeros(Natom)
 #        for i in range(Natom):
 #            masses[i] = mol.mass(i)
 #
@@ -101,6 +103,22 @@ class Frag:
     def intcos(self):
         return self._intcos
 
+    @property
+    def Nintcos(self):
+        return len(self._intcos)
+
+    def q(self):
+        return [intco.q(self.geom) for intco in self._intcos]
+
+    def qArray(self):
+        return np.asarray( self.q() )
+
+    def qShow(self):
+        return [intco.qShow(self.geom) for intco in self._intcos]
+
+    def qShowArray(self):
+        return np.asarray( self.qShow() )
+
     def printIntcos(self):
         logger = logging.getLogger(__name__)
         intcos_report = ("\tInternal Coordinate Values\n")
@@ -141,3 +159,32 @@ class Frag:
         for i in range(self._geom.shape[0]):
             frag_atom_symbol_list.append(qcel.periodictable.to_E(self._Z[i]))
         return frag_atom_symbol_list
+
+    def Bmat(self):
+        B = np.zeros( (self.Nintcos, 3*self.Natom) )
+        for i, intco in enumerate(self._intcos):
+            intco.DqDx(self.geom, B[i])
+        return B
+
+    def fixBendAxes(self):
+        for intco in self._intcos:
+            if isinstance(intco, bend.Bend):
+                intco.fixBendAxes(self.geom)
+
+    def unfixBendAxes(self):
+        for intco in self._intcos:
+            if isinstance(intco, bend.Bend):
+                intco.unfixBendAxes()
+
+    def updateDihedralOrientations(self):
+        """ Update orientation of each dihedrals/tors coordinate
+         This saves an indicator if dihedral is slightly less than pi,
+         or slighly more than -pi.  Subsequently, computation of values
+         can be greater than pi or less than -pi to enable computation
+         of Delta(q) when q passed through pi.
+        """
+        for intco in self._intcos:
+            if isinstance(intco, tors.Tors) or isinstance(intco, oofp.Oofp):
+                intco.updateOrientation(geom)
+
+

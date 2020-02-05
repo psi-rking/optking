@@ -11,7 +11,7 @@ from . import optparams as op
 from . import stre
 from . import tors
 from . import v3d
-from .intcosMisc import qValues
+from . import dimerfrag
 
 
 def connectivityFromDistances(geom, Z):
@@ -260,15 +260,13 @@ def addCartesianIntcos(intcos, geom):
     # return len(intcos) - Norig
 
 
-def linearBendCheck(intcos, geom, dq):
+def linearBendCheck(oMolsys, dq):
     """
-    Identifies near linear angles
-    Paramters
+    Identifies bends which are close to linear but not previously
+    identified as "linear bends".
+    Parameters
     ---------
-    intcos : list
-        (nat) list of stretches, bends, etc
-    geom : ndarray
-        (nat, 3) cartesian geometry
+    oMolsys : MOLSYS class
     dq : ndarray
 
     Returns
@@ -283,37 +281,36 @@ def linearBendCheck(intcos, geom, dq):
     # TODO This will need generalized later for combination coordinates.
     # q = qValues(intcos, geom)
 
-    for i, intco in enumerate(intcos):
-        if isinstance(intco, bend.Bend):
-            newVal = intco.q(geom) + dq[i]
-            A = intco.A
-            B = intco.B
-            C = intco.C
+    for F in oMolsys._fragments:
+        for i, intco in enumerate(F.intcos):
+            if isinstance(intco, bend.Bend):
+                newVal = intco.q() + dq[i]
+                A,B,C = intco.A, intco.B, intco.C
+    
+                # <ABC < 0.  A-C-B should be linear bends.
+                if newVal < 0.0:
+                    linearBends.append(bend.Bend(A, C, B, bendType="LINEAR"))
+                    linearBends.append(bend.Bend(A, C, B, bendType="COMPLEMENT"))
+    
+                # <ABC~pi. Add A-B-C linear bends.
+                elif newVal > op.Params.linear_bend_threshold:
+                    linearBends.append(bend.Bend(A, B, C, bendType="LINEAR"))
+                    linearBends.append(bend.Bend(A, B, C, bendType="COMPLEMENT"))
+    
+        linearBendsMissing = []
+        if linearBends:
+            linear_bend_string = ("\n\tThe following linear bends should be present:\n")
+            for b in linearBends:
+                linear_bend_string += '\t' + str(b)
+    
+                if b in intcos:
+                    linear_bend_string += (", already present.\n")
+                else:
+                    linear_bend_string += (", missing.\n")
+                    linearBendsMissing.append(b)
+            logger.warning(linearBendsMissing)
 
-            # <ABC < 0.  A-C-B should be linear bends.
-            if newVal < 0.0:
-                linearBends.append(bend.Bend(A, C, B, bendType="LINEAR"))
-                linearBends.append(bend.Bend(A, C, B, bendType="COMPLEMENT"))
-
-            # <ABC~pi. Add A-B-C linear bends.
-            elif newVal > op.Params.linear_bend_threshold:
-                linearBends.append(bend.Bend(A, B, C, bendType="LINEAR"))
-                linearBends.append(bend.Bend(A, B, C, bendType="COMPLEMENT"))
-
-    linearBendsMissing = []
-    if linearBends:
-        linear_bend_string = ("\n\tThe following linear bends should be present:\n")
-        for b in linearBends:
-            linear_bend_string += '\t' + str(b)
-
-            if b in intcos:
-                linear_bend_string += (", already present.\n")
-            else:
-                linear_bend_string += (", missing.\n")
-                linearBendsMissing.append(b)
-        logger.warning(linearBendsMissing)
     return linearBendsMissing
-
 
 def freezeStretchesFromInputAtomList(frozenStreList, oMolsys):
     """
@@ -505,3 +502,26 @@ def addFrozenAndFixedIntcos(oMolsys):
         fixBendsFromInputList(op.Params.fixed_bend, oMolsys)
     if op.Params.fixed_dihedral:
         fixTorsionsFromInputList(op.Params.fixed_dihedral, oMolsys)
+
+def addDimerFragIntcos(oMolsys):
+    # TODO add custom weights
+    # TODO pass fragment labels
+    # TODO maybe move into a molsys class function?
+    # Assuming that for trimers+, the same reference atoms are desired for
+    # each coordinate on same fragment.
+   
+    atoms = op.Params.frag_ref_atoms
+    for i in range(oMolsys.Nfragments):
+        for j in range(i+1,oMolsys.Nfragments):
+            print('addDimerFragIntcos atom lists:')
+            print(atoms[i])
+            print(atoms[j])
+            fi = oMolsys._fragments[i]
+            fj = oMolsys._fragments[j]
+            df = dimerfrag.DimerFrag(i, atoms[i], j, atoms[j])
+            df.update_reference_geometry(oMolsys.geom[i], oMolsys.geom[j])
+            oMolsys._dimer_intcos.append(df)
+    print('end of addDimerFragIntcos')
+    print(oMolsys)
+    return
+
