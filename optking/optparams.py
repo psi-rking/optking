@@ -240,7 +240,7 @@ class OptParams(object):
         # Which atoms define the reference points for interfragment coordinates?
         P.frag_ref_atoms = uod.get('FRAG_REF_ATOMS', '')
         # Do freeze all fragments rigid?
-        # P.freeze_intrafrag = uod.get('FREEZE_INTRAFRAG', False)
+        P.freeze_intrafrag = uod.get('FREEZE_INTRAFRAG', False)
         # Do freeze all interfragment modes?
         # P.inter_frag = uod.get('FREEZE_INTERFRAG', False)
         # When interfragment coordinates are present, use as reference points either

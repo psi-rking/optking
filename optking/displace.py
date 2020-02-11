@@ -39,6 +39,10 @@ def displaceMolsys(oMolsys, dq, fq=None, ensure_convergence=False):
 
     forces = None
     for iF,F in enumerate(oMolsys._fragments):
+        if F.frozen:
+            logger.info("\tFragment %d is frozen, so not displacing" % (iF+1))
+            continue
+        
         logger.info("\tDetermining Cartesian step for fragment %d." % (iF+1))
         conv = displaceFrag(F, dq[oMolsys.frag_intco_slice(iF)],ensure_convergence)
         if conv:

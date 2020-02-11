@@ -26,6 +26,7 @@ class Frag:
         self._Z = Z
         self._geom = geom
         self._masses = masses
+        self._frozen = False
 
         self._intcos = []
         if intcos:
@@ -104,6 +105,10 @@ class Frag:
         return self._intcos
 
     @property
+    def frozen(self):
+        return self._frozen
+
+    @property
     def Nintcos(self):
         return len(self._intcos)
 
@@ -177,6 +182,11 @@ class Frag:
         for intco in self._intcos:
             if isinstance(intco, bend.Bend):
                 intco.unfixBendAxes()
+
+    def freeze(self):
+        for intco in self._intcos:
+            intco.frozen = True
+        self._frozen = True
 
     def updateDihedralOrientations(self):
         """ Update orientation of each dihedrals/tors coordinate

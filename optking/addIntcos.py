@@ -476,6 +476,11 @@ def fixTorsionsFromInputList(fixedTorsList, oMolsys):
             logger.info("Fixed torsion not present, so adding it.\n")
             oMolsys._fragments[f]._intcos.append(one_tors)
 
+def freezeIntrafrag(oMolsys):
+    if oMolsys.Nfragments < 2:
+        raise OptError('Fragments are to be frozen, but there is only one of them')
+    for F in oMolsys._fragments:
+        F.freeze()
 
 def addFrozenAndFixedIntcos(oMolsys):
     if op.Params.frozen_distance:
@@ -493,6 +498,8 @@ def addFrozenAndFixedIntcos(oMolsys):
         fixBendsFromInputList(op.Params.fixed_bend, oMolsys)
     if op.Params.fixed_dihedral:
         fixTorsionsFromInputList(op.Params.fixed_dihedral, oMolsys)
+    if op.Params.freeze_intrafrag:
+        freezeIntrafrag(oMolsys)
 
 def addDimerFragIntcos(oMolsys):
     # TODO add custom weights

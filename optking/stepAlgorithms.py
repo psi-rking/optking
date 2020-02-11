@@ -361,7 +361,7 @@ def Dq_RFO(oMolsys, E, fq, H):
                                % (alphaIter + 1, sqrt(dqtdq), alpha, rfo_root + 1))
 
         # Find the analytical derivative, d(norm step squared) / d(alpha)
-        rfo_step_report += ("\t------------------------------------------------\n")
+        #rfo_step_report += ("\t------------------------------------------------\n")
         logger.info(rfo_step_report)
         Lambda = -1 * v3d.dot(fq, dq, dim)
         if op.Params.print_lvl >= 2:
@@ -401,7 +401,7 @@ def Dq_RFO(oMolsys, E, fq, H):
     # Get norm |dq|, unit vector, gradient and hessian in step direction
     # TODO double check Hevects[i] here instead of H ? as for NR
     rfo_dqnorm = sqrt(np.dot(dq, dq))
-    logger.info("\tNorm of target step-size \n\n\t %15.10f\n" % rfo_dqnorm)
+    logger.info("\tNorm of target step-size: %15.10f\n" % rfo_dqnorm)
     rfo_u = dq.copy() / rfo_dqnorm
     rfo_g = -1 * np.dot(fq, rfo_u)
     rfo_h = np.dot(rfo_u, np.dot(H, rfo_u))
