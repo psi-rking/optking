@@ -17,7 +17,7 @@ from .linearAlgebra import absMax, rms, symmMatInv
 #  DxStep       : Given Delta(q), compute and invert B, take Delta(x) step.
 
 # Displace molecular system
-def displaceMolsys(oMolsys, dq, fq=None):
+def displaceMolsys(oMolsys, dq, fq=None, ensure_convergence=False):
     """ Manage internal coordinate step for a molecular system
     Parameters
     ----------
@@ -30,19 +30,17 @@ def displaceMolsys(oMolsys, dq, fq=None):
     logger = logging.getLogger(__name__)
 
     q = oMolsys.qArray()
-    print('Initial q')
-    print(q)
     q_target = q + dq
     # q_target is used for dimer coordinates; does it need corrected for
     # dihedrals through pi here?  don't think so.
-    print('Target q')
-    print(q_target)
+    #print('Target q')
+    #print(q_target)
     geom_orig = oMolsys.geom
 
     forces = None
     for iF,F in enumerate(oMolsys._fragments):
         logger.info("\tDetermining Cartesian step for fragment %d." % (iF+1))
-        conv = displaceFrag(F, dq[oMolsys.frag_intco_slice(iF)])
+        conv = displaceFrag(F, dq[oMolsys.frag_intco_slice(iF)],ensure_convergence)
         if conv:
             logger.info("\tStep for fragment succeeded.")
         else:
@@ -50,6 +48,8 @@ def displaceMolsys(oMolsys, dq, fq=None):
             logger.warning("\tStep for fragment succeeded.")
 
     for i, DI in enumerate(oMolsys._dimer_intcos):
+        logger.info("\tStep for dimer coordinates for fragments %d and %d."
+                    % (DI.A_idx+1,DI.B_idx+1))
         Axyz = oMolsys.frag_geom( DI.A_idx )
         Bxyz = oMolsys.frag_geom( DI.B_idx )
         Bxyz[:] = DI.orient_fragment(Axyz, Bxyz,
@@ -134,8 +134,8 @@ def displaceFrag(F, dq, ensure_convergence=False):
                 logger.info("\tReducing step-size by a factor of %d." % (2 * cnt))
                 dq[:] = dq_orig / (2.0 * cnt)
 
-            F.fixBendAxes(geom)
-            F.updateDihedralOrientations(geom)
+            F.fixBendAxes()
+            F.updateDihedralOrientations()
             conv = DqToDxIterate(F.intcos, geom, dq, op.Params.print_lvl)
             F.unfixBendAxes()
 
@@ -158,8 +158,8 @@ def displaceFrag(F, dq, ensure_convergence=False):
 
                 best_geom[:] = geom
 
-                F.fixBendAxes(geom)
-                conv = DqToDxIterate(intcos, geom, dq, op.Params.print_lvl)
+                F.fixBendAxes()
+                conv = DqToDxIterate(F.intcos, geom, dq, op.Params.print_lvl)
                 F.unfixBendAxes()
 
                 if not conv:
@@ -169,9 +169,9 @@ def displaceFrag(F, dq, ensure_convergence=False):
                     break
 
     else:  # try to back-transform, but continue even if desired dq is not achieved
-        F.fixBendAxes(geom)
-        F.updateDihedralOrientations(geom)
-        conv = DqToDxIterate(intcos, geom, dq, op.Params.print_lvl)
+        F.fixBendAxes()
+        F.updateDihedralOrientations()
+        conv = DqToDxIterate(F.intcos, geom, dq, op.Params.print_lvl)
         F.unfixBendAxes()
 
         if op.Params.opt_type == "IRC" and not conv:
@@ -179,21 +179,21 @@ def displaceFrag(F, dq, ensure_convergence=False):
 
     # Fix drift/error in any frozen coordinates
     frozen_conv = True
-    if any(intco.frozen for intco in intcos):
+    if any(intco.frozen for intco in F.intcos):
 
         # Set dq for unfrozen intcos to zero.
-        F.updateDihedralOrientations(geom)
-        F.fixBendAxes(geom)
-        dq_adjust_frozen = q_orig - intcosMisc.qValues(intcos, geom)
+        F.updateDihedralOrientations()
+        F.fixBendAxes()
+        dq_adjust_frozen = q_orig - intcosMisc.qValues(F.intcos, geom)
 
-        for i, intco in enumerate(intcos):
+        for i, intco in enumerate(F.intcos):
             if not intco.frozen:
                 dq_adjust_frozen[i] = 0
 
         frozen_msg = (
-                "\tAdditional back-transformation to adjust frozen coordinates:\n")
+                "\tAdditional back-transformation to adjust frozen coordinates: ")
 
-        frozen_conv = DqToDxIterate( intcos, geom,
+        frozen_conv = DqToDxIterate( F.intcos, geom,
             dq_adjust_frozen,
             op.Params.print_lvl-1, # suppress printing
             bt_dx_conv=1.0e-12,
@@ -202,16 +202,16 @@ def displaceFrag(F, dq, ensure_convergence=False):
 
         F.unfixBendAxes()
 
-        if check:
-            frozen_msg += ("\tsuccessful.\n")
+        if frozen_conv:
+            frozen_msg += ("successful.\n")
             logger.info(frozen_msg)
         else:
-            frozen_msg += ("\tunsuccessful, but continuing.\n")
+            frozen_msg += ("unsuccessful, but continuing.\n")
             logger.info(frozen_msg)
             logger.warning(frozen_msg)
 
     # Make sure final Dq is actual change
-    q_final = intcosMisc.qValues(intcos, geom)
+    q_final = intcosMisc.qValues(F.intcos, geom)
     dq[:] = q_final - q_orig
 
     if op.Params.print_lvl >= 1:
@@ -334,6 +334,7 @@ def DxStep(intcos, geom, dq, printDetails=False):
     float :
         absolute maximum of cartesian displacement
     """
+    logger = logging.getLogger(__name__)
     B = intcosMisc.Bmat(intcos, geom)
     G = np.dot(B, B.T)
     Ginv = symmMatInv(G, redundant=True)
@@ -352,7 +353,7 @@ def DxStep(intcos, geom, dq, printDetails=False):
         for i in range(len(intcos)):
             displacement_str += "\t%5d%15.10f%15.10f\n" % (i + 1,
                 dq_achieved[i], dq_achieved[i] - dq[i])
-        logger.info(displacement_str)
+        logger.debug(displacement_str)
 
     dx_rms = rms(dx)
     dx_max = absMax(dx)

@@ -1,14 +1,14 @@
+from math import sqrt, fabs, acos
+import logging
 import numpy as np
-from math import sqrt
-
-from optking import frag, stre, bend, tors
-from optking import v3d
-from optking import intcosMisc
-from math import fabs, acos # sin,  asin, fsum
-import orient
 import qcelemental as qcel
 
-from optking import optparams as op
+from . import frag, stre, bend, tors
+from . import v3d
+from . import intcosMisc
+from . import orient
+
+from . import optparams as op
 op.Params = op.OptParams({})
 
 class Weight(object):
@@ -113,7 +113,6 @@ class DimerFrag(object):
         self._B_idx = B_idx
 
         if type(A_atoms) != list:
-            print(type(A_atoms))
             raise OptError("Atoms argument for frag A should be a list")
         for i,a in enumerate(A_atoms):
             if type(a) != list:
@@ -280,11 +279,11 @@ class DimerFrag(object):
 
         s =  "\tFragment %s\n" %  self._A_lbl
         for i,r in enumerate(self._Arefs):
-            s += "\t\tReference point %d\n" % (i+1)
+            s += "\t\tReference point %d\n" % (3-i)
             s += r.__str__()
         s += "\n\tFragment %s\n" %  self._B_lbl
         for i,r in enumerate(self._Brefs):
-            s += "\t\tReference point %d\n" % (i+1)
+            s += "\t\tReference point %d\n" % (i+4)
             s += r.__str__()
 
         s += self._pseudo_frag.__str__()
@@ -376,6 +375,7 @@ class DimerFrag(object):
        
         Returns:  new geometry for B
         """
+        logger = logging.getLogger(__name__)
         nArefs = self.nArefs # of ref pts on A to worry about
         nBrefs = self.nBrefs # of ref pts on B to worry about
 
@@ -410,18 +410,19 @@ class DimerFrag(object):
             cnt += 1
     
         if printCoords:
-            print("\t---DimerFrag coordinates between fragments %s and %s" % (self._A_lbl, self._B_lbl))
-            print("\t---Internal Coordinate Step in ANG or DEG, aJ/ANG or AJ/DEG ---")
-            print("\t ----------------------------------------------------------------------")
-            print("\t Coordinate             Previous     Change       Target")
-            print("\t ----------             --------      -----       ------")
+            s =  "\t---DimerFrag coordinates between fragments %s and %s" % (self._A_lbl, self._B_lbl)
+            s += "\t---Internal Coordinate Step in ANG or DEG, aJ/ANG or AJ/DEG ---"
+            s += "\t ----------------------------------------------------------------------"
+            s += "\t Coordinate             Previous     Change       Target"
+            s += "\t ----------             --------      -----       ------"
     
             for i in range(self.Nintcos):
                 c = self._pseudo_frag._intcos[i].qShowFactor # for printing to Angstroms/degrees
-                print("\t%-20s%12.5f%13.5f%13.5f" %
-                      (active_lbls[i], c * q_orig[i], c * dq_target[i], c * q_target[i]))
+                s += "\t%-20s%12.5f%13.5f%13.5f" % (active_lbls[i],
+                         c * q_orig[i], c * dq_target[i], c * q_target[i])
             
-            print("\t ----------------------------------------------------------------------")
+            s += "\t ----------------------------------------------------------------------"
+            logger.info(s)
       
         # From here on, for simplicity we include 3 reference atom rows, even if we don't
         # have 3 reference atoms.  So, stick SOMETHING non-linear/non-0 in for
@@ -466,14 +467,11 @@ class DimerFrag(object):
         # Can use to test if target reference points give correct values.
         #self.set_ref_geom(ref_A, ref_B_final)
         #print(self._pseudo_frag)
-        #quit()
         nBatoms = len(Bgeom_in)
         Bgeom = Bgeom_in.copy()
 
         self.update_reference_geometry(Ageom_in, Bgeom)
         ref_B[0:nBrefs] = self.BRefGeom()
-        #print("initial ref_B")
-        #print(ref_B)
 
         # 1) Translate B->geom to place B1 in correct location.
         for i in range(nBatoms):
@@ -538,8 +536,6 @@ class DimerFrag(object):
                 #print(ref_B)
       
         # Check to see if desired reference points were obtained.
-        #print("last ref_B:");
-        #print(ref_B)
         tval = 0.0
         for i in range(nBrefs):
             tval += np.dot(ref_B[i] - ref_B_final[i], ref_B[i] - ref_B_final[i])
@@ -570,16 +566,8 @@ class DimerFrag(object):
             Column of B matrix at which the cartesian coordinates of atoms in fragment B begin.
         If A_off and B_off are not given, then the minimal (dimer-only) B-matrix is returned.
         """
-        print('compute_B:')
-        print('A_geom:')
-        print(A_geom)
-        print('B_geom:')
-        print(B_geom)
-        print('Bmat in:')
-        print(Bmat_in)
-        print("A_xyz_off: %d" % A_xyz_off)
-        print("B_xyz_off: %d" % B_xyz_off)
-        print(Bmat_in)
+        logger = logging.getLogger(__name__)
+        logger.debug('dimerfrag.compute_B...')
     
         NatomA = len(A_geom)
         NatomB = len(B_geom)
@@ -598,8 +586,8 @@ class DimerFrag(object):
         B_ref = np.zeros( (self.Nintcos, 18) )
         for i, intco in enumerate(self._pseudo_frag._intcos):
             intco.DqDx( self.getRefGeom(), B_ref[i])
-        print("Reference point B matrix:")
-        print(B_ref)
+        #print("Reference point B matrix:")
+        #print(B_ref)
 
         ## B_ref is derivative of interfragment D wrt reference point position
         cnt = 0
@@ -676,7 +664,9 @@ class DimerFrag(object):
             cnt += 1
 
     def test_B(self, Axyz, Bxyz, printInfo=False):
-        print("\tTesting B matrix")
+        logger = logging.getLogger(__name__)
+        logger.info("\tTesting B matrix")
+        logger.debug("\tTesting B matrix")
         DISP_SIZE = 0.001
         MAX_ERROR = 1.0e-8
         NA = len(Axyz)
@@ -684,8 +674,8 @@ class DimerFrag(object):
         B_analytic = np.zeros( (self.Nintcos, 3*Natoms) )
         Itest.compute_B(Axyz, Bxyz, B_analytic)
         if printInfo:
-            print("Final B matrix")
-            print(Bmat_in)
+            logger.debug("\tFinal B matrix")
+            logger.debug(printMatString(Bmat_in))
                 
         B_fd = np.zeros((self.Nintcos, 3*Natoms))
         coord = np.concatenate( (Axyz,Bxyz) ).copy()
@@ -712,8 +702,8 @@ class DimerFrag(object):
                         q_m2[i] - 8 * q_m[i] + 8 * q_p[i] - q_p2[i]) / (12.0 * DISP_SIZE)
         
         if printInfo:
-            print("Numerical B matrix in au, DISP_SIZE = %lf\n" % DISP_SIZE)
-            print(B_fd)
+            logger.debug("Numerical B matrix in au, DISP_SIZE = %lf\n" % DISP_SIZE)
+            logger.debug(printMatString(B_fd))
 
         max_error = -1.0
         max_error_intco = -1
@@ -723,17 +713,17 @@ class DimerFrag(object):
                     max_error = fabs(B_analytic[i][j] - B_fd[i][j])
                     max_error_intco = i
     
-        print("\t\tMaximum difference is %.1e for internal coordinate %d." %
+        logger.info("\t\tMaximum difference is %.1e for internal coordinate %d." %
                   (max_error, max_error_intco + 1))
-        print("\t\tThis coordinate is %s" % str(self._pseudo_frag._intcos[max_error_intco]))
+        logger.info("\t\tThis coordinate is %s" % str(self._pseudo_frag._intcos[max_error_intco]))
     
         if max_error > MAX_ERROR:
-            print("\tB-matrix could be in error. However, numerical tests may fail for\n"
+            logger.info("\tB-matrix could be in error. However, numerical tests may fail for\n"
                            + "\ttorsions at 180 degrees, and slightly for linear bond angles."
                            + "This is OK.\n")
             return False
         else:
-            print("\t...Passed.")
+            logger.info("\t...Passed.")
             return True
 
     
@@ -750,6 +740,7 @@ def test_orient(NA, NB, printInfo=False) :
     # interior angles of torsions are too large or small (here by luck).
     """
     from random import random,shuffle,choice,sample
+    logger = logging.getLogger(__name__)
     NAref = min(NA,3)
     NBref = min(NB,3)
     Albl = "A-%d-atoms" % NA
@@ -768,8 +759,8 @@ def test_orient(NA, NB, printInfo=False) :
         n += 1
         Aatoms.append(l)
         Aweights.append( ref_length*[1.0] )
-    if printInfo: print(Aatoms)
-    if printInfo: print(Aweights)
+    printInfo: logger.debug(str(Aatoms))
+    printInfo: logger.debug(str(Aweights))
 
     atom_list = list(range(NB))
     Batoms = []
@@ -784,8 +775,8 @@ def test_orient(NA, NB, printInfo=False) :
         n += 1
         Batoms.append(l)
         Bweights.append( ref_length*[1.0])
-    if printInfo: print(Batoms)
-    if printInfo: print(Bweights)
+    if printInfo: logger.debug(str(Batoms))
+    if printInfo: logger.debug(str(Bweights))
 
     Itest = DimerFrag(0, Aatoms, 1, Batoms, Aweights, Bweights, Albl, Blbl)
 
@@ -796,11 +787,10 @@ def test_orient(NA, NB, printInfo=False) :
     for i in range(NB):
         Bxyz[i][:] = 3.0*random(), 3.0*random(), 3.0*random()
     Itest.update_reference_geometry(Axyz, Bxyz)
-    #print(Itest)
     q_tar = Itest.Nintcos*[0.8]
     Bxyz_new = Itest.orient_fragment(Axyz, Bxyz, q_tar)
     Itest.update_reference_geometry(Axyz, Bxyz_new)
-    print('Error in positioning dimer (%s/%s): %8.3e' %
+    logger.debug('Error in positioning dimer (%s/%s): %8.3e' %
          ( Albl, Blbl, sqrt(sum(((q_tar - Itest.q())**2)))))
 
 # Test orient_fragment function on random molecules of various sizes

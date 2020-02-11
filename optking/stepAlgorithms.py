@@ -11,7 +11,6 @@ from . import optparams as op
 from . import optimize
 from .history import oHistory
 from .displace import displaceMolsys
-from .intcosMisc import qShowForces
 from .addIntcos import linearBendCheck
 from .misc import isDqSymmetric
 from .printTools import printArrayString, printMatString
@@ -20,7 +19,7 @@ from .linearAlgebra import absMax, symmMatEig, asymmMatEig, symmMatInv, norm
 
 # TODO I'd like to move the displace call and wrap up here. Make this a proper wrapper
 # for the stepAlgorithgms
-def take_step(oMolsys, E, qForces, H, stepType=None, computer=None):
+def take_step(oMolsys, E, q_forces, H, stepType=None, computer=None):
     """ Calls one of the optimization algorithms to take a step
 
     Parameters
@@ -29,7 +28,7 @@ def take_step(oMolsys, E, qForces, H, stepType=None, computer=None):
         optking's molecular system
     E : double
         energy [aO]
-    qForces : ndarray
+    q_forces : ndarray
         forces in internal coordinates [aO]
     H : ndarray
         hessian in internal coordinates
@@ -49,24 +48,24 @@ def take_step(oMolsys, E, qForces, H, stepType=None, computer=None):
      the results
 
     """
-    if len(H) == 0 or len(qForces) == 0:
+    if len(H) == 0 or len(q_forces) == 0:
         return np.zeros((0))
 
     if not stepType:
         stepType = op.Params.step_type
 
     if stepType == 'NR':
-        return Dq_NR(oMolsys, E, qForces, H)
+        return Dq_NR(oMolsys, E, q_forces, H)
     elif stepType == 'RFO':
-        return Dq_RFO(oMolsys, E, qForces, H)
+        return Dq_RFO(oMolsys, E, q_forces, H)
     elif stepType == 'SD':
-        return Dq_SD(oMolsys, E, qForces)
+        return Dq_SD(oMolsys, E, q_forces)
     elif stepType == 'BACKSTEP':
         return Dq_BACKSTEP(oMolsys)
     elif stepType == 'P_RFO':
-        return Dq_P_RFO(oMolsys, E, qForces, H)
+        return Dq_P_RFO(oMolsys, E, q_forces, H)
     elif stepType == 'LINESEARCH':
-        return Dq_LINESEARCH(oMolsys, E, qForces, H, computer)
+        return Dq_LINESEARCH(oMolsys, E, q_forces, H, computer)
     else:
         raise OptError('Dq: step type not yet implemented')
 
@@ -144,8 +143,8 @@ def Dq_NR(oMolsys, E, fq, H):
                 % DEprojected)
 
     # Scale fq into aJ for printing
-    fq_aJ = qShowForces(oMolsys, fq)
-    displace(oMolsys._fragments[0].intcos, oMolsys._fragments[0].geom, dq, fq_aJ)
+    fq_aJ = oMolsys.qShowForces(fq)
+    displaceMolsys(oMolsys, dq, fq_aJ)
     dq_actual = sqrt(np.dot(dq, dq))
     logger.info("\tNorm of achieved step-size %15.10f" % dq_actual)
 
@@ -413,8 +412,7 @@ def Dq_RFO(oMolsys, E, fq, H):
         logger.info('\tRFO hessian = %15.10f' % rfo_h)
     logger.info("\tProjected energy change by RFO approximation %15.5f\n" % DEprojected)
 
-    fq_aJ = qShowForces(oMolsys, fq)
-
+    fq_aJ = oMolsys.qShowForces(fq)
     displaceMolsys(oMolsys, dq, fq_aJ)
     # For now, saving RFO unit vector and using it in projection to match C++ code,
     # could use actual Dq instead.
@@ -444,7 +442,7 @@ def Dq_RFO(oMolsys, E, fq, H):
     # Before quitting, make sure step is reasonable.  It should only be
     # screwball if we are using the "First Guess" after the back-transformation failed.
     if sqrt(np.dot(dq, dq)) > 10 * trust:
-        raise AlgError("opt.py: Step is far too large.")
+        raise AlgError("Dq_RFO(): Step is far too large.")
 
     return dq
 
@@ -586,11 +584,8 @@ def Dq_P_RFO(oMolsys, E, fq, H):
     logger.info("\tProjected Delta(E) : %15.10f" % DEprojected)
 
     # Scale fq into aJ for printing
-    fq_aJ = qShowForces(oMolsys.intcos, fq)
-
-    # this won't work for multiple fragments yet until dq and fq get cut up.
-    for F in oMolsys._fragments:
-        displace(F.intcos, F.geom, dq, fq_aJ)
+    fq_aJ = oMolsys.qShowForces(fq)
+    displaceMolsys(oMolsys, dq, fq_aJ)
 
     # For now, saving RFO unit vector and using it in projection to match C++ code,
     # could use actual Dq instead.
@@ -665,8 +660,8 @@ def Dq_SD(oMolsys, E, fq):
     logger.info(
         "\tProjected energy change by quadratic approximation: %20.5lf" % DEprojected)
 
-    fq_aJ = qShowForces(oMolsys.intcos, fq)  # for printing
-    displace(oMolsys._fragments[0].intcos, oMolsys._fragments[0].geom, dq, fq_aJ)
+    fq_aJ = oMolsys.qShowForces(fq)  # for printing
+    displaceMolsys(oMolsys, dq, fq_aJ)
     dqnorm_actual = np.linalg.norm(dq)
     logger.info("\tNorm of achieved step-size %15.10f" % dqnorm_actual)
 
@@ -742,10 +737,9 @@ def Dq_BACKSTEP(oMolsys):
         DEprojected = DE_projected('NR', dqNorm, oneDgradient, oneDhessian)
     logger.info("\tProjected energy change : %20.5lf" % DEprojected)
 
-    fq_aJ = qShowForces(oMolsys.intcos, fq)  # for printing
-    # Displace from previous geometry
-    displace(oMolsys._fragments[0].intcos, geom, dq, fq_aJ)
+    fq_aJ = oMolsys.qShowForces(fq) # Displace from previous geometry
     oMolsys.geom = geom  # uses setter; writes into all fragments
+    displaceMolsys(oMolsys, dq, fq_aJ)
 
     dqNormActual = np.linalg.norm(dq)
     logger.info("\tNorm of achieved step-size %15.10f" % dqNormActual)
@@ -805,8 +799,8 @@ def Dq_LINESEARCH(oMolsys, E, fq, H, computer):
         if Eb == 0:
             logger.debug("\n\tStepping along forces distance %10.5f" % s)
             dq = s * fq_unit
-            fq_aJ = qShowForces(oMolsys.intcos, fq)
-            displace(oMolsys._fragments[0].intcos, oMolsys._fragments[0].geom, dq, fq_aJ)
+            fq_aJ = oMolsys.qShowForces(fq)
+            displaceMolsys(oMolsys, dq, fq_aJ)
             xyz = oMolsys.geom
             logger.debug("\tComputing energy at this point now.")
             Eb = computer.compute(xyz, driver='energy', return_full=False)
@@ -816,8 +810,8 @@ def Dq_LINESEARCH(oMolsys, E, fq, H, computer):
         if Ec == 0:
             logger.debug("\n\tStepping along forces distance %10.5f" % (stepScale * s))
             dq = (stepScale * s) * fq_unit
-            fq_aJ = qShowForces(oMolsys.intcos, fq)
-            displace(oMolsys._fragments[0].intcos, oMolsys._fragments[0].geom, dq, fq_aJ)
+            fq_aJ = oMolsys.qShowForces(fq)
+            displaceMolsys(oMolsys, dq, fq_aJ)
             xyz = oMolsys.geom
             logger.debug("\tComputing energy at this point now.")
             Ec = computer.compute(xyz, driver='energy', return_full=False)
@@ -853,7 +847,7 @@ def Dq_LINESEARCH(oMolsys, E, fq, H, computer):
             Emin_projected = x[0] * Xmin * Xmin + x[1] * Xmin + Ea
             dq = Xmin * fq_unit
             logger.info("\tProjected step size to minimum is %12.6f" % Xmin)
-            displace(oMolsys._fragments[0].intcos, oMolsys._fragments[0].geom, dq, fq_aJ)
+            displaceMolsys(oMolsys, dq, fq_aJ)
             xyz = oMolsys.geom
             logger.debug("\tComputing energy at projected point.")
             Emin = computer.compute(xyz, driver='energy', return_full=False)
@@ -893,8 +887,8 @@ def Dq_LINESEARCH(oMolsys, E, fq, H, computer):
         "\tProjected quadratic energy change using full Hessian: %15.10f\n" % DEprojected)
 
     # Scale fq into aJ for printing
-    # fq_aJ = qShowForces(oMolsys.intcos, fq)
-    # displace(oMolsys._fragments[0].intcos, oMolsys._fragments[0].geom, dq, fq_aJ)
+    # fq_aJ = oMolsys.qShowForces(fq)
+    # displaceMolsys(oMolsys, dq, fq_aJ)
 
     dq_actual = sqrt(np.dot(dq, dq))
     logger.info("\tNorm of achieved step-size %15.10f" % dq_actual)

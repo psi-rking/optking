@@ -4,7 +4,7 @@ import logging.config
 
 from .optimize import optimize
 from . import loggingconfig
-#from . import lj_functions
+from . import lj_functions
 from .optwrapper import optimize_psi4, optimize_qcengine
 #from .stre import Stre
 #from .bend import Bend

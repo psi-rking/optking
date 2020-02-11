@@ -10,11 +10,22 @@ from .bend import Bend
 from .tors import Tors
 
 
-def show(H, intcos):
+def show(H, oMolsys):
     """ Print the Hessian in common spectroscopic units of [aJ/Ang^2], [aJ/deg^2] or [aJ/(Ang deg)]
     """
     logger = logging.getLogger(__name__)
-    factors = np.asarray([intco.qShowFactor for intco in intcos])
+
+    factors = np.zeros( oMolsys.Nintcos )
+    cnt = -1
+    for F in oMolsys._fragments:
+        for I in F.intcos:
+            cnt += 1
+            factors[cnt] = I.qShowFactor
+    for DI in oMolsys._dimer_intcos:
+        for I in DI._pseudofrag._intcos:
+            cnt += 1
+            factors[cnt] = I.qShowFactor
+
     factors_inv = np.divide(1.0, factors)
     scaled_H = np.einsum('i,ij,j->ij', factors_inv, H, factors_inv)
     scaled_H *= qcel.constants.hartree2aJ
@@ -42,16 +53,14 @@ def guess(oMolsys, connectivity=None, guessType="SIMPLE"):
       Fischer and Almlof, J. Phys. Chem., 96, 9770 (1992).
     """
 
-    frag_diag_hess = []
+    diag = []
     for F in oMolsys._fragments:
         if F.Nintcos:
             geom         = F.geom
             Z            = F.Z
             connectivity = F.connectivityFromDistances()
-    
-            frag_diag_hess.append(
-                [intco.diagonalHessianGuess(geom, Z, connectivity, guessType) for intco in F._intcos])
-
+            for intco in F._intcos:
+                diag.append(intco.diagonalHessianGuess(geom, Z, connectivity, guessType))
 
     # Since the reference points might not even be at atomic positions, let's not worry
     # about implementing various options for the diagonal Hessian guess.
@@ -66,7 +75,7 @@ def guess(oMolsys, connectivity=None, guessType="SIMPLE"):
                 h = 0.001
             else:
                 h = 0.111
-            frag_diag_hess.append(h)
+            diag.append(h)
 
-    H = np.diagflat(np.asarray( frag_diag_hess) )
+    H = np.diagflat( np.asarray(diag) )
     return H

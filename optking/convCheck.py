@@ -14,7 +14,6 @@ from math import fabs
 
 from . import optparams as op
 from .linearAlgebra import absMax, rms, symmMatRoot
-from .intcosMisc import Gmat
 from .printTools import printArrayString, printMatString
 
 # Check convergence criteria and print status to output file.
@@ -44,14 +43,22 @@ def convCheck(iterNum, oMolsys, dq, f, energies, q_pivot=None):
     # Remove arbitrary forces for user-specified equilibrium values.
     if has_fixed:
         logger.info("Forces used to impose fixed constraints are not included in convergence check.")
-        for i, ints in enumerate(oMolsys.intcos):
-            if ints.fixedEqVal:
-                f[i] = 0
+        cnt = -1
+        for F in oMolsys._fragments:
+            for I in F.intcos:
+                cnt += 1
+                if I.fixedEqVal:
+                    f[cnt] = 0
+        for DI in oMolsys._dimer_intcos:
+            for I in DI._pseudo_frag._intcos:
+                cnt += 1
+                if I.fixedEqVal:
+                    f[cnt] = 0
 
     if op.Params.opt_type == 'IRC':
-        G_m = Gmat(oMolsys, oMolsys.masses)
+        G_m = oMolsys.Gmat(oMolsys.masses)
         G_m_inv = np.linalg.inv(G_m)
-        q = qValues(oMolsys.intcos, oMolsys.geom)
+        q = oMolsys.qArray()
         logger.info("Projecting out forces parallel to reaction path.")
 
         p = np.subtract(q, q_pivot)

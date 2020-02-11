@@ -23,8 +23,8 @@ from qcelemental.models import OptimizationInput
 
 
 @pytest.mark.parametrize("inp,expected", [
-    ('jsoninput.json', (8.9064890670, -74.965901192)),
-    ('json_betapinene.json', (568.2219045869700267, -383.381055594356)),
+    ('jsoninput.json', (8.9064890670, -74.965901192))
+    ('json_betapinene.json', (568.2219045869, -383.38105559)),
     ('json_hooh_frozen.json', (37.969354880, -150.786372411)),
 ])
 def test_input_through_json(inp, expected):
@@ -40,7 +40,7 @@ def test_input_through_json(inp, expected):
     #to its original state
     #with open(os.path.join(os.path.dirname(__file__), inp)) as input_data:
     #    json_dict = json.load(input_data)
-    assert psi4.compare_values(expected[0], json_dict['trajectory'][-1]['properties']['nuclear_repulsion_energy'], 3,
+    assert psi4.compare_values(expected[0], json_dict['trajectory'][-1]['properties']['nuclear_repulsion_energy'], 2,
          "Nuclear repulsion energy")
     assert psi4.compare_values(expected[1], json_dict['trajectory'][-1]['properties']['return_energy'], 6,
         "Reference energy")

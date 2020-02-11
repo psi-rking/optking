@@ -5,7 +5,7 @@ import pytest
 import psi4
 import optking
 
-OH_frozen_stre_rhf       = -150.781130357 #TEST
+OH_frozen_stre_rhf       = -150.781130356 #TEST
 OOH_frozen_bend_rhf      = -150.786372411 #TEST
 HOOH_frozen_dihedral_rhf = -150.786766848 #TEST
 
@@ -32,6 +32,7 @@ def test_frozen_coords(option, expected):
       'basis': 'cc-PVDZ',
       'scf_type': 'pk',
       'print': 4,
+      'g_convergence': 'gau_tight'
     }
     psi4.set_options(psi4_options)
     psi4.set_module_options('OPTKING', option)
@@ -39,5 +40,5 @@ def test_frozen_coords(option, expected):
     json_output = optking.optimize_psi4('hf')
     thisenergy = json_output['energies'][-1]
     
-    assert psi4.compare_values(expected, thisenergy, 7)  # TEST
+    assert psi4.compare_values(expected, thisenergy, 6)  # TEST
 

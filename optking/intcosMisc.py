@@ -2,101 +2,40 @@ from math import sqrt
 import numpy as np
 import logging
 
-from . import oofp
 from . import optparams as op
+from . import oofp
 from . import bend
 from . import tors
-
 from .linearAlgebra import symmMatInv, symmMatRoot
 from .printTools import printMatString, printArrayString
 
+### Some of these functions act on an arbitrary list of simple internals,
+### geometry etc. that may or may not be in a molecular system.
+### Also, a few complicated function that act on molecular system
+### forces and Hessians.
+
+# available for simple intco lists
 def qValues(intcos, geom):
-    vals = [intco.q(geom) for intco in self._intcos]
+    vals = [intco.q(geom) for intco in intcos]
     return np.asarray( vals )
 
-#def updateDihedralOrientations(intcos, geom):
-#    """ wrapper for updating orientation of dihedrals
-#    calls updateOrientation for each tors coordinate
-#    """
-#    for intco in intcos:
-#        if isinstance(intco, tors.Tors) or isinstance(intco, oofp.Oofp):
-#            intco.updateOrientation(geom)
-
-def qShowForces(oMolsys, forces):
-    """ Returns scaled forces as array. """
-    c = []
-    for F in oMolsys._fragments:
-        c += [intco.fShowFactor for intco in F._intcos]
-    for DI in oMolsys._dimer_intcos:
-        c += [intco.fShowFactor for intco in DI._pseudo_frag._intcos]
-    c = np.asarray(c)
-    qaJ = c * forces
-    return qaJ
-
-#def fixBendAxes(intcos, geom):
-#    for intco in intcos:
-#        if isinstance(intco, bend.Bend):
-#            intco.fixBendAxes(geom)
-#def unfixBendAxes(intcos):
-#    for intco in intcos:
-#        if isinstance(intco, bend.Bend):
-#            intco.unfixBendAxes()
-
 # Returns mass-weighted Bmatrix if masses are supplied.
-def Bmat(oMolsys, masses=None):
+# available for simple intco lists
+def Bmat(intcos, geom, masses=None):
     # Allocate memory for full system.
-    Nint  = oMolsys.Nintcos
-    Ncart = 3*oMolsys.Natom
-    B = np.zeros((Nint, Ncart))
+    Nint  = len(intcos)
+    B = np.zeros( (Nint, 3*len(geom)) )
 
-    for iF, F in enumerate(oMolsys._fragments):
-        fB = F.Bmat()
-        cart_offset  = 3*oMolsys.frag_1st_atom(iF)
-        intco_offset = oMolsys.frag_1st_intco(iF)
-
-        for i in range(F.Nintcos):
-            for xyz in range(3*F.Natom):
-                B[intco_offset+i,cart_offset+xyz] = fB[i,xyz]
-
-    if oMolsys._dimer_intcos:
-        # xyz = oMolsys.geom
-        for i, DI in enumerate(oMolsys._dimer_intcos):
-            # Find first atom of each fragment
-            print('Aidx:' + str(DI.A_idx) )
-            A1stAtom = oMolsys.frag_1st_atom( DI.A_idx )
-            B1stAtom = oMolsys.frag_1st_atom( DI.B_idx )
-            Axyz     = oMolsys.frag_geom( DI.A_idx )
-            Bxyz     = oMolsys.frag_geom( DI.B_idx )
-            DI.compute_B(Axyz, Bxyz, B[oMolsys.dimerfrag_intco_slice(i)],
-                         A1stAtom, 3*B1stAtom) # column offsets
+    for i, intco in enumerate(intcos):
+        intco.DqDx(geom, B[i])
 
     if type(masses) is np.ndarray:
-        sqrtm = np.array([np.repeat(np.sqrt(masses), 3)]*len(Nint), float)
+        sqrtm = np.array([np.repeat(np.sqrt(masses), 3)]*Nint, float)
         B[:] = np.divide(B, sqrtm)
 
-    print('Bmatrix:')
-    print(B)
     return B
 
-
-# Returns mass-weighted Gmatrix if masses are supplied.
-def Gmat(oMolsys, masses=None):
-    """ Calculates BuB^T (calculates B matrix)
-
-    Parameters
-    ----------
-    intcos : list
-        list of internal coordinates
-    geom : ndarray
-        (nat, 3) cartesian geometry
-
-    """
-    B = Bmat(oMolsys, masses)
-
-    return np.dot(B, B.T)
-
-
-def qForces(oMolsys, gradient_x, B=None):
+def qForces(intcos, geom, gradient_x, B=None):
     """Transforms cartesian gradient to internals
 
     Parameters
@@ -107,36 +46,28 @@ def qForces(oMolsys, gradient_x, B=None):
         (nat, 3) cartesian geometry
     gradient_x :
         (3nat, 1) cartesian gradient
+    B matrix: (optional)
 
     Returns
     -------
     ndarray
         forces in internal coordinates (-1 * gradient)
-
     Notes
     -----
     fq = (BuB^T)^(-1)*B*f_x
 
     """
-    if not oMolsys.intcos_present or oMolsys.Natom == 0:
+    if not intcos or not len(geom):
         return np.zeros(0)
 
     if B is None:
-        B = Bmat(oMolsys)
+        B = Bmat(intcos, geom)
 
     fx = np.multiply(-1.0, gradient_x)  # gradient -> forces
     G = np.dot(B, B.T)
-
     Ginv = symmMatInv(G, redundant=True)
     fq = np.dot(np.dot(Ginv, B), fx)
     return fq
-
-def constraint_matrix(oMolsys):
-    frozen = oMolsys.frozen_intco_list
-    if np.any(frozen):
-       return np.diagflat(frozen)
-    else:
-       return None
 
 #def projectRedundanciesAndConstraints(intcos, geom, fq, H):
 def projectRedundanciesAndConstraints(oMolsys, fq, H):
@@ -144,14 +75,14 @@ def projectRedundanciesAndConstraints(oMolsys, fq, H):
     logger = logging.getLogger(__name__)
     Nint = oMolsys.Nintcos
     # compute projection matrix = G G^-1
-    G = Gmat(oMolsys)
+    G = oMolsys.Gmat()
     G_inv = symmMatInv(G, redundant=True)
     Pprime = np.dot(G, G_inv)
     # logger.debug("\tProjection matrix for redundancies.\n\n" + printMatString(Pprime))
     # Add constraints to projection matrix
-    C = constraint_matrix(oMolsys) # returns None, if aren't any
+    C = oMolsys.constraint_matrix # returns None, if aren't any
 
-    if C:
+    if C is not None:
         logger.debug("Adding constraints for projection.\n" + printMatString(C))
         CPC = np.zeros( (Nint, Nint))
         CPC[:, :] = np.dot(C, np.dot(Pprime, C))
@@ -228,28 +159,24 @@ def applyFixedForces(oMolsys, fq, H, stepNumber):
 # """
 
 
-def convertHessianToInternals(H, intcos, geom, g_x=None):
+def convertHessianToInternals(H, oMolsys, g_x=None):
     """ converts the hessian from cartesian coordinates into internal coordinates 
     
     Parameters
     ----------
     H : ndarray
         Hessian in cartesians
-    B : ndarray
-        Wilson B matrix
-    intcos : list 
-        internal coordinates (stretches, bends, etc...)
-    geom : ndarray
-        nat, 3 cartesian geometry
-    
+    oMolsys : molecular system
     Returns
     -------
     Hq : ndarray
     """
     logger = logging.getLogger(__name__)
     logger.info("Converting Hessian from cartesians to internals.\n")
-    B = Bmat(intcos, geom)
+    #B = Bmat(intcos, geom)
+    B = oMolsys.Bmat()
     G = np.dot(B, B.T)
+    geom = oMolsys.geom
 
     Ginv = symmMatInv(G, redundant=True)
     Atranspose = np.dot(Ginv, B)
@@ -262,7 +189,7 @@ def convertHessianToInternals(H, intcos, geom, g_x=None):
         logger.info("Including force/B-matrix derivative term.\n")
 
         g_q = np.dot(Atranspose, g_x)
-        Ncart = 3 * len(geom)
+        Ncart = 3 * oMolsys.Natom
         dq2dx2 = np.zeros((Ncart, Ncart) )  # should be cart x cart for fragment ?
 
         for I, q in enumerate(intcos):

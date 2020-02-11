@@ -39,17 +39,17 @@ def computePivotAndGuessPoints(oMolsys, v, IRCstepSize):
     logger = logging.getLogger(__name__)
 
     # Compute and save pivot point
-    G = intcosMisc.Gmat(oMolsys.intcos, oMolsys.geom, oMolsys.masses)
+    G = oMolsys.Gmat(oMolsys.masses)
     N = step_N_factor(G, v)
     dq_pivot = 0.5 * N * IRCstepSize * np.dot(G, v)
     logger.debug("\n Dq to Pivot Point:" + printArrayString(dq_pivot))
 
-    x_pivot = oMolsys.geom # starting geom but becomes pivot point on next line
-
+    #x_pivot = oMolsys.geom # starting geom but becomes pivot point on next line
     #displace(oMolsys.intcos, x_pivot, dq_pivot, ensure_convergence=True)
-    displaceMolsys(oMolsys, dq_pivot, ensure_convergence=True)
 
-    q_pivot = intcosMisc.qValues(oMolsys.intcos, x_pivot)
+    displaceMolsys(oMolsys, dq_pivot, ensure_convergence=True)
+    x_pivot = oMolsys.geom
+    q_pivot = oMolsys.qArray()
     IRCdata.history.add_pivot_point(q_pivot, x_pivot)
 
     # Step again to get initial guess for next step.  Leave geometry in oMolsys.
@@ -64,12 +64,13 @@ def computePivotAndGuessPoints(oMolsys, v, IRCstepSize):
 def Dq_IRC(oMolsys, E, f_q, H_q, s, dqGuess):
     """ Before Dq_IRC is called, the geometry must be updated to the guess point
     Returns Dq from qk+1 to gprime.
+    TODO: What is dqGuess for?  Remove it?
     """
     
     logger = logging.getLogger(__name__)
     logger.debug("Starting IRC constrained optimization\n")
 
-    G_prime = intcosMisc.Gmat(oMolsys.intcos, oMolsys.geom, oMolsys.masses)
+    G_prime = oMolsys.Gmat(oMolsys.masses)
     logger.debug("Mass-weighted Gmatrix at hypersphere point: \n" + printMatString(G_prime))
     G_prime_root = symmMatRoot(G_prime)
     G_prime_inv = symmMatInv(G_prime)
@@ -84,9 +85,15 @@ def Dq_IRC(oMolsys, E, f_q, H_q, s, dqGuess):
     H_M = np.dot(np.dot(G_prime_root, H_q), G_prime_root.T)
     logger.debug("H_M: \n" + printMatString(H_M))
 
-    #p_prime = dqGuess
-    p_prime = intcosMisc.qValues(oMolsys.intcos, oMolsys.geom) -  \
-              intcosMisc.qValues(oMolsys.intcos, IRCdata.history.x_pivot())
+    # Compute p_prime, difference from pivot point
+    orig_geom = oMolsys.geom
+    oMolsys.geom = IRCdata.history.x_pivot()
+    q_pivot = oMolsys.qArray()
+    oMolsys.geom = orig_geom
+    p_prime = oMolsys.qArray() - q_pivot
+
+    #p_prime = intcosMisc.qValues(oMolsys.intcos, oMolsys.geom) -  \
+    #          intcosMisc.qValues(oMolsys.intcos, IRCdata.history.x_pivot())
     p_M = np.dot(G_prime_root_inv, p_prime)
     logger.debug("p_M: \n" + printArrayString(p_M))
 
@@ -191,7 +198,7 @@ def Dq_IRC(oMolsys, E, f_q, H_q, s, dqGuess):
 
     # Find dq_M from Eqn. 24 in Gonzalez & Schlegel (1990).
     # dq_M = (H_M - lambda I)^(-1) [lambda * p_M - g_M]
-    LambdaI = np.identity(len(oMolsys.intcos))
+    LambdaI = np.identity(oMolsys.Nintcos)
     LambdaI = np.multiply(Lambda, LambdaI)
     deltaQM = symmMatInv(np.subtract(H_M, LambdaI))
     deltaQM = np.dot(deltaQM, np.subtract(np.multiply(Lambda, p_M), g_M))
@@ -253,12 +260,12 @@ def calcLagrangianDerivs(Lambda, HMEigValues, HMEigVects, g_M, p_M, s):
 
 # mass-weighted distance from previous rxnpath point to new one
 def calcLineDistStep(oMolsys):
-    G      = intcosMisc.Gmat(oMolsys.intcos, oMolsys.geom, oMolsys.masses)
+    G      = oMolsys.Gmat(oMolsys.masses)
     G_root = symmMatRoot(G)
     G_inv  = symmMatInv(G_root)
     G_root_inv  = symmMatRoot(G_inv)
 
-    rxn_Dq  = np.subtract(intcosMisc.qValues(oMolsys.intcos, oMolsys.geom), IRCdata.history.q())
+    rxn_Dq  = np.subtract(oMolsys.qArray(), IRCdata.history.q())
     # mass weight (not done in old C++ code)
     rxn_Dq_M = np.dot(G_root_inv, rxn_Dq)
     return np.linalg.norm ( rxn_Dq_M )
@@ -271,13 +278,13 @@ def calcLineDistStep(oMolsys):
 def calcArcDistStep(oMolsys):
     qp = IRCdata.history.q_pivot(-1) # pivot point is stored in previous step
     q0 = IRCdata.history.q(-1)
-    q1 = intcosMisc.qValues(oMolsys.intcos, oMolsys.geom)
+    q1 = oMolsys.qArray()
 
     p    = np.subtract(q1, qp)  # Dq from pivot point to latest rxnpath pt.
     line = np.subtract(q1, q0)  # Dq from rxnpath pt. to rxnpath pt.
 
     # mass-weight
-    G      = intcosMisc.Gmat(oMolsys.intcos, oMolsys.geom, oMolsys.masses)
+    G      = oMolsys.Gmat(oMolsys.masses)
     G_root = symmMatRoot(G)
     G_inv  = symmMatInv(G_root)
     G_root_inv  = symmMatRoot(G_inv)

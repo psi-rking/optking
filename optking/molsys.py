@@ -12,6 +12,7 @@ from . import frag
 from .exceptions import AlgError, OptError
 from . import v3d
 from .addIntcos import connectivityFromDistances, addCartesianIntcos
+from .linearAlgebra import symmMatInv
 
 
 class Molsys(object):
@@ -181,7 +182,7 @@ class Molsys(object):
 
     # accepts absolute atom index, returns fragment index
     def atom2frag_index(self, atom_index):
-        for iF, F in enumerate(self._fragments):
+        for iF in range(self.Nfragments):
             if atom_index in self.frag_atom_range(iF):
                 return iF
         raise OptError("atom2frag_index: atom_index impossibly large")
@@ -221,8 +222,7 @@ class Molsys(object):
     def masses(self):
         m = np.zeros(self.Natom)
         for iF, F in enumerate(self._fragments):
-            start = self.frag_1st_atom(iF)
-            m[start:(start + F.Natom)] = F.masses
+            m[self.frag_atom_slice(iF)] = F.masses
         return m
 
     @property
@@ -253,19 +253,28 @@ class Molsys(object):
     @property
     def frozen_intco_list(self):
         """Determine vector with 1 for any frozen internal coordinate"""
-        frozen = np.zeros(self.Nintcos, bool)
+        frozen = np.zeros(self.Nintcos)
         cnt = 0
         for F in self._fragments:
             for intco in F._intcos:
                 if intco.frozen:
-                    frozen[cnt] = True
+                    frozen[cnt] = 1
                 cnt += 1
         for DI in self._dimer_intcos:
             for intco in DI._pseudo_frag._intcos:
                 if intco.frozen:
-                    frozen[cnt] = True
+                    frozen[cnt] = 1
                 cnt += 1
         return frozen
+
+    @property
+    def constraint_matrix(self):
+        """Returns constraint matrix with 1 on diagonal for frozen coordinates"""
+        frozen = self.frozen_intco_list
+        if np.any(frozen):
+           return np.diagflat(frozen)
+        else:
+           return None
 
     @property
     def intcos_present(self):
@@ -317,11 +326,13 @@ class Molsys(object):
             F.printIntcos()
         return
 
-    def addIntcosFromConnectivity(self, C=None):
-        for F in self._fragments:
-            if C is None:
-                C = F.connectivityFromDistances()
-            F.addIntcosFromConnectivity(C)
+    # If connectivity is provided, only intrafragment connections
+    # are used.  Interfragment connections are ignored here.
+    #def addIntcosFromConnectivity(self, C=None):
+    #    for F in self._fragments:
+    #        if C is None:
+    #            C = F.connectivityFromDistances()
+    #        F.addIntcosFromConnectivity(C)
 
     def addCartesianIntcos(self):
         for F in self._fragments:
@@ -354,7 +365,7 @@ class Molsys(object):
         for iF in range(self.Nfragments):
             fl = [i for i in self.frag_atom_range(iF)]
             l.append(fl)
-        print("l",l)
+        #print("l",l)
         return l
 
     def molsys_to_qc_molecule(self) -> qcel.models.Molecule:
@@ -362,8 +373,8 @@ class Molsys(object):
             Creates a qcschema molecule. version 1
    
         """
-        print("molsys_to_qc_molecule molsys:") 
-        print(self)
+        #print("molsys_to_qc_molecule: input molsys:") 
+        #print(self)
         geom = [i for i in self.geom.flat]
         qc_mol = {"symbols": self.atom_symbols,
                   "geometry": geom,
@@ -374,11 +385,7 @@ class Molsys(object):
                   "fix_com": True,
                   "fix_orientation": True}
         qc_mol = Molecule(**qc_mol)
-        print("qc_mol Molecule.geometry")
-        print(qc_mol.geometry)
         qc_mol = json.loads(json_dumps(qc_mol))
-        print("qc_mol dict[geometry]")
-        print(qc_mol["geometry"])
         return qc_mol
     
     def q(self):
@@ -590,4 +597,91 @@ class Molsys(object):
             F.unfixBendAxes()
         for DI in self._dimer_intcos:
             DI._pseudo_frag.unfixBendAxes()
+
+    # Returns mass-weighted Bmatrix if masses are supplied.
+    def Bmat(self, masses=None):
+        # Allocate memory for full system.
+        Nint  = self.Nintcos
+        Ncart = 3*self.Natom
+        B = np.zeros((Nint, Ncart))
+    
+        for iF, F in enumerate(self._fragments):
+            fB = F.Bmat()
+            cart_offset  = 3*self.frag_1st_atom(iF)
+            intco_offset = self.frag_1st_intco(iF)
+    
+            for i in range(F.Nintcos):
+                for xyz in range(3*F.Natom):
+                    B[intco_offset+i,cart_offset+xyz] = fB[i,xyz]
+    
+        if self._dimer_intcos:
+            # xyz = self.geom
+            for i, DI in enumerate(self._dimer_intcos):
+                #print('Aidx:' + str(DI.A_idx) )
+                A1stAtom = self.frag_1st_atom( DI.A_idx )
+                B1stAtom = self.frag_1st_atom( DI.B_idx )
+                Axyz     = self.frag_geom( DI.A_idx )
+                Bxyz     = self.frag_geom( DI.B_idx )
+                DI.compute_B(Axyz, Bxyz, B[self.dimerfrag_intco_slice(i)],
+                             A1stAtom, 3*B1stAtom) # column offsets
+    
+        if type(masses) is np.ndarray:
+            sqrtm = np.array([np.repeat(np.sqrt(masses), 3)]*Nint, float)
+            B[:] = np.divide(B, sqrtm)
+        #print('end of addIntcos.Bmatrix:')
+        #print(B)
+        return B
+
+    def qShowForces(self, forces):
+        """ Returns scaled forces as array. """
+        c = []
+        for F in self._fragments:
+            c += [intco.fShowFactor for intco in F._intcos]
+        for DI in self._dimer_intcos:
+            c += [intco.fShowFactor for intco in DI._pseudo_frag._intcos]
+        c = np.asarray(c)
+        qaJ = c * forces
+        return qaJ
+
+    # Returns mass-weighted Gmatrix if masses are supplied.
+    def Gmat(self, masses=None):
+        """ Calculates BuB^T (calculates B matrix)
+
+        Parameters
+        ----------
+        intcos : list
+            list of internal coordinates
+        geom : ndarray
+            (nat, 3) cartesian geometry
+    
+        """
+        B = self.Bmat(masses)
+        return np.dot(B, B.T)
+
+    def qForces(self, gradient_x, B=None):
+        """Transform cartesian gradient to internals
+        Parameters
+        ----------
+        gradient_x :
+            (3nat, 1) cartesian gradient
+        Returns
+        -------
+        ndarray
+            forces in internal coordinates (-1 * gradient)
+        Notes
+        -----
+        fq = (BuB^T)^(-1)*B*f_x
+    
+        """
+        if not self.intcos_present or self.Natom == 0:
+            return np.zeros(0)
+    
+        if B is None:
+            B = self.Bmat()
+    
+        fx = np.multiply(-1.0, gradient_x)  # gradient -> forces
+        G = np.dot(B, B.T)
+        Ginv = symmMatInv(G, redundant=True)
+        fq = np.dot(np.dot(Ginv, B), fx)
+        return fq
 

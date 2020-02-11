@@ -33,7 +33,7 @@ def test_B_dB_matrices():
     assert 'test_b' in json_output['keywords']
     assert 'test_derivative_b' in json_output['keywords']
     assert "g_convergence" in json_output['keywords']
-    assert psi4.compare_values(refnucenergy, nucenergy, 4, "Nuclear repulsion energy") #TEST
+    assert psi4.compare_values(refnucenergy, nucenergy, 3, "Nuclear repulsion energy") #TEST
     assert psi4.compare_values(refenergy, E , 8, "Reference energy")           #TEST
 
 

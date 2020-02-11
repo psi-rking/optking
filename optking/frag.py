@@ -133,7 +133,9 @@ class Frag:
     def connectivityFromDistances(self):
         return addIntcos.connectivityFromDistances(self._geom, self._Z)
 
-    def addIntcosFromConnectivity(self, connectivity):
+    def addIntcosFromConnectivity(self, connectivity=None):
+        if connectivity is None:
+            connectivity = self.connectivityFromDistances()
         addIntcos.addIntcosFromConnectivity(connectivity, self._intcos, self._geom)
 
     def addCartesianIntcos(self):
@@ -185,6 +187,6 @@ class Frag:
         """
         for intco in self._intcos:
             if isinstance(intco, tors.Tors) or isinstance(intco, oofp.Oofp):
-                intco.updateOrientation(geom)
+                intco.updateOrientation(self.geom)
 
 

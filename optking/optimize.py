@@ -44,9 +44,8 @@ def optimize(oMolsys, computer):
         energy and nuclear repulsion energy or MolSSI qc_schema_output as dict
 
     """
-    print("optimize(oMolsys,computer)")
-    print(oMolsys)
     logger = logging.getLogger(__name__)
+    logger.info("Running optimize(oMolsys,computer)")
     
     # Take care of some initial variable declarations
     stepNumber = 0 # number of steps taken. Partial. IRC alg uses two step counters
@@ -69,6 +68,8 @@ def optimize(oMolsys, computer):
         #oMolsys = make_internal_coords(oMolsys)
         if not oMolsys.intcos_present:
             make_internal_coords(oMolsys)
+            logger.debug("Molecular systems after make_internal_coords:")
+            logger.debug(str(oMolsys))
 
         # following loop may repeat over multiple algorithms OR over IRC points
         while not converged:
@@ -76,10 +77,10 @@ def optimize(oMolsys, computer):
                 # if optimization coordinates are absent, choose them. Could be erased after AlgError
                 if not oMolsys.intcos_present:
                     make_internal_coords(oMolsys)
-                    #oMolsys = make_internal_coords(oMolsys)
+                    logger.debug("Molecular systems after make_internal_coords:")
+                    logger.debug(str(oMolsys))
 
                 logger.info("\tStarting optimization algorithm.\n")
-                print('Starting optimization algorithm')
                 logger.info(str(oMolsys))
 
                 # Do special initial step-0 for each IRC point.
@@ -97,23 +98,27 @@ def optimize(oMolsys, computer):
                         # TODO see if gradient comes back with the hessian
                         grad = computer.compute(oMolsys.geom, driver='gradient', return_full=False)
                         gX = np.asarray(grad)
-                        E = computer.energies[-1]
-                        H = intcosMisc.convertHessianToInternals(Hcart, oMolsys.intcos, oMolsys.geom)
+                        H = intcosMisc.convertHessianToInternals(Hcart, oMolsys)
                         logger.debug(printMatString(H, title="Transformed Hessian in internal coordinates."))
 
                         # Add the transition state as the first IRC point
-                        x_0 = oMolsys.geom
-                        q_0 = intcosMisc.qValues(oMolsys.intcos, x_0)
+                        #x_0 = oMolsys.geom
+                        #q_0 = intcosMisc.qValues(oMolsys.intcos, x_0)
+                        #f_x = np.multiply(-1, gX)
+                        #B = intcosMisc.Bmat(oMolsys.intcos, x_0)
+                        #f_q = intcosMisc.qForces(q_0, x_0, gX, B)
 
+                        q_0 = oMolsys.qArray()
+                        x_0 = oMolsys.geom
+                        f_q = oMolsys.qForces(gX)
                         f_x = np.multiply(-1, gX)
-                        B = intcosMisc.Bmat(oMolsys.intcos, x_0)
-                        f_q = intcosMisc.qForces(q_0, x_0, gX, B)
+                        E = computer.energies[-1]
 
                         IRCdata.history.add_irc_point(0, q_0, x_0, f_q, f_x, E)
                         IRCstepNumber += 1
 
                         # Lowest eigenvector of mass-weighted Hessian.
-                        G = intcosMisc.Gmat(oMolsys.intcos, oMolsys.geom, oMolsys.masses)
+                        G = oMolsys.Gmat(oMolsys.masses)
                         G_root = symmMatRoot(G)
                         H_q_m = np.dot(np.dot(G_root, H), G_root.T)
                         vM = lowestEigenvectorSymmMat(H_q_m)
@@ -147,14 +152,14 @@ def optimize(oMolsys, computer):
                     printGeomGrad(oMolsys.geom, gX)
 
                     if op.Params.test_B:
-                        testB.testB(oMolsys.intcos, oMolsys.geom)
+                        testB.testB(oMolsys)
                     if op.Params.test_derivative_B:
-                        testB.testDerivativeB(oMolsys.intcos, oMolsys.geom)
+                        testB.testDerivativeB(oMolsys)
 
-                    B = intcosMisc.Bmat(oMolsys)
-                    logger.debug(printMatString(B, title="B matrix"))
+                    #B = intcosMisc.Bmat(oMolsys)
+                    #logger.debug(printMatString(B, title="B matrix"))
 
-                    f_q = intcosMisc.qForces(oMolsys, gX)
+                    f_q = oMolsys.qForces(gX)
                     # Check if forces indicate we are approaching minimum.
                     if op.Params.opt_type == "IRC" and IRCstepNumber > 2:
                         if IRCdata.history.testForIRCminimum(f_q):
@@ -202,7 +207,7 @@ def optimize(oMolsys, computer):
                                 Hcart = computer.compute(xyz, driver='hessian', return_full=False,
                                                        print_result=False)
                                 Hcart = np.asarray(Hcart).reshape(oMolsys.geom.size, oMolsys.geom.size)
-                                H = intcosMisc.convertHessianToInternals(Hcart, oMolsys.intcos, xyz)
+                                H = intcosMisc.convertHessianToInternals(Hcart, oMolsys)
                             else:
                                 H = hessian.guess(oMolsys, op.Params.intrafrag_hess)
                         else:  # not IRC, not first step
@@ -213,7 +218,7 @@ def optimize(oMolsys, computer):
                                 Hcart = computer.compute(xyz, driver='hessian', return_full=False,
                                                        print_result=False)
                                 Hcart = np.asarray(Hcart).reshape(oMolsys.geom.size, oMolsys.geom.size)
-                                H = intcosMisc.convertHessianToInternals(Hcart, oMolsys.intcos, xyz)
+                                H = intcosMisc.convertHessianToInternals(Hcart, oMolsys)
                             else:
                                 history.oHistory.hessianUpdate(H, oMolsys)
                     else:  # IRC
@@ -230,12 +235,12 @@ def optimize(oMolsys, computer):
                                 Hcart = computer.compute(xyz, driver='hessian', return_full=False,
                                                        print_result=False)
                                 Hcart = np.asarray(Hcart).reshape(oMolsys.geom.size, oMolsys.geom.size)
-                                H = intcosMisc.convertHessianToInternals(Hcart, oMolsys.intcos, xyz)
+                                H = intcosMisc.convertHessianToInternals(Hcart, oMolsys)
                             else:
                                 history.oHistory.hessianUpdate(H, oMolsys)
 
                     if op.Params.print_lvl >= 4:
-                        hessian.show(H, oMolsys.intcos)
+                        hessian.show(H, oMolsys)
 
                     intcosMisc.applyFixedForces(oMolsys, f_q, H, stepNumber)
                     intcosMisc.projectRedundanciesAndConstraints(oMolsys, f_q, H)
@@ -253,8 +258,8 @@ def optimize(oMolsys, computer):
                         logger.info("\tConvergence check returned %s." % converged)
 
                         if converged:
-                            q_irc_point = intcosMisc.qValues(oMolsys.intcos, oMolsys.geom)
-                            forces_irc_point = intcosMisc.qForces(oMolsys.intcos, oMolsys.geom, gX)
+                            q_irc_point = oMolsys.qArray()
+                            forces_irc_point = oMolsys.qForces(gX)
                             lineDistStep = IRCfollowing.calcLineDistStep(oMolsys)
                             arcDistStep = IRCfollowing.calcArcDistStep(oMolsys)
 
@@ -311,15 +316,15 @@ def optimize(oMolsys, computer):
                     # from . import bend # import not currently being used according to IDE
                     for l in AF.linearBends:
                         if l.bendType == "LINEAR":  # no need to repeat this code for "COMPLEMENT"
-                            F = addIntcos.checkFragment(l.atoms, oMolsys)
-                            intcosMisc.removeOldNowLinearBend(l.atoms, oMolsys._fragments[F].intcos)
-                    oMolsys.addIntcosFromConnectivity()
+                            iF = addIntcos.checkFragment(l.atoms, oMolsys)
+                            F = oMolsys._fragments[iF]
+                            intcosMisc.removeOldNowLinearBend(l.atoms, F.intcos)
+                            F.addIntcosFromConnectivity()
                     eraseHistory = True
                 elif op.Params.dynamic_level == op.Params.dynamic_level_max:
                     logger.critical("\n\t Current algorithm/dynamic_level is %d.\n"
                                           % op.Params.dynamic_level)
-                    logger.critical("\n\t Alternative approaches are not available or"
-                                          + "turned on.\n")
+                    logger.critical("\n\t Alternative approaches are not available or turned on.\n")
                     raise OptError("Maximum dynamic_level reached.")
                 else:
                     op.Params.dynamic_level += 1
@@ -476,25 +481,37 @@ def make_internal_coords(oMolsys):
         # increase connectivity until all atoms are connected
         oMolsys.augmentConnectivityToSingleFragment(connectivity)
         oMolsys.consolidateFragments()          # collapse into one frag
+
+        if op.Params.opt_coordinates in ['REDUNDANT', 'BOTH']:
+            oMolsys._fragments[0].addIntcosFromConnectivity(connectivity)
+
+        if op.Params.opt_coordinates in ['CARTESIAN', 'BOTH']:
+            oMolsys._fragments[0].addCartesianIntcos()
+
     elif op.Params.frag_mode == 'MULTI':
         # if provided multiple frags, then we use these.
         # if not, then split them (if not connected).
         if oMolsys.Nfragments == 1:
             oMolsys.splitFragmentsByConnectivity()
+
         if oMolsys.Nfragments > 1:
-            print('Nfragments > 1')
             addIntcos.addDimerFragIntcos(oMolsys)
-        if oMolsys.Nfragments > 1:
+            # remove connectivity so that we don't add redundant coordinates
+            # between fragments
             oMolsys.purgeInterfragmentConnectivity(connectivity)
 
-    if op.Params.opt_coordinates in ['REDUNDANT', 'BOTH']:
-        oMolsys.addIntcosFromConnectivity(connectivity)
+        if op.Params.opt_coordinates in ['REDUNDANT', 'BOTH']:
+            for iF, F in enumerate(oMolsys._fragments):
+                C = np.ndarray( (F.Natom, F.Natom) )
+                C[:] = connectivity[oMolsys.frag_atom_slice(iF), oMolsys.frag_atom_slice(iF)]
+                F.addIntcosFromConnectivity(C)
 
-    if op.Params.opt_coordinates in ['CARTESIAN', 'BOTH']:
-        oMolsys.addCartesianIntcos()
+        if op.Params.opt_coordinates in ['CARTESIAN', 'BOTH']:
+            for F in oMolsys._fragments:
+                F.addCartesianIntcos()
+
+
     addIntcos.addFrozenAndFixedIntcos(oMolsys)  # make sure these are in the set
-    print('end of make_internal_coords:')
-    print(oMolsys)
     return
 
 

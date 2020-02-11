@@ -1,18 +1,20 @@
 from itertools import combinations, permutations
 import logging
-
 import numpy as np
 import qcelemental as qcel
+from copy import deepcopy
 
-from . import bend
-from . import cart
 from .exceptions import AlgError, OptError
 from . import optparams as op
+from . import v3d
 from . import stre
 from . import tors
-from . import v3d
+from . import bend
+from . import cart
 from . import dimerfrag
 
+### Functions related to freezing, fixing, determining, and
+###    adding coordinates. 
 
 def connectivityFromDistances(geom, Z):
     """
@@ -54,7 +56,7 @@ def addIntcosFromConnectivity(C, intcos, geom):
         (nat, nat) matrix desribing connectivity
         see intcosMisc.connectivityFromDistances()
     intcos : list
-            (nat) list of current internal coordiantes (Stre, Bend, Tors)
+            (nat) list of current internal coordinates (Stre, Bend, Tors)
     geom : ndarray
         (nat, 3) cartesian geometry
 
@@ -76,8 +78,6 @@ def addStreFromConnectivity(C, intcos):
         (nat)
     Returns
     -------
-    int
-        number of stretches added
 
     """
 
@@ -104,8 +104,6 @@ def addBendFromConnectivity(C, intcos, geom):
         (nat, 3) cartesian geometry
     Returns
     -------
-    float
-        number of bends added
 
     """
 
@@ -150,8 +148,6 @@ def addTorsFromConnectivity(C, intcos, geom):
         (nat, 3) cartesian geometry
     Returns
     -------
-    float
-        number of torsions added
     """
 
     # Norig = len(intcos)
@@ -236,7 +232,7 @@ def addTorsFromConnectivity(C, intcos, geom):
 
 def addCartesianIntcos(intcos, geom):
     """
-    Add cartesian coordiantes to intcos (takes place of internal coordiantes)
+    Add cartesian coordinates to intcos (takes place of internal coordinates)
     Parameters
     ----------
     intcos : list
@@ -245,8 +241,6 @@ def addCartesianIntcos(intcos, geom):
         (nat, 3) cartesian geometry
     Returns
     -------
-    float
-        number of coordinates added
     """
 
     # Norig = len(intcos)
@@ -262,8 +256,8 @@ def addCartesianIntcos(intcos, geom):
 
 def linearBendCheck(oMolsys, dq):
     """
-    Identifies bends which are close to linear but not previously
-    identified as "linear bends".
+    Searches fragments to identify bends which are quasi-linear but not
+    previously identified as "linear bends".
     Parameters
     ---------
     oMolsys : MOLSYS class
@@ -278,13 +272,10 @@ def linearBendCheck(oMolsys, dq):
     logger = logging.getLogger(__name__)
     linearBends = []
 
-    # TODO This will need generalized later for combination coordinates.
-    # q = qValues(intcos, geom)
-
-    for F in oMolsys._fragments:
+    for iF, F in enumerate(oMolsys._fragments):
         for i, intco in enumerate(F.intcos):
             if isinstance(intco, bend.Bend):
-                newVal = intco.q() + dq[i]
+                newVal = intco.q(F.geom) + dq[oMolsys.frag_1st_intco(iF)+i]
                 A,B,C = intco.A, intco.B, intco.C
     
                 # <ABC < 0.  A-C-B should be linear bends.
@@ -303,7 +294,7 @@ def linearBendCheck(oMolsys, dq):
             for b in linearBends:
                 linear_bend_string += '\t' + str(b)
     
-                if b in intcos:
+                if b in F.intcos:
                     linear_bend_string += (", already present.\n")
                 else:
                     linear_bend_string += (", missing.\n")
@@ -510,18 +501,22 @@ def addDimerFragIntcos(oMolsys):
     # Assuming that for trimers+, the same reference atoms are desired for
     # each coordinate on same fragment.
    
-    atoms = op.Params.frag_ref_atoms
+    # User reference atoms start numbering from 1.  Decrement here.
+    atoms = deepcopy(op.Params.frag_ref_atoms)
+    for iF, F in enumerate(atoms):        # frag 0, frag 1
+        for iRP, RP in enumerate(F):      # reference points
+            for iAT in range(len(RP)): # atoms
+                atoms[iF][iRP][iAT] -= 1
+
     for i in range(oMolsys.Nfragments):
         for j in range(i+1,oMolsys.Nfragments):
-            print('addDimerFragIntcos atom lists:')
-            print(atoms[i])
-            print(atoms[j])
-            fi = oMolsys._fragments[i]
-            fj = oMolsys._fragments[j]
+            #print('addDimerFragIntcos atom lists:')
+            #print(atoms[i])
+            #print(atoms[j])
             df = dimerfrag.DimerFrag(i, atoms[i], j, atoms[j])
-            df.update_reference_geometry(oMolsys.geom[i], oMolsys.geom[j])
+            df.update_reference_geometry(oMolsys.frag_geom(i), oMolsys.frag_geom(j))
             oMolsys._dimer_intcos.append(df)
-    print('end of addDimerFragIntcos')
-    print(oMolsys)
+    #print('end of addDimerFragIntcos')
+    #print(oMolsys)
     return
 
