@@ -4,19 +4,24 @@ import json
 import numpy as np
 import logging
 
-from qcelemental.models import AtomicInput, AtomicResult, Molecule
+from qcelemental.models import AtomicInput, Result, Molecule
 from qcelemental.util.serialization import json_dumps
 
 from . import history
 from .exceptions import OptError
 
-
 class ComputeWrapper:
-    """ An implementation of MolSSI's qc schema """
+    """ An implementation of MolSSI's qc schema
+
+    Parameters
+    ----------
+    JSON_dict : dict
+        should match qcschema_input format. version 1
+
+    """
 
     def __init__(self, molecule, model, keywords, program):
 
-        logger = logging.getLogger(__name__)
         self.molecule = molecule
         self.model = model
         self.keywords = keywords
@@ -42,8 +47,7 @@ class ComputeWrapper:
     def generate_schema_input(self, driver):
 
         molecule = Molecule(**self.molecule)
-        inp = AtomicInput(molecule=molecule, model=self.model, keywords=self.keywords,
-                          driver=driver)
+        inp = AtomicInput(molecule=molecule, model=self.model, keywords=self.keywords, driver=driver)
 
         return inp
 
@@ -66,6 +70,7 @@ class ComputeWrapper:
             dict 
         """
 
+        
         logger = logging.getLogger(__name__)
         
         self.update_geometry(geom)
@@ -80,22 +85,22 @@ class ComputeWrapper:
         if ret['success']: 
             self.energies.append(ret['properties']['return_energy'])
         else:
-            raise OptError(f"Error encountered for {driver} calc. {ret['error']['error_message']}",
-                           ret['error']['error_type'])
+           raise OptError(f"Error encountered for {driver} calc. {ret['error']['error_message']}",
+                          ret['error']['error_type'])
 
         if return_full:
             return ret
         else:
             return ret['return_result']
 
-    def energy(self):
-        return self._compute("energy")
+    def energy(self, return_full=False):
+        return self._compute("energy", return_full)
 
-    def gradient(self):
-        return self._compute("gradient")
+    def gradient(self, return_full=False):
+        return self._compute("gradient", return_full)
 
-    def hessian(self):
-        return self._compute("hessian")
+    def hessian(self, return_full=False):
+        return self._compute("hessian", return_full)
 
 
 class Psi4Computer(ComputeWrapper):
@@ -106,7 +111,7 @@ class Psi4Computer(ComputeWrapper):
 
         inp = self.generate_schema_input(driver)
         ret = psi4.json_wrapper.run_json(inp.dict())
-        ret = AtomicResult(**ret)
+        ret = Result(**ret)
         return ret
 
 

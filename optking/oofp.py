@@ -8,12 +8,12 @@ from . import optparams as op
 from . import v3d
 from .simple import Simple
 
-# Class for out-of-plane angle.  Definition (atom_a,atom_b,connectivity_mat,atom_d)
-# means angle AB with respect to the CBD plane; canonical order is connectivity_mat < atom_d
+# Class for out-of-plane angle.  Definition (A,B,C,D) means angle AB with respect
+# to the CBD plane; canonical order is C < D
 
 
 class Oofp(Simple):
-    def __init__(self, a, b, c, d, frozen=False, fixed_eq_val=None):
+    def __init__(self, a, b, c, d, frozen=False, fixedEqVal=None):
 
         atoms = (a, b, c, d)
         if c < d:
@@ -21,13 +21,13 @@ class Oofp(Simple):
         else:
             self.neg = -1
         self._near180 = 0
-        Simple.__init__(self, atoms, frozen, fixed_eq_val)
+        Simple.__init__(self, atoms, frozen, fixedEqVal)
         
         try:
             import coordinates
         except ImportError:
-            raise ImportError("""could not import coordinates. Sympy needed for out of plane 
-            angles. please intstall sympy - conda install sympy""")
+            raise ImportError("could not import coordinates. Sympy needed for out of " 
+                + "plane angles. please intstall sympy - conda install sympy")
         else:
             self.symbolic_coord = coordinates.OutOfPlane(atoms)
     
@@ -39,9 +39,9 @@ class Oofp(Simple):
 
         s += "O"
 
-        s += "(%d,%d,%d,%d)" % (self.atom_a + 1, self.atom_b + 1, self.atom_c + 1, self.atom_d + 1)
-        if self.fixed_eq_val:
-            s += "[%.4f]" % self.fixed_eq_val
+        s += "(%d,%d,%d,%d)" % (self.A + 1, self.B + 1, self.C + 1, self.D + 1)
+        if self.fixedEqVal:
+            s += "[%.4f]" % self.fixedEqVal
         return s
 
     def __eq__(self, other):
@@ -56,7 +56,7 @@ class Oofp(Simple):
     def near180(self):
         return self._near180
 
-    def update_orientation(self, geom):
+    def updateOrientation(self, geom):
         tval = self.q(geom)
         if tval > op.Params.fix_val_near_pi:
             self._near180 = +1
@@ -67,14 +67,14 @@ class Oofp(Simple):
         return
 
     @property
-    def q_show_factor(self):
+    def qShowFactor(self):
         return 180.0 / math.pi
 
-    def q_show(self, geom):  # return in degrees
-        return self.q(geom) * self.q_show_factor
+    def qShow(self, geom):  # return in degrees
+        return self.q(geom) * self.qShowFactor
 
     @property
-    def f_show_factor(self):
+    def fShowFactor(self):
         return qcel.constants.hartree2aJ * math.pi / 180.0
 
     def q(self, geom):
@@ -92,11 +92,8 @@ class Oofp(Simple):
 
         """
         try:
-            tau = v3d.oofp(geom[self.atom_a], geom[self.atom_b], geom[self.atom_c],
-                           geom[self.atom_d])
-        except AlgError:
-            logger = logging.getLogger(__name__)
-            logger.error("Could not compute out of plane angle")
+            tau = v3d.oofp(geom[self.A], geom[self.B], geom[self.C], geom[self.D])
+        except AlgError as error:
             raise
 
         # Extend domain of out-of-plane angles to beyond pi
@@ -109,11 +106,14 @@ class Oofp(Simple):
 
     # out-of-plane is m-o-p-n
     # Assume angle phi_CBD is OK, or we couldn't calculate the value anyway.
-    def dqdx(self, geom, dqdx):
-        """
-        eBA = geom[self.atom_a] - geom[self.atom_b]
-        eBC = geom[self.atom_c] - geom[self.atom_b]
-        eBD = geom[self.atom_d] - geom[self.atom_b]
+    def DqDx(self, geom, dqdx):
+
+        self.DqDx_sympy(geom, dqdx)
+        return
+        
+        eBA = geom[self.A] - geom[self.B]
+        eBC = geom[self.C] - geom[self.B]
+        eBD = geom[self.D] - geom[self.B]
         rBA = v3d.norm(eBA)
         rBC = v3d.norm(eBC)
         rBD = v3d.norm(eBD)
@@ -121,46 +121,40 @@ class Oofp(Simple):
         eBC *= 1.0 / rBC
         eBD *= 1.0 / rBD
 
-        # compute out-of-plane value, connectivity_mat-atom_b-atom_d angle
+        # compute out-of-plane value, C-B-D angle
         val = self.q(geom)
-        phi_CBD = v3d.angle(geom[self.connectivity], geom[self.atom_b], geom[self.atom_d])
+        phi_CBD = v3d.angle(geom[self.C], geom[self.B], geom[self.D])
 
-        # S vector for atom_a
+        # S vector for A
         tmp = v3d.cross(eBC, eBD)
         tmp /= math.cos(val) * math.sin(phi_CBD)
         tmp2 = math.tan(val) * eBA
-        dqdx[3 * self.atom_a:3 * self.atom_a + 3] = self.neg * (tmp - tmp2) / rBA
+        dqdx[3 * self.A:3 * self.A + 3] = self.neg * (tmp - tmp2) / rBA
 
-        # S vector for connectivity_mat
+        # S vector for C
         tmp = v3d.cross(eBD, eBA)
         tmp = tmp / (math.cos(val) * math.sin(phi_CBD))
         tmp2 = math.cos(phi_CBD) * eBD
         tmp3 = -1.0 * tmp2 + eBC
         tmp3 *= math.tan(val) / (math.sin(phi_CBD) * math.sin(phi_CBD))
-        dqdx[3 * self.connectivity:3 * self.connectivity + 3] = self.neg * (tmp - tmp3) / rBC
+        dqdx[3 * self.C:3 * self.C + 3] = self.neg * (tmp - tmp3) / rBC
 
-        # S vector for atom_d
+        # S vector for D
         tmp = v3d.cross(eBA, eBC)
         tmp /= math.cos(val) * math.sin(phi_CBD)
         tmp2 = math.cos(phi_CBD) * eBC
         tmp3 = -1.0 * tmp2 + eBD
         tmp3 *= math.tan(val) / (math.sin(phi_CBD) * math.sin(phi_CBD))
-        dqdx[3 * self.atom_d:3 * self.atom_d + 3] = self.neg * (tmp - tmp3) / rBD
+        dqdx[3 * self.D:3 * self.D + 3] = self.neg * (tmp - tmp3) / rBD
 
-        # S vector for atom_b
-        dqdx[3*self.atom_b:3 * self.atom_b + 3] = (self.neg * -1.0 *
-                                                   dqdx[3 * self.atom_a:3 * self.atom_a + 3]
-                                                   - dqdx[3*self.connectivity:3*self.connectivity+3] - ]
-                                                   dqdx[3*self.atom_d:3 * self.atom_d + 3])
-        """
+        # S vector for B
+        dqdx[3*self.B:3*self.B+3] = (self.neg * -1.0 * dqdx[3*self.A:3*self.A+3]
+            - dqdx[3*self.C:3*self.C+3] - dqdx[3*self.D:3*self.D+3])
 
-        self.DqDx_sympy(geom, dqdx)
-        return
+    def Dq2Dx2(self, geom, dqdx):
+        raise AlgError('no derivative B matrices for out-of-plane angles')
 
-    def dq2dx2(self, geom, dqdx):
-        raise AlgError('no derivative atom_b matrices for out-of-plane angles')
-
-    def diagonal_hessian_guess(self, geom, Z, connectivity, guess="SIMPLE"):
+    def diagonalHessianGuess(self, geom, Z, connectivity, guess="SIMPLE"):
         """ Generates diagonal empirical Hessians in a.u. such as
           Schlegel, Theor. Chim. Acta, 66, 333 (1984) and
           Fischer and Almlof, J. Phys. Chem., 96, 9770 (1992).
@@ -177,8 +171,9 @@ class Oofp(Simple):
 
     def DqDx_sympy(self, geom, dqdx):
         dqdx_mat = self.symbolic_coord.dq_dx(geom)
-        dqdx[self.atom_a * 3: (3 * self.atom_a) + 3] = dqdx_mat[0]
-        dqdx[self.atom_b * 3: (3 * self.atom_b) + 3] = dqdx_mat[1]
-        dqdx[self.atom_c * 3: (3 * self.atom_c) + 3] = dqdx_mat[2]
-        dqdx[self.atom_d * 3: (3 * self.atom_d) + 3] = dqdx_mat[3]
-
+        dqdx[self.A * 3: (3 * self.A) + 3] = dqdx_mat[0]
+        dqdx[self.B * 3: (3 * self.B) + 3] = dqdx_mat[1]
+        dqdx[self.C * 3: (3 * self.C) + 3] = dqdx_mat[2]
+        dqdx[self.D * 3: (3 * self.D) + 3] = dqdx_mat[3]
+        
+        

@@ -1,7 +1,7 @@
 import setuptools
 import versioneer
 
-short_description = "OptKing is a python geometry optimization module originally written for PSI by R. atom_a. King."
+short_description = "OptKing is a python geometry optimization module originally written for PSI by R. A. King."
 
 try:
     with open("README.md", "r") as handle:
@@ -12,7 +12,7 @@ except:
 if __name__ == "__main__":
     setuptools.setup(
         name='OptKing',
-        description='atom_a geometry optimizer for quantum chemistry.',
+        description='A geometry optimizer for quantum chemistry.',
         author='Rollin King',
         author_email='rking@bethel.edu',
         url="https://github.com/psi-rking/optking",

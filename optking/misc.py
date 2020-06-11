@@ -13,14 +13,14 @@ def delta(i, j):
         return 0
 
 
-def is_dq_symmetric(oMolsys, Dq):
+def isDqSymmetric(oMolsys, Dq):
     logger = logging.getLogger(__name__)
     # TODO add symmetry check
-    logger.debug('\tTODO add is_dq_symmetric\n')
+    logger.debug('\tTODO add isDqSymmetric\n')
     return True
 
 
-def symmetrize_xyz(XYZ):
+def symmetrizeXYZ(XYZ):
     logger = logging.getLogger(__name__)
     # TODO add symmetrize function
     logger.debug('\tTODO add symmetrize XYZ\n')
@@ -30,7 +30,7 @@ def symmetrize_xyz(XYZ):
 # "Average" bond length given two periods
 # Values below are from Lindh et al.
 # Based on DZP RHF computations, I suggest: 1.38 1.9 2.53, and 1.9 2.87 3.40
-def average_r_from_periods(perA, perB):
+def AverageRFromPeriods(perA, perB):
     if perA == 1:
         if perB == 1:
             return 1.35
@@ -53,7 +53,7 @@ def average_r_from_periods(perA, perB):
 
 
 # Return Lindh alpha value from two periods
-def hguess_lindh_alpha(perA, perB):
+def HguessLindhAlpha(perA, perB):
     if perA == 1:
         if perB == 1:
             return 1.000
@@ -67,17 +67,17 @@ def hguess_lindh_alpha(perA, perB):
 
 
 # rho_ij = e^(alpha (r^2,ref - r^2))
-def hguess_lindh_rho(ZA, ZB, RAB):
+def HguessLindhRho(ZA, ZB, RAB):
     perA = qcel.periodictable.to_period(ZA)
     perB = qcel.periodictable.to_period(ZB)
 
-    alpha = hguess_lindh_alpha(perA, perB)
-    r_ref = average_r_from_periods(perA, perB)
+    alpha = HguessLindhAlpha(perA, perB)
+    r_ref = AverageRFromPeriods(perA, perB)
 
     return np.exp(-alpha * (RAB * RAB - r_ref * r_ref))
 
 
-def tokenize_input_string(inString):
+def tokenizeInputString(inString):
     """
     params: string of integers corresponding to internal coordinates
     returns: a list of integers correspoding to an atom
@@ -87,12 +87,12 @@ def tokenize_input_string(inString):
     return outString.split()
 
 
-def int_list(inList):
+def intList(inList):
     outList = [int(i) for i in inList]
     return outList
 
 
-def int_int_float_list(inList):
+def intIntFloatList(inList):
     if len(inList) % 3 != 0:
         raise OptError("List is not comprised of int-int-float elements")
     outList = []
@@ -103,7 +103,7 @@ def int_int_float_list(inList):
     return outList
 
 
-def int_int_int_float_list(inList):
+def intIntIntFloatList(inList):
     if len(inList) % 4 != 0:
         raise OptError(
             "List is not comprised of int-int-int-float elements")
@@ -116,36 +116,32 @@ def int_int_int_float_list(inList):
     return outList
 
 
-def int_int_int_int_float_list(in_list):
-    if len(in_list) % 5 != 0:
+def intIntIntIntFloatList(inList):
+    if len(inList) % 5 != 0:
         raise OptError(
             "List is not comprised of int-int-int-int-float elements")
-    out_list = []
-    for i in range(0, len(in_list), 5):
-        out_list.append(int(in_list[i + 0]))
-        out_list.append(int(in_list[i + 1]))
-        out_list.append(int(in_list[i + 2]))
-        out_list.append(int(in_list[i + 3]))
-        out_list.append(float(in_list[i + 4]))
-    return out_list
+    outList = []
+    for i in range(0, len(inList), 5):
+        outList.append(int(inList[i + 0]))
+        outList.append(int(inList[i + 1]))
+        outList.append(int(inList[i + 2]))
+        outList.append(int(inList[i + 3]))
+        outList.append(float(inList[i + 4]))
+    return outList
 
 
-def int_xyz_list(in_list):
-    logger = logging.getLogger(__name__)
-
-    if len(in_list) % 2 != 0:
+def int_XYZ_list(inList):
+    if len(inList) % 2 != 0:
         raise OptError("int-XYZ list does not have even number of entries")
-    out_list = []
-    for i in range(0, len(in_list), 2):
-        out_list.append(int(in_list[i + 0]))
-        cart_string = str(in_list[i + 1]).upper()
+    outList = []
+    for i in range(0, len(inList), 2):
+        outList.append(int(inList[i + 0]))
+        cart_string = str(inList[i + 1]).upper()
         if len(cart_string) > 3 or len(cart_string) < 1:
-            logger.critical("Improper length of xyz coordinate string")
             raise OptError("Could not decipher xyz coordinate string")
         for c in cart_string:
             if c not in ('X', 'Y', 'Z'):
-                logger.critical(f"Improper character {c} found in xyz coordinate string")
                 raise OptError("Could not decipher xyz coordinate string")
         cart_string = sorted(cart_string)  # x , then y, then z
-        out_list.append(cart_string)
-    return out_list
+        outList.append(cart_string)
+    return outList

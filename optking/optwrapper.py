@@ -16,7 +16,6 @@ from .compute_wrappers import QCEngineComputer, Psi4Computer
 from .printTools import welcome
 from . exceptions import OptError
 
-
 def optimize_psi4(calc_name, program='psi4', dertype=None):
     """
     Wrapper for optimize.optimize() Looks for an active psi4 molecule and optimizes.
@@ -24,7 +23,7 @@ def optimize_psi4(calc_name, program='psi4', dertype=None):
 
     Parameters
     ----------
-    calc_name: str
+    calcName: str
         level of theory for optimization. eg MP2
     program: str
         program used for gradients, hessians...
@@ -39,14 +38,15 @@ def optimize_psi4(calc_name, program='psi4', dertype=None):
     import psi4
 
     logger = logging.getLogger(__name__)
+    logger.info(welcome())
+
     mol = psi4.core.get_active_molecule()
     oMolsys = molsys.Molsys.from_psi4_molecule(mol)
 
-    # Get optking options and globals from psi4
-    # Look through optking module specific options first. If a global has already appeared
-    # in optking's options, don't include as a qc package option
+    #Get optking options and globals from psi4
+    #Look through optking module specific options first. If a global has already appeared
+    #in optking's options, don't include as a qc package option
 
-    logger.debug("Getting module and psi4 options for qcschema construction")
     module_options = psi4.driver.p4util.prepare_options_for_modules()
     all_options = psi4.core.get_global_option_list()
     opt_keys = {'program': program}
@@ -75,42 +75,29 @@ def optimize_psi4(calc_name, program='psi4', dertype=None):
                         'method': calc_name},
                     "driver": "gradient",
                     "keywords": qc_keys}}
-
-    logger.debug("Creating OptimizationInput")
     opt_input = OptimizationInput(**opt_input)
 
     # Remove numpy elements to allow at will json serialization
     opt_input = json.loads(json_dumps(opt_input))
-    opt_output = copy.deepcopy(opt_input)
 
     try:
         initialize_options(opt_keys)
         computer = make_computer(opt_input)
         opt_output = optimize(oMolsys, computer)
-    except (OptError, KeyError, ValueError, AttributeError) as error:
-        opt_output = {"success": False, "error": {"error_type": error.err_type,
-                                                  "error_message": error.mesg}}
-        logger.critical(f"Error placed in qcschema: {opt_output}")
-    except Exception as error:
-        logger.critical("An unknown error has occured and evaded all error checking")
-
-        opt_output = {"success": False, "error": {"error_type": error,
-                                                  "error_message": str(error)}}
-        logger.critical(f"Error placed in qcschema: {opt_output}")
+    except OptError as error:
+        opt_input.update({"success": False, "error": {"error_type": error.err_type, "error_message": error.mesg}})
     finally:
         opt_input.update({"provenance": optking._optking_provenance_stamp})
         opt_input["provenance"]["routine"] = "optimize_psi4"
         opt_input.update(opt_output)
         return opt_input
 
-
 def optimize_qcengine(opt_input):
-    """ Try to optimize, find TS, or find IRC of the system as specifed by a QCSchema
-    OptimizationInput.
+    """ Try to optimize, find TS, or find IRC of the system as specifed by a QCSchema OptimizationInput.
         
         Parameters
         ----------
-        opt_input: Union[OptimizationInput, dict]
+        optimization_input: OptimizationInput, dict
             Pydantic Schema of the OptimizationInput model.
             see https://github.com/MolSSI/QCElemental/blob/master/qcelemental/models/procedures.py
 
@@ -118,27 +105,21 @@ def optimize_qcengine(opt_input):
         -------
         dict
     """
+
     logger = logging.getLogger(__name__)
+    logger.info(welcome())
 
     if isinstance(opt_input, OptimizationInput):
-        opt_input = json.loads(json_dumps(opt_input))  # Remove numpy elements turn into dictionary
-    opt_output = copy.deepcopy(opt_input)  # If we can't even make it into optimize
+        opt_input = json.loads(json_dumps(opt_input))  #Remove numpy elements turn into dictionary
 
     # Make basic optking molecular system
-    oMolsys = molsys.Molsys.from_json_molecule(opt_input['initial_molecule'])
+    oMolsys = molsys.Molsys.from_JSON_molecule(opt_input['initial_molecule'])
     try:
         initialize_options(opt_input['keywords'])
         computer = make_computer(opt_input)
         opt_output = optimize(oMolsys, computer)
-    except (OptError, KeyError, ValueError, AttributeError) as error:
-        opt_output = {"success": False, "error": {"error_type": error.err_type,
-                                                  "error_message": error.mesg}}
-        logger.critical(f"Error placed in qcschema: {opt_output}")
-    except Exception as error:
-        logger.critical("An unknown error has occured and evaded all error checking")
-        opt_output = {"success": False, "error": {"error_type": error,
-                                                  "error_message": str(error)}}
-        logger.critical(f"Error placed in qcschema: {opt_output}")
+    except OptError:
+        opt_input.update({"success": False, "error": {"error_type": error.err_type, "error_message": error.mesg}})
     finally:
         opt_input.update(opt_output)
         opt_input.update({'provenance': optking._optking_provenance_stamp})
@@ -149,12 +130,9 @@ def optimize_qcengine(opt_input):
     # from qcel.models.procedures.py
 
 
-def make_computer(opt_input: dict, computer_type='qc'):
+def make_computer(opt_input: dict, computer_type='qc'): 
 
-    logger = logging.getLogger(__name__)
-    logger.debug("Creating a Compute Wrapper")
     program = op.Params.program
-
     # This gets updated so it shouldn't be a reference
     molecule = copy.deepcopy(opt_input['initial_molecule'])
     qc_input = opt_input['input_specification']
@@ -162,27 +140,20 @@ def make_computer(opt_input: dict, computer_type='qc'):
     model = qc_input['model']
 
     if computer_type == 'psi4':
-        # Please note that program is not actually used here
+        # Please note that program is not used here
         return Psi4Computer(molecule, model, options, program)
     else:
         return QCEngineComputer(molecule, model, options, program)
 
-
 def initialize_options(opt_keys):
 
     logger = logging.getLogger(__name__)
-    logger.info(welcome())
     userOptions = caseInsensitiveDict.CaseInsensitiveDict(opt_keys)
     # Save copy of original user options. Commented out until it is used
     # origOptions = copy.deepcopy(userOptions)
 
     # Create full list of parameters from user options plus defaults.
-    try:
-        op.Params = op.OptParams(userOptions)
-    except (KeyError, ValueError, AttributeError) as e:
-        logger.debug(str(e))
-        raise
-
-    # TODO we should make this just be a normal object
-    #  we should return it to the optimize method
+    logger.debug("\n\tProcessing user input options...\n")
+    op.Params = op.OptParams(userOptions)
+    # TODO we should make this just be a normal object and we should return it to the optimize method
     logger.debug(str(op.Params))

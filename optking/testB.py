@@ -1,4 +1,4 @@
-# Test the analytic atom_b matrix (dq/dx) via finite differences
+# Test the analytic B matrix (dq/dx) via finite differences
 # The 5-point formula should be good to DISP_SIZE^4 -
 #  a few unfortunates will be slightly worse.
 # Returns True or False, doesn't raise exceptions
@@ -10,28 +10,28 @@ import copy
 from . import optparams as op
 from . import intcosMisc
 
-from .printTools import print_mat_string
+from .printTools import printMatString
 
 #def testB(intcos, geom):
 def testB(oMolsys):
     logger = logging.getLogger(__name__)
-    Natom = oMolsys.natom
-    Nintco = oMolsys.num_intcos
+    Natom = oMolsys.Natom
+    Nintco = oMolsys.Nintcos
     DISP_SIZE = 0.01
     MAX_ERROR = 50 * DISP_SIZE * DISP_SIZE * DISP_SIZE * DISP_SIZE
 
-    logger.info("\tTesting atom_b-matrix numerically...")
+    logger.info("\tTesting B-matrix numerically...")
 
-    B_analytic = oMolsys.wilson_b_mat()
+    B_analytic = oMolsys.Bmat()
 
     if op.Params.print_lvl >= 3:
-        logger.debug("Analytic atom_b matrix in au")
-        logger.debug(print_mat_string(B_analytic))
+        logger.debug("Analytic B matrix in au")
+        logger.debug(printMatString(B_analytic))
 
     B_fd = np.zeros((Nintco, 3 * Natom) )
 
-    oMolsys.update_dihedral_orientations()
-    oMolsys.fix_bend_axes()
+    oMolsys.updateDihedralOrientations()
+    oMolsys.fixBendAxes()
 
     geom_orig = oMolsys.geom # to restore below
     coord     = oMolsys.geom # returns a copy
@@ -60,11 +60,11 @@ def testB(oMolsys):
                     q_m2[i] - 8 * q_m[i] + 8 * q_p[i] - q_p2[i]) / (12.0 * DISP_SIZE)
 
     if op.Params.print_lvl >= 3:
-        logger.debug("Numerical atom_b matrix in au, DISP_SIZE = %lf\n" % DISP_SIZE
-                     + print_mat_string(B_fd))
+        logger.debug("Numerical B matrix in au, DISP_SIZE = %lf\n" % DISP_SIZE
+                     + printMatString(B_fd))
 
     oMolsys.geom = geom_orig # restore original
-    oMolsys.unfix_bend_axes()
+    oMolsys.unfixBendAxes()
 
     max_error = -1.0
     max_error_intco = -1
@@ -79,7 +79,7 @@ def testB(oMolsys):
     #logger.info("\t\tThis coordinate is %s" % str(intcos[max_error_intco]))
 
     if max_error > MAX_ERROR:
-        logger.warning("\tatom_b-matrix could be in error. However, numerical tests may fail for\n"
+        logger.warning("\tB-matrix could be in error. However, numerical tests may fail for\n"
                        + "\ttorsions at 180 degrees, and slightly for linear bond angles."
                        + "This is OK.\n")
         return False
@@ -88,7 +88,7 @@ def testB(oMolsys):
         return True
 
 
-# Test the analytic derivative atom_b matrix (d2q/dx2) via finite differences
+# Test the analytic derivative B matrix (d2q/dx2) via finite differences
 # The 5-point formula should be good to DISP_SIZE^4 -
 #  a few unfortunates will be slightly worse
 def testDerivativeB(oMolsys):
@@ -98,31 +98,31 @@ def testDerivativeB(oMolsys):
 
     geom_orig = oMolsys.geom # to restore below
 
-    logger.info("\tTesting Derivative atom_b-matrix numerically.")
-    if oMolsys.dimer_intcos:
-        logger.warning("\tDerivative atom_b-matrix for interfragment modes not yet implemented.")
+    logger.info("\tTesting Derivative B-matrix numerically.")
+    if oMolsys._dimer_intcos:
+        logger.info("\tDerivative B-matrix for interfragment modes not yet implemented.")
 
     warn = False
-    for iF, F in enumerate(oMolsys.fragments):
+    for iF, F in enumerate(oMolsys._fragments):
         logger.info("\t\tTesting fragment %d." % (iF + 1))
 
-        Natom = F.natom
-        Nintco = F.num_intcos
-        coord = F.geom  # not a copy
+        Natom  = F.Natom
+        Nintco = F.Nintcos
+        coord = F.geom # not a copy
         dq2dx2_fd = np.zeros((3 * Natom, 3 * Natom))
         dq2dx2_analytic = np.zeros((3 * Natom, 3 * Natom))
   
-        for i, I in enumerate(F.intcos):
+        for i, I in enumerate(F._intcos):
             logger.info("\t\tTesting internal coordinate %d :" % (i + 1))
 
             dq2dx2_analytic.fill(0)
-            I.dq2dx2(coord, dq2dx2_analytic)
+            I.Dq2Dx2(coord, dq2dx2_analytic)
     
             if op.Params.print_lvl >= 3:
-                logger.info("Analytic atom_b' (dq2dx2) matrix in au\n" +
-                            print_mat_string(dq2dx2_analytic))
+                logger.info("Analytic B' (Dq2Dx2) matrix in au\n" + 
+                            printMatString(dq2dx2_analytic))
     
-            # compute atom_b' matrix from atom_b matrices
+            # compute B' matrix from B matrices
             for atom_a in range(Natom):
                 for xyz_a in range(3):
     
@@ -148,8 +148,8 @@ def testDerivativeB(oMolsys):
     
             if op.Params.print_lvl >= 3:
                 logger.info(
-                    "\nNumerical atom_b' (dq2dx2) matrix in au, DISP_SIZE = %f\n" % DISP_SIZE +
-                    print_mat_string(dq2dx2_fd))
+                    "\nNumerical B' (Dq2Dx2) matrix in au, DISP_SIZE = %f\n" % DISP_SIZE +
+                printMatString(dq2dx2_fd))
     
             max_error = -1.0
             max_error_xyz = (-1, -1)
@@ -160,13 +160,13 @@ def testDerivativeB(oMolsys):
                         max_error_xyz = (I, J)
    
             logger.info("\t\tMax. difference is %.1e; 2nd derivative wrt %d and %d." %
-                        (max_error, max_error_xyz[0], max_error_xyz[1]))
+                      (max_error, max_error_xyz[0], max_error_xyz[1]))
   
             if max_error > MAX_ERROR:
                 warn = True
 
     oMolsys.geom = geom_orig # restore original
-    oMolsys.unfix_bend_axes()
+    oMolsys.unfixBendAxes()
 
     if warn:
         logger.warning("""

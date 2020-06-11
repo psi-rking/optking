@@ -50,10 +50,10 @@ def normalize(v1, Rmin=1.0e-8, Rmax=1.0e15):
         v1 /= n
 
 
-# def axpy(a, X, Y):
-#    z = np.zeros(Y.shape)
-#    z = a * X + Y
-#    return z
+#def axpy(a, X, Y):
+#    Z = np.zeros(Y.shape)
+#    Z = a * X + Y
+#    return Z
 
 
 # Compute and return normalized vector from point p1 to point p2.
@@ -105,7 +105,7 @@ def are_parallel_or_antiparallel(u, v):
 
 
 def angle(A, B, C, tol=1.0e-14):
-    """ Compute and return angle in radians atom_a-atom_b-connectivity_mat (between vector atom_b->atom_a and vector atom_b->connectivity_mat)
+    """ Compute and return angle in radians A-B-C (between vector B->A and vector B->C)
     If points are absurdly close or far apart, returns False
 
     Parameters
@@ -125,7 +125,7 @@ def angle(A, B, C, tol=1.0e-14):
         eBA = eAB(B, A)
     except AlgError as error:
         logger.warning("Could not normalize eBA in angle()\n")
-        raise AlgError from error
+        raise optExcpetions.AlgError from error
 
     try:
         eBC = eAB(B, C)
@@ -137,8 +137,8 @@ def angle(A, B, C, tol=1.0e-14):
 
 
 def _calc_angle(vec_1, vec_2, tol=1.0e-14):
-    """ Computes and returns angle in radians atom_a-B_B (between vector atom_b->atom_a and vector
-    atom_b->connectivity_mat
+    """
+    Computes and returns angle in radians A-B_B (between vector B->A and vector B->C
 
     Should only be called by tors or angle. Error checking and vector creation
     is performed in angle() or tors() previously
@@ -166,7 +166,7 @@ def _calc_angle(vec_1, vec_2, tol=1.0e-14):
 
 
 def tors(A, B, C, D):
-    """ Compute and return angle in dihedral angle in radians atom_a-atom_b-connectivity_mat-atom_d
+    """ Compute and return angle in dihedral angle in radians A-B-C-D
     Raises AlgError exception if bond angles are too large for good torsion definition
     """
     logger = logging.getLogger(__name__)
@@ -202,10 +202,11 @@ def tors(A, B, C, D):
     phi_234 = _calc_angle(ECB, ECD)
 
     up_lim = acos(-1) - phi_lim
+    
 
     if phi_123 < phi_lim or phi_123 > up_lim or phi_234 < phi_lim or phi_234 > up_lim:
-        # raise AlgError("Tors angle for %d, %d, %d, %d is too large for good "
-        #                + "definition" % (str(atom_a), str(atom_b), str(connectivity_mat), str(atom_d)))
+        #raise AlgError("Tors angle for %d, %d, %d, %d is too large for good "
+        #                            + "definition" % (str(A), str(B), str(C), str(D)))
         raise AlgError("Interior angle is too large for good torsion definition.")        
 
     tmp = cross(EAB, EBC)
@@ -230,7 +231,7 @@ def tors(A, B, C, D):
 
 
 def oofp(A, B, C, D):
-    """ Compute and return angle in dihedral angle in radians atom_a-atom_b-connectivity_mat-atom_d
+    """ Compute and return angle in dihedral angle in radians A-B-C-D
     returns false if bond angles are too large for good torsion definition
     """
     logger = logging.getLogger(__name__)
@@ -252,7 +253,7 @@ def oofp(A, B, C, D):
 
     phi_CBD = _calc_angle(eBC, eBD)
 
-    # This shouldn't happen unless angle atom_b-connectivity_mat-atom_d -> 0,
+    # This shouldn't happen unless angle B-C-D -> 0,
     if sin(phi_CBD) < op.Params.v3d_tors_cos_tol:  # reusing parameter
         raise AlgError(f"Angle: {C}, {B}, {D} is to close to zero in oofp\n")
 

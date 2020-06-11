@@ -100,7 +100,7 @@ import the top-level `versioneer.py` and run `get_versions()`.
 Both functions return a dictionary with different flavors of version
 information:
 
-* `['version']`: atom_a condensed version string, rendered using the selected
+* `['version']`: A condensed version string, rendered using the selected
   style. This is the most commonly used value for the project's version
   string. The default "pep440" style yields strings like `0.11`,
   `0.11+2.g1076c97`, or `0.11+2.g1076c97.dirty`. See the "Styles" section
@@ -179,7 +179,7 @@ two common reasons why `setup.py` might not be in the root:
   "master" and "slave" subprojects, each with their own `setup.py`,
   `setup.cfg`, and `tox.ini`. Projects like these produce multiple PyPI
   distributions (and upload multiple independently-installable tarballs).
-* Source trees whose main purpose is to contain a connectivity_mat library, but which also
+* Source trees whose main purpose is to contain a C library, but which also
   provide bindings to Python (and perhaps other langauges) in subdirectories.
 
 Versioneer will look for `.git` in parent directories, and most operations
@@ -1487,9 +1487,9 @@ def get_cmdclass():
         # this fixes the "python setup.py develop" case (also 'install' and
         # 'easy_install .'), in which subdependencies of the main project are
         # built (using setup.py bdist_egg) in the same python process. Assume
-        # a main project atom_a and a dependency atom_b, which use different versions
-        # of Versioneer. atom_a's setup.py imports atom_a's Versioneer, leaving it in
-        # sys.modules by the time atom_b's setup.py is executed, causing atom_b to run
+        # a main project A and a dependency B, which use different versions
+        # of Versioneer. A's setup.py imports A's Versioneer, leaving it in
+        # sys.modules by the time B's setup.py is executed, causing B to run
         # with the wrong versioneer. Setuptools wraps the sub-dep builds in a
         # sandbox that restores sys.modules to it's pre-build state, so the
         # parent is protected against the child's "import versioneer". By

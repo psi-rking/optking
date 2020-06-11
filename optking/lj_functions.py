@@ -1,5 +1,5 @@
 """
-atom_a simple set of functions to compute LJ energies and gradients.
+A simple set of functions to compute LJ energies and gradients.
 """
 
 import numpy as np

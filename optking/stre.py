@@ -5,7 +5,7 @@ import qcelemental as qcel
 
 from .exceptions import AlgError, OptError
 from . import v3d
-from .misc import delta, hguess_lindh_rho
+from .misc import delta, HguessLindhRho
 from .simple import Simple
 
 
@@ -20,13 +20,13 @@ class Stre(Simple):
         atom 2 (zero indexing)
     frozen : boolean, optional
         set stretch as frozen
-    fixed_eq_val : double
+    fixedEqVal : double
         value to fix stretch at
     inverse : boolean
         identifies 1/R coordinate
 
     """
-    def __init__(self, a, b, frozen=False, fixed_eq_val=None, inverse=False):
+    def __init__(self, a, b, frozen=False, fixedEqVal=None, inverse=False):
 
         self._inverse = inverse  # bool - is really 1/R coordinate?
 
@@ -35,7 +35,7 @@ class Stre(Simple):
         else:
             atoms = (b, a)
 
-        Simple.__init__(self, atoms, frozen, fixed_eq_val)
+        Simple.__init__(self, atoms, frozen, fixedEqVal)
 
     def __str__(self):
         if self.frozen:
@@ -48,9 +48,9 @@ class Stre(Simple):
         else:
             s += 'R'
 
-        s += "(%d,%d)" % (self.atom_a + 1, self.atom_b + 1)
-        if self.fixed_eq_val:
-            s += "[%.4f]" % (self.fixed_eq_val * self.q_show_factor)
+        s += "(%d,%d)" % (self.A + 1, self.B + 1)
+        if self.fixedEqVal:
+            s += "[%.4f]" % (self.fixedEqVal * self.qShowFactor)
         return s
 
     def __eq__(self, other):
@@ -72,33 +72,33 @@ class Stre(Simple):
         self._inverse = bool(setval)
 
     def q(self, geom):
-        return v3d.dist(geom[self.atom_a], geom[self.atom_b])
+        return v3d.dist(geom[self.A], geom[self.B])
 
-    def q_show(self, geom):
-        return self.q_show_factor * self.q(geom)
+    def qShow(self, geom):
+        return self.qShowFactor * self.q(geom)
 
     @property
-    def q_show_factor(self):
+    def qShowFactor(self):
         return qcel.constants.bohr2angstroms
 
     @property
-    def f_show_factor(self):
+    def fShowFactor(self):
         return qcel.constants.hartree2aJ / qcel.constants.bohr2angstroms
 
     # If mini == False, dqdx is 1x(3*number of atoms in fragment).
     # if mini == True, dqdx is 1x6.
-    def dqdx(self, geom, dqdx, mini=False):
+    def DqDx(self, geom, dqdx, mini=False):
         try:
-            eAB = v3d.eAB(geom[self.atom_a], geom[self.atom_b])  # atom_a->atom_b
+            eAB = v3d.eAB(geom[self.A], geom[self.B])  # A->B
         except AlgError as error:
-            raise AlgError("Stre.dqdx: could not normalize s vector") from error
+            raise AlgError("Stre.DqDx: could not normalize s vector") from error
 
         if mini:
             startA = 0
             startB = 3
         else:
-            startA = 3 * self.atom_a
-            startB = 3 * self.atom_b
+            startA = 3 * self.A
+            startB = 3 * self.B
 
         dqdx[startA:startA + 3] = -1 * eAB[0:3]
         dqdx[startB:startB + 3] = eAB[0:3]
@@ -108,12 +108,13 @@ class Stre(Simple):
             dqdx[startA:startA + 3] *= -1.0 * val * val  # -(1/R)^2 * (dR/da)
             dqdx[startB:startB + 3] *= -1.0 * val * val
 
-    # Return derivative atom_b matrix elements.  Matrix is cart X cart and passed in.
-    def dq2dx2(self, geom, dq2dx2):
+
+    # Return derivative B matrix elements.  Matrix is cart X cart and passed in.
+    def Dq2Dx2(self, geom, dq2dx2):
         try:
-            eAB = v3d.eAB(geom[self.atom_a], geom[self.atom_b])  # atom_a->atom_b
-        except AlgError as error:
-            raise AlgError("Stre.dq2dx2: could not normalize s vector") from error
+            eAB = v3d.eAB(geom[self.A], geom[self.B])  # A->B
+        except AlgError:
+            raise AlgError("Stre.Dq2Dx2: could not normalize s vector") from error
 
         if not self._inverse:
             length = self.q(geom)
@@ -132,19 +133,19 @@ class Stre(Simple):
         else:  # using 1/R
             val = self.q(geom)
 
-            dqdx = np.zeros((3 * len(self.atoms)))
-            self.dqdx(geom, dqdx, mini=True)  # returned matrix is 1x6 for stre
+            dqdx = np.zeros((3 * len(self.atoms)) )
+            self.DqDx(geom, dqdx, mini=True)  # returned matrix is 1x6 for stre
 
-            for a in range(2):
+            for a in range(a):
                 for a_xyz in range(3):
-                    for b in range(2):
+                    for b in range(b):
                         for b_xyz in range(3):
                             dq2dx2[3*self.atoms[a]+a_xyz, 3*self.atoms[b]+b_xyz] \
                                 = 2.0 / val * dqdx[3*a+a_xyz] * dqdx[3*b+b_xyz]
 
         return
 
-    def diagonal_hessian_guess(self, geom, Z, connectivity, guessType="SIMPLE"):
+    def diagonalHessianGuess(self, geom, Z, connectivity, guessType="SIMPLE"):
         """ Generates diagonal empirical Hessians in a.u. such as
         Schlegel, Theor. Chim. Acta, 66, 333 (1984) and
         Fischer and Almlof, J. Phys. Chem., 96, 9770 (1992).
@@ -154,9 +155,9 @@ class Stre(Simple):
             return 0.5
 
         if guessType == "SCHLEGEL":
-            R = v3d.dist(geom[self.atom_a], geom[self.atom_b])
-            PerA = qcel.periodictable.to_period(Z[self.atom_a])
-            PerB = qcel.periodictable.to_period(Z[self.atom_b])
+            R = v3d.dist(geom[self.A], geom[self.B])
+            PerA = qcel.periodictable.to_period(Z[self.A])
+            PerB = qcel.periodictable.to_period(Z[self.B])
 
             AA = 1.734
             if PerA == 1:
@@ -185,17 +186,16 @@ class Stre(Simple):
             return F
 
         elif guessType == "FISCHER":
-            Rcov = (qcel.covalentradii.get(Z[self.atom_a], missing=4.0)
-                    + qcel.covalentradii.get(Z[self.atom_b], missing=4.0))
-            R = v3d.dist(geom[self.atom_a], geom[self.atom_b])
+            Rcov = qcel.covalentradii.get(Z[self.A], missing=4.0) + qcel.covalentradii.get(Z[self.B], missing=4.0)
+            R = v3d.dist(geom[self.A], geom[self.B])
             AA = 0.3601
             BB = 1.944
             return AA * (np.exp(-BB * (R - Rcov)))
 
         elif guessType == "LINDH_SIMPLE":
-            R = v3d.dist(geom[self.atom_a], geom[self.atom_b])
+            R = v3d.dist(geom[self.A], geom[self.B])
             k_r = 0.45
-            return k_r * hguess_lindh_rho(Z[self.atom_a], Z[self.atom_b], R)
+            return k_r * HguessLindhRho(Z[self.A], Z[self.B], R)
 
         else:
             logger.warning("Hessian guess encountered unknown coordinate type.\n")
@@ -214,9 +214,9 @@ class HBond(Stre):
         else:
             s += 'H'
 
-        s += "(%d,%d)" % (self.atom_a + 1, self.atom_b + 1)
-        if self.fixed_eq_val:
-            s += "[%.4f]" % self.fixed_eq_val
+        s += "(%d,%d)" % (self.A + 1, self.B + 1)
+        if self.fixedEqVal:
+            s += "[%.4f]" % self.fixedEqVal
         return s
 
     # overrides Stre eq in comparisons, regardless of order
@@ -230,21 +230,14 @@ class HBond(Stre):
         else:
             return True
 
-    def diagonal_hessian_guess(self, geom, Z, connectivity, guessType='SIMPLE'):
+    def diagonalHessianGuess(self, geom, Z, connectivity, guessType):
         """ Generates diagonal empirical Hessians in a.u. such as
         Schlegel, Theor. Chim. Acta, 66, 333 (1984) and
         Fischer and Almlof, J. Phys. Chem., 96, 9770 (1992).
         """
         logger = logging.getLogger(__name__)
         if guessType == "SIMPLE":
-            return 0.5
-        elif guessType in ['SCHLEGEL', 'FISCHER']:
-            return 0.03
-        elif guessType == 'LINDH_SIMPLE':
-            # Same as standard stretch
-            R = v3d.dist(geom[self.atom_a], geom[self.atom_b])
-            k_r = 0.45
-            return k_r * hguess_lindh_rho(Z[self.atom_a], Z[self.atom_b], R)
+            return 0.1
         else:
             logger.warning("Hessian guess encountered unknown coordinate type.\n")
             return 1.0

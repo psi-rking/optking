@@ -1,11 +1,10 @@
-# Class to store points on the IRC
+### Class to store points on the IRC
 import logging
 import os
 
-from .printTools import print_geom_string, print_mat_string
+from .printTools import printGeomString, printMatString
 import numpy as np
 from .exceptions import OptError
-
 
 class IRCpoint(object):
     """Holds data for one step on the IRC.
@@ -64,7 +63,6 @@ class IRCpoint(object):
         s['Line Distance']    = self.line_dist
         return s
 
-
 class IRCdata(object):
     """ Stores obtained points along the IRC as well as information about
         the status of the IRC computation"""
@@ -111,7 +109,7 @@ class IRCdata(object):
         logger = logging.getLogger(__name__)
         pindex = (len(self.irc_points)-1)
         outstr = "\nAdding IRC point %d\n" % pindex
-        outstr += print_geom_string(self.atom_symbols, x_in, "Angstroms")
+        outstr += printGeomString(self.atom_symbols, x_in, "Angstroms")
         logger.info(outstr)
 
 
@@ -199,31 +197,29 @@ class IRCdata(object):
         """ For clarity, display geometry and internal coordinates for the final IRC step
             IRC algorithm will display an additional IRC step and constrained optimization
             after this step has been reached """
-
-        logger = logging.getLogger(__name__)
-        logger.debug("Printing final coordinates and geometry")
-        logger.debug(f"intcos:\n {intcos}")
-        logger.debug(f"coordinate values:\n {self.q}")
-
+        
         s = "Final Geometry: [Ang] \n"
-        s += print_mat_string(self.x())
-        s += "\n\n\tInternal Coordinates: [Ang/Deg] \n"
+        s += printMatString(self.x())
+        s += "\n\n\tInternal Coordinates: [Ang/Deg] \n"   
+        itr = 0
         s += "\t - Coordinate -           - BOHR/RAD -       - ANG/DEG -\n"
-
-        for itr, x in enumerate(intcos):
-            s += ("\t%-18s=%17.6f%19.6f\n" % (x, self.q()[itr], self.q()[itr] * x.q_show_factor))
-            # s += ("\t%-18s=%17.6f\n" % (x, IRCdata.history.q()[itr] * x.q_show_factor))
+        
+        for x in intcos:
+            s += ("\t%-18s=%17.6f%19.6f\n" % (x, self.q()[itr], self.q()[itr] * x.qShowFactor))
+            #s += ("\t%-18s=%17.6f\n" % (x, IRCdata.history.q()[itr] * x.qShowFactor))
+            itr += 1
         
         return s
+        
 
     def progress_report(self):
-        blocks = 4  # TODO: make dynamic
+        blocks = 4 # TODO: make dynamic
         sign = 1
         Ncoord = len(self.q())
 
-        # logging.basicConfig(filename='ircprogress.log',level=logging.DEBUG)
+        #logging.basicConfig(filename='ircprogress.log',level=logging.DEBUG)
 
-        irc_report = os.path.join(os.getcwd(), 'ircprogress.log')  # prepare progress report
+        irc_report = os.path.join(os.getcwd(), 'ircprogress.log') #prepare progress report
         with open(irc_report, 'w') as irc_prog:
             irc_prog.truncate(0)
 
@@ -262,8 +258,7 @@ class IRCdata(object):
             out += "\n"
             for i in range(len(self.irc_points)):
                 out += "@IRC  %3d %9.2lf %9.5lf  %9.5lf   " % (i, sign*self.step_dist(i),
-                                                               sign * self.arc_dist(i),
-                                                               sign*self.line_dist(i))
+                    sign*self.arc_dist(i), sign*self.line_dist(i))
                 for k in range(j*blocks, (j+1)*blocks):
                     out += "%13.8f" % self.q(i)[k]
                 out += "\n"

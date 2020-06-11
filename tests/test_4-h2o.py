@@ -1,4 +1,4 @@
-#! SCF CC-PVTZ geometry optimzation, with z-matrix input
+#! SCF CC-PVTZ geometry optimzation, with Z-matrix input
 import pytest
 import psi4
 import optking

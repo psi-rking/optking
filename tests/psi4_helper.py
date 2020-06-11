@@ -1,5 +1,5 @@
 """
-atom_a simple OptKing wrapper for the Psi4 quantum chemistry program
+A simple OptKing wrapper for the Psi4 quantum chemistry program
 """
 
 import numpy

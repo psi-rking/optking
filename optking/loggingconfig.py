@@ -38,12 +38,6 @@ logging_configuration = {
             "level": "DEBUG",
             "filename": os.path.join(os.getcwd(), 'opt_log.out')
         },
-        "file_log_full_debug": {
-            "class": "logging.FileHandler",
-            "formatter": "severity_name_message",
-            "level": "DEBUG",
-            "filename": os.path.join(os.getcwd(), 'opt_log.out')
-        },
         "file_log_info": {
             "class": "logging.FileHandler",
             "mode": "a",
@@ -60,6 +54,7 @@ logging_configuration = {
     },
     "root": {
         "level": "DEBUG",
-        "handlers": ["file_log_full_debug"]
+        "handlers": ["file_log_debug"]
+        
     }
 }

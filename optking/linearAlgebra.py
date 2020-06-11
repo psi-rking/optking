@@ -10,11 +10,11 @@ def norm(V):
     return np.linalg.norm(V)
 
 
-def abs_max(V):
+def absMax(V):
     return max(abs(elem) for elem in V)
 
 
-def abs_min(V):
+def absMin(V):
     return min(abs(elem) for elem in V)
 
 
@@ -22,7 +22,7 @@ def rms(V):
     return np.sqrt(np.mean(V**2))
 
 
-def sign_of_double(d):
+def signOfDouble(d):
     if d > 0:
         return 1
     elif d < 0:
@@ -31,27 +31,30 @@ def sign_of_double(d):
         return 0
 
 
-# Returns eigenvectors as rows
-def symm_mat_eig(mat):
+# Returns eigenvectors as rows?
+def symmMatEig(mat):
     try:
         evals, evects = np.linalg.eigh(mat)
-        if abs(min(evects[:, 0])) > abs(max(evects[:, 0])):
-            evects[:, 0] *= -1.0
+        if abs(min(evects[:,0])) > abs(max(evects[:,0])):
+            evects[:,0] *= -1.0
     except:
-        raise OptError("symm_mat_eig: could not compute eigenvectors")
+        raise OptError("symmMatEig: could not compute eigenvectors")
         # could be ALG_FAIL ?
     evects = evects.T
     return evals, evects
 
-
 # Returns eigenvector with lowest eigenvalues; makes the largest
 # magnitude element positive.
-def lowest_eigenvector_symm_mat(mat):
-    evals, evects = symm_mat_eig(mat)
-    return evects[0, :]
+def lowestEigenvectorSymmMat(mat):
+    try:
+        evals, evects = np.linalg.eigh(mat)
+        if abs(min(evects[:,0])) > abs(max(evects[:,0])):
+            evects[:,0] *= -1.0
+    except:
+        raise OptError("symmMatEig: could not compute eigenvectors")
+    return evects[:,0]
 
-
-def asymm_mat_eig(mat):
+def asymmMatEig(mat):
     """Compute the eigenvalues and right eigenvectors of a square array.
     Wraps numpy.linalg.eig to sort eigenvalues, put eigenvectors in rows, and suppress complex.
 
@@ -73,8 +76,8 @@ def asymm_mat_eig(mat):
     """
     try:
         evals, evects = np.linalg.eig(mat)
-    except np.linalg.LinAlgError as e:
-        raise OptError("asymm_mat_eig: could not compute eigenvectors") from e
+    except np.LinAlgError as e:
+        raise OptError("asymmMatEig: could not compute eigenvectors") from e
 
     idx = np.argsort(evals)
     evals = evals[idx]
@@ -85,15 +88,15 @@ def asymm_mat_eig(mat):
 
 #  Return the inverse of a real, symmetric matrix.  If "redundant" == true,
 #  then a generalized inverse is permitted.
-def symm_mat_inv(A, redundant=False, redundant_eval_tol=1.0e-10):
+def symmMatInv(A, redundant=False, redundant_eval_tol=1.0e-10):
     dim = A.shape[0]
     if dim == 0:
         return np.zeros((0, 0))
     det = 1.0
 
     try:
-        evals, evects = symm_mat_eig(A)
-    except np.linalg.LinAlgError:
+        evals, evects = symmMatEig(A)
+    except LinAlgError:
         raise OptError("symmMatrixInv: could not compute eigenvectors")
         # could be LinAlgError?
 
@@ -115,33 +118,33 @@ def symm_mat_inv(A, redundant=False, redundant_eval_tol=1.0e-10):
         for i in range(dim):
             diagInv[i, i] = 1.0 / evals[i]
 
-    # atom_a^-1 = self^t atom_d^-1 self
+    # A^-1 = P^t D^-1 P
     tmpMat = np.dot(diagInv, evects)
     AInv = np.dot(evects.T, tmpMat)
     return AInv
 
 
-# Compute atom_a^(1/2) for a positive-definite matrix.  atom_a^(-1/2) if inverse == True
-def symm_mat_root(A, inverse=None):
+# Compute A^(1/2) for a positive-definite matrix.  A^(-1/2) if Inverse == True
+def symmMatRoot(A, Inverse=None):
     try:
         evals, evects = np.linalg.eigh(A)
-        # Eigenvectors of atom_a are in columns of evects
+        # Eigenvectors of A are in columns of evects
         # Evals in ascending order
-    except np.linalg.LinAlgError:
-        raise OptError("symm_mat_root: could not compute eigenvectors")
+    except LinAlgError:
+        raise OptError("symmMatRoot: could not compute eigenvectors")
 
-    evals[np.abs(evals) < 5*np.finfo(np.float).resolution] = 0.0
-    evects[np.abs(evects) < 5*np.finfo(np.float).resolution] = 0.0
+    evals[ np.abs(evals) < 5*np.finfo(np.float).resolution ] = 0.0
+    evects[ np.abs(evects) < 5*np.finfo(np.float).resolution ] = 0.0
 
-    root_matrix = np.zeros((len(evals), len(evals)))
-    if inverse:
+    rootMatrix = np.zeros((len(evals), len(evals)))
+    if Inverse:
         for i in range(0, len(evals)):
             evals[i] = 1 / evals[i]
 
     for i in range(0, len(evals)):
-        root_matrix[i][i] = sqrt(evals[i])
+        rootMatrix[i][i] = sqrt(evals[i])
 
-    A = np.dot(evects, np.dot(root_matrix, evects.T))
+    A = np.dot(evects, np.dot(rootMatrix, evects.T))
 
     return A
 
