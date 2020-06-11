@@ -50,37 +50,37 @@ def rotateVector(rot_axis, phi, v):
 
 def zmatPoint(A, B, C, R_CD, theta_BCD, phi_ABCD):
     """ zmat_point(): Given the xyz coordinates for three points and
-        R, theta, and phi, as traditionally understood in a Z-matrix,
+        R, theta, and phi, as traditionally understood in a z-matrix,
         returns the location of a 4th point.
 
     Parameters
     ----------
     A : numpy array float[3]
-        Cartesian coordinates of atom A
+        Cartesian coordinates of atom atom_a
     B : numpy array float[3]
-        Cartesian coordinates of atom B
+        Cartesian coordinates of atom atom_b
     C : numpy array float[3]
-        Cartesian coordinates of atom C
+        Cartesian coordinates of atom connectivity_mat
     R_CD : float 
-        Distance between atoms C and D
+        Distance between atoms connectivity_mat and atom_d
     theta_BCD :
-        Angle between atoms B, C and D
+        Angle between atoms atom_b, connectivity_mat and atom_d
     phi_ABCD :
-        Dihedral Angle between atoms A, B, C and D
+        Dihedral Angle between atoms atom_a, atom_b, connectivity_mat and atom_d
 
     Returns
     ----------
-    D : numpy array float[3]
-        Cartesian coordinates of atom D
+    atom_d : numpy array float[3]
+        Cartesian coordinates of atom atom_d
     """
 
-    eAB    =  v3d.eAB(A,B)  # vector A->B
-    eBC    =  v3d.eAB(B,C)  # vector B->C
+    eAB    =  v3d.eAB(A,B)  # vector atom_a->atom_b
+    eBC    =  v3d.eAB(B,C)  # vector atom_b->connectivity_mat
     cosABC = -v3d.dot(eAB,eBC)
 
     sinABC = sqrt(1 - (cosABC * cosABC) )
     if (sinABC - 1.0e-14) < 0.0 :
-        raise AlgError("Z-matrix (reference) points cannot be colinear.")
+        raise AlgError("z-matrix (reference) points cannot be colinear.")
 
     eY = v3d.cross(eAB,eBC) / sinABC
     eX = v3d.cross(eY,eBC)

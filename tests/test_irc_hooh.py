@@ -3,6 +3,7 @@ import psi4
 import optking
 psi4.set_memory('2 GB')
 
+
 def test_hooh_irc():
     energy_5th_IRC_pt = -150.812913276783  # TEST
     h2o2 = psi4.geometry("""

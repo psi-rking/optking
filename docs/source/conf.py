@@ -20,8 +20,8 @@ sys.path.insert(0, os.path.abspath('../../'))
 # -- Project information -----------------------------------------------------
 
 project = 'pyoptking'
-copyright = '2018, R. A. King and A. Heide'
-author = 'R. A. King and A. Heide'
+copyright = '2018, R. atom_a. King and atom_a. Heide'
+author = 'R. atom_a. King and atom_a. Heide'
 
 # The short X.Y version
 version = ''
@@ -151,7 +151,7 @@ latex_elements = {
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
     (master_doc, 'pyoptking.tex', 'pyoptking Documentation',
-     'R. A. King and A. Heide', 'manual'),
+     'R. atom_a. King and atom_a. Heide', 'manual'),
 ]
 
 

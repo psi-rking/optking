@@ -8,11 +8,11 @@ import pytest
 import psi4
 import optking
 
-HOOH_E             = -150.7866742 # TEST
-HOOH_E_fixed_H_xyz = -150.7866491 # TEST
-HOOH_E_fixed_O_xyz = -150.7866390 # TEST
+HOOH_E             = -150.7866742  # TEST
+HOOH_E_fixed_H_xyz = -150.7866491  # TEST
+HOOH_E_fixed_O_xyz = -150.7866390  # TEST
 
-#def test_hooh_full_opt():
+# def test_hooh_full_opt():
 #    # Full optimization
 #    hooh = psi4.geometry("""
 #      H  0.90  0.80  0.5
@@ -32,7 +32,8 @@ HOOH_E_fixed_O_xyz = -150.7866390 # TEST
 #    psi4.set_options(psi4options)
 #    json_output = optking.Psi4Opt('hf', psi4options)
 #    thisenergy = json_output['properties']['return_energy']
-#    assert psi4.compare_values(HOOH_E, thisenergy, 6, "Cart. Coord. RHF opt of HOOH, energy")  #TEST
+#    assert psi4.compare_values(HOOH_E, thisenergy, 6, "Cart. Coord. RHF opt of HOOH, energy")
+#    # TEST
 
 f0 = ''''''
 f1 = """ 1 Xyz 4 xYz """
@@ -51,11 +52,14 @@ opt2 = {'frozen_cartesian': f2}
 opt3 = {'frozen_cartesian': f3}
 opt4 = {'frozen_cartesian': f1, 'opt_coordinates': 'redundant'}
 
-freeze_params = [(opt0, HOOH_E), (opt1, HOOH_E_fixed_H_xyz), (opt2, HOOH_E_fixed_O_xyz), (opt3, HOOH_E_fixed_H_xyz), 
-                 (opt4, HOOH_E_fixed_H_xyz)]
+freeze_params = [(opt0, HOOH_E), (opt1, HOOH_E_fixed_H_xyz), (opt2, HOOH_E_fixed_O_xyz),
+                 (opt3, HOOH_E_fixed_H_xyz), (opt4, HOOH_E_fixed_H_xyz)]
 
-@pytest.mark.parametrize("options, expected", freeze_params, ids=["Only backstep", "freeze H", "freeze O", 
-                                                                 "freeze individual x,y,z", "freeze then change coord"])
+
+@pytest.mark.parametrize("options, expected", freeze_params, ids=["Only backstep", "freeze H",
+                                                                  "freeze O",
+                                                                  "freeze individual x,y,z",
+                                                                  "freeze then change coord"])
 def test_hooh_freeze_xyz_Hs(options, expected):    
     # Freeze H xyz in HOOH.
     hooh = psi4.geometry("""
@@ -78,9 +82,9 @@ def test_hooh_freeze_xyz_Hs(options, expected):
 
     json_output = optking.optimize_psi4('hf')
     thisenergy = json_output['energies'][-1]
-    assert psi4.compare_values(expected, thisenergy, 6)  #TEST
+    assert psi4.compare_values(expected, thisenergy, 6)  # TE
 
-#def test_hooh_freeze_xyz_Os():    
+# def test_hooh_freeze_xyz_Os():
 #    # Freeze O xyz in HOOH.
 #    hooh = psi4.geometry("""
 #      H  0.90  0.80  0.5
@@ -132,7 +136,7 @@ def test_hooh_freeze_xyz_Hs(options, expected):
 #    freeze_list = """
 #      1 x
 #      1 y
-#      1 Z
+#      1 z
 #      4 x
 #      4 Y
 #      4 z

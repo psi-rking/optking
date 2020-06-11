@@ -1,20 +1,20 @@
 """ keywords
 Code to check convergence.
-P.g_convergence = uod.get('G_CONVERGENCE', 'QCHEM')
-P.max_force_g_convergence =  uod.get('MAX_FORCE_G_CONVERGENCE', 3.0e-4)
-P.rms_force_g_convergence = uod.get('RMS_FORCE_G_CONVERGENCE', 3.0e-4)
-P.max_energy_g_convergence = uod.get('MAX_ENERGY_G_CONVERGENCE', 1.0e-6)
-P.max_disp_g_convergence = uod.get('MAX_DISP_G_CONVERGENCE', 1.2e-3)
-P.rms_disp_g_convergence = uod.get('RMS_DISP_G_CONVERGENCE', 1.2e-3)
-P.flexible_g_convergence = uod.get('FLEXIBLE_G_CONVERGENCE', False)
+self.g_convergence = uod.get('G_CONVERGENCE', 'QCHEM')
+self.max_force_g_convergence =  uod.get('MAX_FORCE_G_CONVERGENCE', 3.0e-4)
+self.rms_force_g_convergence = uod.get('RMS_FORCE_G_CONVERGENCE', 3.0e-4)
+self.max_energy_g_convergence = uod.get('MAX_ENERGY_G_CONVERGENCE', 1.0e-6)
+self.max_disp_g_convergence = uod.get('MAX_DISP_G_CONVERGENCE', 1.2e-3)
+self.rms_disp_g_convergence = uod.get('RMS_DISP_G_CONVERGENCE', 1.2e-3)
+self.flexible_g_convergence = uod.get('FLEXIBLE_G_CONVERGENCE', False)
 """
 import logging
 import numpy as np
 from math import fabs
 
 from . import optparams as op
-from .linearAlgebra import absMax, rms, symmMatRoot
-from .printTools import printArrayString, printMatString
+from .linearAlgebra import abs_max, rms, symm_mat_root
+from .printTools import print_array_string, print_mat_string
 
 # Check convergence criteria and print status to output file.
 # return True, if geometry is optimized
@@ -26,10 +26,10 @@ def convCheck(iterNum, oMolsys, dq, f, energies, q_pivot=None):
     logger.info("Performing convergence check.")
     has_fixed = False
     for F in oMolsys._fragments:
-        if any([ints.fixedEqVal for ints in F.intcos]):
+        if any([ints.fixed_eq_val for ints in F.intcos]):
             has_fixed = True
     for DI in oMolsys._dimer_intcos:
-        if any([ints.fixedEqVal for ints in DI._pseudo_frag._intcos]):
+        if any([ints.fixed_eq_val for ints in DI.pseudo_frag._intcos]):
             has_fixed = True
     energy = energies[-1]
     last_energy = energies[-2] if len(energies) > 1 else 0.0
@@ -47,25 +47,25 @@ def convCheck(iterNum, oMolsys, dq, f, energies, q_pivot=None):
         for F in oMolsys._fragments:
             for I in F.intcos:
                 cnt += 1
-                if I.fixedEqVal:
+                if I.fixed_eq_val:
                     f[cnt] = 0
         for DI in oMolsys._dimer_intcos:
-            for I in DI._pseudo_frag._intcos:
+            for I in DI.pseudo_frag._intcos:
                 cnt += 1
-                if I.fixedEqVal:
+                if I.fixed_eq_val:
                     f[cnt] = 0
 
     if op.Params.opt_type == 'IRC':
-        G_m = oMolsys.Gmat(oMolsys.masses)
+        G_m = oMolsys.wilson_g_mat(oMolsys.masses)
         G_m_inv = np.linalg.inv(G_m)
-        q = oMolsys.qArray()
+        q = oMolsys.q_array()
         logger.info("Projecting out forces parallel to reaction path.")
 
         p = np.subtract(q, q_pivot)
-        logger.info("\np, current step from pivot point (not previous point on rxnpath):\n"+
-                    printArrayString(p))
+        logger.info("\np, current step from pivot point (not previous point on rxnpath):\n" +
+                    print_array_string(p))
 
-        logger.info("\nForces at current point on hypersphere\n"+ printArrayString(f))
+        logger.info("\nForces at current point on hypersphere\n" + print_array_string(f))
 
         # Gradient perpendicular to p and tangent to hypersphere is:
         # g_m' = g_m - (g_m^t p_m / (p_m^t p_m) p_m, or
@@ -73,12 +73,12 @@ def convCheck(iterNum, oMolsys, dq, f, energies, q_pivot=None):
         # Ginv_p = np.array(oMolsys.Nintco, float)
         G_m_inv_p = np.dot(G_m_inv, p)
         f[:] = np.subtract(f, np.multiply(np.dot(f, p)/np.dot(p, G_m_inv_p), G_m_inv_p)) 
-        logger.debug("\nForces perpendicular to hypersphere.\n"+ printArrayString(f))
+        logger.debug("\nForces perpendicular to hypersphere.\n" + print_array_string(f))
 
     # Compute forces after projection and removal above.
-    max_force = absMax(f)
+    max_force = abs_max(f)
     rms_force = rms(f)
-    max_disp = absMax(dq)
+    max_disp = abs_max(dq)
     rms_disp = rms(dq)
 
     if op.Params.opt_type != 'IRC2':

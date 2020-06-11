@@ -1,4 +1,4 @@
-#! 6-31G** UHF CH2 3B1 optimization.  Uses a Z-Matrix with dummy atoms, just for demo and testing purposes.
+#! 6-31G** UHF CH2 3B1 optimization.  Uses a z-Matrix with dummy atoms, just for demo and testing purposes.
 
 import psi4
 import optking

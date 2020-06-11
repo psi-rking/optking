@@ -1,4 +1,4 @@
-#! SCF STO-3G geometry optimzation, with Z-matrix input
+#! SCF STO-3G geometry optimzation, with z-matrix input
 import psi4
 import optking
 # These values are from a tightly converged QChem run

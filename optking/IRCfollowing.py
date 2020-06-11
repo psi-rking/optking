@@ -6,21 +6,24 @@ from . import optparams as op
 from . import intcosMisc
 from . import stepAlgorithms
 from . import IRCdata
-from .displace import displaceMolsys
+from .displace import displace_molsys
 from .history import oHistory
-from .linearAlgebra import symmMatEig, symmMatInv, symmMatRoot
-from .printTools import printArrayString, printMatString
+from .linearAlgebra import symm_mat_eig, symm_mat_inv, symm_mat_root
+from .printTools import print_array_string, print_mat_string
 from .exceptions import AlgError
 
-def step_N_factor(G, g):
+
+def step_n_factor(G, g):
     """ Computes distance scaling factor for mass-weighted internals. """
     return 1.0 / sqrt(np.dot(g.T, np.dot(G, g)))
 
-def IRC_DE_projected(step_size, grad, hess):
-    """ Compute anticipated energy change along one dimension """
-    return (step_size * grad + 0.5 * step_size * step_size * hess)
 
-def computePivotAndGuessPoints(oMolsys, v, IRCstepSize):
+def irc_de_projected(step_size, grad, hess):
+    """ Compute anticipated energy change along one dimension """
+    return step_size * grad + 0.5 * step_size * step_size * hess
+
+
+def compute_pivot_and_guess_points(oMolsys, v, IRCstepSize):
     """ Takes a half step along v to the 'pivot point', then 
     an additional half step as first guess in constrained opt.
     
@@ -39,67 +42,67 @@ def computePivotAndGuessPoints(oMolsys, v, IRCstepSize):
     logger = logging.getLogger(__name__)
 
     # Compute and save pivot point
-    G = oMolsys.Gmat(oMolsys.masses)
-    N = step_N_factor(G, v)
+    G = oMolsys.wilson_g_mat(oMolsys.masses)
+    N = step_n_factor(G, v)
     dq_pivot = 0.5 * N * IRCstepSize * np.dot(G, v)
-    logger.debug("\n Dq to Pivot Point:" + printArrayString(dq_pivot))
+    logger.debug("\n Dq to Pivot Point:" + print_array_string(dq_pivot))
 
-    #x_pivot = oMolsys.geom # starting geom but becomes pivot point on next line
-    #displace(oMolsys.intcos, x_pivot, dq_pivot, ensure_convergence=True)
+    # x_pivot = oMolsys.geom # starting geom but becomes pivot point on next line
+    # displace(oMolsys.intcos, x_pivot, dq_pivot, ensure_convergence=True)
 
-    displaceMolsys(oMolsys, dq_pivot, ensure_convergence=True)
+    displace_molsys(oMolsys, dq_pivot, ensure_convergence=True)
     x_pivot = oMolsys.geom
-    q_pivot = oMolsys.qArray()
+    q_pivot = oMolsys.q_array()
     IRCdata.history.add_pivot_point(q_pivot, x_pivot)
 
     # Step again to get initial guess for next step.  Leave geometry in oMolsys.
     logger.info("Computing Dq to First Guess Point")
-    logger.debug(printArrayString(dq_pivot))
+    logger.debug(print_array_string(dq_pivot))
     x_guess = x_pivot.copy()
-    #displace(oMolsys.intcos, x_guess, dq_pivot, ensure_convergence=True)
-    displaceMolsys(oMolsys, dq_pivot, ensure_convergence=True)
+    # displace(oMolsys.intcos, x_guess, dq_pivot, ensure_convergence=True)
+    displace_molsys(oMolsys, dq_pivot, ensure_convergence=True)
     oMolsys.geom = x_guess
 
 
-def Dq_IRC(oMolsys, E, f_q, H_q, s, dqGuess):
-    """ Before Dq_IRC is called, the geometry must be updated to the guess point
+def dq_irc(oMolsys, f_q, H_q, s):
+    """ Before dq_irc is called, the geometry must be updated to the guess point
     Returns Dq from qk+1 to gprime.
     TODO: What is dqGuess for?  Remove it?
     """
-    
+
     logger = logging.getLogger(__name__)
     logger.debug("Starting IRC constrained optimization\n")
 
-    G_prime = oMolsys.Gmat(oMolsys.masses)
-    logger.debug("Mass-weighted Gmatrix at hypersphere point: \n" + printMatString(G_prime))
-    G_prime_root = symmMatRoot(G_prime)
-    G_prime_inv = symmMatInv(G_prime)
-    G_prime_root_inv = symmMatRoot(G_prime_inv)
+    G_prime = oMolsys.wilson_g_mat(oMolsys.masses)
+    logger.debug("Mass-weighted Gmatrix at hypersphere point: \n" + print_mat_string(G_prime))
+    G_prime_root = symm_mat_root(G_prime)
+    G_prime_inv = symm_mat_inv(G_prime)
+    G_prime_root_inv = symm_mat_root(G_prime_inv)
 
-    logger.debug("G prime root matrix: \n" + printMatString(G_prime_root))
+    logger.debug("G prime root matrix: \n" + print_mat_string(G_prime_root))
 
-    deltaQM = 0
-    g_M = np.dot(G_prime_root, - f_q) 
-    logger.debug("g_M: \n" + printArrayString(g_M))
+    # deltaQM = 0 unused variable
+    g_M = np.dot(G_prime_root, - f_q)
+    logger.debug("g_M: \n" + print_array_string(g_M))
 
     H_M = np.dot(np.dot(G_prime_root, H_q), G_prime_root.T)
-    logger.debug("H_M: \n" + printMatString(H_M))
+    logger.debug("H_M: \n" + print_mat_string(H_M))
 
     # Compute p_prime, difference from pivot point
     orig_geom = oMolsys.geom
     oMolsys.geom = IRCdata.history.x_pivot()
-    q_pivot = oMolsys.qArray()
+    q_pivot = oMolsys.q_array()
     oMolsys.geom = orig_geom
-    p_prime = oMolsys.qArray() - q_pivot
+    p_prime = oMolsys.q_array() - q_pivot
 
-    #p_prime = intcosMisc.qValues(oMolsys.intcos, oMolsys.geom) -  \
-    #          intcosMisc.qValues(oMolsys.intcos, IRCdata.history.x_pivot())
+    # p_prime = intcosMisc.q_values(oMolsys.intcos, oMolsys.geom) -  \
+    #          intcosMisc.q_values(oMolsys.intcos, IRCdata.history.x_pivot())
     p_M = np.dot(G_prime_root_inv, p_prime)
-    logger.debug("p_M: \n" + printArrayString(p_M))
+    logger.debug("p_M: \n" + print_array_string(p_M))
 
-    HMEigValues, HMEigVects = symmMatEig(H_M)
-    logger.debug("HMEigValues: \n" + printArrayString(HMEigValues))
-    logger.debug("HMEigVects: \n" + printMatString(HMEigVects))
+    HMEigValues, HMEigVects = symm_mat_eig(H_M)
+    logger.debug("HMEigValues: \n" + print_array_string(HMEigValues))
+    logger.debug("HMEigVects: \n" + print_mat_string(HMEigVects))
 
     # Variables for solving lagrangian function
     lb_lagrangian = -100
@@ -118,18 +121,18 @@ def Dq_IRC(oMolsys, E, f_q, H_q, s, dqGuess):
     #  p_bar is projection p_M onto an eigenvector of H_M
     #  g_bar is projection g_M onto an eigenvector of H_M
 
-    lagrangian = calcLagrangian(Lambda, HMEigValues, HMEigVects, g_M, p_M, s)
+    lagrangian = calc_lagrangian(Lambda, HMEigValues, HMEigVects, g_M, p_M, s)
     prev_lagrangian = lagrangian
 
     logger.debug("Starting coarse-grain multiplier search.")
     logger.debug("lambda        Lagrangian value:\n")
-    #print("lambda        Lagrangian value:")
+    # print("lambda        Lagrangian value:")
 
     lagIter = 0
     while lagIter < 1000:
-        lagrangian = calcLagrangian(Lambda, HMEigValues, HMEigVects, g_M, p_M, s)
+        lagrangian = calc_lagrangian(Lambda, HMEigValues, HMEigVects, g_M, p_M, s)
         logger.debug("%15.10e  %8.3e" % (Lambda, lagrangian) )
-        #print("%15.10e  %8.3e" % (Lambda, lagrangian) )
+        # print("%15.10e  %8.3e" % (Lambda, lagrangian) )
 
         if lagrangian < 0 and abs(lagrangian) < abs(lb_lagrangian):
             lb_lagrangian = lagrangian
@@ -152,14 +155,14 @@ def Dq_IRC(oMolsys, E, f_q, H_q, s, dqGuess):
     # Calulate lambda using Householder method
     prev_lambda = -999
     lagIter = 0
-    Lambda = (lb_lambda + up_lambda)/2 # start in middle of coarse range
+    Lambda = (lb_lambda + up_lambda)/2  # start in middle of coarse range
 
     logger.debug("lambda        Lagrangian:")
     while abs(Lambda - prev_lambda) > 10**-15:
         prev_lagrangian = lagrangian
-        L_derivs = calcLagrangianDerivs(Lambda, HMEigValues, HMEigVects, g_M, p_M, s)
+        L_derivs = calc_lagrangian_derivs(Lambda, HMEigValues, HMEigVects, g_M, p_M, s)
         lagrangian = L_derivs[0]
-        logger.debug("%15.5e%15.5e" % (Lambda, lagrangian) )
+        logger.debug("%15.5e%15.5e" % (Lambda, lagrangian))
         
         h_f = -1 * L_derivs[0] / L_derivs[1]
 
@@ -187,7 +190,7 @@ def Dq_IRC(oMolsys, E, f_q, H_q, s, dqGuess):
         lagIter += 1
         if lagIter > 50:
             prev_lambda = Lambda
-            Lambda = (lb_lambda + up_lambda) / 2 #Try a bisection after 50 attempts
+            Lambda = (lb_lambda + up_lambda) / 2  # Try a bisection after 50 attempts
 
         if lagIter > 200:
             err_msg = "Could not converge Lagrangian multiplier for constrained rxnpath search."
@@ -198,18 +201,18 @@ def Dq_IRC(oMolsys, E, f_q, H_q, s, dqGuess):
 
     # Find dq_M from Eqn. 24 in Gonzalez & Schlegel (1990).
     # dq_M = (H_M - lambda I)^(-1) [lambda * p_M - g_M]
-    LambdaI = np.identity(oMolsys.Nintcos)
+    LambdaI = np.identity(oMolsys.num_intcos)
     LambdaI = np.multiply(Lambda, LambdaI)
-    deltaQM = symmMatInv(np.subtract(H_M, LambdaI))
+    deltaQM = symm_mat_inv(np.subtract(H_M, LambdaI))
     deltaQM = np.dot(deltaQM, np.subtract(np.multiply(Lambda, p_M), g_M))
-    logger.debug("dq_M to next geometry\n" + printArrayString(deltaQM))
+    logger.debug("dq_M to next geometry\n" + print_array_string(deltaQM))
 
     # Find dq = G^(1/2) dq_M and do displacements.
     dq = np.dot(G_prime_root, deltaQM)
-    logger.info("dq to next geometry\n" + printArrayString(dq))
+    logger.info("dq to next geometry\n" + print_array_string(dq))
     # TODO write geometry for multiple fragments
-    #displace(oMolsys.intcos, oMolsys._fragments[0].geom, dq)
-    displaceMolsys(oMolsys, dq)
+    # displace(oMolsys.intcos, oMolsys._fragments[0].geom, dq)
+    displace_molsys(oMolsys, dq)
 
     # Complete history entry of step.
     # Compute gradient and hessian in step direction
@@ -217,7 +220,7 @@ def Dq_IRC(oMolsys, E, f_q, H_q, s, dqGuess):
     dq_unit = dq / dq_norm
     dq_grad = -1 * f_q.dot(dq_unit)
     dq_hess = dq_unit.dot( H_q.dot(dq_unit) )
-    DE      = IRC_DE_projected(dq_norm, dq_grad, dq_hess)
+    DE      = irc_de_projected(dq_norm, dq_grad, dq_hess)
 
     if op.Params.print_lvl > 1:
         logger.info('\tQuadratic |target step|             : %15.10f' % dq_norm)
@@ -232,7 +235,7 @@ def Dq_IRC(oMolsys, E, f_q, H_q, s, dqGuess):
 
 
 # Calculates and returns value of Lagrangian function given multiplier Lambda.
-def calcLagrangian(Lambda, HMEigValues, HMEigVects, g_M, p_M, s):
+def calc_lagrangian(Lambda, HMEigValues, HMEigVects, g_M, p_M, s):
     lagrangian = 0
     for i in range(len(HMEigValues)):
         numerator = HMEigValues[i] * np.dot(HMEigVects[i], p_M) - np.dot(HMEigVects[i], g_M)
@@ -242,8 +245,9 @@ def calcLagrangian(Lambda, HMEigValues, HMEigVects, g_M, p_M, s):
     lagrangian -= (0.5 * s)**2
     return lagrangian
 
+
 # Calculates and returns value of derivative of Lagrangian function given multiplier Lambda.
-def calcLagrangianDerivs(Lambda, HMEigValues, HMEigVects, g_M, p_M, s):
+def calc_lagrangian_derivs(Lambda, HMEigValues, HMEigVects, g_M, p_M, s):
     deriv = np.array( [0.0, 0.0, 0.0, 0.0, 0.0], float)
     for i in range(len(HMEigValues)):
         numerator = HMEigValues[i] * np.dot(HMEigVects[i], p_M) - np.dot(HMEigVects[i], g_M)
@@ -258,36 +262,38 @@ def calcLagrangianDerivs(Lambda, HMEigValues, HMEigVects, g_M, p_M, s):
 
     return deriv
 
-# mass-weighted distance from previous rxnpath point to new one
-def calcLineDistStep(oMolsys):
-    G      = oMolsys.Gmat(oMolsys.masses)
-    G_root = symmMatRoot(G)
-    G_inv  = symmMatInv(G_root)
-    G_root_inv  = symmMatRoot(G_inv)
 
-    rxn_Dq  = np.subtract(oMolsys.qArray(), IRCdata.history.q())
-    # mass weight (not done in old C++ code)
+# mass-weighted distance from previous rxnpath point to new one
+def calc_line_dist_step(oMolsys):
+    G      = oMolsys.wilson_g_mat(oMolsys.masses)
+    G_root = symm_mat_root(G)
+    G_inv  = symm_mat_inv(G_root)
+    G_root_inv  = symm_mat_root(G_inv)
+
+    rxn_Dq  = np.subtract(oMolsys.q_array(), IRCdata.history.q())
+    # mass weight (not done in old connectivity_mat++ code)
     rxn_Dq_M = np.dot(G_root_inv, rxn_Dq)
     return np.linalg.norm ( rxn_Dq_M )
+
 
 # Let q0 be last rxnpath point and q1 be new rxnpath point.  q* is the pivot
 # point (1/2)s from each of these.  Returns the length of circular arc connecting
 # q0 and q1, whose center is equidistant from q0 and q1, and for which line segments
 # from q* to q0 and from q* to q1 are perpendicular to segments from the center
 # to q0 and q1.
-def calcArcDistStep(oMolsys):
+def calc_arc_dist_step(oMolsys):
     qp = IRCdata.history.q_pivot(-1) # pivot point is stored in previous step
     q0 = IRCdata.history.q(-1)
-    q1 = oMolsys.qArray()
+    q1 = oMolsys.q_array()
 
     p    = np.subtract(q1, qp)  # Dq from pivot point to latest rxnpath pt.
     line = np.subtract(q1, q0)  # Dq from rxnpath pt. to rxnpath pt.
 
     # mass-weight
-    G      = oMolsys.Gmat(oMolsys.masses)
-    G_root = symmMatRoot(G)
-    G_inv  = symmMatInv(G_root)
-    G_root_inv  = symmMatRoot(G_inv)
+    G      = oMolsys.wilson_g_mat(oMolsys.masses)
+    G_root = symm_mat_root(G)
+    G_inv  = symm_mat_inv(G_root)
+    G_root_inv  = symm_mat_root(G_inv)
     p[:]    = np.multiply( 1.0/np.linalg.norm(p),    p )
     line[:] = np.multiply( 1.0/np.linalg.norm(line), line )
 

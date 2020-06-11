@@ -1,4 +1,4 @@
-# HF SCF CC-PVDZ geometry optimization of HOOH with Z-matrix input
+# HF SCF CC-PVDZ geometry optimization of HOOH with z-matrix input
 import psi4
 import optking
 

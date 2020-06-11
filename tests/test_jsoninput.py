@@ -32,13 +32,15 @@ def test_input_through_json(inp, expected):
         input_copy = json.load(input_data)
         opt_schema = OptimizationInput(**input_copy)
     
-    #optking.run_json_file(os.path.join(os.path.dirname(__file__), inp))
+    # optking.run_json_file(os.path.join(os.path.dirname(__file__), inp))
     json_dict = optking.optimize_qcengine(input_copy)
 
-    #For testing purposes. If this works, we have properly returned the output, and added the result
-    #to the original file. In order to preserve the form of the test suite, we now resore the input
-    #to its original state
-    #with open(os.path.join(os.path.dirname(__file__), inp)) as input_data:
+    # For testing purposes. If this works, we have properly returned the output, and added the
+    # result
+    # to the original file. In order to preserve the form of the test suite, we now restore the
+    # input
+    # to its original state
+    # with open(os.path.join(os.path.dirname(__file__), inp)) as input_data:
     #    json_dict = json.load(input_data)
     assert psi4.compare_values(expected[0], json_dict['trajectory'][-1]['properties']['nuclear_repulsion_energy'], 2,
          "Nuclear repulsion energy")
