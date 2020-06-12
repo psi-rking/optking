@@ -5,7 +5,7 @@ import qcelemental as qcel
 
 from .exceptions import AlgError, OptError
 from . import v3d
-from .misc import delta, HguessLindhRho
+from .misc import delta, hguess_lindh_rho
 from .simple import Simple
 
 
@@ -49,8 +49,8 @@ class Stre(Simple):
             s += 'R'
 
         s += "(%d,%d)" % (self.A + 1, self.B + 1)
-        if self.fixedEqVal:
-            s += "[%.4f]" % (self.fixedEqVal * self.qShowFactor)
+        if self.fixed_eq_val:
+            s += "[%.4f]" % (self.fixed_eq_val * self.q_show_factor)
         return s
 
     def __eq__(self, other):
@@ -74,15 +74,15 @@ class Stre(Simple):
     def q(self, geom):
         return v3d.dist(geom[self.A], geom[self.B])
 
-    def qShow(self, geom):
-        return self.qShowFactor * self.q(geom)
+    def q_show(self, geom):
+        return self.q_show_factor * self.q(geom)
 
     @property
-    def qShowFactor(self):
+    def q_show_factor(self):
         return qcel.constants.bohr2angstroms
 
     @property
-    def fShowFactor(self):
+    def f_show_factor(self):
         return qcel.constants.hartree2aJ / qcel.constants.bohr2angstroms
 
     # If mini == False, dqdx is 1x(3*number of atoms in fragment).
@@ -113,7 +113,7 @@ class Stre(Simple):
     def Dq2Dx2(self, geom, dq2dx2):
         try:
             eAB = v3d.eAB(geom[self.A], geom[self.B])  # A->B
-        except AlgError:
+        except AlgError as error:
             raise AlgError("Stre.Dq2Dx2: could not normalize s vector") from error
 
         if not self._inverse:
@@ -136,16 +136,16 @@ class Stre(Simple):
             dqdx = np.zeros((3 * len(self.atoms)) )
             self.DqDx(geom, dqdx, mini=True)  # returned matrix is 1x6 for stre
 
-            for a in range(a):
+            for a in range(2):
                 for a_xyz in range(3):
-                    for b in range(b):
+                    for b in range(2):
                         for b_xyz in range(3):
                             dq2dx2[3*self.atoms[a]+a_xyz, 3*self.atoms[b]+b_xyz] \
                                 = 2.0 / val * dqdx[3*a+a_xyz] * dqdx[3*b+b_xyz]
 
         return
 
-    def diagonalHessianGuess(self, geom, Z, connectivity, guessType="SIMPLE"):
+    def diagonal_hessian_guess(self, geom, Z, connectivity, guessType="SIMPLE"):
         """ Generates diagonal empirical Hessians in a.u. such as
         Schlegel, Theor. Chim. Acta, 66, 333 (1984) and
         Fischer and Almlof, J. Phys. Chem., 96, 9770 (1992).
@@ -195,7 +195,7 @@ class Stre(Simple):
         elif guessType == "LINDH_SIMPLE":
             R = v3d.dist(geom[self.A], geom[self.B])
             k_r = 0.45
-            return k_r * HguessLindhRho(Z[self.A], Z[self.B], R)
+            return k_r * hguess_lindh_rho(Z[self.A], Z[self.B], R)
 
         else:
             logger.warning("Hessian guess encountered unknown coordinate type.\n")
@@ -215,8 +215,8 @@ class HBond(Stre):
             s += 'H'
 
         s += "(%d,%d)" % (self.A + 1, self.B + 1)
-        if self.fixedEqVal:
-            s += "[%.4f]" % self.fixedEqVal
+        if self.fixed_eq_val:
+            s += "[%.4f]" % self.fixed_eq_val
         return s
 
     # overrides Stre eq in comparisons, regardless of order
@@ -230,7 +230,7 @@ class HBond(Stre):
         else:
             return True
 
-    def diagonalHessianGuess(self, geom, Z, connectivity, guessType):
+    def diagonal_hessian_guess(self, geom, Z, connectivity, guessType='Simple'):
         """ Generates diagonal empirical Hessians in a.u. such as
         Schlegel, Theor. Chim. Acta, 66, 333 (1984) and
         Fischer and Almlof, J. Phys. Chem., 96, 9770 (1992).

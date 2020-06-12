@@ -16,7 +16,7 @@ from . import dimerfrag
 ### Functions related to freezing, fixing, determining, and
 ###    adding coordinates. 
 
-def connectivityFromDistances(geom, Z):
+def connectivity_from_distances(geom, Z):
     """
     Creates a matrix (1 or 0) to describe molecular connectivity based on
     nuclear distances
@@ -47,26 +47,26 @@ def connectivityFromDistances(geom, Z):
     return C
 
 
-def addIntcosFromConnectivity(C, intcos, geom):
+def add_intcos_from_connectivity(C, intcos, geom):
     """
     Calls add_x_FromConnectivity for each internal coordinate type
     Parameters
     ----------
     C : ndarray
         (nat, nat) matrix desribing connectivity
-        see intcosMisc.connectivityFromDistances()
+        see intcosMisc.connectivity_from_distances()
     intcos : list
             (nat) list of current internal coordinates (Stre, Bend, Tors)
     geom : ndarray
         (nat, 3) cartesian geometry
 
     """
-    addStreFromConnectivity(C, intcos)
-    addBendFromConnectivity(C, intcos, geom)
-    addTorsFromConnectivity(C, intcos, geom)
+    add_stre_from_connectivity(C, intcos)
+    add_bend_from_connectivity(C, intcos, geom)
+    add_tors_from_connectivity(C, intcos, geom)
 
 
-def addStreFromConnectivity(C, intcos):
+def add_stre_from_connectivity(C, intcos):
     """
     Adds stretches from connectivity
 
@@ -90,7 +90,7 @@ def addStreFromConnectivity(C, intcos):
     # return len(intcos) - Norig  # return number added
 
 
-def addBendFromConnectivity(C, intcos, geom):
+def add_bend_from_connectivity(C, intcos, geom):
     """
     Adds Bends from connectivity
 
@@ -133,7 +133,7 @@ def addBendFromConnectivity(C, intcos, geom):
     # return len(intcos) - Norig
 
 
-def addTorsFromConnectivity(C, intcos, geom):
+def add_tors_from_connectivity(C, intcos, geom):
     """
     Add torisions for all bonds present and determine linearity from existance of
     linear bends
@@ -230,7 +230,7 @@ def addTorsFromConnectivity(C, intcos, geom):
     # return len(intcos) - Norig
 
 
-def addCartesianIntcos(intcos, geom):
+def add_cartesian_intcos(intcos, geom):
     """
     Add cartesian coordinates to intcos (takes place of internal coordinates)
     Parameters
@@ -254,7 +254,7 @@ def addCartesianIntcos(intcos, geom):
     # return len(intcos) - Norig
 
 
-def linearBendCheck(oMolsys, dq):
+def linear_bend_check(oMolsys, dq):
     """
     Searches fragments to identify bends which are quasi-linear but not
     previously identified as "linear bends".
@@ -272,7 +272,7 @@ def linearBendCheck(oMolsys, dq):
     logger = logging.getLogger(__name__)
     linearBends = []
 
-    for iF, F in enumerate(oMolsys._fragments):
+    for iF, F in enumerate(oMolsys.fragments):
         for i, intco in enumerate(F.intcos):
             if isinstance(intco, bend.Bend):
                 newVal = intco.q(F.geom) + dq[oMolsys.frag_1st_intco(iF)+i]
@@ -290,27 +290,27 @@ def linearBendCheck(oMolsys, dq):
     
         linearBendsMissing = []
         if linearBends:
-            linear_bend_string = ("\n\tThe following linear bends should be present:\n")
+            linear_bend_string = "\n\tThe following linear bends should be present:\n"
             for b in linearBends:
                 linear_bend_string += '\t' + str(b)
     
                 if b in F.intcos:
-                    linear_bend_string += (", already present.\n")
+                    linear_bend_string += ", already present.\n"
                 else:
-                    linear_bend_string += (", missing.\n")
+                    linear_bend_string += ", missing.\n"
                     linearBendsMissing.append(b)
             logger.warning(linearBendsMissing)
 
     return linearBendsMissing
 
-def freezeStretchesFromInputAtomList(frozenStreList, oMolsys):
+def freeze_stretches_from_input_atom_list(frozenStreList, oMolsys):
     """
     Freezes stretch coordinate between atoms
     Parameters
     ----------
     frozenStreList : list
         (2*x) list of pairs of atoms. 1 indexed
-    oMolsys : object
+    oMolsys : molsys.Molsys
         optking molecular system
     """
 
@@ -321,23 +321,23 @@ def freezeStretchesFromInputAtomList(frozenStreList, oMolsys):
 
     for i in range(0, len(frozenStreList), 2):
         stretch = stre.Stre(frozenStreList[i] - 1, frozenStreList[i + 1] - 1, frozen=True)
-        f = checkFragment(stretch.atoms, oMolsys)
+        f = check_fragment(stretch.atoms, oMolsys)
         try:
-            frozen_stretch = oMolsys._fragments[f]._intcos.index(stretch)
-            oMolsys._fragments[f]._intcos[frozen_stretch].frozen = True
+            frozen_stretch = oMolsys.fragments[f].intcos.index(stretch)
+            oMolsys.fragments[f].intcos[frozen_stretch].frozen = True
         except ValueError:
             logger.info("Stretch to be frozen not present, so adding it.\n")
-            oMolsys._fragments[f]._intcos.append(stretch)
+            oMolsys.fragments[f].intcos.append(stretch)
 
 
-def freezeBendsFromInputAtomList(frozenBendList, oMolsys):
+def freeze_bends_from_input_atom_list(frozenBendList, oMolsys):
     """
     Freezes bend coordinates
     Parameters
     ----------
     frozenBendList : list
         (3*x) list of triplets of atoms
-    oMolsys : object
+    oMolsys : molsys.Molsys
         optking molecular system
     """
     logger = logging.getLogger(__name__)
@@ -351,16 +351,16 @@ def freezeBendsFromInputAtomList(frozenBendList, oMolsys):
             frozenBendList[i + 1] - 1,
             frozenBendList[i + 2] - 1,
             frozen=True)
-        f = checkFragment(bendFroz.atoms, oMolsys)
+        f = check_fragment(bendFroz.atoms, oMolsys)
         try:
-            freezing_bend = oMolsys._fragments[f]._intcos.index(bendFroz)
-            oMolsys._fragments[f]._intcos[freezing_bend].frozen = True
+            freezing_bend = oMolsys.fragments[f].intcos.index(bendFroz)
+            oMolsys.fragments[f].intcos[freezing_bend].frozen = True
         except ValueError:
             logger.info("Frozen bend not present, so adding it.\n")
-            oMolsys._fragments[f]._intcos.append(bendFroz)
+            oMolsys.fragments[f].intcos.append(bendFroz)
 
 
-def freezeTorsionsFromInputAtomList(frozenTorsList, oMolsys):
+def freeze_torsions_from_input_atom_list(frozenTorsList, oMolsys):
     """
     Freezes dihedral angles
     Paramters
@@ -381,13 +381,13 @@ def freezeTorsionsFromInputAtomList(frozenTorsList, oMolsys):
             frozenTorsList[i + 2] - 1,
             frozenTorsList[i + 3] - 1,
             frozen=True)
-        f = checkFragment(torsAngle.atoms, oMolsys)
+        f = check_fragment(torsAngle.atoms, oMolsys)
         try:
-            freezing_tors = oMolsys._fragments[f]._intcos.index(torsAngle)
-            oMolsys._fragments[f]._intcos[freezing_tors].frozen = True
+            freezing_tors = oMolsys.fragments[f].intcos.index(torsAngle)
+            oMolsys.fragments[f].intcos[freezing_tors].frozen = True
         except ValueError:
             logging.info("Frozen dihedral not present, so adding it.\n")
-            oMolsys._fragments[f]._intcos.append(torsAngle)
+            oMolsys.fragments[f].intcos.append(torsAngle)
 
 
 def freeze_cartesians_from_input_list(frozen_cart_list, oMolsys):
@@ -399,6 +399,7 @@ def freeze_cartesians_from_input_list(frozen_cart_list, oMolsys):
     frozen_cart_list : string
         uses 1 indexing for atoms. number xy or z or any combo
         add example
+    oMolsys : molsys.Molsys
     """
     logger = logging.getLogger(__name__)
     for i in range(0, len(frozen_cart_list), 2):
@@ -407,20 +408,20 @@ def freeze_cartesians_from_input_list(frozen_cart_list, oMolsys):
         for xyz in frozen_cart_list[i+1]:
             newCart = cart.Cart(at, xyz, frozen=True)
             try:
-                freezing_cart = oMolsys._fragments[f]._intcos.index(newCart)
-                oMolsys._fragments[f]._intcos[freezing_cart].frozen = True
+                freezing_cart = oMolsys.fragments[f].intcos.index(newCart)
+                oMolsys.fragments[f].intcos[freezing_cart].frozen = True
             except ValueError:
                 logger.info("\tFrozen cartesian not present, so adding it.\n")
-                oMolsys._fragments[f]._intcos.append(newCart)
+                oMolsys.fragments[f].intcos.append(newCart)
 
 
-def checkFragment(atomList, oMolsys):
+def check_fragment(atomList, oMolsys):
     """Check if a group of atoms are in the same fragment (or not).
     Implicitly this function also returns a ValueError for too high atom indices.
     Raise error if different, return fragment if same.
     """
     logger = logging.getLogger(__name__)
-    fragList = oMolsys.atomList2uniqueFragList(atomList)
+    fragList = oMolsys.atom_list2unique_frag_list(atomList)
     if len(fragList) != 1:
         logger.error(
             "Coordinate contains atoms in different fragments. Not currently supported.\n"
@@ -430,78 +431,78 @@ def checkFragment(atomList, oMolsys):
 
 
 # TODO Length mod 3 should be checked in OptParams
-def fixStretchesFromInputList(fixedStreList, oMolsys):
+def fix_stretches_from_input_list(fixedStreList, oMolsys):
     logger = logging.getLogger(__name__)
     for i in range(0, len(fixedStreList), 3):  # loop over fixed stretches
         stretch = stre.Stre(fixedStreList[i] - 1, fixedStreList[i + 1] - 1)
-        val = fixedStreList[i + 2] / stretch.qShowFactor
+        val = fixedStreList[i + 2] / stretch.q_show_factor
         stretch.fixedEqVal = val
-        f = checkFragment(stretch.atoms, oMolsys)
+        f = check_fragment(stretch.atoms, oMolsys)
         try:
-            fixing_stretch = oMolsys._fragments[f]._intcos.index(stretch)
-            oMolsys._fragments[f]._intcos[fixing_stretch].fixedEqVal = val
+            fixing_stretch = oMolsys.fragments[f].intcos.index(stretch)
+            oMolsys.fragments[f].intcos[fixing_stretch].fixed_eq_val = val
         except ValueError:
             logger.info("Fixed stretch not present, so adding it.\n")
-            oMolsys._fragments[f]._intcos.append(stretch)
+            oMolsys.fragments[f].intcos.append(stretch)
 
 
-def fixBendsFromInputList(fixedBendList, oMolsys):
+def fix_bends_from_input_list(fixedBendList, oMolsys):
     logger = logging.getLogger(__name__)
     for i in range(0, len(fixedBendList), 4):  # loop over fixed bends
         one_bend = bend.Bend(fixedBendList[i] - 1, fixedBendList[i + 1] - 1,
                              fixedBendList[i + 2] - 1)
-        val = fixedBendList[i + 3] / one_bend.qShowFactor
+        val = fixedBendList[i + 3] / one_bend.q_show_factor
         one_bend.fixedEqVal = val
-        f = checkFragment(one_bend.atoms, oMolsys)
+        f = check_fragment(one_bend.atoms, oMolsys)
         try:
-            fixing_bend = oMolsys._fragments[f]._intcos.index(one_bend)
-            oMolsys._fragments[f]._intcos[fixing_bend].fixedEqVal = val
+            fixing_bend = oMolsys.fragments[f].intcos.index(one_bend)
+            oMolsys.fragments[f].intcos[fixing_bend].fixed_eq_val = val
         except ValueError:
             logger.info("Fixed bend not present, so adding it.\n")
-            oMolsys._fragments[f]._intcos.append(one_bend)
+            oMolsys.fragments[f].intcos.append(one_bend)
 
 
-def fixTorsionsFromInputList(fixedTorsList, oMolsys):
+def fix_torsions_from_input_list(fixedTorsList, oMolsys):
     logger = logging.getLogger(__name__)
     for i in range(0, len(fixedTorsList), 5):  # loop over fixed dihedrals
         one_tors = tors.Tors(fixedTorsList[i] - 1, fixedTorsList[i + 1] - 1,
                              fixedTorsList[i + 2] - 1, fixedTorsList[i + 3] - 1)
-        val = fixedTorsList[i + 4] / one_tors.qShowFactor
+        val = fixedTorsList[i + 4] / one_tors.q_show_factor
         one_tors.fixedEqVal = val
-        f = checkFragment(one_tors.atoms, oMolsys)
+        f = check_fragment(one_tors.atoms, oMolsys)
         try:
-            fixing_tors = oMolsys._fragments[f]._intcos.index(one_tors)
-            oMolsys._fragments[f]._intcos[fixing_tors].fixedEqVal = val
+            fixing_tors = oMolsys.fragments[f].intcos.index(one_tors)
+            oMolsys.fragments[f].intcos[fixing_tors].fixed_eq_val = val
         except ValueError:
             logger.info("Fixed torsion not present, so adding it.\n")
-            oMolsys._fragments[f]._intcos.append(one_tors)
+            oMolsys.fragments[f].intcos.append(one_tors)
 
-def freezeIntrafrag(oMolsys):
-    if oMolsys.Nfragments < 2:
+def freeze_intrafrag(oMolsys):
+    if oMolsys.nfragments < 2:
         raise OptError('Fragments are to be frozen, but there is only one of them')
-    for F in oMolsys._fragments:
+    for F in oMolsys.fragments:
         F.freeze()
 
-def addFrozenAndFixedIntcos(oMolsys):
+def add_frozen_and_fixed_intcos(oMolsys):
     if op.Params.frozen_distance:
-        freezeStretchesFromInputAtomList(op.Params.frozen_distance, oMolsys)
+        freeze_stretches_from_input_atom_list(op.Params.frozen_distance, oMolsys)
     if op.Params.frozen_bend:
-        freezeBendsFromInputAtomList(op.Params.frozen_bend, oMolsys)
+        freeze_bends_from_input_atom_list(op.Params.frozen_bend, oMolsys)
     if op.Params.frozen_dihedral:
-        freezeTorsionsFromInputAtomList(op.Params.frozen_dihedral, oMolsys)
+        freeze_torsions_from_input_atom_list(op.Params.frozen_dihedral, oMolsys)
     if op.Params.frozen_cartesian:
         freeze_cartesians_from_input_list(op.Params.frozen_cartesian, oMolsys)
 
     if op.Params.fixed_distance:
-        fixStretchesFromInputList(op.Params.fixed_distance, oMolsys)
+        fix_stretches_from_input_list(op.Params.fixed_distance, oMolsys)
     if op.Params.fixed_bend:
-        fixBendsFromInputList(op.Params.fixed_bend, oMolsys)
+        fix_bends_from_input_list(op.Params.fixed_bend, oMolsys)
     if op.Params.fixed_dihedral:
-        fixTorsionsFromInputList(op.Params.fixed_dihedral, oMolsys)
+        fix_torsions_from_input_list(op.Params.fixed_dihedral, oMolsys)
     if op.Params.freeze_intrafrag:
-        freezeIntrafrag(oMolsys)
+        freeze_intrafrag(oMolsys)
 
-def addDimerFragIntcos(oMolsys):
+def add_dimer_frag_intcos(oMolsys):
     # TODO add custom weights
     # TODO pass fragment labels
     # TODO maybe move into a molsys class function?
@@ -515,15 +516,15 @@ def addDimerFragIntcos(oMolsys):
             for iAT in range(len(RP)): # atoms
                 atoms[iF][iRP][iAT] -= 1
 
-    for i in range(oMolsys.Nfragments):
-        for j in range(i+1,oMolsys.Nfragments):
-            #print('addDimerFragIntcos atom lists:')
+    for i in range(oMolsys.nfragments):
+        for j in range(i+1, oMolsys.nfragments):
+            #print('add_dimer_frag_intcos atom lists:')
             #print(atoms[i])
             #print(atoms[j])
             df = dimerfrag.DimerFrag(i, atoms[i], j, atoms[j])
             df.update_reference_geometry(oMolsys.frag_geom(i), oMolsys.frag_geom(j))
-            oMolsys._dimer_intcos.append(df)
-    #print('end of addDimerFragIntcos')
+            oMolsys.dimer_intcos.append(df)
+    #print('end of add_dimer_frag_intcos')
     #print(oMolsys)
     return
 

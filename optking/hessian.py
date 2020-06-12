@@ -3,7 +3,7 @@ import logging
 import numpy as np
 import qcelemental as qcel
 
-from .printTools import printMatString
+from .printTools import print_mat_string
 # from bend import *
 from .stre import Stre
 from .bend import Bend
@@ -15,21 +15,21 @@ def show(H, oMolsys):
     """
     logger = logging.getLogger(__name__)
 
-    factors = np.zeros( oMolsys.Nintcos )
+    factors = np.zeros(oMolsys.num_intcos)
     cnt = -1
     for F in oMolsys._fragments:
         for I in F.intcos:
             cnt += 1
-            factors[cnt] = I.qShowFactor
+            factors[cnt] = I.q_show_factor
     for DI in oMolsys._dimer_intcos:
         for I in DI._pseudofrag._intcos:
             cnt += 1
-            factors[cnt] = I.qShowFactor
+            factors[cnt] = I.q_show_factor
 
     factors_inv = np.divide(1.0, factors)
     scaled_H = np.einsum('i,ij,j->ij', factors_inv, H, factors_inv)
     scaled_H *= qcel.constants.hartree2aJ
-    logger.info("Hessian in [aJ/Ang^2], [aJ/deg^2], etc.\n" + printMatString(scaled_H))
+    logger.info("Hessian in [aJ/Ang^2], [aJ/deg^2], etc.\n" + print_mat_string(scaled_H))
 
 
 #def guess(intcos, geom, Z, connectivity=None, guessType="SIMPLE"):
@@ -55,12 +55,12 @@ def guess(oMolsys, connectivity=None, guessType="SIMPLE"):
 
     diag = []
     for F in oMolsys._fragments:
-        if F.Nintcos:
+        if F.num_intcos:
             geom         = F.geom
             Z            = F.Z
-            connectivity = F.connectivityFromDistances()
+            connectivity = F.connectivity_from_distances()
             for intco in F._intcos:
-                diag.append(intco.diagonalHessianGuess(geom, Z, connectivity, guessType))
+                diag.append(intco.diagonal_hessian_guess(geom, Z, connectivity, guessType))
 
     # Since the reference points might not even be at atomic positions, let's not worry
     # about implementing various options for the diagonal Hessian guess.

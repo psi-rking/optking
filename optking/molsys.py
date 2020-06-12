@@ -11,8 +11,8 @@ from qcelemental.util.serialization import json_dumps
 from . import frag
 from .exceptions import AlgError, OptError
 from . import v3d
-from .addIntcos import connectivityFromDistances, addCartesianIntcos
-from .linearAlgebra import symmMatInv
+from .addIntcos import connectivity_from_distances, add_cartesian_intcos
+from .linearAlgebra import symm_mat_inv
 
 
 class Molsys(object):
@@ -109,8 +109,9 @@ class Molsys(object):
         m = mol.multiplicity()
         return cls(frags, multiplicity=m)
 
+
     @classmethod
-    def from_JSON_molecule(cls, qc_molecule):
+    def from_json_molecule(cls, qc_molecule):
         """ Creates optking molecular system from JSON input.
 
         Parameters
@@ -146,21 +147,44 @@ class Molsys(object):
         return cls(frags)
 
     @property
-    def Natom(self):
-        return sum(F.Natom for F in self._fragments)
+    def natom(self):
+        return sum(F.natom for F in self._fragments)
 
     @property
     def multiplicity(self):
         return self._multiplicity
 
     @property
-    def Nfragments(self):
+    def nfragments(self):
         return len(self._fragments)
         #return len(self._fragments) + len(self._fb_fragments)
 
+    # TODO not supposed to have a property which takes an arg
     @property
-    def frag_Natom(self,iF):
-        return self._fragments[iF].Natom
+    def frag_natom(self, iF):
+        return self._fragments[iF].natom
+
+    @property
+    def fragments(self):
+        return self._fragments
+
+    @property
+    def dimer_intcos(self):
+        return self._dimer_intcos
+
+    @property
+    def intcos(self):
+        """ Collect intcos for all fragments. Add dimer coords to end.
+        Returns
+        -------
+        """
+        logger = logging.getLogger(__name__)
+        logger.warning("""This method is currently implemented as a last resort used as a last
+                       resort. Should be safe assuming no dimer coordinates, otherwise unknown.""")
+        coords = [coord for f in self._fragments for coord in f.intcos]
+        for d_coord in self.dimer_intcos:
+            coords.append(d_coord)
+        return coords
 
     # Return overall index of first atom in fragment, beginning 0,1,...
     # For last fragment returns one past the end.
@@ -169,26 +193,26 @@ class Molsys(object):
             return ValueError()
         start = 0
         for i in range(0, iF):
-            start += self._fragments[i].Natom
+            start += self._fragments[i].natom
         return start
 
     def frag_atom_range(self, iF):
         start = self.frag_1st_atom(iF)
-        return range(start, start + self._fragments[iF].Natom)
+        return range(start, start + self._fragments[iF].natom)
 
     def frag_atom_slice(self, iF):
         start = self.frag_1st_atom(iF)
-        return slice(start, start + self._fragments[iF].Natom)
+        return slice(start, start + self._fragments[iF].natom)
 
     # accepts absolute atom index, returns fragment index
     def atom2frag_index(self, atom_index):
-        for iF in range(self.Nfragments):
+        for iF in range(self.nfragments):
             if atom_index in self.frag_atom_range(iF):
                 return iF
         raise OptError("atom2frag_index: atom_index impossibly large")
 
     # Given a list of atoms, return all the fragments to which they belong
-    def atomList2uniqueFragList(self, atomList):
+    def atom_list2unique_frag_list(self, atomList):
         fragList = []
         for a in atomList:
             f = self.atom2frag_index(a)
@@ -199,38 +223,38 @@ class Molsys(object):
     @property
     def geom(self):
         """cartesian geometry [a0]"""
-        geom = np.zeros((self.Natom, 3))
+        geom = np.zeros((self.natom, 3))
         for iF, F in enumerate(self._fragments):
             row = self.frag_1st_atom(iF)
-            geom[row:(row + F.Natom), :] = F.geom
+            geom[row:(row + F.natom), :] = F.geom
         return geom
 
     def frag_geom(self, iF):
         """cartesian geometry for fragment i"""
         return self._fragments[iF].geom
         # return copy instead?
-        # using in displaceMolsys
+        # using in displace_molsys
 
     @geom.setter
     def geom(self, newgeom):
         """ setter for geometry"""
         for iF, F in enumerate(self._fragments):
             row = self.frag_1st_atom(iF)
-            F.geom[:] = newgeom[row:(row + F.Natom), :]
+            F.geom[:] = newgeom[row:(row + F.natom), :]
 
     @property
     def masses(self):
-        m = np.zeros(self.Natom)
+        m = np.zeros(self.natom)
         for iF, F in enumerate(self._fragments):
             m[self.frag_atom_slice(iF)] = F.masses
         return m
 
     @property
     def Z(self):
-        z = [0 for i in range(self.Natom)]
+        z = [0 for i in range(self.natom)]
         for iF, F in enumerate(self._fragments):
             first = self.frag_1st_atom(iF)
-            z[first:(first + F.Natom)] = F.Z
+            z[first:(first + F.natom)] = F.Z
         return z
 
     # Needed?  may make more sense to loop over fragments
@@ -242,18 +266,18 @@ class Molsys(object):
     #    return _intcos
 
     @property
-    def Nintcos(self):
+    def num_intcos(self):
         N = 0
         for F in self._fragments:
-            N += F.Nintcos
+            N += F.num_intcos
         for DI in self._dimer_intcos:
-            N += DI.Nintcos
+            N += DI.num_intcos
         return N
 
     @property
     def frozen_intco_list(self):
         """Determine vector with 1 for any frozen internal coordinate"""
-        frozen = np.zeros(self.Nintcos)
+        frozen = np.zeros(self.num_intcos)
         cnt = 0
         for F in self._fragments:
             for intco in F._intcos:
@@ -292,64 +316,64 @@ class Molsys(object):
             return ValueError()
         start = 0
         for i in range(0, iF):
-            start += self._fragments[i].Nintcos
+            start += self._fragments[i].num_intcos
         return start
 
     def frag_intco_range(self, iF):
         start = self.frag_1st_intco(iF)
-        return range(start, start + self._fragments[iF].Nintcos)
+        return range(start, start + self._fragments[iF].num_intcos)
 
     def frag_intco_slice(self, iF):
         start = self.frag_1st_intco(iF)
-        return slice(start, start + self._fragments[iF].Nintcos)
+        return slice(start, start + self._fragments[iF].num_intcos)
 
     # Given the index i looping through the list of dimer coordinate (sets),
     # returns the total intco row number for the first/start of the dimer coordinate.
     def dimerfrag_1st_intco(self, iDI):
         # we assume the intrafragment coordinates come first
-        N = sum( F.Nintcos for F in self._fragments)
+        N = sum(F.num_intcos for F in self._fragments)
         for i in range(0, iDI):
-            N += self._dimer_intcos[i].Nintcos
+            N += self._dimer_intcos[i].num_intcos
         return N
 
     def dimerfrag_intco_range(self, iDI):
         start = self.dimerfrag_1st_intco(iDI)
-        return range(start, start + self._dimer_intcos[iDI].Nintcos)
+        return range(start, start + self._dimer_intcos[iDI].num_intcos)
 
     def dimerfrag_intco_slice(self, iDI):
         start = self.dimerfrag_1st_intco(iDI)
-        return slice(start, start + self._dimer_intcos[iDI].Nintcos)
+        return slice(start, start + self._dimer_intcos[iDI].num_intcos)
 
-    def printIntcos(self):
+    def print_intcos(self):
         for iF, F in enumerate(self._fragments):
             self.logger.info("Fragment %d\n" % (iF + 1))
-            F.printIntcos()
+            F.print_intcos()
         return
 
     # If connectivity is provided, only intrafragment connections
     # are used.  Interfragment connections are ignored here.
-    #def addIntcosFromConnectivity(self, C=None):
+    #def add_intcos_from_connectivity(self, C=None):
     #    for F in self._fragments:
     #        if C is None:
-    #            C = F.connectivityFromDistances()
-    #        F.addIntcosFromConnectivity(C)
+    #            C = F.connectivity_from_distances()
+    #        F.add_intcos_from_connectivity(C)
 
-    def addCartesianIntcos(self):
+    def add_cartesian_intcos(self):
         for F in self._fragments:
-            addCartesianIntcos(F._intcos, F._geom)
+            add_cartesian_intcos(F._intcos, F._geom)
 
-    def printGeom(self):
+    def print_geom(self):
         """Returns a string of the geometry for logging in [a0]"""
         for iF, F in enumerate(self._fragments):
             self.logger.info("\tFragment %d\n" % (iF + 1))
-            F.printGeom()
+            F.print_geom()
 
-    def showGeom(self):
+    def show_geom(self):
         """Return a string of the geometry in [A]"""
         molsys_geometry = ''
         for iF, F in enumerate(self._fragments):
             molsys_geometry += ("\tFragment %d\n" % (iF + 1))
-            molsys_geometry += F.showGeom()
+            molsys_geometry += F.show_geom()
         return molsys_geometry
 
     @property
@@ -362,7 +386,7 @@ class Molsys(object):
     @property
     def fragments_atom_list(self):
         l = [] 
-        for iF in range(self.Nfragments):
+        for iF in range(self.nfragments):
             fl = [i for i in self.frag_atom_range(iF)]
             l.append(fl)
         #print("l",l)
@@ -393,42 +417,42 @@ class Molsys(object):
         vals = []
         for F in self._fragments:
             vals += F.q()
-        self.updateDimerIntcoReferencePoints()
+        self.update_dimer_intco_reference_points()
         for DI in self._dimer_intcos:
             vals += DI.q()
         return vals
 
-    def qArray(self):
+    def q_array(self):
         """Returns internal coordinate values in au as array."""
         return np.asarray( self.q() )
 
-    def qShow(self):
+    def q_show(self):
         """returns internal coordinates values in Angstroms/degrees as list."""
         vals = []
         for F in self._fragments:
-            vals += F.qShow()
+            vals += F.q_show()
     
         for DI in self._dimer_intcos:
-            vals += DI.qShow()
+            vals += DI.q_show()
         return vals
 
-    def qShowArray(self):
+    def q_show_array(self):
         """returns internal coordinates values in Angstroms/degrees as array."""
-        return np.asarray( self.qShow())
+        return np.asarray(self.q_show())
 
-    def consolidateFragments(self):
-        if self.Nfragments == 1:
+    def consolidate_fragments(self):
+        if self.nfragments == 1:
             return
         self.logger.info("\tConsolidating multiple fragments into one for optimization.")
         print("consolidating fragments")
         Z = self._fragments[0].Z
         g = self._fragments[0].geom
-        print('frag0 geom in consolidateFragments:')
+        print('frag0 geom in consolidate_fragments:')
         print(self._fragments[0].geom)
-        print('frag1 geom in consolidateFragments:')
+        print('frag1 geom in consolidate_fragments:')
         print(self._fragments[1].geom)
         m = self._fragments[0].masses
-        for i in range(1,self.Nfragments):
+        for i in range(1, self.nfragments):
             Z = np.concatenate( (Z, self._fragments[i].Z) )
             g = np.concatenate( (g, self._fragments[i].geom) )
             m = np.concatenate( (m, self._fragments[i].masses) )
@@ -440,7 +464,7 @@ class Molsys(object):
         print(self._fragments[0])
 
 
-    def splitFragmentsByConnectivity(self):
+    def split_fragments_by_connectivity(self):
         """ Split any fragment not connected by bond connectivity."""
         tempZ = np.copy(self.Z)
         tempGeom = np.copy(self.geom)
@@ -448,8 +472,8 @@ class Molsys(object):
 
         newFragments = []
         for F in self._fragments:
-            C = connectivityFromDistances(F.geom, F.Z)
-            atomsToAllocate = list(reversed(range(F.Natom)))
+            C = connectivity_from_distances(F.geom, F.Z)
+            atomsToAllocate = list(reversed(range(F.natom)))
             while atomsToAllocate:
                 frag_atoms = [atomsToAllocate.pop()]
 
@@ -481,8 +505,8 @@ class Molsys(object):
         del self._fragments[:]
         self._fragments = newFragments
 
-    def purgeInterfragmentConnectivity(self,C):
-        for f1,f2 in permutations([i for i in range(self.Nfragments)],2):
+    def purge_interfragment_connectivity(self, C):
+        for f1,f2 in permutations([i for i in range(self.nfragments)], 2):
             for a in self.frag_atom_range(f1):
                 for b in self.frag_atom_range(f2):
                     C[a,b] = 0.0
@@ -490,19 +514,19 @@ class Molsys(object):
 
     # Supplements a connectivity matrix to connect all fragments.  Assumes the
     # definition of the fragments has ALREADY been determined before function called.
-    def augmentConnectivityToSingleFragment(self, C):
+    def augment_connectivity_to_single_fragment(self, C):
         self.logger.info('\tAugmenting connectivity matrix to join fragments.')
         fragAtoms = []
         geom = self.geom
         for iF, F in enumerate(self._fragments):
             fragAtoms.append(
                 range(self.frag_1st_atom(iF),
-                      self.frag_1st_atom(iF) + F.Natom))
+                      self.frag_1st_atom(iF) + F.natom))
 
         # Which fragments are connected?
-        nF = self.Nfragments
-        self.logger.critical(str(self.Nfragments))
-        if self.Nfragments == 1:
+        nF = self.nfragments
+        self.logger.critical(str(self.nfragments))
+        if self.nfragments == 1:
             return
 
         frag_connectivity = np.zeros((nF, nF))
@@ -569,61 +593,61 @@ class Molsys(object):
         self._fragments.clear()
         #self._fb_fragments.clear()
 
-    def updateDimerIntcoReferencePoints(self):
+    def update_dimer_intco_reference_points(self):
         for DI in self._dimer_intcos:
-            xA = self.frag_geom(DI.A_idx)
-            xB = self.frag_geom(DI.B_idx)
+            xA = self.frag_geom(DI.a_idx)
+            xB = self.frag_geom(DI.b_idx)
             DI.update_reference_geometry(xA, xB)
 
-    def updateDihedralOrientations(self):
+    def update_dihedral_orientations(self):
         """ See description in Fragment class. """
         for F in self._fragments:
-            F.updateDihedralOrientations()
-        self.updateDimerIntcoReferencePoints()
+            F.update_dihedral_orientations()
+        self.update_dimer_intco_reference_points()
         for DI in self._dimer_intcos:
-            DI._pseudo_frag.updateDihedralOrientations()
+            DI._pseudo_frag.update_dihedral_orientations()
 
-    def fixBendAxes(self):
+    def fix_bend_axes(self):
         """ See description in Fragment class. """
         for F in self._fragments:
-            F.fixBendAxes()
-        self.updateDimerIntcoReferencePoints()
+            F.fix_bend_axes()
+        self.update_dimer_intco_reference_points()
         for DI in self._dimer_intcos:
-            DI._pseudo_frag.fixBendAxes()
+            DI._pseudo_frag.fix_bend_axes()
 
-    def unfixBendAxes(self):
+    def unfix_bend_axes(self):
         """ See description in Fragment class. """
         for F in self._fragments:
-            F.unfixBendAxes()
+            F.unfix_bend_axes()
         for DI in self._dimer_intcos:
-            DI._pseudo_frag.unfixBendAxes()
+            DI._pseudo_frag.unfix_bend_axes()
 
     # Returns mass-weighted Bmatrix if masses are supplied.
-    def Bmat(self, masses=None):
+    def compute_b_mat(self, masses=None):
         # Allocate memory for full system.
-        Nint  = self.Nintcos
-        Ncart = 3*self.Natom
+        Nint  = self.num_intcos
+        Ncart = 3*self.natom
         B = np.zeros((Nint, Ncart))
     
         for iF, F in enumerate(self._fragments):
-            fB = F.Bmat()
+            fB = F.compute_b_mat()
             cart_offset  = 3*self.frag_1st_atom(iF)
             intco_offset = self.frag_1st_intco(iF)
     
-            for i in range(F.Nintcos):
-                for xyz in range(3*F.Natom):
+            for i in range(F.num_intcos):
+                for xyz in range(3*F.natom):
                     B[intco_offset+i,cart_offset+xyz] = fB[i,xyz]
     
         if self._dimer_intcos:
             # xyz = self.geom
             for i, DI in enumerate(self._dimer_intcos):
-                #print('Aidx:' + str(DI.A_idx) )
-                A1stAtom = self.frag_1st_atom( DI.A_idx )
-                B1stAtom = self.frag_1st_atom( DI.B_idx )
-                Axyz     = self.frag_geom( DI.A_idx )
-                Bxyz     = self.frag_geom( DI.B_idx )
-                DI.compute_B(Axyz, Bxyz, B[self.dimerfrag_intco_slice(i)],
-                             A1stAtom, 3*B1stAtom) # column offsets
+                #print('Aidx:' + str(DI.a_idx) )
+                A1stAtom = self.frag_1st_atom(DI.a_idx)
+                B1stAtom = self.frag_1st_atom(DI.b_idx)
+                Axyz     = self.frag_geom(DI.a_idx)
+                Bxyz     = self.frag_geom(DI.b_idx)
+                DI.compute_b_mat(Axyz, Bxyz, B[self.dimerfrag_intco_slice(i)],
+                                 A1stAtom, 3 * B1stAtom) # column offsets
     
         if type(masses) is np.ndarray:
             sqrtm = np.array([np.repeat(np.sqrt(masses), 3)]*Nint, float)
@@ -632,19 +656,19 @@ class Molsys(object):
         #print(B)
         return B
 
-    def qShowForces(self, forces):
+    def q_show_forces(self, forces):
         """ Returns scaled forces as array. """
         c = []
         for F in self._fragments:
-            c += [intco.fShowFactor for intco in F._intcos]
+            c += [intco.f_show_factor for intco in F._intcos]
         for DI in self._dimer_intcos:
-            c += [intco.fShowFactor for intco in DI._pseudo_frag._intcos]
+            c += [intco.f_show_factor for intco in DI._pseudo_frag._intcos]
         c = np.asarray(c)
         qaJ = c * forces
         return qaJ
 
     # Returns mass-weighted Gmatrix if masses are supplied.
-    def Gmat(self, masses=None):
+    def compute_g_mat(self, masses=None):
         """ Calculates BuB^T (calculates B matrix)
 
         Parameters
@@ -655,10 +679,10 @@ class Molsys(object):
             (nat, 3) cartesian geometry
     
         """
-        B = self.Bmat(masses)
+        B = self.compute_b_mat(masses)
         return np.dot(B, B.T)
 
-    def qForces(self, gradient_x, B=None):
+    def q_forces(self, gradient_x, B=None):
         """Transform cartesian gradient to internals
         Parameters
         ----------
@@ -673,15 +697,15 @@ class Molsys(object):
         fq = (BuB^T)^(-1)*B*f_x
     
         """
-        if not self.intcos_present or self.Natom == 0:
+        if not self.intcos_present or self.natom == 0:
             return np.zeros(0)
     
         if B is None:
-            B = self.Bmat()
+            B = self.compute_b_mat()
     
         fx = np.multiply(-1.0, gradient_x)  # gradient -> forces
         G = np.dot(B, B.T)
-        Ginv = symmMatInv(G, redundant=True)
+        Ginv = symm_mat_inv(G, redundant=True)
         fq = np.dot(np.dot(Ginv, B), fx)
         return fq
 

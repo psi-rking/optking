@@ -2,6 +2,8 @@ from math import fabs, sqrt
 import numpy as np
 import operator
 
+from numpy.linalg import LinAlgError
+
 from .exceptions import AlgError, OptError
 #  Linear algebra routines. #
 
@@ -10,11 +12,11 @@ def norm(V):
     return np.linalg.norm(V)
 
 
-def absMax(V):
+def abs_max(V):
     return max(abs(elem) for elem in V)
 
 
-def absMin(V):
+def abs_min(V):
     return min(abs(elem) for elem in V)
 
 
@@ -22,7 +24,7 @@ def rms(V):
     return np.sqrt(np.mean(V**2))
 
 
-def signOfDouble(d):
+def sign_of_double(d):
     if d > 0:
         return 1
     elif d < 0:
@@ -32,29 +34,29 @@ def signOfDouble(d):
 
 
 # Returns eigenvectors as rows?
-def symmMatEig(mat):
+def symm_mat_eig(mat):
     try:
         evals, evects = np.linalg.eigh(mat)
         if abs(min(evects[:,0])) > abs(max(evects[:,0])):
             evects[:,0] *= -1.0
     except:
-        raise OptError("symmMatEig: could not compute eigenvectors")
+        raise OptError("symm_mat_eig: could not compute eigenvectors")
         # could be ALG_FAIL ?
     evects = evects.T
     return evals, evects
 
 # Returns eigenvector with lowest eigenvalues; makes the largest
 # magnitude element positive.
-def lowestEigenvectorSymmMat(mat):
+def lowest_eigenvector_symm_mat(mat):
     try:
         evals, evects = np.linalg.eigh(mat)
         if abs(min(evects[:,0])) > abs(max(evects[:,0])):
             evects[:,0] *= -1.0
     except:
-        raise OptError("symmMatEig: could not compute eigenvectors")
+        raise OptError("symm_mat_eig: could not compute eigenvectors")
     return evects[:,0]
 
-def asymmMatEig(mat):
+def asymm_mat_eig(mat):
     """Compute the eigenvalues and right eigenvectors of a square array.
     Wraps numpy.linalg.eig to sort eigenvalues, put eigenvectors in rows, and suppress complex.
 
@@ -77,7 +79,7 @@ def asymmMatEig(mat):
     try:
         evals, evects = np.linalg.eig(mat)
     except np.LinAlgError as e:
-        raise OptError("asymmMatEig: could not compute eigenvectors") from e
+        raise OptError("asymm_mat_eig: could not compute eigenvectors") from e
 
     idx = np.argsort(evals)
     evals = evals[idx]
@@ -88,14 +90,14 @@ def asymmMatEig(mat):
 
 #  Return the inverse of a real, symmetric matrix.  If "redundant" == true,
 #  then a generalized inverse is permitted.
-def symmMatInv(A, redundant=False, redundant_eval_tol=1.0e-10):
+def symm_mat_inv(A, redundant=False, redundant_eval_tol=1.0e-10):
     dim = A.shape[0]
     if dim == 0:
         return np.zeros((0, 0))
     det = 1.0
 
     try:
-        evals, evects = symmMatEig(A)
+        evals, evects = symm_mat_eig(A)
     except LinAlgError:
         raise OptError("symmMatrixInv: could not compute eigenvectors")
         # could be LinAlgError?
@@ -125,13 +127,13 @@ def symmMatInv(A, redundant=False, redundant_eval_tol=1.0e-10):
 
 
 # Compute A^(1/2) for a positive-definite matrix.  A^(-1/2) if Inverse == True
-def symmMatRoot(A, Inverse=None):
+def symm_mat_root(A, Inverse=None):
     try:
         evals, evects = np.linalg.eigh(A)
         # Eigenvectors of A are in columns of evects
         # Evals in ascending order
     except LinAlgError:
-        raise OptError("symmMatRoot: could not compute eigenvectors")
+        raise OptError("symm_mat_root: could not compute eigenvectors")
 
     evals[ np.abs(evals) < 5*np.finfo(np.float).resolution ] = 0.0
     evects[ np.abs(evects) < 5*np.finfo(np.float).resolution ] = 0.0

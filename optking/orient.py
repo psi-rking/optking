@@ -1,10 +1,11 @@
 from math import sin,cos,sqrt,acos
 import numpy as np
 from optking import v3d
+from .exceptions import AlgError
 
 """ Tools for analytic rotation and orientation """
 
-def rotateVector(rot_axis, phi, v):
+def rotate_vector(rot_axis, phi, v):
     """ rotate_vecs(): Rotate a set of vectors around an arbitrary axis
 
     Parameters
@@ -48,7 +49,7 @@ def rotateVector(rot_axis, phi, v):
     return
 
 
-def zmatPoint(A, B, C, R_CD, theta_BCD, phi_ABCD):
+def zmat_point(A, B, C, R_CD, theta_BCD, phi_ABCD):
     """ zmat_point(): Given the xyz coordinates for three points and
         R, theta, and phi, as traditionally understood in a Z-matrix,
         returns the location of a 4th point.
@@ -95,6 +96,6 @@ def zmatPoint(A, B, C, R_CD, theta_BCD, phi_ABCD):
 #print('v:', v)
 #print('axis:',axis)
 #print('angle: %15.10f' % angle)
-#rotateVector(axis, angle, v)
+#rotate_vector(axis, angle, v)
 #print('v:', v)
 

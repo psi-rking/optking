@@ -54,7 +54,7 @@ def test_optimization_input():
     # Convert back to plain python dictionary
     full_model = json.loads(json_dumps(opt_in))
     
-    oMolsys = Molsys.from_JSON_molecule(full_model['initial_molecule'])  # Create Optking's molecular system
+    oMolsys = Molsys.from_json_molecule(full_model['initial_molecule'])  # Create Optking's molecular system
     initialize_options(full_model['keywords']) 
     computer = make_computer(full_model, 'qc')
     # Takes the o_json object and creates QCSchema formatted python dict. Has numpy elements
