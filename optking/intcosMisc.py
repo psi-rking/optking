@@ -6,8 +6,8 @@ from . import optparams as op
 from . import oofp
 from . import bend
 from . import tors
-from .linearAlgebra import symmMatInv, symmMatRoot
-from .printTools import printMatString, printArrayString
+from .linearAlgebra import symm_mat_inv, symm_mat_root
+from .printTools import print_mat_string, print_array_string
 
 ### Some of these functions act on an arbitrary list of simple internals,
 ### geometry etc. that may or may not be in a molecular system.
@@ -15,7 +15,7 @@ from .printTools import printMatString, printArrayString
 ### forces and Hessians.
 
 # available for simple intco lists
-def qValues(intcos, geom):
+def q_values(intcos, geom):
     vals = [intco.q(geom) for intco in intcos]
     return np.asarray( vals )
 
@@ -35,7 +35,7 @@ def Bmat(intcos, geom, masses=None):
 
     return B
 
-def qForces(intcos, geom, gradient_x, B=None):
+def q_forces(intcos, geom, gradient_x, B=None):
     """Transforms cartesian gradient to internals
 
     Parameters
@@ -65,28 +65,28 @@ def qForces(intcos, geom, gradient_x, B=None):
 
     fx = np.multiply(-1.0, gradient_x)  # gradient -> forces
     G = np.dot(B, B.T)
-    Ginv = symmMatInv(G, redundant=True)
+    Ginv = symm_mat_inv(G, redundant=True)
     fq = np.dot(np.dot(Ginv, B), fx)
     return fq
 
-#def projectRedundanciesAndConstraints(intcos, geom, fq, H):
-def projectRedundanciesAndConstraints(oMolsys, fq, H):
+#def project_redundancies_and_constraints(intcos, geom, fq, H):
+def project_redundancies_and_constraints(oMolsys, fq, H):
     """Project redundancies and constraints out of forces and Hessian"""
     logger = logging.getLogger(__name__)
-    Nint = oMolsys.Nintcos
+    Nint = oMolsys.num_intcos
     # compute projection matrix = G G^-1
-    G = oMolsys.Gmat()
-    G_inv = symmMatInv(G, redundant=True)
+    G = oMolsys.compute_g_mat()
+    G_inv = symm_mat_inv(G, redundant=True)
     Pprime = np.dot(G, G_inv)
-    # logger.debug("\tProjection matrix for redundancies.\n\n" + printMatString(Pprime))
+    # logger.debug("\tProjection matrix for redundancies.\n\n" + print_mat_string(Pprime))
     # Add constraints to projection matrix
     C = oMolsys.constraint_matrix # returns None, if aren't any
 
     if C is not None:
-        logger.debug("Adding constraints for projection.\n" + printMatString(C))
+        logger.debug("Adding constraints for projection.\n" + print_mat_string(C))
         CPC = np.zeros( (Nint, Nint))
         CPC[:, :] = np.dot(C, np.dot(Pprime, C))
-        CPCInv = symmMatInv(CPC, redundant=True)
+        CPCInv = symm_mat_inv(CPC, redundant=True)
         P = np.zeros( (Nint, Nint) )
         P[:, :] = Pprime - np.dot(Pprime, np.dot(C, np.dot(CPCInv, np.dot(C, Pprime))))
     else:
@@ -98,7 +98,7 @@ def projectRedundanciesAndConstraints(oMolsys, fq, H):
 
     #if op.Params.print_lvl >= 3:
     logger.debug("\n\tInternal forces in au, after projection of redundancies"
-                    + " and constraints.\n" + printArrayString(fq))
+                 + " and constraints.\n" + print_array_string(fq))
     # Project redundancies out of Hessian matrix.
     # Peng, Ayala, Schlegel, JCC 1996 give H -> PHP + 1000(1-P)
     # The second term appears unnecessary and sometimes messes up Hessian updating.
@@ -110,10 +110,10 @@ def projectRedundanciesAndConstraints(oMolsys, fq, H):
     #    for j in range(i):
     #        H[j,i] = H[i,j] = H[i,j] + 1000 * (1.0 - P[i,j])
     if op.Params.print_lvl >= 3:
-        logger.debug("Projected (PHP) Hessian matrix\n" + printMatString(H))
+        logger.debug("Projected (PHP) Hessian matrix\n" + print_mat_string(H))
 
 
-def applyFixedForces(oMolsys, fq, H, stepNumber):
+def apply_fixed_forces(oMolsys, fq, H, stepNumber):
     logger = logging.getLogger(__name__)
     x = oMolsys.geom
     for iF, F in enumerate(oMolsys._fragments):
@@ -123,7 +123,7 @@ def applyFixedForces(oMolsys, fq, H, stepNumber):
                 # for each fragment
                 location = oMolsys.frag_1st_intco(iF) + i
                 val = intco.q(x)
-                eqVal = intco.fixedEqVal
+                eqVal = intco.fixed_eq_val
 
                 # Increase force constant by 5% of initial value per iteration
                 k = (1 + 0.05 * stepNumber) * op.Params.fixed_coord_force_constant
@@ -159,7 +159,7 @@ def applyFixedForces(oMolsys, fq, H, stepNumber):
 # """
 
 
-def convertHessianToInternals(H, oMolsys, g_x=None):
+def hessian_to_internals(H, oMolsys, g_x=None):
     """ converts the hessian from cartesian coordinates into internal coordinates 
     
     Parameters
@@ -173,12 +173,12 @@ def convertHessianToInternals(H, oMolsys, g_x=None):
     """
     logger = logging.getLogger(__name__)
     logger.info("Converting Hessian from cartesians to internals.\n")
-    #B = Bmat(intcos, geom)
-    B = oMolsys.Bmat()
+    #B = compute_b_mat(intcos, geom)
+    B = oMolsys.compute_b_mat()
     G = np.dot(B, B.T)
     geom = oMolsys.geom
 
-    Ginv = symmMatInv(G, redundant=True)
+    Ginv = symm_mat_inv(G, redundant=True)
     Atranspose = np.dot(Ginv, B)
 
     Hworking = H.copy()
@@ -189,7 +189,7 @@ def convertHessianToInternals(H, oMolsys, g_x=None):
         logger.info("Including force/B-matrix derivative term.\n")
 
         g_q = np.dot(Atranspose, g_x)
-        Ncart = 3 * oMolsys.Natom
+        Ncart = 3 * oMolsys.natom
         dq2dx2 = np.zeros((Ncart, Ncart) )  # should be cart x cart for fragment ?
 
         for I, q in enumerate(intcos):
@@ -231,15 +231,15 @@ def massWeightHessianInternals(Hq, intcos, geom, masses):
     
     logger = logging.getLogger(__name__)
 
-    GM = Gmat(intcos, geom, masses)
-    GM_root = symmMatRoot(GM)
+    GM = compute_g_mat(intcos, geom, masses)
+    GM_root = symm_mat_root(GM)
     HqM = np.dot(np.dot(GM_root, Hq), GM_root.T)
     
     return HqM
 """
 
 
-def convertHessianToCartesians(Hint, intcos, geom, masses=None, g_q=None):
+def convert_hessian_to_cartesians(Hint, intcos, geom, masses=None, g_q=None):
     logger = logging.getLogger(__name__)
     logger.info("Converting Hessian from internals to cartesians.\n")
 
@@ -267,14 +267,14 @@ def convertHessianToCartesians(Hint, intcos, geom, masses=None, g_q=None):
 
 
 
-def torsContainsBend(b, t):
+def tors_contains_bend(b, t):
     return (b.atoms in [t.atoms[0:3],
                         list(reversed(t.atoms[0:3])),
                         t.atoms[1:4],
                         list(reversed(t.atoms[1:4]))])
 
 
-def removeOldNowLinearBend(atoms, intcos):
+def remove_old_now_linear_bend(atoms, intcos):
     """ For given bend [A,B,C], remove any regular bends as well as any torsions
     which contain it 
     """
@@ -284,5 +284,5 @@ def removeOldNowLinearBend(atoms, intcos):
     logger.info(str(b) + '\n')
     intcos[:] = [I for I in intcos if I != b]
     intcos[:] = [
-        I for I in intcos if not (isinstance(I, tors.Tors) and torsContainsBend(b, I))
+        I for I in intcos if not (isinstance(I, tors.Tors) and tors_contains_bend(b, I))
     ]

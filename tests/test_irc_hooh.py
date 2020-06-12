@@ -25,7 +25,7 @@ def test_hooh_irc():
    
     psi4.set_options(psi4_options) 
     json_output = optking.optimize_psi4('hf')
-    
+    print(json_output)
     IRC = json_output['extras']['irc_rxn_path']
     
     print("%15s%15s%20s%15s" % ('Step Number', 'Arc Distance', 'Energy', 'HOOH dihedral'))

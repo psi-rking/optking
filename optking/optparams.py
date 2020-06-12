@@ -6,12 +6,12 @@
 # The enumerated string types are translated to all upper-case within the parameter object.
 import logging
 from .exceptions import AlgError, OptError
-from .misc import (intList,
-                   intIntFloatList,
-                   intIntIntFloatList,
-                   intIntIntIntFloatList,
-                   tokenizeInputString,
-                   int_XYZ_list)
+from .misc import (int_list,
+                   int_int_float_list,
+                   int_int_int_float_list,
+                   int_int_int_int_float_list,
+                   tokenize_input_string,
+                   int_xyz_list)
 
 
 # Class for enumerated string options.
@@ -144,28 +144,28 @@ class OptParams(object):
         # Specify distances between atoms to be frozen (unchanged)
         # P.frozen_distance = uod.get('FROZEN_DISTANCE','')
         frozen = uod.get('FROZEN_DISTANCE', '')
-        P.frozen_distance = intList(tokenizeInputString(frozen))
+        P.frozen_distance = int_list(tokenize_input_string(frozen))
         # Specify angles between atoms to be frozen (unchanged)
         frozen = uod.get('FROZEN_BEND', '')
-        P.frozen_bend = intList(tokenizeInputString(frozen))
+        P.frozen_bend = int_list(tokenize_input_string(frozen))
         # Specify dihedral angles between atoms to be frozen (unchanged)
         frozen = uod.get('FROZEN_DIHEDRAL', '')
-        P.frozen_dihedral = intList(tokenizeInputString(frozen))
+        P.frozen_dihedral = int_list(tokenize_input_string(frozen))
         # Specify atom and X, XY, XYZ, ... to be frozen (unchanged)
         frozen = uod.get('FROZEN_CARTESIAN', '')
-        P.frozen_cartesian = int_XYZ_list(tokenizeInputString(frozen))
+        P.frozen_cartesian = int_xyz_list(tokenize_input_string(frozen))
         # Specify distances between atoms to be fixed (eq. value specified)
         # P.fixed_distance = uod.get("FIXED_DISTANCE", "")
         fixed = uod.get("FIXED_DISTANCE", "")
-        P.fixed_distance = intIntFloatList(tokenizeInputString(fixed))
+        P.fixed_distance = int_int_float_list(tokenize_input_string(fixed))
         # Specify angles between atoms to be fixed (eq. value specified)
         # P.fixed_bend    = uod.get("FIXED_BEND", "")
         fixed = uod.get("FIXED_BEND", "")
-        P.fixed_bend = intIntIntFloatList(tokenizeInputString(fixed))
+        P.fixed_bend = int_int_int_float_list(tokenize_input_string(fixed))
         # Specify dihedral angles between atoms to be fixed (eq. value specified)
         # P.fixed_dihedral = uod.get("FIXED_DIHEDRAL","")
         fixed = uod.get("FIXED_DIHEDRAL", "")
-        P.fixed_dihedral = intIntIntIntFloatList(tokenizeInputString(fixed))
+        P.fixed_dihedral = int_int_int_int_float_list(tokenize_input_string(fixed))
         #
         # Should an xyz trajectory file be kept (useful for visualization)?
         # P.print_trajectory_xyz = uod.get('PRINT_TRAJECTORY_XYZ', False)

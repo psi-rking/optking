@@ -5,11 +5,11 @@ from .exceptions import AlgError, OptError
 class Simple(object):
     __metaclass__ = ABCMeta
 
-    def __init__(self, atoms, frozen=False, fixedEqVal=None):
+    def __init__(self, atoms, frozen=False, fixed_eq_val=None):
         # these lines use the property's and setters below
         self.atoms = atoms  # atom indices for internal definition
         self.frozen = frozen  # bool - is internal coordinate frozen?
-        self.fixedEqVal = fixedEqVal  # target value if artificial forces are to be added
+        self.fixed_eq_val = fixed_eq_val  # target value if artificial forces are to be added
 
     @property
     def atoms(self):
@@ -31,7 +31,7 @@ class Simple(object):
 
     @property
     def fixed(self):
-        if self._fixedEqVal is None:
+        if self._fixed_eq_val is None:
             return False
         else:
             return True
@@ -42,17 +42,17 @@ class Simple(object):
         return
 
     @property
-    def fixedEqVal(self):
-        return self._fixedEqVal
+    def fixed_eq_val(self):
+        return self._fixed_eq_val
 
-    @fixedEqVal.setter
-    def fixedEqVal(self, qTarget=None):
+    @fixed_eq_val.setter
+    def fixed_eq_val(self, qTarget=None):
         if qTarget is not None:
             try:
                 float(qTarget)
             except:
                 raise OptError("Eq. value must be a float or None.")
-        self._fixedEqVal = qTarget
+        self._fixed_eq_val = qTarget
 
     @property
     def A(self):
@@ -88,15 +88,15 @@ class Simple(object):
         pass
 
     @abstractmethod  # Given geometry, return Value in Angstroms or degrees.
-    def qShow(self, geom):
+    def q_show(self, geom):
         pass
 
     @abstractmethod  # Return the scalar needed to convert value in au to Ang or Deg
-    def qShowFactor(self):
+    def q_show_factor(self):
         pass
 
     @abstractmethod  # Return the scalar needed to convert force in au to aJ/(Ang or Deg)
-    def fShowFactor(self):
+    def f_show_factor(self):
         pass
 
     # Modify provided DqDx array with first derivative of value wrt cartesians
@@ -119,5 +119,5 @@ class Simple(object):
         raise AlgError('no Dq2Dx2 for this coordinate')
 
     @abstractmethod  # Diagonal hessian guess
-    def diagonalHessianGuess(geom, Z, connectivity, guessType):
+    def diagonal_hessian_guess(geom, Z, connectivity, guessType):
         raise AlgError('no hessian guess for this coordinate')

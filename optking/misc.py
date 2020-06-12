@@ -13,14 +13,14 @@ def delta(i, j):
         return 0
 
 
-def isDqSymmetric(oMolsys, Dq):
+def is_dq_symmetric(oMolsys, Dq):
     logger = logging.getLogger(__name__)
     # TODO add symmetry check
-    logger.debug('\tTODO add isDqSymmetric\n')
+    logger.debug('\tTODO add is_dq_symmetric\n')
     return True
 
 
-def symmetrizeXYZ(XYZ):
+def symmetrize_xyz(XYZ):
     logger = logging.getLogger(__name__)
     # TODO add symmetrize function
     logger.debug('\tTODO add symmetrize XYZ\n')
@@ -30,7 +30,7 @@ def symmetrizeXYZ(XYZ):
 # "Average" bond length given two periods
 # Values below are from Lindh et al.
 # Based on DZP RHF computations, I suggest: 1.38 1.9 2.53, and 1.9 2.87 3.40
-def AverageRFromPeriods(perA, perB):
+def average_r_from_periods(perA, perB):
     if perA == 1:
         if perB == 1:
             return 1.35
@@ -53,7 +53,7 @@ def AverageRFromPeriods(perA, perB):
 
 
 # Return Lindh alpha value from two periods
-def HguessLindhAlpha(perA, perB):
+def hguess_lindh_alpha(perA, perB):
     if perA == 1:
         if perB == 1:
             return 1.000
@@ -67,17 +67,17 @@ def HguessLindhAlpha(perA, perB):
 
 
 # rho_ij = e^(alpha (r^2,ref - r^2))
-def HguessLindhRho(ZA, ZB, RAB):
+def hguess_lindh_rho(ZA, ZB, RAB):
     perA = qcel.periodictable.to_period(ZA)
     perB = qcel.periodictable.to_period(ZB)
 
-    alpha = HguessLindhAlpha(perA, perB)
-    r_ref = AverageRFromPeriods(perA, perB)
+    alpha = hguess_lindh_alpha(perA, perB)
+    r_ref = average_r_from_periods(perA, perB)
 
     return np.exp(-alpha * (RAB * RAB - r_ref * r_ref))
 
 
-def tokenizeInputString(inString):
+def tokenize_input_string(inString):
     """
     params: string of integers corresponding to internal coordinates
     returns: a list of integers correspoding to an atom
@@ -87,12 +87,12 @@ def tokenizeInputString(inString):
     return outString.split()
 
 
-def intList(inList):
+def int_list(inList):
     outList = [int(i) for i in inList]
     return outList
 
 
-def intIntFloatList(inList):
+def int_int_float_list(inList):
     if len(inList) % 3 != 0:
         raise OptError("List is not comprised of int-int-float elements")
     outList = []
@@ -103,7 +103,7 @@ def intIntFloatList(inList):
     return outList
 
 
-def intIntIntFloatList(inList):
+def int_int_int_float_list(inList):
     if len(inList) % 4 != 0:
         raise OptError(
             "List is not comprised of int-int-int-float elements")
@@ -116,7 +116,7 @@ def intIntIntFloatList(inList):
     return outList
 
 
-def intIntIntIntFloatList(inList):
+def int_int_int_int_float_list(inList):
     if len(inList) % 5 != 0:
         raise OptError(
             "List is not comprised of int-int-int-int-float elements")
@@ -130,7 +130,7 @@ def intIntIntIntFloatList(inList):
     return outList
 
 
-def int_XYZ_list(inList):
+def int_xyz_list(inList):
     if len(inList) % 2 != 0:
         raise OptError("int-XYZ list does not have even number of entries")
     outList = []

@@ -23,8 +23,8 @@ class Cart(Simple):
              s += 'Z'
 
         s += "(%d)" % (self.A + 1)
-        if self.fixedEqVal:
-            s += "[%.4f]" % (self.fixedEqVal * self.qShowFactor)
+        if self.fixed_eq_val:
+            s += "[%.4f]" % (self.fixed_eq_val * self.q_show_factor)
         return s
 
     def __eq__(self, other):
@@ -56,18 +56,18 @@ class Cart(Simple):
         return geom[self.A, self._xyz]
 
     @property
-    def qShowFactor(self):
+    def q_show_factor(self):
         return qcel.constants.bohr2angstroms
 
-    def qShow(self, geom):
-        return self.qShowFactor * self.q(geom)
+    def q_show(self, geom):
+        return self.q_show_factor * self.q(geom)
 
     @property
-    def fShowFactor(self):
+    def f_show_factor(self):
         return qcel.constants.hartree2aJ / qcel.constants.bohr2angstroms
 
     # Compute and return in-place array of first derivative (row of B matrix)
-    def DqDx(self, geom, dqdx):
+    def DqDx(self, geom, dqdx, mini=False):
         dqdx[3 * self.A + self._xyz] = 1.0
         return
 
@@ -75,7 +75,7 @@ class Cart(Simple):
     def Dq2Dx2(self, geom, dq2dx2):
         pass
 
-    def diagonalHessianGuess(self, geom, Z, connectivity, guessType):
+    def diagonal_hessian_guess(self, geom, Z, connectivity, guessType="Simple"):
         """ Generates diagonal empirical Hessians in a.u. such as 
           Schlegel, Theor. Chim. Acta, 66, 333 (1984) and
           Fischer and Almlof, J. Phys. Chem., 96, 9770 (1992).

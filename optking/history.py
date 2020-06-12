@@ -6,8 +6,8 @@ import qcelemental as qcel
 
 from . import intcosMisc
 from . import optparams as op
-from .linearAlgebra import absMax, rms, signOfDouble
-from .printTools import printMatString, printArrayString
+from .linearAlgebra import abs_max, rms, sign_of_double
+from .printTools import print_mat_string, print_array_string
 
 
 class Step(object):
@@ -31,15 +31,15 @@ class Step(object):
     def __str__(self):
         s = "Step Info\n"
         s += "Geometry     = \n"
-        s += printMatString(self.geom)
+        s += print_mat_string(self.geom)
         s += "Energy       = %15.10f\n" % self.E
         s += "forces       = "
-        s += printArrayString(self.forces)
+        s += print_array_string(self.forces)
         s += "Projected DE = %15.10f\n" % self.projectedDE
         s += "Dq           = "
-        s += printArrayString(self.Dq)
+        s += print_array_string(self.Dq)
         s += "followedUnitVector       = "
-        s += printArrayString(self.followedUnitVector)
+        s += print_array_string(self.followedUnitVector)
         s += "oneDgradient = %15.10f\n" % self.oneDgradient
         s += "oneDhessian  = %15.10f\n" % self.oneDhessian
         return s
@@ -80,8 +80,8 @@ class History(object):
         History.stepsSinceLastHessian += 1
 
     # Fill in details of new step.
-    def appendRecord(self, projectedDE, Dq, followedUnitVector, oneDgradient,
-                     oneDhessian):
+    def append_record(self, projectedDE, Dq, followedUnitVector, oneDgradient,
+                      oneDhessian):
         self.steps[-1].record(projectedDE, Dq, followedUnitVector, oneDgradient,
                               oneDhessian)
 
@@ -103,13 +103,13 @@ class History(object):
             else:
                 DE = step.E - self.steps[i - 1].E
 
-            max_force = absMax(step.forces)
+            max_force = abs_max(step.forces)
             rms_force = rms(step.forces)
 
             # For the summary Dq, we do not want to +2*pi for example for the angles,
             # so we read old Dq used during step.
             try:
-                max_disp = absMax(step.Dq)
+                max_disp = abs_max(step.Dq)
                 rms_disp = rms(step.Dq)
             except:
                 max_disp = -99.0
@@ -135,7 +135,7 @@ class History(object):
 
     # Report on performance of last step
     # Eventually might have this function return False to reject a step
-    def currentStepReport(self):
+    def current_step_report(self):
         logger = logging.getLogger(__name__)
 
         opt_step_report = "\n\tCurrent energy: %20.10lf\n" % self.steps[-1].E
@@ -178,7 +178,7 @@ class History(object):
         return True
 
     # Keep only most recent step
-    def resetToMostRecent(self):
+    def reset_to_most_recent(self):
         self.steps = self.steps[-1:]
         History.stepsSinceLastHessian = 0
         consecutiveBacksteps = 0
@@ -188,13 +188,13 @@ class History(object):
         return
 
     # Use History to update Hessian
-    def hessianUpdate(self, H, oMolsys):
+    def hessian_update(self, H, oMolsys):
         logger = logging.getLogger(__name__)
         if op.Params.hess_update == 'NONE' or len(self.steps) < 2:
             return
 
         logger.info("\tPerforming %s update." % op.Params.hess_update)
-        Nintco = oMolsys.Nintcos # working dimension
+        Nintco = oMolsys.num_intcos # working dimension
         orig_save_geom = oMolsys.geom
 
         f = np.zeros(Nintco)
@@ -206,11 +206,11 @@ class History(object):
         # x[:] = currentStep.geom
         x = currentStep.geom
         oMolsys.geom = x
-        q[:] = oMolsys.qArray()
+        q[:] = oMolsys.q_array()
 
         # Fix configuration of torsions and out-of-plane angles,
         # so that Dq's are reasonable
-        oMolsys.updateDihedralOrientations()
+        oMolsys.update_dihedral_orientations()
 
         dq = np.zeros(Nintco)
         dg = np.zeros(Nintco)
@@ -230,12 +230,12 @@ class History(object):
             f_old = oldStep.forces
             x_old = oldStep.geom
             oMolsys.geom = x_old
-            q_old[:] = oMolsys.qArray()
+            q_old[:] = oMolsys.q_array()
             dq[:] = q - q_old
             dg[:] = f_old - f  # gradients -- not forces!
             gq = np.dot(dq, dg)
             qq = np.dot(dq, dq)
-            max_change = absMax(dq)
+            max_change = abs_max(dq)
 
             # If there is only one left, take it no matter what.
             if len(use_steps) == 0 and iStep == 0:
@@ -268,7 +268,7 @@ class History(object):
             f_old = oldStep.forces
             x_old = oldStep.geom
             oMolsys.geom = x_old
-            q_old[:] = oMolsys.qArray()
+            q_old[:] = oMolsys.q_array()
             dq[:] = q - q_old
             dg[:] = f_old - f  # gradients -- not forces!
             gq = np.dot(dq, dg)
@@ -343,7 +343,7 @@ class History(object):
                         if math.fabs(H_new[i, j]) < maximum:
                             H[i, j] += H_new[i, j]
                         else:  # limit change to max
-                            H[i, j] += maximum * signOfDouble(H_new[i, j])
+                            H[i, j] += maximum * sign_of_double(H_new[i, j])
 
             else:  # only copy H_new into H
                 H[:, :] = H_new
@@ -352,12 +352,12 @@ class History(object):
             # end loop over old geometries
 
         if op.Params.print_lvl >= 2:
-            logger.info("\tUpdated Hessian (in au) \n %s" % printMatString(H))
+            logger.info("\tUpdated Hessian (in au) \n %s" % print_mat_string(H))
 
         oMolsys.geom = orig_save_geom
         return
 
-def summaryString():
+def summary_string():
     output_string = """\n\t==> Optimization Summary <==\n
     \n\tMeasures of convergence in internal coordinates in au. (Any backward steps not shown.)
     \n\t---------------------------------------------------------------------------------------------------------------  ~

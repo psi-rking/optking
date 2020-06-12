@@ -10,11 +10,11 @@ from .exceptions import AlgError, OptError
 from . import optparams as op
 from . import optimize
 from .history import oHistory
-from .displace import displaceMolsys
-from .addIntcos import linearBendCheck
-from .misc import isDqSymmetric
-from .printTools import printArrayString, printMatString
-from .linearAlgebra import absMax, symmMatEig, asymmMatEig, symmMatInv, norm
+from .displace import displace_molsys
+from .addIntcos import linear_bend_check
+from .misc import is_dq_symmetric
+from .printTools import print_array_string, print_mat_string
+from .linearAlgebra import abs_max, symm_mat_eig, asymm_mat_eig, symm_mat_inv, norm
 
 
 # TODO I'd like to move the displace call and wrap up here. Make this a proper wrapper
@@ -55,23 +55,23 @@ def take_step(oMolsys, E, q_forces, H, stepType=None, computer=None):
         stepType = op.Params.step_type
 
     if stepType == 'NR':
-        return Dq_NR(oMolsys, E, q_forces, H)
+        return dq_nr(oMolsys, E, q_forces, H)
     elif stepType == 'RFO':
-        return Dq_RFO(oMolsys, E, q_forces, H)
+        return dq_rfo(oMolsys, E, q_forces, H)
     elif stepType == 'SD':
-        return Dq_SD(oMolsys, E, q_forces)
+        return dq_sd(oMolsys, E, q_forces)
     elif stepType == 'BACKSTEP':
-        return Dq_BACKSTEP(oMolsys)
+        return dq_backstep(oMolsys)
     elif stepType == 'P_RFO':
-        return Dq_P_RFO(oMolsys, E, q_forces, H)
+        return dq_p_rfo(oMolsys, E, q_forces, H)
     elif stepType == 'LINESEARCH':
-        return Dq_LINESEARCH(oMolsys, E, q_forces, H, computer)
+        return dq_linesearch(oMolsys, E, q_forces, H, computer)
     else:
         raise OptError('Dq: step type not yet implemented')
 
 
 # TODO this method was described as crude do we need to revisit?
-def applyIntrafragStepScaling(dq):
+def apply_intrafrag_step_scaling(dq):
     """ Apply maximum step limit by scaling."""
     logger = logging.getLogger(__name__)
     trust = op.Params.intrafrag_trust
@@ -83,23 +83,23 @@ def applyIntrafragStepScaling(dq):
     return
 
 
-def DE_projected(model, step, grad, hess):
+def de_projected(model, step, grad, hess):
     """ Compute anticpated energy change along one dimension """
     if model == 'NR':
-        return (step * grad + 0.5 * step * step * hess)
+        return step * grad + 0.5 * step * step * hess
     elif model == 'RFO':
         return (step * grad + 0.5 * step * step * hess) / (1 + step * step)
     else:
-        raise OptError("DE_projected does not recognize model.")
+        raise OptError("de_projected does not recognize model.")
 
 
 # TODO why store the attemtped dq?
-def Dq_NR(oMolsys, E, fq, H):
+def dq_nr(oMolsys, E, fq, H):
     """ Takes a step according to Newton Raphson algorithm
 
     Parameters
     ----------
-    oMolsys : object
+    oMolsys : molsys.Molsys
         optking molecular system
     E : double
         energy
@@ -119,11 +119,11 @@ def Dq_NR(oMolsys, E, fq, H):
     logger.info("\tTaking NR optimization step.")
 
     # Hinv fq = dq
-    Hinv = symmMatInv(H, redundant=True)
+    Hinv = symm_mat_inv(H, redundant=True)
     dq = np.dot(Hinv, fq)
 
     # applies maximum internal coordinate change
-    applyIntrafragStepScaling(dq)
+    apply_intrafrag_step_scaling(dq)
 
     # get norm |q| and unit vector in the step direction
     nr_dqnorm = sqrt(np.dot(dq, dq))
@@ -138,13 +138,13 @@ def Dq_NR(oMolsys, E, fq, H):
         logger.info('\tNR target step|: %15.10f' % nr_dqnorm)
         logger.info('\tNR_gradient: %15.10f' % nr_g)
         logger.info('\tNR_hessian: %15.10f' % nr_h)
-    DEprojected = DE_projected('NR', nr_dqnorm, nr_g, nr_h)
+    DEprojected = de_projected('NR', nr_dqnorm, nr_g, nr_h)
     logger.info("\tProjected energy change by quadratic approximation: %10.10lf\n"
                 % DEprojected)
 
     # Scale fq into aJ for printing
-    fq_aJ = oMolsys.qShowForces(fq)
-    displaceMolsys(oMolsys, dq, fq_aJ)
+    fq_aJ = oMolsys.q_show_forces(fq)
+    displace_molsys(oMolsys, dq, fq_aJ)
     dq_actual = sqrt(np.dot(dq, dq))
     logger.info("\tNorm of achieved step-size %15.10f" % dq_actual)
 
@@ -152,10 +152,10 @@ def Dq_NR(oMolsys, E, fq, H):
     # symmetrize_geom()
 
     # save values in step data
-    oHistory.appendRecord(DEprojected, dq, nr_u, nr_g, nr_h)
+    oHistory.append_record(DEprojected, dq, nr_u, nr_g, nr_h)
 
     # Can check full geometry, but returned indices will correspond then to that.
-    linearList = linearBendCheck(oMolsys, dq)
+    linearList = linear_bend_check(oMolsys, dq)
     if linearList:
         raise AlgError("New linear angles", newLinearBends=linearList)
 
@@ -163,12 +163,12 @@ def Dq_NR(oMolsys, E, fq, H):
 
 
 # Take Rational Function Optimization step
-def Dq_RFO(oMolsys, E, fq, H):
+def dq_rfo(oMolsys, E, fq, H):
     """ Takes a step using Rational Function Optimization
 
     Parameters
     ----------
-    oMolsys : object
+    oMolsys : molsys.Molsys
         optking molecular system
     E : double
         energy
@@ -189,7 +189,7 @@ def Dq_RFO(oMolsys, E, fq, H):
     rfo_root = op.Params.rfo_root  # if following, which root to follow
 
     # Determine the eigenvectors/eigenvalues of H.
-    Hevals, Hevects = symmMatEig(H)
+    Hevals, Hevects = symm_mat_eig(H)
 
     # Build the original, unscaled RFO matrix.
     RFOmat = np.zeros((dim + 1, dim + 1))
@@ -200,7 +200,7 @@ def Dq_RFO(oMolsys, E, fq, H):
 
     if op.Params.print_lvl >= 4:
         logger.debug("\tOriginal, unscaled RFO matrix:\n\n" +
-                     printMatString(RFOmat))
+                     print_mat_string(RFOmat))
 
     symm_rfo_step = False
     SRFOmat = np.zeros((dim + 1, dim + 1))  # For scaled RFO matrix.
@@ -236,20 +236,20 @@ def Dq_RFO(oMolsys, E, fq, H):
 
         if op.Params.print_lvl >= 4:
             logger.debug("\tScaled RFO matrix.\n\n" +
-                         printMatString(SRFOmat))
+                         print_mat_string(SRFOmat))
 
         # Find the eigenvectors and eigenvalues of RFO matrix.
-        SRFOevals, SRFOevects = asymmMatEig(SRFOmat)
+        SRFOevals, SRFOevects = asymm_mat_eig(SRFOmat)
 
         if op.Params.print_lvl >= 4:
             logger.debug("\tEigenvectors of scaled RFO matrix.\n\n" +
-                         printMatString(SRFOevects))
+                         print_mat_string(SRFOevects))
 
         if op.Params.print_lvl >= 4:
             logger.debug("\tEigenvalues of scaled RFO matrix.\n\n\t" +
-                         printArrayString(SRFOevals))
+                         print_array_string(SRFOevals))
             logger.debug("\tFirst eigenvector (unnormalized) of scaled RFO matrix.\n\n\t" +
-                         printArrayString(SRFOevects[0]))
+                         print_array_string(SRFOevects[0]))
 
         # Do intermediate normalization.  RFO paper says to scale eigenvector
         # to make the last element equal to 1. Bogus evect leads can be avoided
@@ -258,14 +258,14 @@ def Dq_RFO(oMolsys, E, fq, H):
             # How big is dividing going to make the largest element?
             # Same check occurs below for acceptability.
             if fabs(SRFOevects[i][dim]) > 1.0e-10:
-                tval = absMax(SRFOevects[i] / SRFOevects[i][dim])
+                tval = abs_max(SRFOevects[i] / SRFOevects[i][dim])
                 if tval < op.Params.rfo_normalization_max:
                     for j in range(dim + 1):
                         SRFOevects[i, j] /= SRFOevects[i, dim]
 
         if op.Params.print_lvl >= 4:
             logger.debug("\tAll scaled RFO eigenvectors (rows).\n\n" +
-                         printMatString(SRFOevects))
+                         print_mat_string(SRFOevects))
 
         # Use input rfo_root
         # If root-following is turned off, then take the eigenvector with the
@@ -281,7 +281,7 @@ def Dq_RFO(oMolsys, E, fq, H):
                     # Check symmetry of root.
                     dq[:] = SRFOevects[i, 0:dim]
                     if not op.Params.accept_symmetry_breaking:
-                        symm_rfo_step = isDqSymmetric(oMolsys, dq)
+                        symm_rfo_step = is_dq_symmetric(oMolsys, dq)
 
                         if not symm_rfo_step:  # Root is assymmetric so reject it.
                             logger.warning("\tRejecting RFO root %d because it breaks \
@@ -293,7 +293,7 @@ def Dq_RFO(oMolsys, E, fq, H):
                         logger.warning("\tRejecting RFO root %d because normalization \
                                        gives large value." % (rfo_root + 1))
                         continue
-                    tval = absMax(SRFOevects[i] / SRFOevects[i][dim])
+                    tval = abs_max(SRFOevects[i] / SRFOevects[i][dim])
                     if tval > op.Params.rfo_normalization_max:  # matching test in code above
                         logger.warning("\tRejecting RFO root %d because normalization \
                                        gives large value." % (rfo_root + 1))
@@ -329,7 +329,7 @@ def Dq_RFO(oMolsys, E, fq, H):
                     eigen_val_vec = ("\n\tScaled RFO eigenvalue %d:\n\t%15.10lf (or 2*%-15.10lf)\n"
                                      % (i + 1, SRFOevals[i], SRFOevals[i] / 2))
                     eigen_val_vec += ("\n\teigenvector:\n\t")
-                    eigen_val_vec += printArrayString(SRFOevects[i])
+                    eigen_val_vec += print_array_string(SRFOevects[i])
                     logger.info(eigen_val_vec)
         dq[:] = SRFOevects[rfo_root][0:dim]  # omit last column
 
@@ -366,8 +366,8 @@ def Dq_RFO(oMolsys, E, fq, H):
         Lambda = -1 * v3d.dot(fq, dq, dim)
         if op.Params.print_lvl >= 2:
             disp_forces = ("\tDisplacement and Forces\n\n")
-            disp_forces += ("\tDq:" + printArrayString(dq, dim))
-            disp_forces += ("\tFq:" + printArrayString(fq, dim))
+            disp_forces += ("\tDq:" + print_array_string(dq, dim))
+            disp_forces += ("\tFq:" + print_array_string(fq, dim))
             logger.info(disp_forces)
             logger.info("\tLambda calculated by (dq^t).(-f) = %15.10lf\n" % Lambda)
 
@@ -393,10 +393,10 @@ def Dq_RFO(oMolsys, E, fq, H):
     # TODO remove if this is indeed old
     # Crude/old way to limit step size if RS-RFO iterations
     if not converged or op.Params.simple_step_scaling:
-        applyIntrafragStepScaling(dq)
+        apply_intrafrag_step_scaling(dq)
 
     if op.Params.print_lvl >= 3:
-        logger.debug("\tFinal scaled step dq:\n\n\t" + printArrayString(dq))
+        logger.debug("\tFinal scaled step dq:\n\n\t" + print_array_string(dq))
 
     # Get norm |dq|, unit vector, gradient and hessian in step direction
     # TODO double check Hevects[i] here instead of H ? as for NR
@@ -405,15 +405,15 @@ def Dq_RFO(oMolsys, E, fq, H):
     rfo_u = dq.copy() / rfo_dqnorm
     rfo_g = -1 * np.dot(fq, rfo_u)
     rfo_h = np.dot(rfo_u, np.dot(H, rfo_u))
-    DEprojected = DE_projected('RFO', rfo_dqnorm, rfo_g, rfo_h)
+    DEprojected = de_projected('RFO', rfo_dqnorm, rfo_g, rfo_h)
     if op.Params.print_lvl > 1:
         logger.info('\tRFO target step = %15.10f' % rfo_dqnorm)
         logger.info('\tRFO gradient = %15.10f' % rfo_g)
         logger.info('\tRFO hessian = %15.10f' % rfo_h)
     logger.info("\tProjected energy change by RFO approximation %15.5f\n" % DEprojected)
 
-    fq_aJ = oMolsys.qShowForces(fq)
-    displaceMolsys(oMolsys, dq, fq_aJ)
+    fq_aJ = oMolsys.q_show_forces(fq)
+    displace_molsys(oMolsys, dq, fq_aJ)
     # For now, saving RFO unit vector and using it in projection to match C++ code,
     # could use actual Dq instead.
     dqnorm_actual = sqrt(np.dot(dq, dq))
@@ -424,7 +424,7 @@ def Dq_RFO(oMolsys, E, fq, H):
     # x_after = new geometry
     # masses
     # change = 0.0;
-    # for i in range(Natom):
+    # for i in range(natom):
     #   for xyz in range(3):
     #     change += (x_before[3*i+xyz] - x_after[3*i+xyz]) * (x_before[3*i+xyz] - x_after[3*i+xyz])
     #             * masses[i]
@@ -433,21 +433,21 @@ def Dq_RFO(oMolsys, E, fq, H):
     #    % change)
 
     # printxopt("\tSymmetrizing new geometry\n")
-    # geom = symmetrizeXYZ(geom)
-    oHistory.appendRecord(DEprojected, dq, rfo_u, rfo_g, rfo_h)
-    linearList = linearBendCheck(oMolsys, dq)
+    # geom = symmetrize_xyz(geom)
+    oHistory.append_record(DEprojected, dq, rfo_u, rfo_g, rfo_h)
+    linearList = linear_bend_check(oMolsys, dq)
     if linearList:
         raise AlgError("New linear angles", newLinearBends=linearList)
 
     # Before quitting, make sure step is reasonable.  It should only be
     # screwball if we are using the "First Guess" after the back-transformation failed.
     if sqrt(np.dot(dq, dq)) > 10 * trust:
-        raise AlgError("Dq_RFO(): Step is far too large.")
+        raise AlgError("dq_rfo(): Step is far too large.")
 
     return dq
 
 
-def Dq_P_RFO(oMolsys, E, fq, H):
+def dq_p_rfo(oMolsys, E, fq, H):
     logger = logging.getLogger(__name__)
     Hdim = len(fq)  # size of Hessian
     trust = op.Params.intrafrag_trust  # maximum step size
@@ -456,14 +456,14 @@ def Dq_P_RFO(oMolsys, E, fq, H):
     print_lvl = op.Params.print_lvl
 
     if print_lvl > 2:
-        logger.info("\tHessian matrix\n" + printMatString(H))
+        logger.info("\tHessian matrix\n" + print_mat_string(H))
 
     # Diagonalize H (technically only have to semi-diagonalize)
-    hEigValues, hEigVectors = symmMatEig(H)
+    hEigValues, hEigVectors = symm_mat_eig(H)
 
     if print_lvl > 2:
-        logger.info("\tEigenvalues of Hessian\n\n\t" + printArrayString(hEigValues))
-        logger.info("\tEigenvectors of Hessian (rows)\n" + printMatString(hEigVectors))
+        logger.info("\tEigenvalues of Hessian\n\n\t" + print_array_string(hEigValues))
+        logger.info("\tEigenvectors of Hessian (rows)\n" + print_mat_string(hEigVectors))
 
     # Construct diagonalized Hessian with evals on diagonal
     HDiag = np.zeros((Hdim, Hdim))
@@ -471,7 +471,7 @@ def Dq_P_RFO(oMolsys, E, fq, H):
         HDiag[i, i] = hEigValues[i]
 
     if print_lvl > 2:
-        logger.info("\tH diagonal\n" + printMatString(HDiag))
+        logger.info("\tH diagonal\n" + print_mat_string(HDiag))
 
     logger.debug(
         "\tFor P-RFO, assuming rfo_root=1, maximizing along lowest eigenvalue of Hessian.")
@@ -493,11 +493,11 @@ def Dq_P_RFO(oMolsys, E, fq, H):
     # number of degrees along which to maximize; assume 1 for now
     mu = 1
 
-    logger.info("\tInternal forces in au:\n\n\t" + printArrayString(fq))
+    logger.info("\tInternal forces in au:\n\n\t" + print_array_string(fq))
 
     fqTransformed = np.dot(hEigVectors, fq)  # gradient transformation
     logger.info("\tInternal forces in au, in Hevect basis:\n\n\t"
-                + printArrayString(fqTransformed))
+                + print_array_string(fqTransformed))
     # Build RFO max
     maximizeRFO = np.zeros((mu + 1, mu + 1))
     for i in range(mu):
@@ -505,7 +505,7 @@ def Dq_P_RFO(oMolsys, E, fq, H):
         maximizeRFO[i, -1] = -fqTransformed[i]
         maximizeRFO[-1, i] = -fqTransformed[i]
     if print_lvl > 2:
-        logger.info("\tRFO max\n" + printMatString(maximizeRFO))
+        logger.info("\tRFO max\n" + print_mat_string(maximizeRFO))
 
     # Build RFO min
     minimizeRFO = np.zeros((Hdim - mu + 1, Hdim - mu + 1))
@@ -514,42 +514,42 @@ def Dq_P_RFO(oMolsys, E, fq, H):
         minimizeRFO[i, -1] = -fqTransformed[i + mu]
         minimizeRFO[-1, i] = -fqTransformed[i + mu]
     if print_lvl > 2:
-        logger.info("\tRFO min\n" + printMatString(minimizeRFO))
+        logger.info("\tRFO min\n" + print_mat_string(minimizeRFO))
 
-    RFOMaxEValues, RFOMaxEVectors = symmMatEig(maximizeRFO)
-    RFOMinEValues, RFOMinEVectors = symmMatEig(minimizeRFO)
+    RFOMaxEValues, RFOMaxEVectors = symm_mat_eig(maximizeRFO)
+    RFOMinEValues, RFOMinEVectors = symm_mat_eig(minimizeRFO)
 
-    logger.info("\tRFO min eigenvalues:\n\n\t" + printArrayString(RFOMinEValues))
-    logger.info("\tRFO max eigenvalues:\n\n\t" + printArrayString(RFOMaxEValues))
+    logger.info("\tRFO min eigenvalues:\n\n\t" + print_array_string(RFOMinEValues))
+    logger.info("\tRFO max eigenvalues:\n\n\t" + print_array_string(RFOMaxEValues))
 
     if print_lvl > 2:
         logger.info("\tRFO min eigenvectors (rows) before normalization:\n"
-                    + printMatString(RFOMinEVectors))
+                    + print_mat_string(RFOMinEVectors))
         logger.info("\tRFO max eigenvectors (rows) before normalization:\n"
-                    + printMatString(RFOMaxEVectors))
+                    + print_mat_string(RFOMaxEVectors))
 
     # Normalize max and min eigenvectors
     for i in range(mu + 1):
         if abs(RFOMaxEVectors[i, mu]) > 1.0e-10:
-            tval = abs(absMax(RFOMaxEVectors[i, 0:mu]) / RFOMaxEVectors[i, mu])
+            tval = abs(abs_max(RFOMaxEVectors[i, 0:mu]) / RFOMaxEVectors[i, mu])
             if fabs(tval) < op.Params.rfo_normalization_max:
                 RFOMaxEVectors[i] /= RFOMaxEVectors[i, mu]
     if print_lvl > 2:
-        logger.info("\tRFO max eigenvectors (rows):\n" + printMatString(RFOMaxEVectors))
+        logger.info("\tRFO max eigenvectors (rows):\n" + print_mat_string(RFOMaxEVectors))
 
     for i in range(Hdim - mu + 1):
         if abs(RFOMinEVectors[i][Hdim - mu]) > 1.0e-10:
             tval = abs(
-                absMax(RFOMinEVectors[i, 0:Hdim - mu]) / RFOMinEVectors[i, Hdim - mu])
+                abs_max(RFOMinEVectors[i, 0:Hdim - mu]) / RFOMinEVectors[i, Hdim - mu])
             if fabs(tval) < op.Params.rfo_normalization_max:
                 RFOMinEVectors[i] /= RFOMinEVectors[i, Hdim - mu]
     if print_lvl > 2:
-        logger.info("\tRFO min eigenvectors (rows):\n" + printMatString(RFOMinEVectors))
+        logger.info("\tRFO min eigenvectors (rows):\n" + print_mat_string(RFOMinEVectors))
 
     VectorP = RFOMaxEVectors[mu, 0:mu]
     VectorN = RFOMinEVectors[rfo_root, 0:Hdim - mu]
-    logger.debug("\tVector P\n\n\t" + printArrayString(VectorP))
-    logger.debug("\tVector N\n\n\t" + printArrayString(VectorN))
+    logger.debug("\tVector P\n\n\t" + print_array_string(VectorP))
+    logger.debug("\tVector N\n\n\t" + print_array_string(VectorN))
 
     # Combines the eignvectors from RFO max and min
     PRFOEVector = np.zeros(Hdim)
@@ -560,14 +560,14 @@ def Dq_P_RFO(oMolsys, E, fq, H):
 
     if print_lvl > 1:
         logger.info("\tRFO step in Hessian Eigenvector Basis\n\n\t"
-                    + printArrayString(PRFOEVector))
+                    + print_array_string(PRFOEVector))
         logger.info("\tRFO step in original Basis\n\n\t"
-                    + printArrayString(PRFOStep))
+                    + print_array_string(PRFOStep))
 
     dq = PRFOStep
 
     # if not converged or op.Params.simple_step_scaling:
-    applyIntrafragStepScaling(dq)
+    apply_intrafrag_step_scaling(dq)
 
     # Get norm |dq|, unit vector, gradient and hessian in step direction
     # TODO double check Hevects[i] here instead of H ? as for NR
@@ -576,7 +576,7 @@ def Dq_P_RFO(oMolsys, E, fq, H):
     rfo_u = dq.copy() / rfo_dqnorm
     rfo_g = -1 * np.dot(fq, rfo_u)
     rfo_h = np.dot(rfo_u, np.dot(H, rfo_u))
-    DEprojected = DE_projected('RFO', rfo_dqnorm, rfo_g, rfo_h)
+    DEprojected = de_projected('RFO', rfo_dqnorm, rfo_g, rfo_h)
     if op.Params.print_lvl > 1:
         logger.info('\t|RFO target step|  : %15.10f' % rfo_dqnorm)
         logger.info('\tRFO gradient       : %15.10f' % rfo_g)
@@ -584,17 +584,17 @@ def Dq_P_RFO(oMolsys, E, fq, H):
     logger.info("\tProjected Delta(E) : %15.10f" % DEprojected)
 
     # Scale fq into aJ for printing
-    fq_aJ = oMolsys.qShowForces(fq)
-    displaceMolsys(oMolsys, dq, fq_aJ)
+    fq_aJ = oMolsys.q_show_forces(fq)
+    displace_molsys(oMolsys, dq, fq_aJ)
 
     # For now, saving RFO unit vector and using it in projection to match C++ code,
     # could use actual Dq instead.
     dqnorm_actual = sqrt(np.dot(dq, dq))
     logger.info("\tNorm of achieved step-size %15.10f" % dqnorm_actual)
 
-    oHistory.appendRecord(DEprojected, dq, rfo_u, rfo_g, rfo_h)
+    oHistory.append_record(DEprojected, dq, rfo_u, rfo_g, rfo_h)
 
-    linearList = linearBendCheck(oMolsys, dq)
+    linearList = linear_bend_check(oMolsys, dq)
     if linearList:
         raise AlgError("New linear angles", newLinearBends=linearList)
 
@@ -607,7 +607,7 @@ def Dq_P_RFO(oMolsys, E, fq, H):
 
 
 # Take Steepest Descent step
-def Dq_SD(oMolsys, E, fq):
+def dq_sd(oMolsys, E, fq):
     """ Take a step using steepest descent method
 
     Parameters
@@ -647,7 +647,7 @@ def Dq_SD(oMolsys, E, fq):
     logger.info("\tEstimate of Hessian along step: %10.5e" % sd_h)
     dq = fq / sd_h
 
-    applyIntrafragStepScaling(dq)
+    apply_intrafrag_step_scaling(dq)
 
     sd_dqnorm = np.linalg.norm(dq)
     logger.info("\tNorm of target step-size %10.5f" % sd_dqnorm)
@@ -656,21 +656,21 @@ def Dq_SD(oMolsys, E, fq):
     sd_u = dq.copy() / np.linalg.norm(dq)
     sd_g = -1.0 * sd_dqnorm
 
-    DEprojected = DE_projected('NR', sd_dqnorm, sd_g, sd_h)
+    DEprojected = de_projected('NR', sd_dqnorm, sd_g, sd_h)
     logger.info(
         "\tProjected energy change by quadratic approximation: %20.5lf" % DEprojected)
 
-    fq_aJ = oMolsys.qShowForces(fq)  # for printing
-    displaceMolsys(oMolsys, dq, fq_aJ)
+    fq_aJ = oMolsys.q_show_forces(fq)  # for printing
+    displace_molsys(oMolsys, dq, fq_aJ)
     dqnorm_actual = np.linalg.norm(dq)
     logger.info("\tNorm of achieved step-size %15.10f" % dqnorm_actual)
 
     # Symmetrize the geometry for next step
     # symmetrize_geom()
 
-    oHistory.appendRecord(DEprojected, dq, sd_u, sd_g, sd_h)
+    oHistory.append_record(DEprojected, dq, sd_u, sd_g, sd_h)
 
-    linearList = linearBendCheck(oMolsys, dq)
+    linearList = linear_bend_check(oMolsys, dq)
     if linearList:
         raise AlgError("New linear angles", newLinearBends=linearList)
 
@@ -689,12 +689,12 @@ def Dq_SD(oMolsys, E, fq):
 #       projectedDE - recompute
 
 
-def Dq_BACKSTEP(oMolsys):
+def dq_backstep(oMolsys):
     """ takes a partial step backwards
 
     Parameters
     ----------
-    oMolsys : object
+    oMolsys : molsys.Molsys
         optking molecular system
 
     Notes
@@ -732,14 +732,14 @@ def Dq_BACKSTEP(oMolsys):
 
     # Compute new Delta(E) projection.
     if op.Params.step_type == 'RFO':
-        DEprojected = DE_projected('RFO', dqNorm, oneDgradient, oneDhessian)
+        DEprojected = de_projected('RFO', dqNorm, oneDgradient, oneDhessian)
     else:
-        DEprojected = DE_projected('NR', dqNorm, oneDgradient, oneDhessian)
+        DEprojected = de_projected('NR', dqNorm, oneDgradient, oneDhessian)
     logger.info("\tProjected energy change : %20.5lf" % DEprojected)
 
-    fq_aJ = oMolsys.qShowForces(fq) # Displace from previous geometry
+    fq_aJ = oMolsys.q_show_forces(fq) # Displace from previous geometry
     oMolsys.geom = geom  # uses setter; writes into all fragments
-    displaceMolsys(oMolsys, dq, fq_aJ)
+    displace_molsys(oMolsys, dq, fq_aJ)
 
     dqNormActual = np.linalg.norm(dq)
     logger.info("\tNorm of achieved step-size %15.10f" % dqNormActual)
@@ -750,7 +750,7 @@ def Dq_BACKSTEP(oMolsys):
     oHistory.steps[-1].projectedDE = DEprojected
     oHistory.steps[-1].Dq[:] = dq
 
-    linearList = linearBendCheck(oMolsys, dq)
+    linearList = linear_bend_check(oMolsys, dq)
     if linearList:
         raise AlgError("New linear angles", newLinearBends=linearList)
 
@@ -758,7 +758,7 @@ def Dq_BACKSTEP(oMolsys):
 
 
 # Take Rational Function Optimization step
-def Dq_LINESEARCH(oMolsys, E, fq, H, computer):
+def dq_linesearch(oMolsys, E, fq, H, computer):
     """ performs linesearch in direction of gradient
 
     Parameters
@@ -784,7 +784,7 @@ def Dq_LINESEARCH(oMolsys, E, fq, H, computer):
     logger.info("\n\tTaking LINESEARCH optimization step.")
     fq_unit = fq / sqrt(np.dot(fq, fq))
     logger.info("\tUnit vector in gradient direction.\n\n\t"
-                + printArrayString(fq_unit) + "\n")
+                + print_array_string(fq_unit) + "\n")
     Ea = E
     geomA = oMolsys.geom  # get copy of original geometry
     Eb = Ec = 0
@@ -799,8 +799,8 @@ def Dq_LINESEARCH(oMolsys, E, fq, H, computer):
         if Eb == 0:
             logger.debug("\n\tStepping along forces distance %10.5f" % s)
             dq = s * fq_unit
-            fq_aJ = oMolsys.qShowForces(fq)
-            displaceMolsys(oMolsys, dq, fq_aJ)
+            fq_aJ = oMolsys.q_show_forces(fq)
+            displace_molsys(oMolsys, dq, fq_aJ)
             xyz = oMolsys.geom
             logger.debug("\tComputing energy at this point now.")
             Eb = computer.compute(xyz, driver='energy', return_full=False)
@@ -810,8 +810,8 @@ def Dq_LINESEARCH(oMolsys, E, fq, H, computer):
         if Ec == 0:
             logger.debug("\n\tStepping along forces distance %10.5f" % (stepScale * s))
             dq = (stepScale * s) * fq_unit
-            fq_aJ = oMolsys.qShowForces(fq)
-            displaceMolsys(oMolsys, dq, fq_aJ)
+            fq_aJ = oMolsys.q_show_forces(fq)
+            displace_molsys(oMolsys, dq, fq_aJ)
             xyz = oMolsys.geom
             logger.debug("\tComputing energy at this point now.")
             Ec = computer.compute(xyz, driver='energy', return_full=False)
@@ -847,7 +847,7 @@ def Dq_LINESEARCH(oMolsys, E, fq, H, computer):
             Emin_projected = x[0] * Xmin * Xmin + x[1] * Xmin + Ea
             dq = Xmin * fq_unit
             logger.info("\tProjected step size to minimum is %12.6f" % Xmin)
-            displaceMolsys(oMolsys, dq, fq_aJ)
+            displace_molsys(oMolsys, dq, fq_aJ)
             xyz = oMolsys.geom
             logger.debug("\tComputing energy at projected point.")
             Emin = computer.compute(xyz, driver='energy', return_full=False)
@@ -882,13 +882,13 @@ def Dq_LINESEARCH(oMolsys, E, fq, H, computer):
         logger.info('\tLS_gradient     : %15.10f' % ls_g)
         logger.info('\tLS_hessian      : %15.10f' % ls_h)
 
-    DEprojected = DE_projected('NR', ls_dqnorm, ls_g, ls_h)
+    DEprojected = de_projected('NR', ls_dqnorm, ls_g, ls_h)
     logger.debug(
         "\tProjected quadratic energy change using full Hessian: %15.10f\n" % DEprojected)
 
     # Scale fq into aJ for printing
-    # fq_aJ = oMolsys.qShowForces(fq)
-    # displaceMolsys(oMolsys, dq, fq_aJ)
+    # fq_aJ = oMolsys.q_show_forces(fq)
+    # displace_molsys(oMolsys, dq, fq_aJ)
 
     dq_actual = sqrt(np.dot(dq, dq))
     logger.info("\tNorm of achieved step-size %15.10f" % dq_actual)
@@ -897,10 +897,10 @@ def Dq_LINESEARCH(oMolsys, E, fq, H, computer):
     # symmetrize_geom()
 
     # save values in step data
-    oHistory.appendRecord(DEprojected, dq, ls_u, ls_g, ls_h)
+    oHistory.append_record(DEprojected, dq, ls_u, ls_g, ls_h)
 
     # Can check full geometry, but returned indices will correspond then to that.
-    linearList = linearBendCheck(oMolsys, dq)
+    linearList = linear_bend_check(oMolsys, dq)
     if linearList:
         raise AlgError("New linear angles", newLinearBends=linearList)
 
