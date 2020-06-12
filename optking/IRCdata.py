@@ -197,11 +197,6 @@ class IRCdata(object):
             IRC algorithm will display an additional IRC step and constrained optimization
             after this step has been reached """
 
-        logger = logging.getLogger(__name__)
-        logger.debug("Printing final coordinates and geometry")
-        logger.debug(f"intcos:\n {intcos}")
-        logger.debug(f"coordinate values:\n {self.q}")
-
         s = "Final Geometry: [Ang] \n"
         s += print_mat_string(self.x())
         s += "\n\n\tInternal Coordinates: [Ang/Deg] \n"
