@@ -40,8 +40,8 @@ class Oofp(Simple):
         s += "O"
 
         s += "(%d,%d,%d,%d)" % (self.A + 1, self.B + 1, self.C + 1, self.D + 1)
-        if self.fixedEqVal:
-            s += "[%.4f]" % self.fixedEqVal
+        if self.fixed_eq_val:
+            s += "[%.4f]" % self.fixed_eq_val
         return s
 
     def __eq__(self, other):
@@ -56,7 +56,7 @@ class Oofp(Simple):
     def near180(self):
         return self._near180
 
-    def updateOrientation(self, geom):
+    def update_orientation(self, geom):
         tval = self.q(geom)
         if tval > op.Params.fix_val_near_pi:
             self._near180 = +1
@@ -67,14 +67,14 @@ class Oofp(Simple):
         return
 
     @property
-    def qShowFactor(self):
+    def q_show_factor(self):
         return 180.0 / math.pi
 
-    def qShow(self, geom):  # return in degrees
-        return self.q(geom) * self.qShowFactor
+    def q_show(self, geom):  # return in degrees
+        return self.q(geom) * self.q_show_factor
 
     @property
-    def fShowFactor(self):
+    def f_show_factor(self):
         return qcel.constants.hartree2aJ * math.pi / 180.0
 
     def q(self, geom):
@@ -106,7 +106,7 @@ class Oofp(Simple):
 
     # out-of-plane is m-o-p-n
     # Assume angle phi_CBD is OK, or we couldn't calculate the value anyway.
-    def DqDx(self, geom, dqdx):
+    def DqDx(self, geom, dqdx, mini=False):
 
         self.DqDx_sympy(geom, dqdx)
         return
@@ -154,7 +154,7 @@ class Oofp(Simple):
     def Dq2Dx2(self, geom, dqdx):
         raise AlgError('no derivative B matrices for out-of-plane angles')
 
-    def diagonalHessianGuess(self, geom, Z, connectivity, guess="SIMPLE"):
+    def diagonal_hessian_guess(self, geom, Z, connectivity, guess="SIMPLE"):
         """ Generates diagonal empirical Hessians in a.u. such as
           Schlegel, Theor. Chim. Acta, 66, 333 (1984) and
           Fischer and Almlof, J. Phys. Chem., 96, 9770 (1992).

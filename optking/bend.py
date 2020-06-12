@@ -7,7 +7,7 @@ import qcelemental as qcel
 from .exceptions import AlgError, OptError
 from . import v3d
 from .simple import Simple
-from .misc import delta, HguessLindhRho
+from .misc import delta, hguess_lindh_rho
 
 
 class Bend(Simple):
@@ -40,7 +40,7 @@ class Bend(Simple):
         else:
             atoms = (c, b, a)
 
-        self.bendType = bendType
+        self.bend_type = bendType
         self._axes_fixed = False
         self._x = np.zeros(3)
         self._w = np.zeros(3)
@@ -53,16 +53,16 @@ class Bend(Simple):
         else:
             s = ' '
 
-        if self.bendType == "REGULAR":
+        if self.bend_type == "REGULAR":
             s += "B"
-        elif self.bendType == "LINEAR":
+        elif self.bend_type == "LINEAR":
             s += "L"
-        elif self.bendType == "COMPLEMENT":
+        elif self.bend_type == "COMPLEMENT":
             s += "l"
 
         s += "(%d,%d,%d)" % (self.A + 1, self.B + 1, self.C + 1)
-        if self.fixedEqVal:
-            s += "[%.1f]" % (self.fixedEqVal * self.qShowFactor)
+        if self.fixed_eq_val:
+            s += "[%.1f]" % (self.fixed_eq_val * self.q_show_factor)
         return s
 
     def __eq__(self, other):
@@ -70,22 +70,26 @@ class Bend(Simple):
             return False
         elif not isinstance(other, Bend):
             return False
-        elif self.bendType != other.bendType:
+        elif self.bend_type != other.bend_type:
             return False
         else:
             return True
 
     @property
-    def bendType(self):
+    def axes_fixed(self):
+        return self._axes_fixed
+
+    @property
+    def bend_type(self):
         return self._bendType
 
-    @bendType.setter
-    def bendType(self, intype):
+    @bend_type.setter
+    def bend_type(self, intype):
         if intype in ["REGULAR", "LINEAR", "COMPLEMENT"]:
             self._bendType = intype
         else:
             raise OptError(
-                "Bend.bendType must be REGULAR, LINEAR, or COMPLEMENT")
+                "Bend.bend_type must be REGULAR, LINEAR, or COMPLEMENT")
 
     def compute_axes(self, geom):
         u = v3d.eAB(geom[self.B], geom[self.A])  # B->A
@@ -163,14 +167,14 @@ class Bend(Simple):
             return phi
 
     @property
-    def qShowFactor(self):
+    def q_show_factor(self):
         return 180.0 / math.pi
 
-    def qShow(self, geom):  # return in degrees
-        return self.q(geom) * self.qShowFactor
+    def q_show(self, geom):  # return in degrees
+        return self.q(geom) * self.q_show_factor
 
     @property
-    def fShowFactor(self):
+    def f_show_factor(self):
         return qcel.constants.hartree2aJ * math.pi / 180.0
 
     @staticmethod
@@ -182,16 +186,16 @@ class Bend(Simple):
         else:
             return 0
 
-    def fixBendAxes(self, geom):
-        if self.bendType == 'LINEAR' or self.bendType == 'COMPLEMENT':
+    def fix_bend_axes(self, geom):
+        if self.bend_type == 'LINEAR' or self.bend_type == 'COMPLEMENT':
             self.compute_axes(geom)
             self._axes_fixed = True
 
-    def unfixBendAxes(self):
+    def unfix_bend_axes(self):
         self._axes_fixed = False
 
-    def DqDx(self, geom, dqdx):
-        if not self._axes_fixed:
+    def DqDx(self, geom, dqdx, mini=False):
+        if not self.axes_fixed:
             self.compute_axes(geom)
 
         u = geom[self.A] - geom[self.B]  # B->A
@@ -214,7 +218,7 @@ class Bend(Simple):
     # TODO update with jet turneys code
     def Dq2Dx2(self, geom, dq2dx2):
 
-        if not self._axes_fixed:
+        if not self.axes_fixed:
             self.compute_axes(geom)
 
         u = geom[self.A] - geom[self.B]  # B->A
@@ -264,7 +268,7 @@ class Bend(Simple):
                         dq2dx2[3 * self.atoms[a] + i, 3 * self.atoms[b] + j] = tval
         return
 
-    def diagonalHessianGuess(self, geom, Z, connectivity, guessType="SIMPLE"):
+    def diagonal_hessian_guess(self, geom, Z, connectivity, guessType="SIMPLE"):
         """ Generates diagonal empirical Hessians in a.u. such as
           Schlegel, Theor. Chim. Acta, 66, 333 (1984) and
           Fischer and Almlof, J. Phys. Chem., 96, 9770 (1992).
@@ -294,8 +298,8 @@ class Bend(Simple):
             R_AB = v3d.dist(geom[self.A], geom[self.B])
             R_BC = v3d.dist(geom[self.B], geom[self.C])
             k_phi = 0.15
-            Lindh_Rho_AB = HguessLindhRho(Z[self.A], Z[self.B], R_AB)
-            Lindh_Rho_BC = HguessLindhRho(Z[self.B], Z[self.C], R_BC)
+            Lindh_Rho_AB = hguess_lindh_rho(Z[self.A], Z[self.B], R_AB)
+            Lindh_Rho_BC = hguess_lindh_rho(Z[self.B], Z[self.C], R_BC)
             return k_phi * Lindh_Rho_AB * Lindh_Rho_BC
 
         else:

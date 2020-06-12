@@ -7,7 +7,7 @@ import qcelemental as qcel
 from .exceptions import AlgError, OptError
 from . import optparams as op
 from . import v3d
-from .misc import HguessLindhRho
+from .misc import hguess_lindh_rho
 from .simple import Simple
 
 
@@ -27,8 +27,8 @@ class Tors(Simple):
         s += "D"
 
         s += "(%d,%d,%d,%d)" % (self.A + 1, self.B + 1, self.C + 1, self.D + 1)
-        if self.fixedEqVal:
-            s += "[%.1f]" % (self.fixedEqVal * self.qShowFactor)
+        if self.fixed_eq_val:
+            s += "[%.1f]" % (self.fixed_eq_val * self.q_show_factor)
         return s
 
     def __eq__(self, other):
@@ -41,7 +41,7 @@ class Tors(Simple):
         return self._near180
 
     # keeps track of orientation
-    def updateOrientation(self, geom):
+    def update_orientation(self, geom):
         tval = self.q(geom)
         if tval > op.Params.fix_val_near_pi:
             self._near180 = +1
@@ -52,14 +52,14 @@ class Tors(Simple):
         return
 
     @property
-    def qShowFactor(self):
+    def q_show_factor(self):
         return 180.0 / math.pi
 
-    def qShow(self, geom):  # return in degrees
-        return self.q(geom) * self.qShowFactor
+    def q_show(self, geom):  # return in degrees
+        return self.q(geom) * self.q_show_factor
 
     @property
-    def fShowFactor(self):
+    def f_show_factor(self):
         return qcel.constants.hartree2aJ * math.pi / 180.0
 
     @staticmethod
@@ -237,7 +237,7 @@ class Tors(Simple):
                         dq2dx2[3*self.atoms[b]+j][3*self.atoms[a]+i] = tval
         return
 
-    def diagonalHessianGuess(self, geom, Z, connectivity, guessType="SIMPLE"):
+    def diagonal_hessian_guess(self, geom, Z, connectivity, guessType="SIMPLE"):
         """ Generates diagonal empirical Hessians in a.u. such as 
           Schlegel, Theor. Chim. Acta, 66, 333 (1984) and
           Fischer and Almlof, J. Phys. Chem., 96, 9770 (1992).
@@ -286,9 +286,9 @@ class Tors(Simple):
             R_CD = v3d.dist(geom[self.C], geom[self.D])
             k_tau = 0.005
 
-            Lindh_Rho_AB = HguessLindhRho(Z[self.A], Z[self.B], R_AB)
-            Lindh_Rho_BC = HguessLindhRho(Z[self.B], Z[self.C], R_BC)
-            Lindh_Rho_CD = HguessLindhRho(Z[self.C], Z[self.D], R_CD)
+            Lindh_Rho_AB = hguess_lindh_rho(Z[self.A], Z[self.B], R_AB)
+            Lindh_Rho_BC = hguess_lindh_rho(Z[self.B], Z[self.C], R_BC)
+            Lindh_Rho_CD = hguess_lindh_rho(Z[self.C], Z[self.D], R_CD)
             return k_tau * Lindh_Rho_AB * Lindh_Rho_BC * Lindh_Rho_CD
 
         else:

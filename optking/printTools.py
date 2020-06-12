@@ -4,7 +4,8 @@ import logging
 import qcelemental as qcel
 # from sys import stdout
 
-def printMatString(M, Ncol=7, title=None):
+
+def print_mat_string(M, Ncol=7, title=None):
     """Formats a Matrix for Logging or Printing
 
     Parameters
@@ -38,7 +39,8 @@ def printMatString(M, Ncol=7, title=None):
     s = s[:-1]
     return s
 
-def printArrayString(M, Ncol=7, title=None):
+
+def print_array_string(M, Ncol=7, title=None):
     """Formats Arrays for Logging or Printing
 
     Parameters
@@ -71,7 +73,7 @@ def printArrayString(M, Ncol=7, title=None):
     return s
 
 
-def printGeomGrad(geom, grad):
+def print_geom_grad(geom, grad):
     logger = logging.getLogger(__name__)
     Natom = geom.shape[0]
     geometry_str = "\tGeometry\n\n"
@@ -85,7 +87,8 @@ def printGeomGrad(geom, grad):
     logger.info(geometry_str)
     logger.info(gradient_str)
 
-def printGeomString(symbols, geom, unit=None):
+
+def print_geom_string(symbols, geom, unit=None):
     if unit == "Angstrom" or unit == "Angstroms":
         geom_str = "\n\tCartesian Geometry (in Angstroms)\n"
         for i in range(geom.shape[0]):
@@ -98,17 +101,6 @@ def printGeomString(symbols, geom, unit=None):
         for i in range(geom.shape[0]):
             geom_str += ("\t%5s%20.10f%20.10f%20.10f\n" % (symbols[i], geom[i,0], geom[i,1], geom[i,2]))
     return geom_str
-
-def welcome():
-    welcome_string = """
-    \t\t\t-----------------------------------------\n
-    \t\t\t OPTKING 3.0: for geometry optimizations \n
-    \t\t\t     By R.A. King, Bethel University     \n
-    \t\t\t        with contributions from          \n
-    \t\t\t    A.V. Copan, J. Cayton, A. Heide      \n
-    \t\t\t-----------------------------------------\n
-    """
-    return welcome_string
 
 
 def welcome():

@@ -10,28 +10,28 @@ import copy
 from . import optparams as op
 from . import intcosMisc
 
-from .printTools import printMatString
+from .printTools import print_mat_string
 
-#def testB(intcos, geom):
-def testB(oMolsys):
+#def test_b(intcos, geom):
+def test_b(oMolsys):
     logger = logging.getLogger(__name__)
-    Natom = oMolsys.Natom
-    Nintco = oMolsys.Nintcos
+    Natom = oMolsys.natom
+    Nintco = oMolsys.num_intcos
     DISP_SIZE = 0.01
     MAX_ERROR = 50 * DISP_SIZE * DISP_SIZE * DISP_SIZE * DISP_SIZE
 
     logger.info("\tTesting B-matrix numerically...")
 
-    B_analytic = oMolsys.Bmat()
+    B_analytic = oMolsys.compute_b_mat()
 
     if op.Params.print_lvl >= 3:
         logger.debug("Analytic B matrix in au")
-        logger.debug(printMatString(B_analytic))
+        logger.debug(print_mat_string(B_analytic))
 
     B_fd = np.zeros((Nintco, 3 * Natom) )
 
-    oMolsys.updateDihedralOrientations()
-    oMolsys.fixBendAxes()
+    oMolsys.update_dihedral_orientations()
+    oMolsys.fix_bend_axes()
 
     geom_orig = oMolsys.geom # to restore below
     coord     = oMolsys.geom # returns a copy
@@ -61,10 +61,10 @@ def testB(oMolsys):
 
     if op.Params.print_lvl >= 3:
         logger.debug("Numerical B matrix in au, DISP_SIZE = %lf\n" % DISP_SIZE
-                     + printMatString(B_fd))
+                     + print_mat_string(B_fd))
 
     oMolsys.geom = geom_orig # restore original
-    oMolsys.unfixBendAxes()
+    oMolsys.unfix_bend_axes()
 
     max_error = -1.0
     max_error_intco = -1
@@ -91,7 +91,7 @@ def testB(oMolsys):
 # Test the analytic derivative B matrix (d2q/dx2) via finite differences
 # The 5-point formula should be good to DISP_SIZE^4 -
 #  a few unfortunates will be slightly worse
-def testDerivativeB(oMolsys):
+def test_derivative_b(oMolsys):
     logger = logging.getLogger(__name__)
     DISP_SIZE = 0.01
     MAX_ERROR = 10 * DISP_SIZE * DISP_SIZE * DISP_SIZE * DISP_SIZE
@@ -106,8 +106,8 @@ def testDerivativeB(oMolsys):
     for iF, F in enumerate(oMolsys._fragments):
         logger.info("\t\tTesting fragment %d." % (iF + 1))
 
-        Natom  = F.Natom
-        Nintco = F.Nintcos
+        Natom  = F.natom
+        Nintco = F.num_intcos
         coord = F.geom # not a copy
         dq2dx2_fd = np.zeros((3 * Natom, 3 * Natom))
         dq2dx2_analytic = np.zeros((3 * Natom, 3 * Natom))
@@ -119,8 +119,8 @@ def testDerivativeB(oMolsys):
             I.Dq2Dx2(coord, dq2dx2_analytic)
     
             if op.Params.print_lvl >= 3:
-                logger.info("Analytic B' (Dq2Dx2) matrix in au\n" + 
-                            printMatString(dq2dx2_analytic))
+                logger.info("Analytic B' (Dq2Dx2) matrix in au\n" +
+                            print_mat_string(dq2dx2_analytic))
     
             # compute B' matrix from B matrices
             for atom_a in range(Natom):
@@ -149,7 +149,7 @@ def testDerivativeB(oMolsys):
             if op.Params.print_lvl >= 3:
                 logger.info(
                     "\nNumerical B' (Dq2Dx2) matrix in au, DISP_SIZE = %f\n" % DISP_SIZE +
-                printMatString(dq2dx2_fd))
+                    print_mat_string(dq2dx2_fd))
     
             max_error = -1.0
             max_error_xyz = (-1, -1)
@@ -166,7 +166,7 @@ def testDerivativeB(oMolsys):
                 warn = True
 
     oMolsys.geom = geom_orig # restore original
-    oMolsys.unfixBendAxes()
+    oMolsys.unfix_bend_axes()
 
     if warn:
         logger.warning("""
