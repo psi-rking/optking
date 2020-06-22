@@ -73,7 +73,7 @@ def dq_irc(oMolsys, E, f_q, H_q, s, dqGuess):
     G_prime = oMolsys.compute_g_mat(oMolsys.masses)
     logger.debug("Mass-weighted Gmatrix at hypersphere point: \n" + print_mat_string(G_prime))
     G_prime_root = symm_mat_root(G_prime)
-    G_prime_inv = symm_mat_inv(G_prime)
+    G_prime_inv = symm_mat_inv(G_prime, redundant=True)
     G_prime_root_inv = symm_mat_root(G_prime_inv)
 
     logger.debug("G prime root matrix: \n" + print_mat_string(G_prime_root))
@@ -150,7 +150,8 @@ def dq_irc(oMolsys, E, f_q, H_q, s, dqGuess):
     logger.debug("for Lagrangian %10.5f to  %10.5f" % (lb_lagrangian, up_lagrangian))
 
     # Calulate lambda using Householder method
-    prev_lambda = -999
+    #prev_lambda = -999
+    prev_lambda = Lambda
     lagIter = 0
     Lambda = (lb_lambda + up_lambda)/2 # start in middle of coarse range
 
@@ -200,7 +201,7 @@ def dq_irc(oMolsys, E, f_q, H_q, s, dqGuess):
     # dq_M = (H_M - lambda I)^(-1) [lambda * p_M - g_M]
     LambdaI = np.identity(oMolsys.num_intcos)
     LambdaI = np.multiply(Lambda, LambdaI)
-    deltaQM = symm_mat_inv(np.subtract(H_M, LambdaI))
+    deltaQM = symm_mat_inv(np.subtract(H_M, LambdaI), redundant=True)
     deltaQM = np.dot(deltaQM, np.subtract(np.multiply(Lambda, p_M), g_M))
     logger.debug("dq_M to next geometry\n" + print_array_string(deltaQM))
 
@@ -262,7 +263,7 @@ def calc_lagrangian_derivs(Lambda, HMEigValues, HMEigVects, g_M, p_M, s):
 def calc_line_dist_step(oMolsys):
     G      = oMolsys.compute_g_mat(oMolsys.masses)
     G_root = symm_mat_root(G)
-    G_inv  = symm_mat_inv(G_root)
+    G_inv  = symm_mat_inv(G_root, redundant=True)
     G_root_inv  = symm_mat_root(G_inv)
 
     rxn_Dq  = np.subtract(oMolsys.q_array(), IRCdata.history.q())
@@ -286,7 +287,7 @@ def calc_arc_dist_step(oMolsys):
     # mass-weight
     G      = oMolsys.compute_g_mat(oMolsys.masses)
     G_root = symm_mat_root(G)
-    G_inv  = symm_mat_inv(G_root)
+    G_inv  = symm_mat_inv(G_root, redundant=True)
     G_root_inv  = symm_mat_root(G_inv)
     p[:]    = np.multiply( 1.0/np.linalg.norm(p),    p )
     line[:] = np.multiply( 1.0/np.linalg.norm(line), line )
