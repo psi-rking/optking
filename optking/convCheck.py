@@ -13,7 +13,7 @@ import numpy as np
 from math import fabs
 
 from . import optparams as op
-from .linearAlgebra import abs_max, rms, symm_mat_root
+from .linearAlgebra import abs_max, rms, symm_mat_inv, symm_mat_root
 from .printTools import print_array_string, print_mat_string
 
 # Check convergence criteria and print status to output file.
@@ -57,7 +57,8 @@ def conv_check(iterNum, oMolsys, dq, f, energies, q_pivot=None):
 
     if op.Params.opt_type == 'IRC':
         G_m = oMolsys.compute_g_mat(oMolsys.masses)
-        G_m_inv = np.linalg.inv(G_m)
+        #G_m_inv = np.linalg.inv(G_m)
+        G_m_inv = symm_mat_inv(G_m, redundant=True)
         q = oMolsys.q_array()
         logger.info("Projecting out forces parallel to reaction path.")
 
