@@ -48,7 +48,6 @@ def optimize(oMolsys, computer):
     H = 0 # hessian in internals
 
     try:  # Try to optimize one structure OR set of IRC points. OptError and all Exceptions caught below.
-        
 
         # Prepare for multiple IRC computation
         if op.Params.opt_type == 'IRC':
@@ -60,7 +59,7 @@ def optimize(oMolsys, computer):
             logger.info("\tIRC data object created\n")
 
         converged = False
-        #oMolsys = make_internal_coords(oMolsys)
+        # oMolsys = make_internal_coords(oMolsys)
         if not oMolsys.intcos_present:
             make_internal_coords(oMolsys)
             logger.debug("Molecular systems after make_internal_coords:")
@@ -91,11 +90,11 @@ def optimize(oMolsys, computer):
                         logger.debug(print_mat_string(H, title="Transformed Hessian in internals."))
 
                         # Add the transition state as the first IRC point
-                        #x_0 = oMolsys.geom
-                        #q_0 = intcosMisc.q_values(oMolsys.intcos, x_0)
-                        #f_x = np.multiply(-1, gX)
-                        #B = intcosMisc.compute_b_mat(oMolsys.intcos, x_0)
-                        #f_q = intcosMisc.q_forces(q_0, x_0, gX, B)
+                        # x_0 = oMolsys.geom
+                        # q_0 = intcosMisc.q_values(oMolsys.intcos, x_0)
+                        # f_x = np.multiply(-1, gX)
+                        # B = intcosMisc.compute_b_mat(oMolsys.intcos, x_0)
+                        # f_q = intcosMisc.q_forces(q_0, x_0, gX, B)
 
                         q_0 = oMolsys.q_array()
                         x_0 = oMolsys.geom
@@ -128,13 +127,13 @@ def optimize(oMolsys, computer):
                         irc_step_number += 1
 
                     IRCfollowing.compute_pivot_and_guess_points(oMolsys, v, op.Params.irc_step_size)
-                #end if 'IRC'
+                # end if 'IRC'
 
                 for step_number in range(op.Params.alg_geom_maxiter):
                     logger.info("\tBeginning algorithm loop, step number %d" % step_number)
                     total_steps_taken += 1
                     # compute energy and gradient
-                     # xyz = oMolsys.geom.copy() unused warning in IDE
+                    # xyz = oMolsys.geom.copy() unused warning in IDE
 
                     H, gX = get_pes_info(H, computer, oMolsys, step_number, irc_step_number)
                     E = computer.energies[-1]
@@ -155,8 +154,8 @@ def optimize(oMolsys, computer):
                     if op.Params.test_derivative_B:
                         testB.test_derivative_b(oMolsys)
 
-                    #B = intcosMisc.compute_b_mat(oMolsys)
-                    #logger.debug(print_mat_string(B, title="B matrix"))
+                    # B = intcosMisc.compute_b_mat(oMolsys)
+                    # logger.debug(print_mat_string(B, title="B matrix"))
 
                     # Check if forces indicate we are approaching minimum.
                     if op.Params.opt_type == "IRC" and irc_step_number > 2:
@@ -508,7 +507,7 @@ def make_internal_coords(oMolsys):
         oMolsys.split_fragments_by_connectivity()  # separate by connectivity
         # increase connectivity until all atoms are connected
         oMolsys.augment_connectivity_to_single_fragment(connectivity)
-        oMolsys.consolidate_fragments()          # collapse into one frag
+        oMolsys.consolidate_fragments()         # collapse into one frag
 
         if op.Params.opt_coordinates in ['REDUNDANT', 'BOTH']:
             oMolsys.fragments[0].add_intcos_from_connectivity(connectivity)
@@ -537,7 +536,6 @@ def make_internal_coords(oMolsys):
         if op.Params.opt_coordinates in ['CARTESIAN', 'BOTH']:
             for F in oMolsys.fragments:
                 F.add_cartesian_intcos()
-
 
     addIntcos.add_frozen_and_fixed_intcos(oMolsys)  # make sure these are in the set
     return

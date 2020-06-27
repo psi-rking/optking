@@ -7,22 +7,25 @@ from . import bend, tors, oofp
 from . import addIntcos
 from .printTools import print_array_string, print_mat_string
 
+
 class Frag:
-    """ Group of bonded atoms
 
-    Parameters
-    ----------
-    Z : list
-        atomic numbers
-    geom : ndarray
-        (nat, 3) cartesian geometry
-    masses : list
-        atomic masses
-    intcos : list(Simple), optional
-        internal coordinates (stretches, bends, etch...)
-
-    """
     def __init__(self, Z, geom, masses, intcos=None):
+        """ Group of bonded atoms
+
+        Parameters
+        ----------
+        Z : list[int]
+            atomic numbers
+        geom : np.ndarray
+            (nat, 3) cartesian geometry
+        masses : list[float]
+            atomic masses
+        intcos : list(Simple), optional
+            internal coordinates (stretches, bends, etch...)
+
+        """
+
         self._Z = Z
         self._geom = geom
         self._masses = masses
@@ -33,12 +36,12 @@ class Frag:
             self._intcos = intcos
 
     def __str__(self):
-        #s = "\n\tZ (Atomic Numbers)\n\t"
-        #print('num of self._intcos: %d' % len(self._intcos))
+        # s = "\n\tZ (Atomic Numbers)\n\t"
+        # print('num of self._intcos: %d' % len(self._intcos))
         s = print_array_string(self._Z, title="Z (Atomic Numbers)")
-        #s += "\tGeom\n"
+        # s += "\tGeom\n"
         s += print_mat_string(self._geom, title="Geom")
-        #s += "\tMasses\n\t"
+        # s += "\tMasses\n\t"
         s += print_array_string(self._masses, title="Masses")
         s += "\t - Coordinate -           - BOHR/RAD -       - ANG/DEG -\n"
         for x in self._intcos:
@@ -142,6 +145,7 @@ class Frag:
         if connectivity is None:
             connectivity = self.connectivity_from_distances()
         addIntcos.add_intcos_from_connectivity(connectivity, self._intcos, self._geom)
+        self.add_h_bonds(connectivity)
 
     def add_cartesian_intcos(self):
         addIntcos.add_cartesian_intcos(self._intcos, self._geom)
@@ -151,6 +155,15 @@ class Frag:
 #            print_opt("\t%5s%15.10f%15.10f%15.10f\n" % \
 #            (qcel.periodictable.to_E(self._Z[i]), self._geom[i,0], self._geom[i,1], self._geom[i,2]))
 #        print_opt("\n")
+
+    def add_h_bonds(self, connectivity):
+        """ Prepend h_bonds because that's where optking 2 places them
+        Parameters
+        ----------
+        connectivity : np.ndarray
+        """
+        h_bonds = addIntcos.add_h_bonds(self.geom, self.Z, connectivity)
+        self._intcos = h_bonds + self._intcos  # prepend internal coordinates
 
     def show_geom(self):
         geometry = ''

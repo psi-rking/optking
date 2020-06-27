@@ -75,7 +75,7 @@ class Cart(Simple):
     def Dq2Dx2(self, geom, dq2dx2):
         pass
 
-    def diagonal_hessian_guess(self, geom, Z, connectivity, guessType="Simple"):
+    def diagonal_hessian_guess(self, geom, Z, connectivity, guess_type="Simple"):
         """ Generates diagonal empirical Hessians in a.u. such as 
           Schlegel, Theor. Chim. Acta, 66, 333 (1984) and
           Fischer and Almlof, J. Phys. Chem., 96, 9770 (1992).

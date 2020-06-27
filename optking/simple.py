@@ -119,5 +119,5 @@ class Simple(object):
         raise AlgError('no Dq2Dx2 for this coordinate')
 
     @abstractmethod  # Diagonal hessian guess
-    def diagonal_hessian_guess(geom, Z, connectivity, guessType):
+    def diagonal_hessian_guess(geom, Z, connectivity, guess_type):
         raise AlgError('no hessian guess for this coordinate')

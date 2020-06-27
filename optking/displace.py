@@ -33,12 +33,12 @@ def displace_molsys(oMolsys, dq, fq=None, ensure_convergence=False):
     q_target = q + dq
     # q_target is used for dimer coordinates; does it need corrected for
     # dihedrals through pi here?  don't think so.
-    #print('Target q')
-    #print(q_target)
+    # print('Target q')
+    # print(q_target)
     geom_orig = oMolsys.geom
 
     forces = None
-    for iF,F in enumerate(oMolsys._fragments):
+    for iF, F in enumerate(oMolsys._fragments):
         if F.frozen:
             logger.info("\tFragment %d is frozen, so not displacing" % (iF+1))
             continue
