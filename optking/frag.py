@@ -3,7 +3,7 @@ import logging
 import numpy as np
 import qcelemental as qcel
 
-from . import bend, tors, oofp
+from . import stre, bend, tors, oofp
 from . import addIntcos
 from .printTools import print_array_string, print_mat_string
 
@@ -145,7 +145,7 @@ class Frag:
         if connectivity is None:
             connectivity = self.connectivity_from_distances()
         addIntcos.add_intcos_from_connectivity(connectivity, self._intcos, self._geom)
-        self.add_h_bonds(connectivity)
+        self.add_h_bonds()
 
     def add_cartesian_intcos(self):
         addIntcos.add_cartesian_intcos(self._intcos, self._geom)
@@ -153,17 +153,18 @@ class Frag:
 #    def print_geom(self):
 #        for i in range(self._geom.shape[0]):
 #            print_opt("\t%5s%15.10f%15.10f%15.10f\n" % \
-#            (qcel.periodictable.to_E(self._Z[i]), self._geom[i,0], self._geom[i,1], self._geom[i,2]))
+#               (qcel.periodictable.to_E(self._Z[i]), self._geom[i,0], self._geom[i,1],
+#                  self._geom[i,2]))
 #        print_opt("\n")
 
-    def add_h_bonds(self, connectivity):
-        """ Prepend h_bonds because that's where optking 2 places them
-        Parameters
-        ----------
-        connectivity : np.ndarray
-        """
-        h_bonds = addIntcos.add_h_bonds(self.geom, self.Z, connectivity)
+    def add_h_bonds(self):
+        """ Prepend h_bonds because that's where optking 2 places them """
+        h_bonds = addIntcos.add_h_bonds(self.geom, self.Z, self.natom)
         self._intcos = h_bonds + self._intcos  # prepend internal coordinates
+
+        for h_bond in h_bonds:
+            if stre.Stre(h_bond.A, h_bond.B) in self._intcos:
+                self._intcos.pop(self._intcos.index(stre.Stre(h_bond.A, h_bond.B)))
 
     def show_geom(self):
         geometry = ''

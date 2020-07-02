@@ -91,13 +91,13 @@ def add_stre_from_connectivity(C, intcos):
     # return len(intcos) - Norig  # return number added
 
 
-def add_h_bonds(geom, zs: list, connectivity):
+def add_h_bonds(geom, zs: list, num_atoms):
     """ Add Hydrogen bonds to a fragments coordinate list
     Parameters
     ----------
     geom : np.ndarray
     zs : list
-    connectivity : np.ndarray
+    num_atoms : int
     Returns
     -------
     list[stre.HBond]
@@ -112,7 +112,7 @@ def add_h_bonds(geom, zs: list, connectivity):
     logger.warning("This method should be adjusted after dimer fragments")
 
     # N, O, F, P, S, Cl as proposed by Bakken and Helgaker
-    electroneg_zs = [i for i in (7, 8, 9, 15, 16, 17)]
+    electroneg_zs = [7, 8, 9, 15, 16, 17]
     # Get atom indices (within a fragment) for the electronegative atoms present and the
     # hydrogen atoms present also get
     electronegs_present = [index for index, z in enumerate(zs) if z in electroneg_zs]
@@ -132,11 +132,13 @@ def add_h_bonds(geom, zs: list, connectivity):
             distance = v3d.dist(geom[i], geom[j])
             covalent_thresh = min_factor * (cov(zs[index_i], missing=4.0) + cov(1, missing=4.0))
             if limit > distance > covalent_thresh:
-                for index, val in enumerate(connectivity[j, :]):
-                    # grab index part in electronegs_present.
-                    if index in electronegs_present:
-                        if v3d.angle(geom[index], geom[j], geom[i]) >= (np.pi / 2):
+                for k in range(num_atoms):
+                    # grab k part in electronegs_present.
+                    if k in electronegs_present:
+                        test_angle = v3d.angle(geom[k], geom[j], geom[i])
+                        if test_angle >= (np.pi / 2):
                             h_bonds.append(stre.HBond(i, j))
+
                             break  # Add hydrogen bond if 1 appropriate angle in connected atoms
     return h_bonds
 

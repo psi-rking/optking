@@ -16,6 +16,7 @@ from .linearAlgebra import abs_max, rms, symm_mat_inv
 #                  Dq as much as possible.
 #  dq_to_dx       : Given Delta(q), compute and invert B, take Delta(x) step.
 
+
 # Displace molecular system
 def displace_molsys(oMolsys, dq, fq=None, ensure_convergence=False):
     """ Manage internal coordinate step for a molecular system
@@ -127,7 +128,7 @@ def displace_frag(F, dq, ensure_convergence=False):
     q_orig    = F.q_array()
 
     best_geom = np.zeros(geom_orig.shape)
-    conv = False # is back-transformation converged?
+    conv = False  # is back-transformation converged?
 
     if ensure_convergence:
         cnt = -1
@@ -225,7 +226,7 @@ def displace_frag(F, dq, ensure_convergence=False):
         q_target = q_orig + dq_orig
         for i in range(F.num_intcos):
             frag_report += ("\t%5d%15.10lf%15.10f%15.10lf\n"
-                                  % (i + 1, q_final[i], q_target[i], (q_final - q_target)[i]))
+                            % (i + 1, q_final[i], q_target[i], (q_final - q_target)[i]))
         frag_report += "\t--------------------------------------------------\n"
         logger.debug(frag_report)
 

@@ -53,8 +53,8 @@ logging_configuration = {
         }
     },
     "root": {
-        "level": "DEBUG",
-        "handlers": ["file_log_debug"]
+        "level": "INFO",
+        "handlers": ["file_log_info"]
         
     }
 }
