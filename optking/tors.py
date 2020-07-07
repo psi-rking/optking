@@ -12,13 +12,13 @@ from .simple import Simple
 
 
 class Tors(Simple):
-    def __init__(self, a, b, c, d, frozen=False, fixedEqVal=None):
+    def __init__(self, a, b, c, d, frozen=False, fixed_eq_val=None):
 
         if a < d: atoms = (a, b, c, d)
         else: atoms = (d, c, b, a)
         self._near180 = 0
 
-        Simple.__init__(self, atoms, frozen, fixedEqVal)
+        Simple.__init__(self, atoms, frozen, fixed_eq_val)
 
     def __str__(self):
         if self.frozen: s = '*'
@@ -32,9 +32,12 @@ class Tors(Simple):
         return s
 
     def __eq__(self, other):
-        if self.atoms != other.atoms: return False
-        elif not isinstance(other, Tors): return False
-        else: return True
+        if self.atoms != other.atoms:
+            return False
+        elif not isinstance(other, Tors):
+            return False
+        else:
+            return True
 
     @property
     def near180(self):
@@ -64,9 +67,12 @@ class Tors(Simple):
 
     @staticmethod
     def zeta(a, m, n):
-        if a == m: return 1
-        elif a == n: return -1
-        else: return 0
+        if a == m:
+            return 1
+        elif a == n:
+            return -1
+        else:
+            return 0
 
     # compute angle and return value in radians
     def q(self, geom):
@@ -109,7 +115,7 @@ class Tors(Simple):
 
         # a = relative index; B = full index of atom
         for a, B in enumerate(self.atoms):
-            for i in range(3):  #i=a_xyz
+            for i in range(3):  # i=a_xyz
                 tval = 0.0
 
                 if a == 0 or a == 1:
@@ -237,7 +243,7 @@ class Tors(Simple):
                         dq2dx2[3*self.atoms[b]+j][3*self.atoms[a]+i] = tval
         return
 
-    def diagonal_hessian_guess(self, geom, Z, connectivity, guessType="SIMPLE"):
+    def diagonal_hessian_guess(self, geom, Z, connectivity, guess_type="SIMPLE"):
         """ Generates diagonal empirical Hessians in a.u. such as 
           Schlegel, Theor. Chim. Acta, 66, 333 (1984) and
           Fischer and Almlof, J. Phys. Chem., 96, 9770 (1992).
@@ -245,10 +251,10 @@ class Tors(Simple):
 
         logger = logging.getLogger(__name__)
 
-        if guessType == "SIMPLE":
+        if guess_type == "SIMPLE":
             return 0.1
 
-        elif guessType == "SCHLEGEL":
+        elif guess_type == "SCHLEGEL":
             R_BC = v3d.dist(geom[self.B], geom[self.C])
             Rcov = qcel.covalentradii.get(Z[self.B], missing=4.0) + qcel.covalentradii.get(Z[self.C], missing=4.0)
             a = 0.0023
@@ -257,7 +263,7 @@ class Tors(Simple):
                 b = 0.0
             return a - (b * (R_BC - Rcov))
 
-        elif guessType == "FISCHER":
+        elif guess_type == "FISCHER":
             R = v3d.dist(geom[self.B], geom[self.C])
             Rcov = qcel.covalentradii.get(Z[self.B], missing=4.0) + qcel.covalentradii.get(Z[self.C], missing=4.0)
             a = 0.0015
@@ -279,7 +285,7 @@ class Tors(Simple):
             return a + b * (np.power(L, d)) / (np.power(R * Rcov, e)) * (
                 np.exp(-c * (R - Rcov)))
 
-        elif guessType == "LINDH_SIMPLE":
+        elif guess_type == "LINDH_SIMPLE":
 
             R_AB = v3d.dist(geom[self.A], geom[self.B])
             R_BC = v3d.dist(geom[self.B], geom[self.C])

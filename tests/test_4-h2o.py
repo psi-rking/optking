@@ -3,7 +3,8 @@ import pytest
 import psi4
 import optking
 
-finalEnergy = -76.05776970 #TEST
+finalEnergy = -76.05776970  # TEST
+
 
 @pytest.mark.parametrize("option, expected", [('RFO', finalEnergy), ('NR', finalEnergy), ('SD', finalEnergy)])
 def test_h2o_rfo(option, expected):

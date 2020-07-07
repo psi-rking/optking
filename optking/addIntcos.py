@@ -13,8 +13,9 @@ from . import bend
 from . import cart
 from . import dimerfrag
 
-### Functions related to freezing, fixing, determining, and
-###    adding coordinates. 
+# Functions related to freezing, fixing, determining, and
+#    adding coordinates.
+
 
 def connectivity_from_distances(geom, Z):
     """
@@ -90,11 +91,63 @@ def add_stre_from_connectivity(C, intcos):
     # return len(intcos) - Norig  # return number added
 
 
+def add_h_bonds(geom, zs: list, num_atoms):
+    """ Add Hydrogen bonds to a fragments coordinate list
+    Parameters
+    ----------
+    geom : np.ndarray
+    zs : list
+    num_atoms : int
+    Returns
+    -------
+    list[stre.HBond]
+    Notes
+    -----
+    Look for electronegative atoms.
+    Find hydrogen atoms between covalent radii test and 2.3 Angstroms
+    Check these hydrogen atoms are already bonded to an electronegative atom
+    Check bond angle >= 90 degrees
+    """
+    logger = logging.getLogger(__name__)
+    logger.warning("This method should be adjusted after dimer fragments")
+
+    # N, O, F, P, S, Cl as proposed by Bakken and Helgaker
+    electroneg_zs = [7, 8, 9, 15, 16, 17]
+    # Get atom indices (within a fragment) for the electronegative atoms present and the
+    # hydrogen atoms present also get
+    electronegs_present = [index for index, z in enumerate(zs) if z in electroneg_zs]
+    hydrogens = [index for index, i in enumerate(zs) if i == 1]
+
+    # Some shortcuts
+    min_factor = op.Params.covalent_connect
+    limit = op.Params.h_bond_connect
+    cov = qcel.covalentradii.get
+    h_bonds = []
+
+    for index_i, i in enumerate(electronegs_present):
+        for j in hydrogens:
+            if j < i:
+                # do only i < j
+                break
+            distance = v3d.dist(geom[i], geom[j])
+            covalent_thresh = min_factor * (cov(zs[index_i], missing=4.0) + cov(1, missing=4.0))
+            if limit > distance > covalent_thresh:
+                for k in range(num_atoms):
+                    # grab k part in electronegs_present.
+                    if k in electronegs_present:
+                        test_angle = v3d.angle(geom[k], geom[j], geom[i])
+                        if test_angle >= (np.pi / 2):
+                            h_bonds.append(stre.HBond(i, j))
+
+                            break  # Add hydrogen bond if 1 appropriate angle in connected atoms
+    return h_bonds
+
+
 def add_bend_from_connectivity(C, intcos, geom):
     """
     Adds Bends from connectivity
 
-    Paramters
+    Parameters
     ---------
     C : ndarray
         (nat, nat) unitary connectivity matrix
@@ -119,11 +172,11 @@ def add_bend_from_connectivity(C, intcos, geom):
                         pass
                     else:
                         if val > op.Params.linear_bend_threshold:
-                            b = bend.Bend(i, j, k, bendType="LINEAR")
+                            b = bend.Bend(i, j, k, bend_type="LINEAR")
                             if b not in intcos:
                                 intcos.append(b)
 
-                            b2 = bend.Bend(i, j, k, bendType="COMPLEMENT")
+                            b2 = bend.Bend(i, j, k, bend_type="COMPLEMENT")
                             if b2 not in intcos:
                                 intcos.append(b2)
                         else:
@@ -198,7 +251,7 @@ def add_tors_from_connectivity(C, intcos, geom):
                         i = 0
                         while i < Natom:
                             if C[i, J] and i != m:  # i!=J i!=m
-                                b = bend.Bend(i, J, k, bendType='LINEAR')
+                                b = bend.Bend(i, J, k, bend_type='LINEAR')
                                 if b in intcos:  # i,J,k is collinear
                                     J = i
                                     i = 0
@@ -209,7 +262,7 @@ def add_tors_from_connectivity(C, intcos, geom):
                                     l = 0
                                     while l < Natom:
                                         if C[l, K] and l != m and l != j and l != i:
-                                            b = bend.Bend(l, K, J, bendType='LINEAR')
+                                            b = bend.Bend(l, K, J, bend_type='LINEAR')
                                             if b in intcos:  # J-K-l is collinear
                                                 K = l
                                                 l = 0
@@ -280,13 +333,13 @@ def linear_bend_check(oMolsys, dq):
     
                 # <ABC < 0.  A-C-B should be linear bends.
                 if newVal < 0.0:
-                    linearBends.append(bend.Bend(A, C, B, bendType="LINEAR"))
-                    linearBends.append(bend.Bend(A, C, B, bendType="COMPLEMENT"))
+                    linearBends.append(bend.Bend(A, C, B, bend_type="LINEAR"))
+                    linearBends.append(bend.Bend(A, C, B, bend_type="COMPLEMENT"))
     
                 # <ABC~pi. Add A-B-C linear bends.
                 elif newVal > op.Params.linear_bend_threshold:
-                    linearBends.append(bend.Bend(A, B, C, bendType="LINEAR"))
-                    linearBends.append(bend.Bend(A, B, C, bendType="COMPLEMENT"))
+                    linearBends.append(bend.Bend(A, B, C, bend_type="LINEAR"))
+                    linearBends.append(bend.Bend(A, B, C, bend_type="COMPLEMENT"))
     
         linearBendsMissing = []
         if linearBends:
@@ -302,6 +355,7 @@ def linear_bend_check(oMolsys, dq):
             logger.warning(linearBendsMissing)
 
     return linearBendsMissing
+
 
 def freeze_stretches_from_input_atom_list(frozenStreList, oMolsys):
     """
@@ -477,11 +531,13 @@ def fix_torsions_from_input_list(fixedTorsList, oMolsys):
             logger.info("Fixed torsion not present, so adding it.\n")
             oMolsys.fragments[f].intcos.append(one_tors)
 
+
 def freeze_intrafrag(oMolsys):
     if oMolsys.nfragments < 2:
         raise OptError('Fragments are to be frozen, but there is only one of them')
     for F in oMolsys.fragments:
         F.freeze()
+
 
 def add_frozen_and_fixed_intcos(oMolsys):
     if op.Params.frozen_distance:
@@ -502,6 +558,7 @@ def add_frozen_and_fixed_intcos(oMolsys):
     if op.Params.freeze_intrafrag:
         freeze_intrafrag(oMolsys)
 
+
 def add_dimer_frag_intcos(oMolsys):
     # TODO add custom weights
     # TODO pass fragment labels
@@ -513,18 +570,18 @@ def add_dimer_frag_intcos(oMolsys):
     atoms = deepcopy(op.Params.frag_ref_atoms)
     for iF, F in enumerate(atoms):        # frag 0, frag 1
         for iRP, RP in enumerate(F):      # reference points
-            for iAT in range(len(RP)): # atoms
+            for iAT in range(len(RP)):  # atoms
                 atoms[iF][iRP][iAT] -= 1
 
     for i in range(oMolsys.nfragments):
         for j in range(i+1, oMolsys.nfragments):
-            #print('add_dimer_frag_intcos atom lists:')
-            #print(atoms[i])
-            #print(atoms[j])
+            # print('add_dimer_frag_intcos atom lists:')
+            # print(atoms[i])
+            # print(atoms[j])
             df = dimerfrag.DimerFrag(i, atoms[i], j, atoms[j])
             df.update_reference_geometry(oMolsys.frag_geom(i), oMolsys.frag_geom(j))
             oMolsys.dimer_intcos.append(df)
-    #print('end of add_dimer_frag_intcos')
-    #print(oMolsys)
+    # print('end of add_dimer_frag_intcos')
+    # print(oMolsys)
     return
 

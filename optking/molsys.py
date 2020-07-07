@@ -16,18 +16,15 @@ from .linearAlgebra import symm_mat_inv
 
 
 class Molsys(object):
-    """ The molecular system consisting of a collection of fragments
 
-    Parameters
-    ----------
-    fragments : list(Frag)
-    #fb_fragments : list
-    #    NYI fixed body fragments
-    intcos : list(Simple), optional
-
-    """
     def __init__(self, fragments, multiplicity=1, dimer_intcos=None):
-    #def __init__(self, fragments, fb_fragments=None, intcos=None, multiplicity=1):
+        """ The molecular system consisting of a collection of fragments
+
+        Parameters
+        ----------
+        fragments : list[Frag]
+        """
+        # def __init__(self, fragments, fb_fragments=None, intcos=None, multiplicity=1):
         # ordinary fragments with internal structure
         self.logger = logging.getLogger(__name__)
 
@@ -42,8 +39,8 @@ class Molsys(object):
             self._dimer_intcos = []
 
         # fixed body fragments defined by Euler/rotation angles
-        #self._fb_fragments = []
-        #if fb_fragments:
+        # self._fb_fragments = []
+        # if fb_fragments:
         #    self._fb_fragments = fb_fragments
         self._multiplicity = multiplicity
 
@@ -54,33 +51,32 @@ class Molsys(object):
             s += F.__str__()
         for di in self._dimer_intcos:
             s += di.__str__()
-        #for iB, B in enumerate(self._fb_fragments):
+        # for iB, B in enumerate(self._fb_fragments):
         #    s += "\tFixed body Fragment %d\n" % (iB + 1)
         #    s += B.__str__()
         return s
 
     @classmethod
     def from_psi4_molecule(cls, mol):
-        """ Creates a optking molecular system from psi4 mol. Note that not all information is preserved.
-
+        """ Creates a optking molecular system from psi4 mol. Note that not all information
+        is preserved.
         Parameters
         ----------
         mol: object
             psi4 mol
-
         Returns
         -------
         cls :
             optking molecular system: list of fragments
         """
-    
+
         import psi4
 
         logger = logging.getLogger(__name__)
         logger.info("\tGenerating molecular system for optimization from PSI4.")
 
         if not isinstance(mol, psi4.core.Molecule):
-            logger.critical("from_psi4_molecule cannot handle a non psi4 molecule, why are you calling this method?")
+            logger.critical("from_psi4_molecule cannot handle a non psi4 molecule")
             raise OptError("Cannot make molecular system from this molecule")
 
         NF = mol.nfragments()
@@ -88,27 +84,18 @@ class Molsys(object):
         frags = []
 
         for iF in range(NF):
-            fragMol = mol.extract_subsets(iF + 1)
+            frag_mol = mol.extract_subsets(iF + 1)
+            frag_natom = frag_mol.natom()
+            logger.info("\tCreating fragment %d with %d atoms" % (iF + 1, frag_natom))
 
-            fragNatom = fragMol.natom()
-            logger.info("\tCreating fragment %d with %d atoms" % (iF + 1, fragNatom))
+            frag_geom = frag_mol.geometry().np
+            frag_z = [frag_mol.Z(i) for i in range(frag_natom)]
+            frag_masses = [frag_mol.mass(i) for i in range(frag_natom)]
 
-            fragGeom = np.zeros((fragNatom, 3))
-            fragGeom[:] = fragMol.geometry()
-
-            fragZ = []
-            for i in range(fragNatom):
-                fragZ.append(int(fragMol.Z(i)))
-
-            fragMasses = []
-            for i in range(fragNatom):
-                fragMasses.append(fragMol.mass(i))
-
-            frags.append(frag.Frag(fragZ, fragGeom, fragMasses))
+            frags.append(frag.Frag(frag_z, frag_geom, frag_masses))
 
         m = mol.multiplicity()
         return cls(frags, multiplicity=m)
-
 
     @classmethod
     def from_json_molecule(cls, qc_molecule):
@@ -131,7 +118,7 @@ class Molsys(object):
         geom = np.asarray(qc_molecule['geometry'])
         geom = geom.reshape(-1, 3)
 
-        Z_list = [qcel.periodictable.to_Z(atom) for atom in qc_molecule['symbols']]
+        z_list = [qcel.periodictable.to_Z(atom) for atom in qc_molecule['symbols']]
 
         masses_list = qc_molecule.get('masses')
         if masses_list is None:
@@ -140,9 +127,9 @@ class Molsys(object):
         frags = []
         if 'fragments' in qc_molecule:
             for fr in qc_molecule['fragments']:
-                frags.append(frag.Frag(np.array(Z_list)[fr], geom[fr], np.array(masses_list)[fr]))
+                frags.append(frag.Frag(np.array(z_list)[fr], geom[fr], np.array(masses_list)[fr]))
         else:
-            frags.append(frag.Frag(Z_list, geom, masses_list))
+            frags.append(frag.Frag(z_list, geom, masses_list))
 
         return cls(frags)
 
@@ -157,7 +144,7 @@ class Molsys(object):
     @property
     def nfragments(self):
         return len(self._fragments)
-        #return len(self._fragments) + len(self._fb_fragments)
+        # return len(self._fragments) + len(self._fb_fragments)
 
     # TODO not supposed to have a property which takes an arg
     @property
@@ -397,15 +384,15 @@ class Molsys(object):
             Creates a qcschema molecule. version 1
    
         """
-        #print("molsys_to_qc_molecule: input molsys:") 
-        #print(self)
+        # print("molsys_to_qc_molecule: input molsys:")
+        # print(self)
         geom = [i for i in self.geom.flat]
         qc_mol = {"symbols": self.atom_symbols,
                   "geometry": geom,
                   "masses": self.masses.tolist(),
                   "molecular_multiplicity": self.multiplicity,
                   "fragments":self.fragments_atom_list,
-                 #"molecular_charge": self.charge, Should be unnecessary
+                  # "molecular_charge": self.charge, Should be unnecessary
                   "fix_com": True,
                   "fix_orientation": True}
         qc_mol = Molecule(**qc_mol)
@@ -453,16 +440,15 @@ class Molsys(object):
         print(self._fragments[1].geom)
         m = self._fragments[0].masses
         for i in range(1, self.nfragments):
-            Z = np.concatenate( (Z, self._fragments[i].Z) )
-            g = np.concatenate( (g, self._fragments[i].geom) )
-            m = np.concatenate( (m, self._fragments[i].masses) )
-        #self._fragments.append(consolidatedFrag)
+            Z = np.concatenate((Z, self._fragments[i].Z))
+            g = np.concatenate((g, self._fragments[i].geom))
+            m = np.concatenate((m, self._fragments[i].masses))
+        # self._fragments.append(consolidatedFrag)
         del self._fragments[:]
         consolidatedFrag = frag.Frag(Z, g, m)
         self._fragments.append(consolidatedFrag)
         print("consolidated fragment")
         print(self._fragments[0])
-
 
     def split_fragments_by_connectivity(self):
         """ Split any fragment not connected by bond connectivity."""
@@ -591,7 +577,7 @@ class Molsys(object):
 
     def clear(self):
         self._fragments.clear()
-        #self._fb_fragments.clear()
+        # self._fb_fragments.clear()
 
     def update_dimer_intco_reference_points(self):
         for DI in self._dimer_intcos:

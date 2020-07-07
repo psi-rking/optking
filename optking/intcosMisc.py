@@ -9,20 +9,22 @@ from . import tors
 from .linearAlgebra import symm_mat_inv, symm_mat_root
 from .printTools import print_mat_string, print_array_string
 
-### Some of these functions act on an arbitrary list of simple internals,
-### geometry etc. that may or may not be in a molecular system.
-### Also, a few complicated function that act on molecular system
-### forces and Hessians.
+# Some of these functions act on an arbitrary list of simple internals,
+# geometry etc. that may or may not be in a molecular system.
+# Also, a few complicated function that act on molecular system
+# forces and Hessians.
 
-# available for simple intco lists
+
 def q_values(intcos, geom):
+    # available for simple intco lists
     vals = [intco.q(geom) for intco in intcos]
     return np.asarray( vals )
 
-# Returns mass-weighted Bmatrix if masses are supplied.
-# available for simple intco lists
+
 def Bmat(intcos, geom, masses=None):
     # Allocate memory for full system.
+    # Returns mass-weighted Bmatrix if masses are supplied.
+    # available for simple intco lists
     Nint  = len(intcos)
     B = np.zeros( (Nint, 3*len(geom)) )
 
@@ -34,6 +36,7 @@ def Bmat(intcos, geom, masses=None):
         B[:] = np.divide(B, sqrtm)
 
     return B
+
 
 def q_forces(intcos, geom, gradient_x, B=None):
     """Transforms cartesian gradient to internals
@@ -69,9 +72,10 @@ def q_forces(intcos, geom, gradient_x, B=None):
     fq = np.dot(np.dot(Ginv, B), fx)
     return fq
 
-#def project_redundancies_and_constraints(intcos, geom, fq, H):
+
 def project_redundancies_and_constraints(oMolsys, fq, H):
     """Project redundancies and constraints out of forces and Hessian"""
+    # def project_redundancies_and_constraints(intcos, geom, fq, H):
     logger = logging.getLogger(__name__)
     Nint = oMolsys.num_intcos
     # compute projection matrix = G G^-1
@@ -173,7 +177,7 @@ def hessian_to_internals(H, oMolsys, g_x=None):
     """
     logger = logging.getLogger(__name__)
     logger.info("Converting Hessian from cartesians to internals.\n")
-    #B = compute_b_mat(intcos, geom)
+    # B = compute_b_mat(intcos, geom)
     B = oMolsys.compute_b_mat()
     G = np.dot(B, B.T)
     geom = oMolsys.geom
@@ -190,9 +194,9 @@ def hessian_to_internals(H, oMolsys, g_x=None):
 
         g_q = np.dot(Atranspose, g_x)
         Ncart = 3 * oMolsys.natom
-        dq2dx2 = np.zeros((Ncart, Ncart) )  # should be cart x cart for fragment ?
+        dq2dx2 = np.zeros((Ncart, Ncart))  # should be cart x cart for fragment ?
 
-        for I, q in enumerate(intcos):
+        for I, q in enumerate(oMolsys.intcos):
             dq2dx2[:] = 0
             q.Dq2Dx2(geom, dq2dx2)  # d^2(q_I)/ dx_i dx_j
 
@@ -201,8 +205,6 @@ def hessian_to_internals(H, oMolsys, g_x=None):
                     # adjust indices for multiple fragments
                     Hworking[a, b] -= g_q[I] * dq2dx2[a, b] 
 
-
-    
     Hq = np.dot(Atranspose, np.dot(Hworking, Atranspose.T))
     return Hq
 
@@ -263,8 +265,6 @@ def convert_hessian_to_cartesians(Hint, intcos, geom, masses=None, g_q=None):
                     Hxy[a, b] += g_q[I] * dq2dx2[a, b]
 
     return Hxy
-
-
 
 
 def tors_contains_bend(b, t):
