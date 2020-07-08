@@ -2,8 +2,7 @@ import psi4
 import optking
 import pytest
 
-finalEnergy = -76.05776970  # TEST
-
+finalEnergy = -76.05776970 #TEST
 
 #! SCF CC-PVTZ geometry optimzation, with Z-matrix input
 @pytest.mark.parametrize("option, expected", [('RFO', finalEnergy), ('NR', finalEnergy), ('SD', finalEnergy)])
