@@ -113,7 +113,7 @@ def optimize(oMolsys, computer):
                         logger.info(print_array_string(vM, title="Lowest evect of H_q_M"))
 
                         # Un mass-weight vector.
-                        G_root_inv = symm_mat_inv(G_root)
+                        G_root_inv = symm_mat_inv(G_root, redundant=True)
                         v = np.dot(G_root_inv, vM)
 
                         if op.Params.irc_direction == 'BACKWARD':

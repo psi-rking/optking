@@ -135,8 +135,8 @@ def symm_mat_root(A, Inverse=None):
     except LinAlgError:
         raise OptError("symm_mat_root: could not compute eigenvectors")
 
-    evals[ np.abs(evals) < 5*np.finfo(np.float).resolution ] = 0.0
-    evects[ np.abs(evects) < 5*np.finfo(np.float).resolution ] = 0.0
+    evals[ np.abs(evals)   < 10*np.finfo(np.float).resolution ] = 0.0
+    evects[ np.abs(evects) < 10*np.finfo(np.float).resolution ] = 0.0
 
     rootMatrix = np.zeros((len(evals), len(evals)))
     if Inverse:
