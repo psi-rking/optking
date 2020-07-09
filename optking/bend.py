@@ -23,9 +23,9 @@ class Bend(Simple):
         third atom
     frozen : boolean, optional
         set bend as frozen
-    fixedEqVal : float
+    fixed_eq_val : float
         value to fix bend at
-    bendType : string, optional
+    bend_type : string, optional
         can be regular, linear, or complement (used to describe linear bends)
 
     Notes
@@ -33,19 +33,19 @@ class Bend(Simple):
         atoms must be listed in order. Uses 0-based indexing.
 
     """
-    def __init__(self, a, b, c, frozen=False, fixedEqVal=None, bendType="REGULAR"):
+    def __init__(self, a, b, c, frozen=False, fixed_eq_val=None, bend_type="REGULAR"):
 
         if a < c:
             atoms = (a, b, c)
         else:
             atoms = (c, b, a)
 
-        self.bend_type = bendType
+        self.bend_type = bend_type
         self._axes_fixed = False
         self._x = np.zeros(3)
         self._w = np.zeros(3)
 
-        Simple.__init__(self, atoms, frozen, fixedEqVal)
+        Simple.__init__(self, atoms, frozen, fixed_eq_val)
 
     def __str__(self):
         if self.frozen:
@@ -268,21 +268,21 @@ class Bend(Simple):
                         dq2dx2[3 * self.atoms[a] + i, 3 * self.atoms[b] + j] = tval
         return
 
-    def diagonal_hessian_guess(self, geom, Z, connectivity, guessType="SIMPLE"):
+    def diagonal_hessian_guess(self, geom, Z, connectivity, guess_type="SIMPLE"):
         """ Generates diagonal empirical Hessians in a.u. such as
           Schlegel, Theor. Chim. Acta, 66, 333 (1984) and
           Fischer and Almlof, J. Phys. Chem., 96, 9770 (1992).
         """
-        if guessType == "SIMPLE":
+        if guess_type == "SIMPLE":
             return 0.2
 
-        elif guessType == "SCHLEGEL":
+        elif guess_type == "SCHLEGEL":
             if Z[self.A] == 1 or Z[self.C] == 1:
                 return 0.160
             else:
                 return 0.250
 
-        elif guessType == "FISCHER":
+        elif guess_type == "FISCHER":
             a = 0.089
             b = 0.11
             c = 0.44
@@ -294,7 +294,7 @@ class Bend(Simple):
             return a + b / (np.power(Rcov_AB * Rcov_BC, d)) * np.exp(
                 -c * (R_AB + R_BC - Rcov_AB - Rcov_BC))
 
-        elif guessType == "LINDH_SIMPLE":
+        elif guess_type == "LINDH_SIMPLE":
             R_AB = v3d.dist(geom[self.A], geom[self.B])
             R_BC = v3d.dist(geom[self.B], geom[self.C])
             k_phi = 0.15

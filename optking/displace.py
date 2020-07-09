@@ -16,6 +16,7 @@ from .linearAlgebra import abs_max, rms, symm_mat_inv
 #                  Dq as much as possible.
 #  dq_to_dx       : Given Delta(q), compute and invert B, take Delta(x) step.
 
+
 # Displace molecular system
 def displace_molsys(oMolsys, dq, fq=None, ensure_convergence=False):
     """ Manage internal coordinate step for a molecular system
@@ -26,6 +27,11 @@ def displace_molsys(oMolsys, dq, fq=None, ensure_convergence=False):
     dq      : ndarray
               input coordinate step
     fq      : forces in internal coordinates (used for printing).
+                passed in au. converted to aJ
+
+    Returns
+    -------
+    np.ndarray
     """
     logger = logging.getLogger(__name__)
 
@@ -33,47 +39,46 @@ def displace_molsys(oMolsys, dq, fq=None, ensure_convergence=False):
     q_target = q + dq
     # q_target is used for dimer coordinates; does it need corrected for
     # dihedrals through pi here?  don't think so.
-    #print('Target q')
-    #print(q_target)
+    # print('Target q')
+    # print(q_target)
     geom_orig = oMolsys.geom
 
     forces = None
-    for iF,F in enumerate(oMolsys._fragments):
+    for iF, F in enumerate(oMolsys.fragments):
         if F.frozen:
             logger.info("\tFragment %d is frozen, so not displacing" % (iF+1))
             continue
         
         logger.info("\tDetermining Cartesian step for fragment %d." % (iF+1))
-        conv = displace_frag(F, dq[oMolsys.frag_intco_slice(iF)], ensure_convergence)
+        dq, conv = displace_frag(F, dq[oMolsys.frag_intco_slice(iF)], ensure_convergence)
         if conv:
             logger.info("\tStep for fragment succeeded.")
         else:
             logger.info("\tStep for fragment falied.")
             logger.warning("\tStep for fragment succeeded.")
 
-    for i, DI in enumerate(oMolsys._dimer_intcos):
+    for i, DI in enumerate(oMolsys.dimer_intcos):
         logger.info("\tStep for dimer coordinates for fragments %d and %d."
                     % (DI.a_idx + 1, DI.b_idx + 1))
         Axyz = oMolsys.frag_geom(DI.a_idx)
         Bxyz = oMolsys.frag_geom(DI.b_idx)
-        Bxyz[:] = DI.orient_fragment(Axyz, Bxyz,
-                     q_target[oMolsys.dimerfrag_intco_slice(i)])
+        Bxyz[:] = DI.orient_fragment(Axyz, Bxyz, q_target[oMolsys.dimerfrag_intco_slice(i)])
 
     geom_final = oMolsys.geom
     # Analyze relative to original input geometry
     oMolsys.geom = geom_orig
     oMolsys.update_dihedral_orientations()
     oMolsys.fix_bend_axes()
-    q_orig       = oMolsys.q_array()
-    qShow_orig   = oMolsys.q_show_array()
+    q_orig = oMolsys.q_array()
+    qShow_orig = oMolsys.q_show_array()
 
     oMolsys.geom = geom_final
-    q_final      = oMolsys.q_array()
-    qShow_final  = oMolsys.q_show_array()
+    q_final = oMolsys.q_array()
+    qShow_final = oMolsys.q_show_array()
 
     # Set dq to final, total displacement ACHIEVED
-    dq[:]        = q_final - q_orig
-    dqShow       = qShow_final - qShow_orig
+    dq[:] = q_final - q_orig
+    dqShow = qShow_final - qShow_orig
     oMolsys.unfix_bend_axes()
 
     coordinate_change_report = (
@@ -81,7 +86,7 @@ def displace_molsys(oMolsys, dq, fq=None, ensure_convergence=False):
     coordinate_change_report += (
         "\t-----------------------------------------------------------------------------\n")
 
-    if type(fq) == type(None):
+    if fq is None:
         coordinate_change_report += (
             "\t         Coordinate      Previous         Change          New \n")
         coordinate_change_report += (
@@ -90,18 +95,19 @@ def displace_molsys(oMolsys, dq, fq=None, ensure_convergence=False):
             coordinate_change_report += ("\t%19s%14.5f%14.5f%14.5f\n"
                                          % (i, qShow_orig[i], dqShow[i], qShow_final[i]))
     else:
+        fq_aJ = oMolsys.q_show_forces(fq)  # print forces for step
         coordinate_change_report += (
             "\t         Coordinate      Previous         Force          Change          New \n")
         coordinate_change_report += (
             "\t         ----------      --------        ------          ------        ------\n")
         for i in range(len(dq)):
             coordinate_change_report += ("\t%19s%14.5f%14.5f%14.5f%14.5f\n"
-                                         % (i, qShow_orig[i], fq[i], dqShow[i], qShow_final[i]))
+                                         % (i, qShow_orig[i], fq_aJ[i], dqShow[i], qShow_final[i]))
     coordinate_change_report += (
         "\t-----------------------------------------------------------------------------\n")
     logger.info(coordinate_change_report)
 
-    return
+    return dq
 
 
 def displace_frag(F, dq, ensure_convergence=False):
@@ -115,19 +121,23 @@ def displace_frag(F, dq, ensure_convergence=False):
     ensure_convergence : bool
         reduce the magntitude of the step size as necessary until the
         iterative back-transformation actually converges.
+
+    Returns
+    -------
+    tuple(np.ndarray, bool) : dq, conv and frozen_conv
     """
     logger = logging.getLogger(__name__)
-    geom   = F.geom
+    geom = F.geom
     if not F.num_intcos or not len(geom) or not len(dq):
         dq[:] = 0
         return
 
     geom_orig = np.copy(geom)
-    dq_orig   = np.copy(dq)
-    q_orig    = F.q_array()
+    dq_orig = np.copy(dq)
+    q_orig = F.q_array()
 
     best_geom = np.zeros(geom_orig.shape)
-    conv = False # is back-transformation converged?
+    conv = False  # is back-transformation converged?
 
     if ensure_convergence:
         cnt = -1
@@ -225,11 +235,11 @@ def displace_frag(F, dq, ensure_convergence=False):
         q_target = q_orig + dq_orig
         for i in range(F.num_intcos):
             frag_report += ("\t%5d%15.10lf%15.10f%15.10lf\n"
-                                  % (i + 1, q_final[i], q_target[i], (q_final - q_target)[i]))
+                            % (i + 1, q_final[i], q_target[i], (q_final - q_target)[i]))
         frag_report += "\t--------------------------------------------------\n"
         logger.debug(frag_report)
 
-    return conv and frozen_conv
+    return dq, conv and frozen_conv
 
 
 def back_transformation(intcos, geom, dq, print_lvl,

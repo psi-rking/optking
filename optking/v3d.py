@@ -110,10 +110,10 @@ def angle(A, B, C, tol=1.0e-14):
 
     Parameters
     ----------
-    A : int
+    A : np.ndarray
         number of atom in fragment system. uses 1 indexing
-    B : int
-    C : int
+    B : np.ndarray
+    C : np.ndarray
 
     Returns
     -------
@@ -125,7 +125,7 @@ def angle(A, B, C, tol=1.0e-14):
         eBA = eAB(B, A)
     except AlgError as error:
         logger.warning("Could not normalize eBA in angle()\n")
-        raise optExcpetions.AlgError from error
+        raise AlgError from error
 
     try:
         eBC = eAB(B, C)
@@ -166,8 +166,21 @@ def _calc_angle(vec_1, vec_2, tol=1.0e-14):
 
 
 def tors(A, B, C, D):
-    """ Compute and return angle in dihedral angle in radians A-B-C-D
+    """
+    Compute and return angle in dihedral angle in radians A-B-C-D
     Raises AlgError exception if bond angles are too large for good torsion definition
+
+    Parameters
+    ----------
+    A : np.ndarray
+    B : np.ndarray
+    C : np.ndarray
+    D : np.ndarray
+
+    Returns
+    -------
+    float
+
     """
     logger = logging.getLogger(__name__)
     phi_lim = op.Params.v3d_tors_angle_lim
@@ -202,10 +215,9 @@ def tors(A, B, C, D):
     phi_234 = _calc_angle(ECB, ECD)
 
     up_lim = acos(-1) - phi_lim
-    
 
     if phi_123 < phi_lim or phi_123 > up_lim or phi_234 < phi_lim or phi_234 > up_lim:
-        #raise AlgError("Tors angle for %d, %d, %d, %d is too large for good "
+        # raise AlgError("Tors angle for %d, %d, %d, %d is too large for good "
         #                            + "definition" % (str(A), str(B), str(C), str(D)))
         raise AlgError("Interior angle is too large for good torsion definition.")        
 
@@ -231,8 +243,21 @@ def tors(A, B, C, D):
 
 
 def oofp(A, B, C, D):
-    """ Compute and return angle in dihedral angle in radians A-B-C-D
+    """
+    Compute and return angle in dihedral angle in radians A-B-C-D
     returns false if bond angles are too large for good torsion definition
+
+    Parameters
+    ----------
+    A : np.ndarray
+    B : np.ndarray
+    C : np.ndarray
+    D : np.ndarray
+
+    Returns
+    -------
+    float
+
     """
     logger = logging.getLogger(__name__)
     try:

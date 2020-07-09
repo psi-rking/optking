@@ -20,13 +20,13 @@ class Stre(Simple):
         atom 2 (zero indexing)
     frozen : boolean, optional
         set stretch as frozen
-    fixedEqVal : double
+    fixed_eq_val : double
         value to fix stretch at
     inverse : boolean
         identifies 1/R coordinate
 
     """
-    def __init__(self, a, b, frozen=False, fixedEqVal=None, inverse=False):
+    def __init__(self, a, b, frozen=False, fixed_eq_val=None, inverse=False):
 
         self._inverse = inverse  # bool - is really 1/R coordinate?
 
@@ -35,7 +35,7 @@ class Stre(Simple):
         else:
             atoms = (b, a)
 
-        Simple.__init__(self, atoms, frozen, fixedEqVal)
+        Simple.__init__(self, atoms, frozen, fixed_eq_val)
 
     def __str__(self):
         if self.frozen:
@@ -108,9 +108,19 @@ class Stre(Simple):
             dqdx[startA:startA + 3] *= -1.0 * val * val  # -(1/R)^2 * (dR/da)
             dqdx[startB:startB + 3] *= -1.0 * val * val
 
-
-    # Return derivative B matrix elements.  Matrix is cart X cart and passed in.
     def Dq2Dx2(self, geom, dq2dx2):
+        """
+        # Return derivative B matrix elements.  Matrix is cart X cart and passed in.
+        Parameters
+        ----------
+        geom : np.ndarray
+        dq2dx2 : np.ndarray
+            to be added to
+
+        Returns
+        -------
+
+        """
         try:
             eAB = v3d.eAB(geom[self.A], geom[self.B])  # A->B
         except AlgError as error:
@@ -143,18 +153,16 @@ class Stre(Simple):
                             dq2dx2[3*self.atoms[a]+a_xyz, 3*self.atoms[b]+b_xyz] \
                                 = 2.0 / val * dqdx[3*a+a_xyz] * dqdx[3*b+b_xyz]
 
-        return
-
-    def diagonal_hessian_guess(self, geom, Z, connectivity, guessType="SIMPLE"):
+    def diagonal_hessian_guess(self, geom, Z, connectivity, guess_type="SIMPLE"):
         """ Generates diagonal empirical Hessians in a.u. such as
         Schlegel, Theor. Chim. Acta, 66, 333 (1984) and
         Fischer and Almlof, J. Phys. Chem., 96, 9770 (1992).
         """
         logger = logging.getLogger(__name__)
-        if guessType == "SIMPLE":
+        if guess_type == "SIMPLE":
             return 0.5
 
-        if guessType == "SCHLEGEL":
+        if guess_type == "SCHLEGEL":
             R = v3d.dist(geom[self.A], geom[self.B])
             PerA = qcel.periodictable.to_period(Z[self.A])
             PerB = qcel.periodictable.to_period(Z[self.B])
@@ -185,14 +193,14 @@ class Stre(Simple):
             F = AA / ((R - BB) * (R - BB) * (R - BB))
             return F
 
-        elif guessType == "FISCHER":
+        elif guess_type == "FISCHER":
             Rcov = qcel.covalentradii.get(Z[self.A], missing=4.0) + qcel.covalentradii.get(Z[self.B], missing=4.0)
             R = v3d.dist(geom[self.A], geom[self.B])
             AA = 0.3601
             BB = 1.944
             return AA * (np.exp(-BB * (R - Rcov)))
 
-        elif guessType == "LINDH_SIMPLE":
+        elif guess_type == "LINDH_SIMPLE":
             R = v3d.dist(geom[self.A], geom[self.B])
             k_r = 0.45
             return k_r * hguess_lindh_rho(Z[self.A], Z[self.B], R)
@@ -230,14 +238,21 @@ class HBond(Stre):
         else:
             return True
 
-    def diagonal_hessian_guess(self, geom, Z, connectivity, guessType='Simple'):
+    def diagonal_hessian_guess(self, geom, Z, connectivity, guess_type='SIMPLE'):
         """ Generates diagonal empirical Hessians in a.u. such as
         Schlegel, Theor. Chim. Acta, 66, 333 (1984) and
         Fischer and Almlof, J. Phys. Chem., 96, 9770 (1992).
         """
         logger = logging.getLogger(__name__)
-        if guessType == "SIMPLE":
-            return 0.1
+        if guess_type == "SIMPLE":
+            return 0.5
+        elif guess_type in ['SCHLEGEL', 'FISCHER']:
+            return 0.03
+        elif guess_type == 'LINDH_SIMPLE':
+            # Same as standard stretch
+            R = v3d.dist(geom[self.A], geom[self.B])
+            k_r = 0.45
+            return k_r * hguess_lindh_rho(Z[self.A], Z[self.B], R)
         else:
             logger.warning("Hessian guess encountered unknown coordinate type.\n")
             return 1.0

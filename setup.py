@@ -24,6 +24,7 @@ if __name__ == "__main__":
             'numpy>=1.7',
             'qcelemental>=0.12.0',
             'qcengine>=0.12.0',
+            'msgpack-python'
         ],
         extras_require={
             'docs': [
