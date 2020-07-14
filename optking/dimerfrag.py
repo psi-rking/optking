@@ -7,7 +7,7 @@ from . import frag, stre, bend, tors
 from . import v3d
 from . import intcosMisc
 from . import orient
-from .exceptions import OptError
+from .exceptions import OptError, AlgError
 from .printTools import print_mat_string
 
 from . import optparams as op
@@ -265,17 +265,18 @@ class DimerFrag(object):
             one_stre.inverse = True
 
         if one_stre is not None:
-            self.pseudo_frag.intcos.append(one_stre)
+            self._pseudo_frag.intcos.append(one_stre)
         if one_bend is not None:
-            self.pseudo_frag.intcos.append(one_bend)
+            self._pseudo_frag.intcos.append(one_bend)
         if one_bend2 is not None:
-            self.pseudo_frag.intcos.append(one_bend2)
+            self._pseudo_frag.intcos.append(one_bend2)
         if one_tors is not None:
-            self.pseudo_frag.intcos.append(one_tors)
+            self._pseudo_frag.intcos.append(one_tors)
         if one_tors2 is not None:
-            self.pseudo_frag.intcos.append(one_tors2)
+            self._pseudo_frag.intcos.append(one_tors2)
         if one_tors3 is not None:
-            self.pseudo_frag.intcos.append(one_tors3)
+            self._pseudo_frag.intcos.append(one_tors3)
+
 
     def __str__(self):
 
@@ -309,7 +310,7 @@ class DimerFrag(object):
 
     @property
     def pseudo_frag(self):
-        return self.pseudo_frag
+        return self._pseudo_frag
 
     def d_on(self, i):
         return self._D_on[i]
@@ -324,6 +325,9 @@ class DimerFrag(object):
 
     def q(self):
         return [i.q(self.pseudo_frag.geom) for i in self._pseudo_frag.intcos]
+
+    def q_array(self):
+        return np.asarray( self.q() )
 
     def q_show(self):
         return [i.q_show(self.pseudo_frag.geom) for i in self._pseudo_frag.intcos]
@@ -369,6 +373,37 @@ class DimerFrag(object):
     def num_intcos(self):
         return len(self.pseudo_frag.intcos)
 
+    # Given cartesian geometries determine if interfragment coordinates avoid
+    # geometry-dependent discontinuties
+    def validate_intcos(self, Ageom_in, Bgeom_in):
+        logger = logging.getLogger(__name__)
+        self.update_reference_geometry(Ageom_in, Bgeom_in)
+        geom = self.pseudo_frag.geom
+        lbls = self.active_labels()
+        # check for collinearity
+        if self.d_on(1):
+            if v3d.are_collinear(geom[1],geom[2],geom[3]):
+                raise AlgError("Reference points for theta_A are collinear.")
+        if self.d_on(2):
+            if v3d.are_collinear(geom[2],geom[3],geom[4]):
+                raise AlgError("Reference points for theta_B are collinear.")
+        if self.d_on(4):
+            if v3d.are_collinear(geom[0],geom[1],geom[2]):
+                raise AlgError("Reference points for phi_A are collinear.")
+        if self.d_on(5):
+            if v3d.are_collinear(geom[3],geom[4],geom[5]):
+                raise AlgError("Reference points for phi_B are collinear.")
+        j=0
+        logger.debug("Checking that interfragment coordinates can be computed.")
+        for i in range(6):
+            if self.d_on(i):
+                try:
+                    self._pseudo_frag.intcos[j].q(geom)
+                    j += 1
+                except AlgError as error:
+                    raise AlgError("Can't compute interfragment coord. {} at this geometry.".format(lbls[j]))
+        return
+
 
     def orient_fragment(self, Ageom_in, Bgeom_in, q_target, printCoords=False):
         """ orient_fragment() moves the geometry of fragment B so that the
@@ -386,7 +421,7 @@ class DimerFrag(object):
         nBrefs = self.n_brefs # of ref pts on B to worry about
 
         self.update_reference_geometry(Ageom_in, Bgeom_in)
-        q_orig = self.q()
+        q_orig = self.q_array()
         if len(q_orig) != len(q_target):
             raise OptError("Unexpected number of target interfragment coordinates")
         dq_target = q_target - q_orig
@@ -739,70 +774,94 @@ def test_orient(NA, NB, printInfo=False) :
     # within the class, i.e., whether computed values of the interfragment
     # coordinates match the target ones.  The point of this function is also
     # to ensure the code is robust for fragments with fewer than 3 reference atoms
-    # (such as atoms, diatomics, linear molecules).
-    #  - Chooses random geometries.
-    #  - Chooses 1,2,or 3 random atoms to define reference points.
-    #  Does not test a linear polyatomic.  Appears to fail at present only when
-    # interior angles of torsions are too large or small (here by luck).
+    # (such as atoms, diatomics, linear molecules) and for variable weights
+    #   NA = number of atoms in mythical fragment A.
+    #   NB = number of atoms in mythical fragment B.
+    #  Geometry is chosen at random.
+    #  For each fragment, 1,2,or 3 random atoms is chosento define reference points.
+    #  Does not test a linear polyatomic at present.
     """
-    from random import random,shuffle,choice,sample
+    from random import random,shuffle,choice,sample,uniform
     logger = logging.getLogger(__name__)
-    NAref = min(NA,3)
-    NBref = min(NB,3)
-    Albl = "A-%d-atoms" % NA
-    Blbl = "B-%d-atoms" % NB
 
-    atom_list = list(range(NA))
-    Aatoms = []
-    Aweights = []
-    n = 0
-    while n < NAref:
-        ref_length = min(NAref, choice([1,2,3])) # of atoms used to define ref. pt.
-        l = sample(atom_list, ref_length)  # select random atoms in A
-        l.sort()
-        if l in Aatoms:
-            continue
-        n += 1
-        Aatoms.append(l)
-        Aweights.append( ref_length*[1.0] )
-    printInfo: logger.debug(str(Aatoms))
-    printInfo: logger.debug(str(Aweights))
-
-    atom_list = list(range(NB))
-    Batoms = []
-    Bweights = []
-    n = 0
-    while n < NBref:
-        ref_length = min(NBref, choice([1,2,3]))
-        l = sample(atom_list, ref_length)
-        l.sort()
-        if l in Batoms:
-            continue
-        n += 1
-        Batoms.append(l)
-        Bweights.append( ref_length*[1.0])
-    if printInfo: logger.debug(str(Batoms))
-    if printInfo: logger.debug(str(Bweights))
-
-    Itest = DimerFrag(0, Aatoms, 1, Batoms, Aweights, Bweights, Albl, Blbl)
-
+    # Choose a random geometry
     Axyz = np.zeros( (NA,3) )
-    for i in range(NA): # insert random geometries
-        Axyz[i][:] = 5.0+3.0*random(), 3.0*random(), 3.0*random()
     Bxyz = np.zeros( (NB,3) )
+    for i in range(NA):
+        Axyz[i][:] = 6.0+3.0*random(), 3.0*random(), 3.0*random()
     for i in range(NB):
         Bxyz[i][:] = 3.0*random(), 3.0*random(), 3.0*random()
+
+    # Choose # of ref. points not to exceed number of atoms in each fragment.
+    NAref = min(NA,3)
+    NBref = min(NB,3)
+
+    while True:
+        try: # make up some reference points
+            atom_list = list(range(NA))
+            Aatoms = []
+            Aweights = []
+            n = 0
+            while n < NAref:
+                ref_length = min(NAref, choice([1,2,3])) # of atoms used to define ref. pt.
+                l = sample(atom_list, ref_length)  # select random atoms in A
+                l.sort()
+                if l in Aatoms:
+                    continue
+                n += 1
+                Aatoms.append(l)
+                Aweights.append( [uniform(0.1,0.9) for i in range(ref_length)] )
+            if printInfo: logger.debug('FragA atoms:  ' + str(Aatoms))
+            if printInfo: logger.debug('FragA weights ' + str(Aweights))
+    
+            atom_list = list(range(NB))
+            Batoms = []
+            Bweights = []
+            n = 0
+            while n < NBref:
+                ref_length = min(NBref, choice([1,2,3]))
+                l = sample(atom_list, ref_length)
+                l.sort()
+                if l in Batoms:
+                    continue
+                n += 1
+                Batoms.append(l)
+                Bweights.append( [uniform(0.1,0.9) for i in range(ref_length)] )
+            if printInfo: logger.debug('FragB atoms:  ' + str(Batoms))
+            if printInfo: logger.debug('FragB weights:' + str(Bweights))
+    
+            Albl = "A-%d-atoms" % NA
+            Blbl = "B-%d-atoms" % NB
+            Itest = DimerFrag(0, Aatoms, 1, Batoms, Aweights, Bweights, Albl, Blbl)
+            Itest.validate_intcos(Axyz, Bxyz)
+            break
+        except AlgError as error:
+            logger.debug('Trying new reference points')
+
+    # Create some arbitrary displacements
+    # Don't cross pi - at least for now.
     Itest.update_reference_geometry(Axyz, Bxyz)
-    q_tar = Itest.num_intcos * [0.8]
+    q_tar = Itest.q_array()
+    logger.debug('Origin q: ' + str(q_tar))
+
+    t = 0.02 # threshold near pi
+    q_tar += 0.2
+    for i, intco in enumerate(Itest._pseudo_frag.intcos):
+        if type(intco) == bend.Bend:
+            if q_tar[i] > np.pi-t: q_tar[i] -= 0.4
+        elif type(intco) == tors.Tors:
+            if   q_tar[i] >  np.pi-t: q_tar[i] -= 0.4
+            elif q_tar[i] < -np.pi+t: q_tar[i] -= 0.4
+
+    logger.debug('Target q: ' + str(q_tar))
+
     Bxyz_new = Itest.orient_fragment(Axyz, Bxyz, q_tar)
     Itest.update_reference_geometry(Axyz, Bxyz_new)
-    logger.debug('Error in positioning dimer (%s/%s): %8.3e' %
-         ( Albl, Blbl, sqrt(sum(((q_tar - Itest.q())**2)))))
+    root_sum_sq_dev = sqrt(sum(((q_tar - Itest.q())**2)))
+    logger.info('Error in positioning dimer (%s/%s): %8.3e' %
+         ( Albl, Blbl, root_sum_sq_dev))
+    return root_sum_sq_dev
 
-# Test orient_fragment function on random molecules of various sizes
-# for i in range(1,4):
-#    for j in range(1,4):
-#        test_orient(i,j)
 ## Example of how to use for water dimer
 #Xatoms = [[0,    1],[1,     2],[2]]
 #Xw     = [[1.0,0.1],[1.0, 0.1],[1.0]]

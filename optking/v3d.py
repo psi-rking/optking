@@ -217,9 +217,7 @@ def tors(A, B, C, D):
     up_lim = acos(-1) - phi_lim
 
     if phi_123 < phi_lim or phi_123 > up_lim or phi_234 < phi_lim or phi_234 > up_lim:
-        # raise AlgError("Tors angle for %d, %d, %d, %d is too large for good "
-        #                            + "definition" % (str(A), str(B), str(C), str(D)))
-        raise AlgError("Interior angle is too large for good torsion definition.")        
+        raise AlgError("Interior angle of {:5.3f} can't work in good torsion.".format(180.0*phi_123/np.pi))
 
     tmp = cross(EAB, EBC)
     tmp2 = cross(EBC, ECD)
@@ -291,3 +289,14 @@ def oofp(A, B, C, D):
     else:
         tau = asin(dotprod)
     return tau
+
+def are_collinear(A, B, C, threshold=1.0e-8):
+    eAB = B - A
+    eAC = C - A
+    cr = cross(eAB,eAC)
+    normSQ = dot(cr,cr)
+    if normSQ < threshold:
+        return True
+    else: 
+        return False
+
