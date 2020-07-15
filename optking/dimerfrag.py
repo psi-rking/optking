@@ -1,4 +1,4 @@
-from math import sqrt, fabs, acos
+from math import fabs, acos
 import logging
 import numpy as np
 import qcelemental as qcel
@@ -35,7 +35,6 @@ class RefPoint(object):
             raise OptError("Number of atoms and weights for ref. pt. differ")
 
         # Normalize the weights.  It is assumed that the weights are positive.
-        #norm = sqrt(sum(c*c for c in coeff))
         norm = sum(c for c in coeff)
         for i in range(len(atoms)):
             self._weights.append( Weight(atoms[i],coeff[i]/norm) )
@@ -66,9 +65,7 @@ class DimerFrag(object):
         c. a point a unit distance along the principal axis corresponding to the 2nd largest moment.
     #
     For simplicity, we sort the atoms in the reference point structure according to
-    the assumed connectivity of the coordinates.  For A, this reverses the order relative to
-    that in which the weights are provided to the constructor.
-    #
+    the assumed connectivity of the coordinates.
     ref_geom[0] = dA[2];
     ref_geom[1] = dA[1];
     ref_geom[2] = dA[0];
@@ -281,12 +278,12 @@ class DimerFrag(object):
     def __str__(self):
 
         s =  "\tFragment %s\n" %  self._A_lbl
-        for i,r in enumerate(self._Arefs):
-            s += "\t\tReference point %d\n" % (3-i)
+        for i,r in enumerate(reversed(self._Arefs)):
+            s += "\t\tDimer point %d (Ref. pt. %d):\n" % (i+1,3-i)
             s += r.__str__()
         s += "\n\tFragment %s\n" %  self._B_lbl
         for i,r in enumerate(self._Brefs):
-            s += "\t\tReference point %d\n" % (i+4)
+            s += "\t\tDimer point %d (Ref. pt. %d):\n" % (i+4,i+1)
             s += r.__str__()
 
         s += self._pseudo_frag.__str__()
@@ -580,7 +577,7 @@ class DimerFrag(object):
         tval = 0.0
         for i in range(nBrefs):
             tval += np.dot(ref_B[i] - ref_B_final[i], ref_B[i] - ref_B_final[i])
-        tval = sqrt(tval)
+        tval = np.sqrt(tval)
         #print("orient_fragment: |x_target - x_achieved| = %.2e" % tval)
   
         return Bgeom
@@ -857,30 +854,8 @@ def test_orient(NA, NB, printInfo=False) :
 
     Bxyz_new = Itest.orient_fragment(Axyz, Bxyz, q_tar)
     Itest.update_reference_geometry(Axyz, Bxyz_new)
-    root_sum_sq_dev = sqrt(sum(((q_tar - Itest.q())**2)))
-    logger.info('Error in positioning dimer (%s/%s): %8.3e' %
-         ( Albl, Blbl, root_sum_sq_dev))
-    return root_sum_sq_dev
+    rms_error = np.sqrt( np.mean((q_tar - Itest.q())**2) )
+    logger.info('RMS Error in positioning dimer (%s/%s): %8.3e' %
+         ( Albl, Blbl, rms_error))
+    return rms_error
 
-## Example of how to use for water dimer
-#Xatoms = [[0,    1],[1,     2],[2]]
-#Xw     = [[1.0,0.1],[1.0, 0.1],[1.0]]
-#Yatoms = [[1,  0],  [0],       [2, 1]]
-#Yw     = [[1.0,0.1],[1.0],     [1.0, 0.1]]
-#Itest = DimerFrag(0, Xatoms, 1, Yatoms, Xw, Yw, "HOH-1", "HOH-2" )
-#Axyz = np.array( [[ 0.53297836, -1.10088263, -2.17523351],
-#                  [ 0.67046349, -1.17150926, -0.32413149],
-#                  [-0.87285505, -0.32827188,  0.18313336]], float )
-#Bxyz = np.array( [[-0.75224517, -2.04662631, -6.55895403],
-#                  [-0.20225739, -0.70744543, -5.42642983],
-#                  [ 0.62391765,  0.47566674, -6.56493124]], float )
-#
-## Displace to target coordinates
-#q_tar = [3.36,2.97,2.19,-1.66,0.01,-2.74]
-#Bxyz_new = Itest.orient_fragment(Axyz, Bxyz, q_tar)
-#Itest.update_reference_geometry(Axyz, Bxyz_new)
-#print(Itest)
-#q = Itest.q()
-#print('Error in positioning water dimer: %8.3e'%sqrt(sum((q_tar - q)**2)))
-#Itest.test_B(Axyz,Bxyz_new)
-#
