@@ -3,13 +3,13 @@ import logging
 import numpy as np
 import qcelemental as qcel
 
+from .exceptions import OptError, AlgError
+from . import optparams as op
 from . import frag, stre, bend, tors
 from . import v3d
 from . import intcosMisc
 from . import orient
-from .exceptions import OptError, AlgError
 from .printTools import print_mat_string
-from . import optparams as op
 
 class Weight(object):
     def __init__(self, a, w):
@@ -256,8 +256,8 @@ class DimerFrag(object):
         else:
             raise OptError("No reference points present")
 
-        #if op.Params.interfrag_dist_inv:
-            #one_stre.inverse = True
+        if op.Params.interfrag_dist_inv:
+            one_stre.inverse = True
 
         if one_stre is not None:
             self._pseudo_frag.intcos.append(one_stre)
@@ -661,7 +661,7 @@ class DimerFrag(object):
             cnt += 1
       
         if self.d_on(3):
-            rf = [3*i for i in self.pseudo_fragrag.intcos[cnt].atoms]
+            rf = [3*i for i in self.pseudo_frag.intcos[cnt].atoms]
             for xyz in range(3):
                 for el in self._Arefs[1]:
                     Bmat_in[cnt,A_xyz_off + 3*el.atom + xyz] += el.weight * B_ref[cnt,rf[0]+xyz]
@@ -702,36 +702,34 @@ class DimerFrag(object):
     def test_B(self, Axyz, Bxyz, printInfo=False):
         logger = logging.getLogger(__name__)
         logger.info("\tTesting B matrix")
-        logger.debug("\tTesting B matrix")
-        DISP_SIZE = 0.001
-        MAX_ERROR = 1.0e-8
+        DISP_SIZE = 0.005
         NA = len(Axyz)
         Natoms = NA+len(Bxyz)
+
         B_analytic = np.zeros((self.num_intcos, 3 * Natoms))
         self.compute_b_mat(Axyz, Bxyz, B_analytic)
         if printInfo:
-            logger.debug("\tFinal B matrix")
+            logger.debug("\tAnalytical B matrix")
             logger.debug(print_mat_string(B_analytic))
                 
         B_fd = np.zeros((self.num_intcos, 3 * Natoms))
         coord = np.concatenate( (Axyz,Bxyz) ).copy()
         #intcosMisc.update_dihedral_orientations(self._pseudo_frag._intcos, coord)
         #intcosMisc.fix_bend_axes(self._pseudo_frag._intcos, coord)
-                
         for atom in range(Natoms):
             for xyz in range(3):
                 coord[atom, xyz] -= DISP_SIZE
                 self.update_reference_geometry(coord[:NA], coord[NA:])
-                q_m  = B_analytic.q()
+                q_m  = self.q()
                 coord[atom, xyz] -= DISP_SIZE
                 self.update_reference_geometry(coord[:NA], coord[NA:])
-                q_m2 = B_analytic.q()
+                q_m2 = self.q()
                 coord[atom, xyz] += 3 * DISP_SIZE
                 self.update_reference_geometry(coord[:NA], coord[NA:])
-                q_p  = B_analytic.q()
+                q_p  = self.q()
                 coord[atom, xyz] += DISP_SIZE
                 self.update_reference_geometry(coord[:NA], coord[NA:])
-                q_p2 = B_analytic.q()
+                q_p2 = self.q()
                 coord[atom, xyz] -= 2 * DISP_SIZE  # restore to original
                 for i in range(self.num_intcos):
                     B_fd[i, 3 * atom + xyz] = (
@@ -753,14 +751,14 @@ class DimerFrag(object):
                   (max_error, max_error_intco + 1))
         logger.info("\t\tThis coordinate is %s" % str(self.pseudo_frag.intcos[max_error_intco]))
     
-        if max_error > MAX_ERROR:
+        if max_error > 1.0e-8:
             logger.info("\tB-matrix could be in error. However, numerical tests may fail for\n"
                            + "\ttorsions at 180 degrees, and slightly for linear bond angles."
                            + "This is OK.\n")
-            return False
         else:
             logger.info("\t...Passed.")
-            return True
+
+        return max_error
 
     
 def test_orient(NA, NB, printInfo=False) :
