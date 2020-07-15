@@ -9,9 +9,7 @@ from . import intcosMisc
 from . import orient
 from .exceptions import OptError, AlgError
 from .printTools import print_mat_string
-
 from . import optparams as op
-op.Params = op.OptParams({})
 
 class Weight(object):
     def __init__(self, a, w):
