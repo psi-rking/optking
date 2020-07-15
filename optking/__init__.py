@@ -18,7 +18,7 @@ from .optwrapper import optimize_psi4, optimize_qcengine
 #from .tors import Tors
 #from .oofp import Oofp
 from . import frag
-from . import dimerfrag
+#from . import dimerfrag
 #from .molsys import Molsys
 #from .history import History
 #from .displace import displace
