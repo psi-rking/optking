@@ -256,8 +256,8 @@ class DimerFrag(object):
         else:
             raise OptError("No reference points present")
 
-        if op.Params.interfrag_dist_inv:
-            one_stre.inverse = True
+        #if op.Params.interfrag_dist_inv:
+            #one_stre.inverse = True
 
         if one_stre is not None:
             self._pseudo_frag.intcos.append(one_stre)
