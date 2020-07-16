@@ -515,6 +515,10 @@ class OptParams(object):
             self.i_untampered = True
         # end __init__ finally !
 
+    # for specialists
+    def __setitem__(self, key, value):
+        return setattr(self, key, value)
+
     def increaseTrustRadius(P):
         logger = logging.getLogger(__name__)
         maximum = P.intrafrag_trust_max
