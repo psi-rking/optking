@@ -2,6 +2,7 @@ import os
 
 import logging.config
 
+from .optimize import optimize, make_internal_coords
 from . import loggingconfig
 from . import optparams as op
 from ._version import get_versions
