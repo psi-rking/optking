@@ -400,17 +400,48 @@ class DimerFrag(object):
         return
 
 
-    def orient_fragment(self, Ageom_in, Bgeom_in, q_target, printCoords=False):
+    def orient_fragment(self, Ageom_in, Bgeom_in, q_target, printCoords=False,
+                        unit_length='bohr', unit_angle='rad'):
         """ orient_fragment() moves the geometry of fragment B so that the
             interfragment coordinates have the given values
  
         Parameters
         ----------
-        q_target : numpy array float[6]
+        Ageom_in : array
+            Cartesian geometry of fragment A
+        Bgeom_in : array
+            Cartesian geometry of fragment B
+        q_target : array float[6]
+            Target values of 6 interfragment coordinates after moving fragment B
+        printCoords: boolean
+            whether to print the starting and final values of the q's
+        unit_length: string  ; default 'bohr'
+            indicate unit of length, q[0]
+        unit_angle : string  ; default 'rad'
+            indicate unit of angles, q[1-5]
         ------------
-       
-        Returns:  new geometry for B
+        Returns
+        -------
+        array
+            new Cartesian geometry for B
         """
+        if unit_length in ['bohr', 'au']:
+            pass
+        elif unit_length in ['Angstrom', 'Ang', 'A']:
+            if self._D_on[0]:
+                q_target[0] /= qcel.constants.bohr2angstroms
+        else:
+            raise RuntimeError ("unit_length value {} is unknown".format(unit_length))
+
+        if unit_angle in ['rad']:
+            pass
+        elif unit_angle in ['deg', 'degree', 'degrees']:
+            for i in range(1,6):
+                if self._D_on[i]:
+                    q_target[i] *= np.pi/180.0
+        else:
+            raise RuntimeError ("unit_angle value {} is unknown".format(unit_angle))
+
         logger = logging.getLogger(__name__)
         nArefs = self.n_arefs # of ref pts on A to worry about
         nBrefs = self.n_brefs # of ref pts on B to worry about

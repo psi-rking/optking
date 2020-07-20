@@ -3,8 +3,7 @@ import optking
 import numpy as np
 import pytest
 
-# Demonstrate and test positioning two water molecules by specifying
-# their interfragment reference points and coordinates.
+# Test interfragment coordinate B matrix numerically.
 @pytest.mark.dimers
 def test_dimers_bmat():
     h2oA = psi4.geometry("""
@@ -24,6 +23,6 @@ def test_dimers_bmat():
     Itest = optking.dimerfrag.DimerFrag(0, RefAtomsA, 1, RefAtomsB,
                 A_lbl="Water A", B_lbl="Water B")
     max_error = Itest.test_B(Axyz,Bxyz)
-    print('Max error in positioning water dimer: {:8.3e}'.format(max_error))
+    print('Max. difference between analytic and numerical B matrix: {:8.3e}'.format(max_error))
     assert max_error < 1.0e-9
 

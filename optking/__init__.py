@@ -11,7 +11,6 @@ logger = logging.getLogger(__name__)
 
 from . import optparams as op
 op.Params = op.OptParams({})
-print('reading init')
 
 from ._version import get_versions
 __version__ = get_versions()['version']

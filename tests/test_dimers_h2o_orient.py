@@ -50,6 +50,6 @@ def test_dimerfrag_orient_h2o_dimers():
     # Test how we did
     Itest.update_reference_geometry(Axyz, Bxyz_new)
     rms_error = np.sqrt( np.mean((q_target - Itest.q_array())**2) )
-    print('Error in positioning water dimer: {:8.3e}'.format(rms_error))
+    print('RMS deviation from target interfragment coordinates: {:8.3e}'.format(rms_error))
     assert rms_error < 1.0e-10
 
