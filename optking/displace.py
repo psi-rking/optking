@@ -48,6 +48,9 @@ def displace_molsys(oMolsys, dq, fq=None, ensure_convergence=False):
         if F.frozen:
             logger.info("\tFragment %d is frozen, so not displacing" % (iF+1))
             continue
+        elif not F.num_intcos:
+            logger.info("\tFragment %d has no intcos, so not displacing" % (iF+1))
+            continue
         
         logger.info("\tDetermining Cartesian step for fragment %d." % (iF+1))
         dq, conv = displace_frag(F, dq[oMolsys.frag_intco_slice(iF)], ensure_convergence)
@@ -81,6 +84,8 @@ def displace_molsys(oMolsys, dq, fq=None, ensure_convergence=False):
     dqShow = qShow_final - qShow_orig
     oMolsys.unfix_bend_axes()
 
+    intco_lbls = oMolsys.intco_lbls
+
     coordinate_change_report = (
         "\n\n\t       --- Internal Coordinate Step in ANG or DEG, aJ/ANG or AJ/DEG ---\n")
     coordinate_change_report += (
@@ -93,7 +98,7 @@ def displace_molsys(oMolsys, dq, fq=None, ensure_convergence=False):
             "\t         ----------      --------        ------        ------\n")
         for i in range(len(dq)):
             coordinate_change_report += ("\t%19s%14.5f%14.5f%14.5f\n"
-                                         % (i, qShow_orig[i], dqShow[i], qShow_final[i]))
+                                         % (intco_lbls[i], qShow_orig[i], dqShow[i], qShow_final[i]))
     else:
         fq_aJ = oMolsys.q_show_forces(fq)  # print forces for step
         coordinate_change_report += (
@@ -102,7 +107,7 @@ def displace_molsys(oMolsys, dq, fq=None, ensure_convergence=False):
             "\t         ----------      --------        ------          ------        ------\n")
         for i in range(len(dq)):
             coordinate_change_report += ("\t%19s%14.5f%14.5f%14.5f%14.5f\n"
-                                         % (i, qShow_orig[i], fq_aJ[i], dqShow[i], qShow_final[i]))
+                                         % (intco_lbls[i], qShow_orig[i], fq_aJ[i], dqShow[i], qShow_final[i]))
     coordinate_change_report += (
         "\t-----------------------------------------------------------------------------\n")
     logger.info(coordinate_change_report)

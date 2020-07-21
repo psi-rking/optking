@@ -173,6 +173,14 @@ class Molsys(object):
             coords.append(d_coord)
         return coords
 
+    @property
+    def intco_lbls(self):
+        lbls = [str(coord) for f in self._fragments for coord in f.intcos]
+        for DI in self.dimer_intcos:
+            for coord in DI.pseudo_frag.intcos:
+                lbls.append('Dimer({:d},{:d})'.format(DI.a_idx+1,DI.b_idx+1) + str(coord))
+        return lbls
+
     # Return overall index of first atom in fragment, beginning 0,1,...
     # For last fragment returns one past the end.
     def frag_1st_atom(self, iF):
