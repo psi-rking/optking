@@ -159,19 +159,19 @@ class Molsys(object):
     def dimer_intcos(self):
         return self._dimer_intcos
 
-    @property
-    def intcos(self):
-        """ Collect intcos for all fragments. Add dimer coords to end.
-        Returns
-        -------
-        """
-        logger = logging.getLogger(__name__)
-        logger.warning("""This method is currently implemented as a last resort used as a last
-                       resort. Should be safe assuming no dimer coordinates, otherwise unknown.""")
-        coords = [coord for f in self._fragments for coord in f.intcos]
-        for d_coord in self.dimer_intcos:
-            coords.append(d_coord)
-        return coords
+    #@property
+    #def intcos(self):
+    #    """ Collect intcos for all fragments. Add dimer coords to end.
+    #    Returns
+    #    -------
+    #    """
+    #    logger = logging.getLogger(__name__)
+    #    logger.warning("""This method is currently implemented as a last resort used as a last
+    #                   resort. Should be safe assuming no dimer coordinates, otherwise unknown.""")
+    #    coords = [coord for f in self._fragments for coord in f.intcos]
+    #    for d_coord in self.dimer_intcos:
+    #        coords.append(d_coord)
+    #    return coords
 
     @property
     def intco_lbls(self):

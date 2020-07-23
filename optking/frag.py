@@ -162,11 +162,10 @@ class Frag:
     def add_h_bonds(self):
         """ Prepend h_bonds because that's where optking 2 places them """
         h_bonds = addIntcos.add_h_bonds(self.geom, self.Z, self.natom)
-        self._intcos = h_bonds + self._intcos  # prepend internal coordinates
-
         for h_bond in h_bonds:
             if stre.Stre(h_bond.A, h_bond.B) in self._intcos:
                 self._intcos.pop(self._intcos.index(stre.Stre(h_bond.A, h_bond.B)))
+        self._intcos = h_bonds + self._intcos  # prepend internal coordinates
 
     def show_geom(self):
         geometry = ''

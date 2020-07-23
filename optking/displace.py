@@ -90,7 +90,7 @@ def displace_molsys(oMolsys, dq_in, fq=None, ensure_convergence=False):
             "\t         Coordinate      Previous         Change          New \n")
         coordinate_change_report += (
             "\t         ----------      --------        ------        ------\n")
-        for i in range(len(dq)):
+        for i in range(len(dq_in)):
             coordinate_change_report += ("\t%19s%14.5f%14.5f%14.5f\n"
                                          % (intco_lbls[i], qShow_orig[i], dqShow[i], qShow_final[i]))
     else:

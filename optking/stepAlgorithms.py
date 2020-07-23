@@ -71,10 +71,9 @@ def take_step(oMolsys, E, q_forces, H, stepType=None, computer=None):
     else:
         raise OptError('Dq: step type not yet implemented')
 
-    oMolsys.interfrag_dq_discontinuity_correction(dq)
-
     if stepType != 'LINESEARCH':
         # linesearch performs multiple displacements in order to calculate energies
+        oMolsys.interfrag_dq_discontinuity_correction(dq)
         achieved_dq = displace_molsys(oMolsys, dq, q_forces)
 
     dq_norm = np.linalg.norm(achieved_dq)
