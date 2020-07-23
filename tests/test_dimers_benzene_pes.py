@@ -4,9 +4,8 @@ import qcelemental as qcel
 au2kcal = qcel.constants.hartree2kcalmol
 import numpy as np
 import pytest
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 
-# Potential energy scan with two benzenes.
 benz_xyz = """
   C   -1.2025450   -0.6942916    0.0
   C   -1.2025450    0.6942916    0.0
@@ -34,7 +33,8 @@ benz_xyz = """
   H    2.1397760   -1.2353675   10.0
   H    2.1397760    1.2353675   10.0
 """
- 
+
+# Potential energy scan with two benzenes.
 @pytest.mark.dimers
 def test_dimers_benzene_pes():
     dimerMol = psi4.geometry(benz_xyz)
