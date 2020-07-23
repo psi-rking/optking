@@ -197,7 +197,7 @@ class OptParams(object):
         # Hessian update scheme
         self.hess_update = uod.get('HESS_UPDATE', 'BFGS')
         # Number of previous steps to use in Hessian update, 0 uses all
-        self.hess_update_use_last = uod.get('HESS_UPDATE_USE_LAST', 2)
+        self.hess_update_use_last = uod.get('HESS_UPDATE_USE_LAST', 4)
         # Do limit the magnitude of changes caused by the Hessian update?
         self.hess_update_limit = uod.get('HESS_UPDATE_LIMIT', True)
         # If |hess_update_limit| is True, changes to the Hessian from the update are limited
@@ -238,7 +238,7 @@ class OptParams(object):
         # coordinates are not redundant.
         self.frag_mode = uod.get('FRAG_MODE', 'SINGLE')
         # Which atoms define the reference points for interfragment coordinates?
-        self.frag_ref_atoms = uod.get('FRAG_REF_ATOMS', '')
+        self.frag_ref_atoms = uod.get('FRAG_REF_ATOMS', None)
         # Do freeze all fragments rigid?
         self.freeze_intrafrag = uod.get('FREEZE_INTRAFRAG', False)
         # Do freeze all interfragment modes?
@@ -514,6 +514,10 @@ class OptParams(object):
         if self.flexible_g_convergence:
             self.i_untampered = True
         # end __init__ finally !
+
+    # for specialists
+    def __setitem__(self, key, value):
+        return setattr(self, key, value)
 
     def increaseTrustRadius(P):
         logger = logging.getLogger(__name__)

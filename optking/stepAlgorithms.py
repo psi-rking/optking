@@ -73,6 +73,7 @@ def take_step(oMolsys, E, q_forces, H, stepType=None, computer=None):
 
     if stepType != 'LINESEARCH':
         # linesearch performs multiple displacements in order to calculate energies
+        oMolsys.interfrag_dq_discontinuity_correction(dq)
         achieved_dq = displace_molsys(oMolsys, dq, q_forces)
 
     dq_norm = np.linalg.norm(achieved_dq)
@@ -86,7 +87,8 @@ def take_step(oMolsys, E, q_forces, H, stepType=None, computer=None):
 
     # Before quitting, make sure step is reasonable.  It should only be
     # screwball if we are using the "First Guess" after the back-transformation failed.
-    if dq_norm > 10 * op.Params.intrafrag_trust:
+    dq_norm = np.linalg.norm(achieved_dq[0:oMolsys.num_intrafrag_intcos])
+    if dq_norm > 5 * op.Params.intrafrag_trust:
         raise AlgError("opt.py: Step is far too large.")
 
     return achieved_dq

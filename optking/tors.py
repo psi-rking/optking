@@ -79,7 +79,7 @@ class Tors(Simple):
         try:
             tau = v3d.tors(geom[self.A], geom[self.B], geom[self.C], geom[self.D])
         except AlgError as error:
-            raise RuntimeError("Tors.q: unable to compute torsion value") from error
+            raise AlgError("Tors.q: unable to compute torsion value") from error
 
         # Extend values domain of torsion angles beyond pi or -pi, so that
         # delta(values) can be calculated

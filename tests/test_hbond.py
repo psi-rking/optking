@@ -1,7 +1,6 @@
 import pytest
 import numpy as np
 
-import optking.molsys
 import optking.stre
 import optking.bend
 import optking.tors
@@ -12,9 +11,15 @@ import optking.optparams as op
 import optking.caseInsensitiveDict
 
 
-@pytest.mark.parametrize('options, expected', [((-1.5 / 4, 0), False), ((0, 0), True),
-                                               ((0, (-np.pi / 8) * 180), False),
-                                               ((3.2 / 4, 0), False)])
+# stretch displacement
+# bend displacement
+# whether h bond should be detected
+@pytest.mark.skip
+@pytest.mark.parametrize('options, expected', [
+ ((     0,        0), True),
+ ((-0.375,        0), False),
+ ((     0, -np.pi/8), False),
+ ((   0.8,        0), False)])
 def test_hydrogen_bonds(options, expected):
 
     # Manually construct water dimer in single frag mode
@@ -51,18 +56,16 @@ def test_hydrogen_bonds(options, expected):
     intcos = [s1, s2, s3, s4, s5, b1, b2, b3, b4, b5, t1, t2, t3]
 
     o_frag = optking.frag.Frag(Z, geom, masses, intcos)
-    o_molsys = optking.molsys.Molsys([o_frag])
 
     dq = np.zeros(13)
     dq[2] = options[0]
     dq[8] = options[1]
 
     # Displace in Bohr and degrees. Do four smaller displacements
-    optking.displace.displace_molsys(o_molsys, dq, ensure_convergence=True)
-    optking.displace.displace_molsys(o_molsys, dq, ensure_convergence=True)
-    optking.displace.displace_molsys(o_molsys, dq, ensure_convergence=True)
-    optking.displace.displace_molsys(o_molsys, dq, ensure_convergence=True)
+    optking.displace.displace_frag(o_frag, dq)
+    o_frag.add_h_bonds()
 
-    o_molsys.fragments[0].add_h_bonds()
+    assert (optking.stre.HBond(0, 4) in o_frag.intcos) == expected
 
-    assert (optking.stre.HBond(0, 4) in o_molsys.intcos) == expected
+#test_hydrogen_bonds( (-0.5,0), True)
+

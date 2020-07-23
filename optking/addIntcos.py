@@ -12,6 +12,7 @@ from . import tors
 from . import bend
 from . import cart
 from . import dimerfrag
+from .v3d import are_collinear
 
 # Functions related to freezing, fixing, determining, and
 #    adding coordinates.
@@ -563,25 +564,74 @@ def add_dimer_frag_intcos(oMolsys):
     # TODO add custom weights
     # TODO pass fragment labels
     # TODO maybe move into a molsys class function?
-    # Assuming that for trimers+, the same reference atoms are desired for
-    # each coordinate on same fragment.
    
-    # User reference atoms start numbering from 1.  Decrement here.
-    atoms = deepcopy(op.Params.frag_ref_atoms)
-    for iF, F in enumerate(atoms):        # frag 0, frag 1
-        for iRP, RP in enumerate(F):      # reference points
-            for iAT in range(len(RP)):  # atoms
-                atoms[iF][iRP][iAT] -= 1
+    if op.Params.frag_ref_atoms is not None:
+        # User-defined ref atoms starting from 1. Decrement here.
+        # Assuming that for trimers+, the same reference atoms are
+        # desired for each coordinate involving that fragment.
+        frag_ref_atoms = deepcopy(op.Params.frag_ref_atoms)
+        for iF, F in enumerate(frag_ref_atoms): # fragments
+            for iRP, RP in enumerate(F):        # reference points
+                for iAT in range(len(RP)):      # atoms
+                    frag_ref_atoms[iF][iRP][iAT] -= 1
 
-    for i in range(oMolsys.nfragments):
-        for j in range(i+1, oMolsys.nfragments):
-            # print('add_dimer_frag_intcos atom lists:')
-            # print(atoms[i])
-            # print(atoms[j])
-            df = dimerfrag.DimerFrag(i, atoms[i], j, atoms[j])
-            df.update_reference_geometry(oMolsys.frag_geom(i), oMolsys.frag_geom(j))
+        for A, B in combinations(range(oMolsys.nfragments),r=2):
+            df = dimerfrag.DimerFrag(A, frag_ref_atoms[A], B, frag_ref_atoms[B])
+            df.update_reference_geometry(oMolsys.frag_geom(A), oMolsys.frag_geom(B))
             oMolsys.dimer_intcos.append(df)
-    # print('end of add_dimer_frag_intcos')
-    # print(oMolsys)
+
+    else: # autogenerate interfragment coordinates
+        for A, B in combinations(range(oMolsys.nfragments),r=2):
+            xyzA = oMolsys.frag_geom(A)
+            xyzB = oMolsys.frag_geom(B)
+            # Choose closest two atoms for 1st reference pt.
+            (refA1, refB1) = oMolsys.closest_atoms_between_2_frags(A, B)
+            frag_ref_atomsA = [ [refA1] ]
+            frag_ref_atomsB = [ [refB1] ]
+            # Find ref. pt. 2 on A.
+            if not oMolsys.fragments[A].is_atom():
+                for i in range(oMolsys.fragments[A].natom):
+                    if i == refA1 or are_collinear(xyzA[i],xyzA[refA1],xyzB[refB1]):
+                        continue
+                    refA2 = i
+                    frag_ref_atomsA.append([refA2])
+                    break
+                else:
+                    raise OptError('could not find 2nd atom on fragment {:d}'.format(A+1))
+            # Find ref. pt. 2 on B.
+            if not oMolsys.fragments[B].is_atom():
+                for i in range(oMolsys.fragments[B].natom):
+                    if i == refB1 or are_collinear(xyzB[i],xyzB[refB1],xyzA[refA1]):
+                        continue
+                    refB2 = i
+                    frag_ref_atomsB.append([refB2])
+                    break
+                else:
+                    raise OptError('could not find 2nd atom on fragment {:d}'.format(B+1))
+            # Find ref. pt. 3 on A.
+            if oMolsys.fragments[A].natom > 2 and not oMolsys.fragments[A].is_linear():
+                for i in range(oMolsys.fragments[A].natom):
+                    if i in [refA1,refA2] or are_collinear(xyzA[i],xyzA[refA2],xyzA[refA1]):
+                        continue
+                    frag_ref_atomsA.append([i])
+                    break
+                else:
+                    raise OptError('could not find 3rd atom on fragment {:d}'.format(A+1))
+            # Find ref. pt. 3 on B.
+            if oMolsys.fragments[B].natom > 2 and not oMolsys.fragments[B].is_linear():
+                for i in range(oMolsys.fragments[B].natom):
+                    if i in [refB1,refB2] or are_collinear(xyzB[i],xyzB[refB2],xyzB[refB1]):
+                        continue
+                    frag_ref_atomsB.append([i])
+                    break
+                else:
+                    raise OptError('could not find 3rd atom on fragment {:d}'.format(A+1))
+
+            df = dimerfrag.DimerFrag(A, frag_ref_atomsA, B, frag_ref_atomsB)
+            df.update_reference_geometry(oMolsys.frag_geom(A), oMolsys.frag_geom(B))
+            oMolsys.dimer_intcos.append(df)
+
+        #print('end of add_dimer_frag_intcos')
+        #print(oMolsys)
     return
 

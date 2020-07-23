@@ -2,7 +2,7 @@ import json
 import logging
 
 import numpy as np
-from itertools import permutations
+from itertools import permutations,combinations
 
 import qcelemental as qcel
 from qcelemental.models import Molecule
@@ -159,19 +159,27 @@ class Molsys(object):
     def dimer_intcos(self):
         return self._dimer_intcos
 
+    #@property
+    #def intcos(self):
+    #    """ Collect intcos for all fragments. Add dimer coords to end.
+    #    Returns
+    #    -------
+    #    """
+    #    logger = logging.getLogger(__name__)
+    #    logger.warning("""This method is currently implemented as a last resort used as a last
+    #                   resort. Should be safe assuming no dimer coordinates, otherwise unknown.""")
+    #    coords = [coord for f in self._fragments for coord in f.intcos]
+    #    for d_coord in self.dimer_intcos:
+    #        coords.append(d_coord)
+    #    return coords
+
     @property
-    def intcos(self):
-        """ Collect intcos for all fragments. Add dimer coords to end.
-        Returns
-        -------
-        """
-        logger = logging.getLogger(__name__)
-        logger.warning("""This method is currently implemented as a last resort used as a last
-                       resort. Should be safe assuming no dimer coordinates, otherwise unknown.""")
-        coords = [coord for f in self._fragments for coord in f.intcos]
-        for d_coord in self.dimer_intcos:
-            coords.append(d_coord)
-        return coords
+    def intco_lbls(self):
+        lbls = [str(coord) for f in self._fragments for coord in f.intcos]
+        for DI in self.dimer_intcos:
+            for coord in DI.pseudo_frag.intcos:
+                lbls.append('Dimer({:d},{:d})'.format(DI.a_idx+1,DI.b_idx+1) + str(coord))
+        return lbls
 
     # Return overall index of first atom in fragment, beginning 0,1,...
     # For last fragment returns one past the end.
@@ -259,6 +267,13 @@ class Molsys(object):
             N += F.num_intcos
         for DI in self._dimer_intcos:
             N += DI.num_intcos
+        return N
+
+    @property
+    def num_intrafrag_intcos(self):
+        N = 0
+        for F in self._fragments:
+            N += F.num_intcos
         return N
 
     @property
@@ -376,7 +391,6 @@ class Molsys(object):
         for iF in range(self.nfragments):
             fl = [i for i in self.frag_atom_range(iF)]
             l.append(fl)
-        #print("l",l)
         return l
 
     def molsys_to_qc_molecule(self) -> qcel.models.Molecule:
@@ -575,6 +589,28 @@ class Molsys(object):
                     "\tIncreasing scaling to %6.3f to connect fragments." % scale_dist)
         return
 
+    def distance_matrix(self):
+        xyz = self.geom
+        R = np.zeros( (self.natom,self.natom) )
+        for i,j in combinations(range(self.natom),r=2):
+            R[i,j] = R[j,i] = v3d.dist(xyz[i],xyz[j])
+        return R
+
+    # Given fragment numbers A and B, determine the closest two atoms between
+    # the fragments; return the local/fragment index for both.
+    def closest_atoms_between_2_frags(self, A, B):
+        self.distance_matrix()
+        fragAtoms = self.fragments_atom_list
+        xyz = self.geom
+        closestR = 1e10
+        R = self.distance_matrix()
+        for f1_atom in fragAtoms[A]:
+            for f2_atom in fragAtoms[B]:
+                if R[f1_atom, f2_atom] < closestR:
+                    closestR = R[f1_atom,f2_atom]
+                    save = (f1_atom,f2_atom)
+        return (save[0]-self.frag_1st_atom(A), save[1]-self.frag_1st_atom(B))
+
     def clear(self):
         self._fragments.clear()
         # self._fb_fragments.clear()
@@ -607,6 +643,10 @@ class Molsys(object):
             F.unfix_bend_axes()
         for DI in self._dimer_intcos:
             DI._pseudo_frag.unfix_bend_axes()
+
+    def interfrag_dq_discontinuity_correction(self,dq):
+        for iDI, DI in enumerate(self._dimer_intcos):
+            DI.dq_discontinuity_correction(dq[self.dimerfrag_intco_slice(iDI)])
 
     # Returns mass-weighted Bmatrix if masses are supplied.
     def compute_b_mat(self, masses=None):
