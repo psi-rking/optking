@@ -6,6 +6,8 @@ import qcelemental as qcel
 from . import stre, bend, tors, oofp
 from . import addIntcos
 from .printTools import print_array_string, print_mat_string
+from itertools import combinations
+from .v3d import are_collinear
 
 
 class Frag:
@@ -213,4 +215,19 @@ class Frag:
             if isinstance(intco, tors.Tors) or isinstance(intco, oofp.Oofp):
                 intco.update_orientation(self.geom)
 
+    def is_atom(self):
+        if self.natom == 1:
+           return True
+        else:
+           return False
+
+    def is_linear(self):
+        if self.natom in [1,2]:  # lets tentatively call an atom linear here
+            return True
+        else:
+            xyz = self.geom
+            for (i,j,k) in combinations(range(self.natom),r=3):
+                if not are_collinear(xyz[i], xyz[j], xyz[k]):
+                    return False
+            return True
 

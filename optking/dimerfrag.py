@@ -277,7 +277,7 @@ class DimerFrag(object):
 
         s =  "\tFragment %s\n" %  self._A_lbl
         for i,r in enumerate(reversed(self._Arefs)):
-            s += "\t\tDimer point %d (Ref. pt. %d):\n" % (i+1,3-i)
+            s += "\t\tDimer point %d (Ref. pt. %d):\n" % (3-i,i+1)
             s += r.__str__()
         s += "\n\tFragment %s\n" %  self._B_lbl
         for i,r in enumerate(self._Brefs):
@@ -476,19 +476,21 @@ class DimerFrag(object):
             phi_B   = q_target[cnt]
             cnt += 1
     
+        # print this to DEBUG log always; to INFO upon request
+        s =  "\t---DimerFrag coordinates between fragments %s and %s\n" % (self._A_lbl, self._B_lbl)
+        s += "\t---Internal Coordinate Step in ANG or DEG, aJ/ANG or AJ/DEG ---\n"
+        s += "\t ----------------------------------------------------------------------\n"
+        s += "\t Coordinate             Previous     Change       Target\n"
+        s += "\t ----------             --------      -----       ------\n"
+   
+        for i in range(self.num_intcos):
+            c = self.pseudo_frag.intcos[i].q_show_factor # for printing to Angstroms/degrees
+            s += "\t%-20s%12.5f%13.5f%13.5f\n" % (active_lbls[i],
+                     c * q_orig[i], c * dq_target[i], c * q_target[i])
+        
+        s += "\t ----------------------------------------------------------------------"
+        logger.debug(s)
         if printCoords:
-            s =  "\t---DimerFrag coordinates between fragments %s and %s" % (self._A_lbl, self._B_lbl)
-            s += "\t---Internal Coordinate Step in ANG or DEG, aJ/ANG or AJ/DEG ---"
-            s += "\t ----------------------------------------------------------------------"
-            s += "\t Coordinate             Previous     Change       Target"
-            s += "\t ----------             --------      -----       ------"
-    
-            for i in range(self.num_intcos):
-                c = self.pseudo_frag.intcos[i].q_show_factor # for printing to Angstroms/degrees
-                s += "\t%-20s%12.5f%13.5f%13.5f" % (active_lbls[i],
-                         c * q_orig[i], c * dq_target[i], c * q_target[i])
-            
-            s += "\t ----------------------------------------------------------------------"
             logger.info(s)
       
         # From here on, for simplicity we include 3 reference atom rows, even if we don't
@@ -791,6 +793,22 @@ class DimerFrag(object):
 
         return max_error
 
+
+    # Perhaps gradually add more sophisticated fixes for discontinuities in steps
+    def dq_discontinuity_correction(self, dq):
+        logger = logging.getLogger(__name__)
+        q_target = self.q_array() + dq
+        if self.d_on(0):
+            if q_target[0] < 0.0:
+                logger.warning("RAB is positive. good")
+        if self.d_on(1):
+            if q_target[1] < 0.0:
+                logger.warning("Uh oh. theta A going negative")
+                #dq[1] = 0.017453 #one degree
+        #if self.d_on(2):
+        #if self.d_on(3):
+        #if self.d_on(4):
+        #if self.d_on(5):
     
 def test_orient(NA, NB, printInfo=False) :
     """ Test the orient_fragment function to see if pre-determined target

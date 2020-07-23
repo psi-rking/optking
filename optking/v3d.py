@@ -294,8 +294,7 @@ def are_collinear(A, B, C, threshold=1.0e-8):
     eAB = B - A
     eAC = C - A
     cr = cross(eAB,eAC)
-    normSQ = dot(cr,cr)
-    if normSQ < threshold:
+    if dot(cr,cr) < threshold:
         return True
     else: 
         return False
