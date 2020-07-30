@@ -65,8 +65,9 @@ def optimize_psi4(calc_name, program='psi4', dertype=None, XtraOptParams=None):
             else:
                 qc_keys[option.lower()] = psi4.core.get_global_option(option)
 
-    for XtraKey, XtraValue in XtraOptParams.items():
-        opt_keys[XtraKey.lower()] = XtraValue
+    if XtraOptParams is not None:
+        for XtraKey, XtraValue in XtraOptParams.items():
+            opt_keys[XtraKey.lower()] = XtraValue
 
     # Make a qcSchema OptimizationInput
     opt_input = {"keywords": opt_keys,
