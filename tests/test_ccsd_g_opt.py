@@ -134,9 +134,9 @@ def test_uccsdpt_ch2():
     REF_scf     = -38.9265520844 #TEST
     REF_ccsd_t  =  -0.1171601876 #TEST
     REF_total   = -39.0437122710 #TEST
-    print( '{:15.10f}'.format(this_scf))
-    print( '{:15.10f}'.format(this_ccsd_t))
-    print( '{:15.10f}'.format(this_total))
+    #print( '{:15.10f}'.format(this_scf))
+    #print( '{:15.10f}'.format(this_ccsd_t))
+    #print( '{:15.10f}'.format(this_total))
     assert psi4.compare_values(REF_scf,    this_scf,    6, "SCF energy") #TEST
     assert psi4.compare_values(REF_ccsd_t, this_ccsd_t, 6, "CCSD(T) contribution") #TEST
     assert psi4.compare_values(REF_total,  this_total,  6, "Total CCSD(T) energy") #TEST

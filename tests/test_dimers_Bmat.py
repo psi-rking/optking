@@ -18,11 +18,26 @@ def test_dimers_bmat():
          H 1 1.0 2 104.5
     """)
     Bxyz = Axyz.copy() + 5.0 # Move B not right on top of A.
-    RefAtomsA = [ [0],[1,2],[2] ]
-    RefAtomsB = [ [0],[1,2],[2] ]
-    Itest = optking.dimerfrag.DimerFrag(0, RefAtomsA, 1, RefAtomsB,
-                A_lbl="Water A", B_lbl="Water B")
+
+    dimer = {
+      'Natoms per frag': [3, 3],
+      'A Frag': 1,
+      'A Ref Atoms': [[1], [2,3], [3]],
+      'B Frag': 2,
+      'B Ref Atoms': [[4], [5,6], [6]]
+    }
+    Itest = optking.dimerfrag.DimerFrag.fromUserDict(dimer)
+
+    # Here is lower level method
+    # Aref = [[0],[1,2],[2]]
+    # Bref = [[0],[1,2],[2]]
+    # Itest = optking.dimerfrag.DimerFrag(0,Aref,1,Bref)
+
+    Itest.update_reference_geometry(Axyz,Bxyz)
+    print(Itest)
+
     max_error = Itest.test_B(Axyz,Bxyz)
+
     print('Max. difference between analytic and numerical B matrix: {:8.3e}'.format(max_error))
     assert max_error < 1.0e-9
 

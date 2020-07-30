@@ -37,47 +37,46 @@ benz_xyz = """
 # Potential energy scan with two benzenes.
 @pytest.mark.dimers
 def test_dimers_benzene_pes():
-    dimerMol = psi4.geometry(benz_xyz)
 
-    Axyz = dimerMol.geometry().np[0:12,]
-    Bxyz = dimerMol.geometry().np[12:,]
+    # Define the fragments and reference pts for dimers.
+    dimer = {
+      'Natoms per frag': [12, 12],
+      'A Frag': 1,
+      'A Ref Atoms': [ [1,2,3,4,5,6], # COM (between Carbon's)
+                       [3], # carbon on x-axis
+                       [2]], # another carbon
+      'B Frag': 2,
+      'B Ref Atoms': [ [13,14,15,16,17,18], # COM (between Carbon's)
+                       [15], # carbon on x-axis
+                       [14]], # another carbon
+    }
 
-    # Define some reference atoms
-    ArefAtoms = [ [0,1,2,3,4,5], # COM (between Carbon's)
-                  [2], # carbon on x-axis
-                  [1]] # another carbon
-    BrefAtoms = [ [0,1,2,3,4,5], # COM (between Carbon's)
-                  [2], # carbon on x-axis
-                  [1]] # another carbon
-
-    dimerCoord = optking.dimerfrag.DimerFrag(0, ArefAtoms, 1, BrefAtoms)
-
-    # Here are the dimer coordinates defined, with their values in the
-    # default of au or radians.:
-    # name  = value         # description
-    R       =   6.0         # Distance A1 to B1 (in this case, between COM's)
-    theta_A =  np.pi/2      # Angle,          A2-A1-B1
-    theta_B =  np.pi/2      # Angle,          A1-B1-B2
-    tau     =   0.0         # Dihedral angle, A2-A1-B1-B2
-    phi_A   =  np.pi/2      # Dihedral angle, A3-A2-A1-B1
-    phi_B   = -np.pi/2      # Dihedral angle, A1-B1-B2-B3
-    # To see starting values:
-    # dimerCoord.update_reference_geometry(Axyz, Bxyz)
-    #q = dimerCoord.q_array()
-    #print(q)
+    dimerCoord = optking.dimerfrag.DimerFrag.fromUserDict(dimer)
 
     # Choose a theory.
     psi4.core.clean_options()
     psi4_options = { 'basis':'sto-3g', 'd_convergence':'9' }
     psi4.set_options(psi4_options)
 
-    # Vary tau, spinning one benzene ring above another parallel one at a distance of 6
-    # Angstroms.  Use degrees.
-    R       =   3.0         # Distance A1 to B1 (in this case, between COM's)
-    theta_A =  90.0
-    theta_B =  90.0
-    phi_A   =  90.0
-    phi_B   = -90.0
+    # Here are the specific coordinates defined.  Default is au or radians for
+    # orient_fragment().  Can specific deg or Angstroms.
+    # Let's vary tau, spinning one benzene ring above another parallel one
+    # at a distance of 6 Angstroms.  Use degrees.
+    # Name           # Description
+    R       =   3.0  # Distance A1 to B1 (in this case, between COM's)
+    theta_A =  90.0  # Angle,          A2-A1-B1
+    theta_B =  90.0  # Angle,          A1-B1-B2
+    tau     =   0.0  # Dihedral angle, A2-A1-B1-B2
+    phi_A   =  90.0  # Dihedral angle, A3-A2-A1-B1
+    phi_B   = -90.0  # Dihedral angle, A1-B1-B2-B3
+
+    dimerMol = psi4.geometry(benz_xyz)
+    Axyz = dimerMol.geometry().np[0:12,]
+    Bxyz = dimerMol.geometry().np[12:,]
+    # To see starting values:
+    # dimerCoord.update_reference_geometry(Axyz, Bxyz)
+    # print( dimerCoord.q_array() )
+
     E_tau   = []
     for tau in range(0,181,30):
         q_target = np.array([R, theta_A, theta_B, tau, phi_A, phi_B])

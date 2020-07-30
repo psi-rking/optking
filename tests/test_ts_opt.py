@@ -27,7 +27,7 @@ def test_hooh_TS():
     json_output = optking.optimize_psi4('hf')
 
     E = json_output['energies'][-1] #TEST
-    print( '{:15.10f}'.format(E) )
+    #print( '{:15.10f}'.format(E) )
     C2H_TS_ENERGY = -150.7854114803 #TEST
     assert psi4.compare_values(C2H_TS_ENERGY, E, 6, "RHF Energy after optimization to C2H TS") #TEST
 
@@ -84,7 +84,7 @@ def test_hooh_min():
     json_output = optking.optimize_psi4('hf')
 
     E = json_output['energies'][-1] #TEST
-    print( '{:15.10f}'.format(E) )
+    #print( '{:15.10f}'.format(E) )
     MIN_ENERGY    = -150.7867668 #TEST
     assert psi4.compare_values(MIN_ENERGY, E, 6, "RHF Energy") #TEST
 

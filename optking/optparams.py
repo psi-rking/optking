@@ -252,6 +252,11 @@ class OptParams(object):
         # P.auxiliary_bond_factor = uod.get('AUXILIARYBOND_FACTOR', 2.5)
         # Do use 1/R for the interfragment stretching coordinate instead of R?
         self.interfrag_dist_inv = uod.get('INTERFRAG_DIST_INV', False)
+
+        # Let the user submit a dictionary (or array of dictionaries) for
+        # the interfrag coordinates.
+        self.interfrag_coords = uod.get('interfrag_coords', None)
+
         # Model Hessian to guess interfragment force constants
         # P.interfrag_hess = uod.get('INTERFRAG_HESS', 'DEFAULT')
         # When determining connectivity, a bond is assigned if interatomic distance

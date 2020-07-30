@@ -22,18 +22,25 @@ def test_dimerfrag_orient_h2o_dimers():
     Bxyz = Axyz.copy() + 5.0 # Move B not right on top of A.
 
     # Choose some reference atoms for each fragment.
-    # The numbering starts at zero.  These would be
-    # the O atom, the point between the two H atoms,
+    # These would be # the O atom, the point between the two H atoms,
     # and one of the hydrogen atoms for each fragment.
-    RefAtomsA = [ [0],[1,2],[2] ]
-    RefAtomsB = [ [0],[1,2],[2] ]
+
+    dimer = {
+       'Natoms per frag': [3, 3],
+       'A Frag'     : 1,
+       'A Ref Atoms': [[1], [2,3], [3]],
+       'A Label' : 'Water-A', #optional
+       'B Frag'     : 2,
+       'B Ref Atoms': [[4], [5,6], [6]],
+       'B Label' : 'Water-B' #optional
+    }
 
     # The default weights are equal between involved atoms but 
     # may be specified.  Fragment labels are optional.
-    Itest = optking.dimerfrag.DimerFrag(0, RefAtomsA, 1, RefAtomsB,
-                A_lbl="Water A", B_lbl="Water B")
+    Itest = optking.dimerfrag.DimerFrag.fromUserDict(dimer)
     Itest.update_reference_geometry(Axyz,Bxyz)
     #print(Itest)
+   # Reference atoms for 2nd fragment:
 
     # Create arbitrary target for displacement with illustrative names.
     R_A1B1       =  3.4
@@ -46,8 +53,6 @@ def test_dimerfrag_orient_h2o_dimers():
     q_target = np.array( [R_A1B1, theta_A2A1B1, theta_A1B1B2,
                 tau_A2A1B1B2, phi_A3A2A1B1, phi_A1B1B2B3] )
     Bxyz_new = Itest.orient_fragment(Axyz, Bxyz, q_target)
-    print(Axyz)
-    print(Bxyz_new)
 
     # Test how we did
     Itest.update_reference_geometry(Axyz, Bxyz_new)
