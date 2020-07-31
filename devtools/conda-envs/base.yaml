@@ -3,21 +3,13 @@ channels:
   - default
   - psi4
 dependencies:
-    # Base depends
+    # Base
   - numpy
   - python
-  - qcelemental >=0.1.2
+  - qcelemental
 
     # Testing
   - pytest
   - pytest-cov
   - dftd3
-
-    # Pip depends
-  - pip:
-      # Base depends
-#    - pint
-
-      # Testing
-    - codecov
-    - deepdiff
+  - codecov
