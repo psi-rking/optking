@@ -85,7 +85,7 @@ def test_dimers_benzene_pes():
         dimerMol.set_geometry( xyz )
         E_tau.append( [tau, xyz.to_array(), psi4.energy('scf')] )
 
-    E_tau = np.array(E_tau)
+    E_tau = np.array(E_tau, dtype=object)
     Emin = min(E_tau[:,2])
     E_tau[:,2] = au2kcal*(E_tau[:,2] - Emin)
 
@@ -122,7 +122,7 @@ def test_dimers_benzene_pes():
         dimerMol.set_geometry( xyz )
         E_theta_A.append( [theta_A, xyz.to_array(), psi4.energy('scf')] )
 
-    E_theta_A = np.array(E_theta_A)
+    E_theta_A = np.array(E_theta_A, dtype=object)
     Emin = min(E_theta_A[:,2])
     E_theta_A[:,2] = au2kcal*(E_theta_A[:,2] - Emin)
 
@@ -159,7 +159,7 @@ def test_dimers_benzene_pes():
         dimerMol.set_geometry( xyz )
         E_phi_A.append( [phi_A, xyz.to_array(), psi4.energy('scf')] )
 
-    E_phi_A = np.array(E_phi_A)
+    E_phi_A = np.array(E_phi_A, dtype=object)
     Emin = min(E_phi_A[:,2])
     E_phi_A[:,2] = au2kcal*(E_phi_A[:,2] - Emin)
 
