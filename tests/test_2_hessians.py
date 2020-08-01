@@ -14,9 +14,9 @@ def test_hess_every(every, expected):
 
     hooh = psi4.geometry("""
         H
-        O 1 0.9
-        O 2 1.4 1 100.0
-        H 3 0.9 2 100.0 1 170.0
+        O 1 0.95
+        O 2 1.39 1 102.0
+        H 3 0.95 2 102.0 1 130.0
         """)
     
     psi4.core.clean_options()
@@ -40,9 +40,9 @@ def test_hess_guess(guess, expected):
 
     hooh = psi4.geometry("""
         H
-        O 1 0.9
-        O 2 1.4 1 100.0
-        H 3 0.9 2 100.0 1 170.0
+        O 1 0.95
+        O 2 1.39 1 102.0
+        H 3 0.95 2 102.0 1 130.0
         """)
 
     psi4.core.clean_options()
@@ -65,9 +65,9 @@ def test_hess_update(update, expected):
 
     hooh = psi4.geometry("""
         H
-        O 1 0.9
-        O 2 1.4 1 100.0
-        H 3 0.9 2 100.0 1 170.0
+        O 1 0.95
+        O 2 1.39 1 102.0
+        H 3 0.95 2 102.0 1 130.0
         """)
 
     psi4.core.clean_options()

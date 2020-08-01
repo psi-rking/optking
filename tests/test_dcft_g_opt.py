@@ -38,16 +38,17 @@ def test_dcft_O2():
     assert psi4.compare_values(REF_mp2, this_mp2, 6, "MP2 Energy") #TEST
     assert psi4.compare_values(REF_dct, this_dct, 6, "DC-06 Energy (two-step response)") #TEST
 
+    # Psi4 should test this; so optking shouldn't need to.
     # Now try alternative response
-    psi4.set_options( {'response_algorithm': 'simultaneous'} )
-    o2.R = 1.232
-
-    result = optking.optimize_psi4('dct')
-
-    this_uhf = result['trajectory'][-1]['properties']['scf_total_energy']
-    this_mp2 = result['trajectory'][-1]['properties']['mp2_total_energy']
-    this_dct = result['energies'][-1]
-    assert psi4.compare_values(REF_uhf, this_uhf, 6, "UHF Energy");
-    assert psi4.compare_values(REF_mp2, this_mp2, 6, "MP2 Energy");
-    assert psi4.compare_values(REF_dct, this_dct, 6, "DC-06 Energy (simultaneous response)");
+    #psi4.set_options( {'response_algorithm': 'simultaneous'} )
+    #o2.R = 1.232
+    #
+    #result = optking.optimize_psi4('dct')
+    #
+    #this_uhf = result['trajectory'][-1]['properties']['scf_total_energy']
+    #this_mp2 = result['trajectory'][-1]['properties']['mp2_total_energy']
+    #this_dct = result['energies'][-1]
+    #assert psi4.compare_values(REF_uhf, this_uhf, 6, "UHF Energy");
+    #assert psi4.compare_values(REF_mp2, this_mp2, 6, "MP2 Energy");
+    #assert psi4.compare_values(REF_dct, this_dct, 6, "DC-06 Energy (simultaneous response)");
 

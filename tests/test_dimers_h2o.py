@@ -82,10 +82,11 @@ def test_dimers_h2o_auto(): # auto reference pt. creation
       'basis': 'aug-cc-pvdz',
       'geom_maxiter': 40,
       'frag_mode':'MULTI',
-      'g_convergence':'gau_verytight'
+      'g_convergence':'gau_tight'
     }
     psi4.set_options(psi4_options)
     json_output = optking.optimize_psi4('mp2')
     E = json_output['energies'][-1]
     assert psi4.compare_values(MP2minEnergy, E, 6, "MP2 Energy opt from afar, auto")
+
 

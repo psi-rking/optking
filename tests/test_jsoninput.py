@@ -7,25 +7,11 @@ import psi4
 
 from qcelemental.models import OptimizationInput
 
-# Old test. This is not a valid optimizationInput
-#def test_input_through_run_qcschema():
-#    refnucenergy = 8.9064890670
-#    refenergy = -74.965901192
-#
-#    json_dict_in = {"schema_name": "qcschema_input", "schema_version": 1, "molecule": { "geometry": [ 0.0, 0.0, 0.28100228, 0.0, 1.42674323, -0.8431958, 0.0, -1.42674323, -0.8431958 ], "symbols": [ "O", "H", "H" ], "masses": [ 15.994915, 1.007825, 1.007825 ] }, "driver": "optimize", "model": { "method": "hf", "basis": "sto-3g" }, "keywords": { "diis": False, "e_convergence": 10, "d_convergence": 10, "scf_type": "pk", "optimizer": { "output_type": "JSON" }}}
-#
-#    json_dict = optking.run_qcschema(json_dict_in)
-#
-#    assert psi4.compare_values(refnucenergy, json_dict['properties']['nuclear_repulsion_energy'], 3,
-#         "Nuclear repulsion energy")
-#    assert psi4.compare_values(refenergy, json_dict['properties']['return_energy'], 6,
-#        "Reference energy")
-
-
+# Varying number of repulsion energy decimals to check.
 @pytest.mark.parametrize("inp,expected", [
-    ('jsoninput.json', (8.9064890670, -74.965901192)),
-    ('json_betapinene.json', (568.2219045869, -383.38105559)),
-    ('json_hooh_frozen.json', (37.969354880, -150.786372411))
+    ('json_h2o.json', (8.9064890670, -74.965901192, 3)),
+    ('json_betapinene.json', (568.2219045869, -383.38105559, 1)),
+    ('json_hooh_frozen.json', (37.969354880, -150.786372411, 2))
 ])
 def test_input_through_json(inp, expected):
     with open(os.path.join(os.path.dirname(__file__), inp)) as input_data:
@@ -40,8 +26,8 @@ def test_input_through_json(inp, expected):
     #to its original state
     #with open(os.path.join(os.path.dirname(__file__), inp)) as input_data:
     #    json_dict = json.load(input_data)
-    assert psi4.compare_values(expected[0], json_dict['trajectory'][-1]['properties']['nuclear_repulsion_energy'], 2,
-         "Nuclear repulsion energy")
+    assert psi4.compare_values(expected[0], json_dict['trajectory'][-1]['properties']['nuclear_repulsion_energy'],
+         expected[2], "Nuclear repulsion energy")
     assert psi4.compare_values(expected[1], json_dict['trajectory'][-1]['properties']['return_energy'], 6,
         "Reference energy")
 

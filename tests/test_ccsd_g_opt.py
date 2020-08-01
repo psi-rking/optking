@@ -1,5 +1,6 @@
 import psi4
 import optking
+import pytest
 
 #! RHF-CCSD 6-31G** all-electron opt of H2O, default convergence
 def test_ccsd_h2o():
@@ -103,6 +104,7 @@ def test_uccsd_ch2():
 
 
 #! UHF-CCSD(T)/cc-pVDZ $^{3}B@@1$ CH2 geometry optimization via analytic gradients
+@pytest.mark.long
 def test_uccsdpt_ch2():
 
     ch2 = psi4.geometry("""
