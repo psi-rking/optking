@@ -492,7 +492,6 @@ def make_internal_coords(oMolsys):
     -------
     oMolsys: Molsys
         The molecular system updated with internal coordinates.
-        TODO: why not just add them to existing one?
     """
     optimize_log = logging.getLogger(__name__)
     optimize_log.debug("\t Adding internal coordinates to molecular system")

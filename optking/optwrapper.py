@@ -17,7 +17,7 @@ from .printTools import welcome
 from .exceptions import OptError
 
 
-def optimize_psi4(calc_name, program='psi4', dertype=None):
+def optimize_psi4(calc_name, program='psi4', dertype=None, XtraOptParams=None):
     """
     Wrapper for optimize.optimize() Looks for an active psi4 molecule and optimizes.
     This is the written warning that Optking will try to use psi4 if no program is provided
@@ -64,6 +64,10 @@ def optimize_psi4(calc_name, program='psi4', dertype=None):
                 pass
             else:
                 qc_keys[option.lower()] = psi4.core.get_global_option(option)
+
+    if XtraOptParams is not None:
+        for XtraKey, XtraValue in XtraOptParams.items():
+            opt_keys[XtraKey.lower()] = XtraValue
 
     # Make a qcSchema OptimizationInput
     opt_input = {"keywords": opt_keys,
@@ -181,4 +185,6 @@ def initialize_options(opt_keys):
 
     # TODO we should make this just be a normal object
     #  we should return it to the optimize method
-    logger.debug(str(op.Params))
+    #logger.debug(str(op.Params))
+    logger.info(str(op.Params))
+

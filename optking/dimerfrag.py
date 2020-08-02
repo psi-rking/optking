@@ -10,6 +10,7 @@ from . import v3d
 from . import intcosMisc
 from . import orient
 from .printTools import print_mat_string
+from . import caseInsensitiveDict
 
 class Weight(object):
     def __init__(self, a, w):
@@ -103,7 +104,7 @@ class DimerFrag(object):
     The arguments are potentially confusing, so we'll do a lot of checking.
     """
     def __init__(self, A_idx, A_atoms, B_idx, B_atoms, A_weights=None, B_weights=None,
-                 A_lbl="A", B_lbl="B"):
+                 A_lbl="A", B_lbl="B", frozen=None):
         self._A_lbl = A_lbl
         self._B_lbl = B_lbl
         self._A_idx = A_idx
@@ -272,16 +273,78 @@ class DimerFrag(object):
         if one_tors3 is not None:
             self._pseudo_frag.intcos.append(one_tors3)
 
+        if frozen is not None:
+            self.freeze(frozen)
+
+    @classmethod
+    def fromUserDict(cls, userDict): 
+        user = caseInsensitiveDict.CaseInsensitiveDict(userDict)
+        try:
+            N = user['Natoms per frag']
+        except KeyError:
+            raise OptError('Missing "Natoms per frag"')
+        try:
+            A_idx = user['A Frag'] - 1
+        except KeyError:
+            raise OptError('Missing "A Frag"')
+        try:
+            B_idx = user['B Frag'] - 1
+        except KeyError:
+            raise OptError('Missing "B Frag"')
+
+        fRange = [0]*len(N)
+        fRange[0] = range(1,1+N[0]) #user numbering from 1
+        for Ifrag in range(1,len(N)):
+            start = fRange[Ifrag-1][-1]+1
+            fRange[Ifrag] = range(start, start + N[Ifrag])
+
+        A_atoms_in = user.get('A Ref Atoms', None) # could be auto chosen in future
+        B_atoms_in = user.get('B Ref Atoms', None) # so let pass here.
+        A_atoms = None
+        B_atoms = None
+            
+        if A_atoms_in != None:
+            A_atoms = [] 
+            for Iref, ref in enumerate(A_atoms_in):
+                A_atoms.append([])
+                for Iatom, atom in enumerate(ref):
+                    if atom in fRange[A_idx]:
+                        # subtraction includes -1 to shift to from 0 numbering
+                        A_atoms[Iref].append(atom - fRange[A_idx][0])
+                    else:
+                        raise OptError('Atom %d not in fragment %s' %
+                              (atom, str(fRange[A_idx]))) 
+
+        if B_atoms_in != None:
+            B_atoms = [] 
+            for Iref, ref in enumerate(B_atoms_in):
+                B_atoms.append([])
+                for Iatom, atom in enumerate(ref):
+                    if atom in fRange[B_idx]:
+                        B_atoms[Iref].append(atom - fRange[B_idx][0])
+                    else:
+                        raise OptError('Atom %d not in fragment %s' %
+                              (atom, str(fRange[B_idx])))
+
+        # optional
+        A_weights = user.get('A Weights', None)
+        B_weights = user.get('B Weights', None)
+        A_lbl = user.get('A Label', None)
+        B_lbl = user.get('B Label', None)
+        frozen = user.get('Frozen', None)
+
+        return cls(A_idx, A_atoms, B_idx, B_atoms, A_weights, B_weights,
+                   A_lbl, B_lbl,frozen)
 
     def __str__(self):
 
         s =  "\tFragment %s\n" %  self._A_lbl
         for i,r in enumerate(reversed(self._Arefs)):
-            s += "\t\tDimer point %d (Ref. pt. %d):\n" % (3-i,i+1)
+            s += "\t\tDimer point %d (Ref. pt. %d):\n" % (4-self.n_arefs+i, self.n_arefs-i)
             s += r.__str__()
         s += "\n\tFragment %s\n" %  self._B_lbl
         for i,r in enumerate(self._Brefs):
-            s += "\t\tDimer point %d (Ref. pt. %d):\n" % (i+4,i+1)
+            s += "\t\tDimer point %d (Ref. pt. %d):\n" % (3+i+1, i+1)
             s += r.__str__()
 
         s += self._pseudo_frag.__str__()
@@ -296,11 +359,11 @@ class DimerFrag(object):
         return len(self._Brefs)
 
     @property
-    def a_idx(self):
+    def A_idx(self):
         return self._A_idx
 
     @property
-    def b_idx(self):
+    def B_idx(self):
         return self._B_idx
 
     @property
@@ -326,6 +389,9 @@ class DimerFrag(object):
 
     def q_show(self):
         return [i.q_show(self.pseudo_frag.geom) for i in self._pseudo_frag.intcos]
+
+    def q_show_array(self):
+        return np.asarray( self.q_show() )
 
     def update_reference_geometry(self, Ageom, Bgeom):
         self.pseudo_frag.geom[:] = 0.0
@@ -354,15 +420,32 @@ class DimerFrag(object):
     def active_labels(self):
         lbls = []
         # to add later
-        #  if (inter_frag->coords.simples[0]->is_inverse_stre()): #    lbl[0] += "1/R_AB"
+        #  if (inter_frag->coords.simples[0]->is_inverse_stre()): #    lbl[0] += "1/R"
         #  if (inter_frag->coords.simples[i]->is_frozen()) lbl[i] = "*";
-        if self.d_on(0): lbls.append("R_AB")
+        if self.d_on(0): lbls.append("R")
         if self.d_on(1): lbls.append("theta_A")
         if self.d_on(2): lbls.append("theta_B")
         if self.d_on(3): lbls.append("tau")
         if self.d_on(4): lbls.append("phi_A")
         if self.d_on(5): lbls.append("phi_B")
         return lbls
+
+    def label2index(self, label_in):
+        lbls = self.active_labels()
+        return lbls.index(label_in)
+
+    # Accept a variety of input formats
+    def freeze(self, coords_to_freeze=None): # input starts at 1!
+      try:
+        if isinstance(coords_to_freeze, list):
+            for coords in coords_to_freeze:
+                if str(coords).isnumeric():
+                    self._pseudo_frag._intcos[coords-1].frozen = True
+                else:
+                    I = self.label2index(coords)
+                    self._pseudo_frag._intcos[I].frozen = True
+      except:
+        raise OptError('did not understand coord to freeze %s' % str(coords))
 
     @property
     def num_intcos(self):
@@ -557,7 +640,7 @@ class DimerFrag(object):
             # Determine rotational angle and axis
             e12  = v3d.eAB(ref_B[0], ref_B[1])       # normalized B1 -> B2
             e12b = v3d.eAB(ref_B[0], ref_B_final[1]) # normalized B1 -> B2target
-            B_angle = acos(v3d.dot(e12b,e12))
+            B_angle = acos(v3d.dot_unit(e12b,e12))
       
             if fabs(B_angle) > 1.0e-7:
                 erot = v3d.cross(e12,e12b)

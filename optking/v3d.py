@@ -34,6 +34,12 @@ def dot(v1, v2, length=None):
         # I'll have to look closer before removing this
 
 
+# avoid numerical problems by limiting range to [-1,+1]
+def dot_unit(v1, v2):
+    dot = np.dot(v1,v2)
+    return max(min(1.0,dot),-1.0)
+
+
 def dist(v1, v2):
     return np.linalg.norm(v1-v2)
     # return sqrt((v2[0] - v1[0])**2 + (v2[1] - v1[1])**2 + (v2[2] - v1[2])**2)
@@ -217,7 +223,8 @@ def tors(A, B, C, D):
     up_lim = acos(-1) - phi_lim
 
     if phi_123 < phi_lim or phi_123 > up_lim or phi_234 < phi_lim or phi_234 > up_lim:
-        raise AlgError("Interior angle of {:5.3f} can't work in good torsion.".format(180.0*phi_123/np.pi))
+        raise AlgError("Interior angle of {:5.1f} or {:5.1f}  can't work in good torsion.".format(
+                       180.0*phi_123/np.pi,180.0*phi_234/np.pi))
 
     tmp = cross(EAB, EBC)
     tmp2 = cross(EBC, ECD)

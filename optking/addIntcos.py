@@ -561,11 +561,28 @@ def add_frozen_and_fixed_intcos(oMolsys):
 
 
 def add_dimer_frag_intcos(oMolsys):
-    # TODO add custom weights
-    # TODO pass fragment labels
-    # TODO maybe move into a molsys class function?
+    # Look for coordinates in the following order:
+    # 1. Check for 1 or list of dicts for 'interfrag_coords' in params
+    # TODO: test non-equal weights
+    # 2. Check 'frag_ref_atoms' keyword.  It is less flexible than 1.
+    # and lower level.  We may want to remove it in the future.
+    # 3. Auto-generate reference atoms.
+    # TODO: move into a molsys class function?
+
+    if op.Params.interfrag_coords != None:
+        if type(op.Params.interfrag_coords) in [list, tuple]:
+            for coord in op.Params.interfrag_coords:
+                c = eval(coord)
+                df = dimerfrag.DimerFrag.fromUserDict(c)
+                df.update_reference_geometry(oMolsys.frag_geom(df.A_idx), oMolsys.frag_geom(df.B_idx))
+                oMolsys.dimer_intcos.append(df)
+        else:
+            c = eval(op.Params.interfrag_coords)
+            df = dimerfrag.DimerFrag.fromUserDict(c)
+            df.update_reference_geometry(oMolsys.frag_geom(df.A_idx), oMolsys.frag_geom(df.B_idx))
+            oMolsys.dimer_intcos.append(df)
    
-    if op.Params.frag_ref_atoms is not None:
+    elif op.Params.frag_ref_atoms is not None:
         # User-defined ref atoms starting from 1. Decrement here.
         # Assuming that for trimers+, the same reference atoms are
         # desired for each coordinate involving that fragment.

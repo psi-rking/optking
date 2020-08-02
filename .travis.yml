@@ -56,7 +56,10 @@ script:
   - python -c "import optking; print(optking.__version__)"
 
     # Run canonical tests (not quite b/c testing source, not install)
-  - pytest -v -rws --durations=5 --cov
+    # -v run in verbose mode
+    # -r short test summary info at the end of test session
+    # --durations=5 list the slowest 5 test durations
+  - pytest -v -rws --durations=5 --cov -m "not long"
 
 notifications:
     email: false

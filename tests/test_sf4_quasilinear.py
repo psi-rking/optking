@@ -21,7 +21,6 @@ def test_sf4_quasilinear_cart():
       'basis': '6-31G(d)',
       'scf_type': 'pk',
       'opt_coordinates': 'cartesian',
-      'g_convergence' : 'gau_tight',
     }
     psi4.set_options(psi4_options)
 

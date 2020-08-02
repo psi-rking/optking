@@ -27,7 +27,6 @@ def test_b3lyp_phenylacetylene():
     psi4_options = {
       'guess': 'sad',
       'basis': 'cc-pVDZ',
-      'max_energy_g_convergence': 7
     }
     psi4.set_options(psi4_options)
 
@@ -35,5 +34,5 @@ def test_b3lyp_phenylacetylene():
 
     REF_b3lyp_E  = -308.413691796 #TEST 
     E = result['energies'][-1] #TEST
-    assert psi4.compare_values(REF_b3lyp_E, E, 6, "B3LYP energy") #TEST
+    assert psi4.compare_values(REF_b3lyp_E, E, 5, "B3LYP energy") #TEST
 

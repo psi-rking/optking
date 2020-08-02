@@ -22,10 +22,9 @@ def test_linesearch():
     }
 
     psi4.set_options(psi4_options)
-    # For some reason this works but setting it through set_options throws an error 
-    psi4.set_module_options("OPTKING", {"step_type": "linesearch"})  
 
-    json_output = optking.optimize_psi4('mp2')
+    # "linesearch" is not currrently recognized by psi4 read_options.
+    json_output = optking.optimize_psi4('mp2', XtraOptParams={"step_type": "linesearch"})
     E = json_output['energies'][-1]
     nucenergy = json_output['trajectory'][-1]['properties']['nuclear_repulsion_energy']
     assert psi4.compare_values(nucenergy, nucenergy, 3, "Nuclear repulsion energy")  #TEST

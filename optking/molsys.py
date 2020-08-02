@@ -178,7 +178,7 @@ class Molsys(object):
         lbls = [str(coord) for f in self._fragments for coord in f.intcos]
         for DI in self.dimer_intcos:
             for coord in DI.pseudo_frag.intcos:
-                lbls.append('Dimer({:d},{:d})'.format(DI.a_idx+1,DI.b_idx+1) + str(coord))
+                lbls.append('Dimer({:d},{:d})'.format(DI.A_idx+1,DI.B_idx+1) + str(coord))
         return lbls
 
     # Return overall index of first atom in fragment, beginning 0,1,...
@@ -445,13 +445,8 @@ class Molsys(object):
         if self.nfragments == 1:
             return
         self.logger.info("\tConsolidating multiple fragments into one for optimization.")
-        print("consolidating fragments")
         Z = self._fragments[0].Z
         g = self._fragments[0].geom
-        print('frag0 geom in consolidate_fragments:')
-        print(self._fragments[0].geom)
-        print('frag1 geom in consolidate_fragments:')
-        print(self._fragments[1].geom)
         m = self._fragments[0].masses
         for i in range(1, self.nfragments):
             Z = np.concatenate((Z, self._fragments[i].Z))
@@ -461,8 +456,6 @@ class Molsys(object):
         del self._fragments[:]
         consolidatedFrag = frag.Frag(Z, g, m)
         self._fragments.append(consolidatedFrag)
-        print("consolidated fragment")
-        print(self._fragments[0])
 
     def split_fragments_by_connectivity(self):
         """ Split any fragment not connected by bond connectivity."""
@@ -617,8 +610,8 @@ class Molsys(object):
 
     def update_dimer_intco_reference_points(self):
         for DI in self._dimer_intcos:
-            xA = self.frag_geom(DI.a_idx)
-            xB = self.frag_geom(DI.b_idx)
+            xA = self.frag_geom(DI.A_idx)
+            xB = self.frag_geom(DI.B_idx)
             DI.update_reference_geometry(xA, xB)
 
     def update_dihedral_orientations(self):
@@ -667,11 +660,11 @@ class Molsys(object):
         if self._dimer_intcos:
             # xyz = self.geom
             for i, DI in enumerate(self._dimer_intcos):
-                #print('Aidx:' + str(DI.a_idx) )
-                A1stAtom = self.frag_1st_atom(DI.a_idx)
-                B1stAtom = self.frag_1st_atom(DI.b_idx)
-                Axyz     = self.frag_geom(DI.a_idx)
-                Bxyz     = self.frag_geom(DI.b_idx)
+                #print('Aidx:' + str(DI.A_idx) )
+                A1stAtom = self.frag_1st_atom(DI.A_idx)
+                B1stAtom = self.frag_1st_atom(DI.B_idx)
+                Axyz     = self.frag_geom(DI.A_idx)
+                Bxyz     = self.frag_geom(DI.B_idx)
                 DI.compute_b_mat(Axyz, Bxyz, B[self.dimerfrag_intco_slice(i)],
                                  A1stAtom, 3 * B1stAtom) # column offsets
     

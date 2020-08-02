@@ -58,9 +58,9 @@ def displace_molsys(oMolsys, dq_in, fq=None, ensure_convergence=False):
 
     for i, DI in enumerate(oMolsys.dimer_intcos):
         logger.info("\tStep for dimer coordinates for fragments %d and %d."
-                    % (DI.a_idx + 1, DI.b_idx + 1))
-        Axyz = oMolsys.frag_geom(DI.a_idx)
-        Bxyz = oMolsys.frag_geom(DI.b_idx)
+                    % (DI.A_idx + 1, DI.B_idx + 1))
+        Axyz = oMolsys.frag_geom(DI.A_idx)
+        Bxyz = oMolsys.frag_geom(DI.B_idx)
         Bxyz[:] = DI.orient_fragment(Axyz, Bxyz, q_target[oMolsys.dimerfrag_intco_slice(i)])
 
     geom_final = oMolsys.geom
