@@ -8,7 +8,7 @@ from . import intcosMisc
 from . import optparams as op
 from .linearAlgebra import abs_max, rms, sign_of_double
 from .printTools import print_mat_string, print_array_string
-
+from .exceptions import OptError
 
 class Step(object):
     def __init__(self, geom, E, forces):
@@ -16,8 +16,8 @@ class Step(object):
         self.E = E
         self.forces = forces.copy()
         self.projectedDE = None
-        self.Dq = None
-        self.followedUnitVector = None
+        self.Dq = np.array([])
+        self.followedUnitVector = np.array([])
         self.oneDgradient = None
         self.oneDhessian = None
 
@@ -28,6 +28,32 @@ class Step(object):
         self.oneDgradient = oneDgradient
         self.oneDhessian = oneDhessian
 
+    def to_dict(self):
+        d = {}
+        d['geom']              = self.geom.copy()
+        d['E']                 = self.E
+        d['forces']            = self.forces.copy()
+        d['projectedDE']       = self.projectedDE
+        d['Dq']                = self.Dq.copy()
+        d['followedUnitVector']= self.followedUnitVector.copy()
+        d['oneDgradient']      = self.oneDgradient
+        d['oneDhessian']       = self.oneDhessian
+        return d
+
+    @staticmethod
+    def from_dict(d):
+        if all(['geom' in d.keys(), 'E' in d.keys(), 'forces' in d.keys()]):
+            s = Step(d['geom'], d['E'], d['forces'])
+        else:
+            OptError('Missing necessary keywords to construct step')
+
+        s.record(d.get('projectedDE', None),
+                 d.get('Dq', np.array([])),
+                 d.get('followedUnitVector', np.array([])),
+                 d.get('oneDgradient', None),
+                 d.get('oneDhessian', None))
+        return s
+
     def __str__(self):
         s = "Step Info\n"
         s += "Geometry     = \n"
@@ -35,13 +61,18 @@ class Step(object):
         s += "Energy       = %15.10f\n" % self.E
         s += "forces       = "
         s += print_array_string(self.forces)
-        s += "Projected DE = %15.10f\n" % self.projectedDE
-        s += "Dq           = "
-        s += print_array_string(self.Dq)
-        s += "followedUnitVector       = "
-        s += print_array_string(self.followedUnitVector)
-        s += "oneDgradient = %15.10f\n" % self.oneDgradient
-        s += "oneDhessian  = %15.10f\n" % self.oneDhessian
+        if self.projectedDE is not None:
+            s += "Projected DE = %15.10f\n" % self.projectedDE
+        if len(self.Dq):
+            s += "Dq           = "
+            s += print_array_string(self.Dq)
+        if len(self.followedUnitVector):
+            s += "followedUnitVector       = "
+            s += print_array_string(self.followedUnitVector)
+        if self.oneDgradient is not None:
+            s += "oneDgradient = %15.10f\n" % self.oneDgradient
+        if self.oneDhessian is not None:
+            s += "oneDhessian  = %15.10f\n" % self.oneDhessian
         return s
 
 
@@ -84,6 +115,22 @@ class History(object):
                       oneDhessian):
         self.steps[-1].record(projectedDE, Dq, followedUnitVector, oneDgradient,
                               oneDhessian)
+
+    def to_dict(self):
+        d = {}
+        d['stepsSinceLastHessian'] = History.stepsSinceLastHessian
+        d['consecutiveBacksteps'] = History.consecutiveBacksteps
+        d['nuclear_repulsion_energy'] = History.nuclear_repulsion_energy
+        d['steps'] = [s.to_dict() for s in self.steps]
+        return d
+
+    def from_dict(d):
+        h = History()
+        History.stepsSinceLastHessian = d.get('stepsSinceLastHessian',0)
+        History.consecutiveBacksteps = d.get('consecutiveBacksteps',0)
+        History.nuclear_repulsion_energy = d.get('nuclear_repulsion_energy',0)
+        h.steps = [Step.from_dict(s) for s in d.get('steps',[])]
+        return h
 
     def trajectory(self, Zs):
         t = []
