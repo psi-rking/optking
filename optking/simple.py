@@ -99,6 +99,14 @@ class Simple(object):
     def f_show_factor(self):
         pass
 
+    @abstractmethod  # print type/classname plus contents to export
+    def to_dict(self):
+        pass
+
+    @abstractmethod  # construct from dictionary
+    def from_dict(self, d):
+        pass
+
     # Modify provided DqDx array with first derivative of value wrt cartesians
     #  i.e., provide rows of B matrix.
     #   Num. of rows is len(self._atoms), or Num. of atoms in coordinate definition

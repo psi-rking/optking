@@ -13,14 +13,14 @@ from .simple import Simple
 
 
 class Oofp(Simple):
-    def __init__(self, a, b, c, d, frozen=False, fixedEqVal=None):
+    def __init__(self, a, b, c, d, frozen=False, fixedEqVal=None, near180=0):
 
         atoms = (a, b, c, d)
         if c < d:
             self.neg = 1
         else:
             self.neg = -1
-        self._near180 = 0
+        self._near180 = near180
         Simple.__init__(self, atoms, frozen, fixedEqVal)
         
         try:
@@ -76,6 +76,29 @@ class Oofp(Simple):
     @property
     def f_show_factor(self):
         return qcel.constants.hartree2aJ * math.pi / 180.0
+
+
+    def to_dict(self):
+        d = {}
+        d['type'] = Oofp.__name__ # 'Oofp'
+        d['atoms'] = self.atoms # id to a tuple
+        d['frozen'] = self.frozen
+        d['fixed_eq_val'] = self.fixed_eq_val
+        d['near180'] = self._near180
+        return d
+
+
+    @classmethod
+    def from_dict(cls, D):
+        a = D['atoms'][0]
+        b = D['atoms'][1]
+        c = D['atoms'][2]
+        d = D['atoms'][3]
+        frozen = D.get('frozen', False)
+        fixed_eq_val = D.get('fixed_eq_val', None)
+        near180 = D.get('near180', 0)
+        return cls(a, b, c, d, frozen, fixed_eq_val, near180)
+
 
     def q(self, geom):
         """Compute torsion angle for geometry.

@@ -113,7 +113,7 @@ def test_dimers_mt_tyr_Rscan():
         E_Rab.append( [R_AB, xyz.to_array(), psi4.energy('b3lyp-d3mbj')] )
     
     # Convert the energies to relative energies in kcal/mol.
-    E_Rab = np.array(E_Rab)
+    E_Rab = np.array(E_Rab, dtype=object)
     Emin = min(E_Rab[:,2])
     E_Rab[:,2] = au2kcal*(E_Rab[:,2] - Emin)
     

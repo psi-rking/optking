@@ -33,7 +33,7 @@ class Bend(Simple):
         atoms must be listed in order. Uses 0-based indexing.
 
     """
-    def __init__(self, a, b, c, frozen=False, fixed_eq_val=None, bend_type="REGULAR"):
+    def __init__(self, a, b, c, frozen=False, fixed_eq_val=None, bend_type="REGULAR", axes_fixed=False):
 
         if a < c:
             atoms = (a, b, c)
@@ -41,7 +41,7 @@ class Bend(Simple):
             atoms = (c, b, a)
 
         self.bend_type = bend_type
-        self._axes_fixed = False
+        self._axes_fixed = axes_fixed
         self._x = np.zeros(3)
         self._w = np.zeros(3)
 
@@ -193,6 +193,30 @@ class Bend(Simple):
 
     def unfix_bend_axes(self):
         self._axes_fixed = False
+
+
+    def to_dict(self):
+        d = {}
+        d['type'] = Bend.__name__ # 'Bend'
+        d['atoms'] = self.atoms # id to a tuple
+        d['frozen'] = self.frozen
+        d['fixed_eq_val'] = self.fixed_eq_val
+        d['bend_type'] = self.bend_type
+        d['axes_fixed'] = self._axes_fixed
+        return d
+
+
+    @classmethod
+    def from_dict(cls, d):
+        a = d['atoms'][0]
+        b = d['atoms'][1]
+        c = d['atoms'][2]
+        frozen = d.get('frozen', False)
+        fixed_eq_val = d.get('fixed_eq_val', None)
+        bend_type = d.get('bend_type', 'REGULAR')
+        axes_fixed = d.get('axes_fixed', False)
+        return cls(a, b, c, frozen, fixed_eq_val, bend_type, axes_fixed)
+
 
     def DqDx(self, geom, dqdx, mini=False):
         if not self.axes_fixed:

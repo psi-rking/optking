@@ -5,11 +5,11 @@ from .simple import Simple
 
 
 class Cart(Simple):
-    def __init__(self, a, xyz_in, frozen=False, fixedEqVal=None):
+    def __init__(self, a, xyz_in, frozen=False, fixed_eq_val=None):
 
         self.xyz = xyz_in  # uses setter below
         atoms = (a, )
-        Simple.__init__(self, atoms, frozen, fixedEqVal)
+        Simple.__init__(self, atoms, frozen, fixed_eq_val)
 
     def __str__(self):
         if self.frozen: s = '*'
@@ -65,6 +65,23 @@ class Cart(Simple):
     @property
     def f_show_factor(self):
         return qcel.constants.hartree2aJ / qcel.constants.bohr2angstroms
+
+    def to_dict(self):
+        d = {}
+        d['type'] = Cart.__name__ # 'Cart'
+        d['atoms'] = self.atoms # id to a tuple
+        d['xyz'] = self.xyz
+        d['frozen'] = self.frozen
+        d['fixed_eq_val'] = self.fixed_eq_val
+        return d
+
+    @classmethod
+    def from_dict(cls, d):
+        a = d['atoms'][0]
+        frozen = d.get('frozen', False)
+        fixed_eq_val = d.get('fixed_eq_val', None)
+        xyz = d.get('xyz', None)
+        return cls(a, xyz, frozen, fixed_eq_val)
 
     # Compute and return in-place array of first derivative (row of B matrix)
     def DqDx(self, geom, dqdx, mini=False):

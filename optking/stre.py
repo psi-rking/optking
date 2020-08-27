@@ -85,6 +85,24 @@ class Stre(Simple):
     def f_show_factor(self):
         return qcel.constants.hartree2aJ / qcel.constants.bohr2angstroms
 
+    def to_dict(self):
+        d = {}
+        d['type'] = Stre.__name__ # 'Stre'
+        d['atoms'] = self.atoms # id to a tuple
+        d['frozen'] = self.frozen
+        d['fixed_eq_val'] = self.fixed_eq_val
+        d['inverse'] = self._inverse
+        return d
+
+    @classmethod
+    def from_dict(cls, d):
+        a = d['atoms'][0]
+        b = d['atoms'][1]
+        frozen = d.get('frozen', False)
+        fixed_eq_val = d.get('fixed_eq_val', None)
+        inverse = d.get('inverse', False)
+        return cls(a, b, frozen, fixed_eq_val, inverse)
+
     # If mini == False, dqdx is 1x(3*number of atoms in fragment).
     # if mini == True, dqdx is 1x6.
     def DqDx(self, geom, dqdx, mini=False):

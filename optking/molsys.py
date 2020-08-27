@@ -9,6 +9,7 @@ from qcelemental.models import Molecule
 from qcelemental.util.serialization import json_dumps
 
 from . import frag
+from . import dimerfrag
 from .exceptions import AlgError, OptError
 from . import v3d
 from .addIntcos import connectivity_from_distances, add_cartesian_intcos
@@ -49,6 +50,7 @@ class Molsys(object):
         for iF, F in enumerate(self._fragments):
             s += "\n\tFragment %d\n" % (iF + 1)
             s += F.__str__()
+        self.update_dimer_intco_reference_points()
         for di in self._dimer_intcos:
             s += di.__str__()
         # for iB, B in enumerate(self._fb_fragments):
@@ -132,6 +134,29 @@ class Molsys(object):
             frags.append(frag.Frag(z_list, geom, masses_list))
 
         return cls(frags)
+
+
+    def to_dict(self):
+        d = {}
+        d['fragments'] = [f.to_dict() for f in self._fragments]
+        d['dimer_intcos'] = [di.to_dict() for di in self._dimer_intcos]
+        d['multiplicity'] = self.multiplicity
+        return d
+
+
+    @classmethod
+    def from_dict(cls, D):
+        if 'fragments' not in D:
+            raise OptError("'fragments' key missing from input dict")
+        frags = [frag.Frag.from_dict(F) for F in D['fragments']]
+
+        if 'dimer_intcos' in D:
+            dimers = [dimerfrag.DimerFrag.from_dict(DF) for DF in D['dimer_intcos']]
+        else:
+            dimers = None
+        mult = D.get('multiplicity', 1)
+        return cls(frags, mult, dimers)
+
 
     @property
     def natom(self):
