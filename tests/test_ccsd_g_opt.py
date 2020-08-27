@@ -19,6 +19,7 @@ def test_ccsd_h2o():
     psi4.set_options(psi4_options)
 
     result = optking.optimize_psi4('ccsd')
+    print(result['trajectory'][-1].keys())
 
     this_scf     = result['trajectory'][-1]['properties']['scf_total_energy'] #TEST
     this_ccsd    = result['trajectory'][-1]['properties']['ccsd_correlation_energy'] #TEST
