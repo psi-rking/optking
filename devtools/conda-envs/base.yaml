@@ -1,7 +1,7 @@
 name: test
 channels:
-  - default
-  - psi4
+  - defaults
+  - psi4/label/dev
 dependencies:
     # Base
   - numpy
@@ -11,5 +11,6 @@ dependencies:
     # Testing
   - pytest
   - pytest-cov
+  - psi4
   - dftd3
   - codecov
