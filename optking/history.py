@@ -404,16 +404,15 @@ class History(object):
         oMolsys.geom = orig_save_geom
         return
 
-def summary_string():
-    output_string = """\n\t==> Optimization Summary <==\n
-    \n\tMeasures of convergence in internal coordinates in au. (Any backward steps not shown.)
-    \n\t---------------------------------------------------------------------------------------------------------------  ~
-    \n\t Step         Total Energy             Delta E       MAX Force       RMS Force        MAX Disp        RMS Disp   ~
-    \n\t---------------------------------------------------------------------------------------------------------------  ~
-    \n"""
-    output_string += oHistory.summary(printoption=True)
-
-    return output_string
+    def summary_string(self):
+        output_string = """\n\t==> Optimization Summary <==\n
+        \n\tMeasures of convergence in internal coordinates in au. (Any backward steps not shown.)
+        \n\t---------------------------------------------------------------------------------------------------------------  ~
+        \n\t Step         Total Energy             Delta E       MAX Force       RMS Force        MAX Disp        RMS Disp   ~
+        \n\t---------------------------------------------------------------------------------------------------------------  ~
+        \n"""
+        output_string += self.summary(printoption=True)
+        return output_string
 
 
 oHistory = History()

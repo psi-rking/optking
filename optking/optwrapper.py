@@ -17,7 +17,7 @@ from .printTools import welcome
 from .exceptions import OptError
 
 
-def optimize_psi4(calc_name, program='psi4', dertype=None, XtraOptParams=None):
+def optimize_psi4(calc_name, program='psi4', dertype=None, XtraOptParams=None, runOptimization=[True]):
     """
     Wrapper for optimize.optimize() Looks for an active psi4 molecule and optimizes.
     This is the written warning that Optking will try to use psi4 if no program is provided
@@ -27,6 +27,12 @@ def optimize_psi4(calc_name, program='psi4', dertype=None, XtraOptParams=None):
         level of theory for optimization. eg MP2
     program: str
         program used for gradients, hessians...
+    dertype: ?
+        hack to try to get finite differences working in psi4
+    XtraOptParams: dictionary
+        extra keywords currently forbidden by psi4's read_options, but supported by optking
+    runOptimization: [boolean, if False on return params, molsys, computer]
+        if set to false, then return (params,molsys,computer) but do NOT actually run the opt
 
     Returns
     -------
@@ -89,6 +95,11 @@ def optimize_psi4(calc_name, program='psi4', dertype=None, XtraOptParams=None):
     try:
         initialize_options(opt_keys)
         computer = make_computer(opt_input)
+        if runOptimization[0] == False:
+            runOptimization[1] = op.Params
+            runOptimization[2] = oMolsys
+            runOptimization[3] = computer
+            return
         opt_output = optimize(oMolsys, computer)
     except (OptError, KeyError, ValueError, AttributeError) as error:
         opt_output = {"success": False, "error": {"error_type": error.err_type,

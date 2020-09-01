@@ -948,7 +948,7 @@ class DimerFrag(object):
         #if self.d_on(4):
         #if self.d_on(5):
     
-def test_orient(NA, NB, printInfo=False) :
+def test_orient(NA, NB, printInfo=False, randomSeed=None) :
     """ Test the orient_fragment function to see if pre-determined target
     # coordinate values can be met.  Technically, this only tests consistency
     # within the class, i.e., whether computed values of the interfragment
@@ -961,8 +961,10 @@ def test_orient(NA, NB, printInfo=False) :
     #  For each fragment, 1,2,or 3 random atoms is chosento define reference points.
     #  Does not test a linear polyatomic at present.
     """
-    from random import random,shuffle,choice,sample,uniform
+    from random import seed,random,choice,sample,uniform
     logger = logging.getLogger(__name__)
+    if randomSeed is not None:
+        seed(randomSeed)
 
     # Choose a random geometry
     Axyz = np.zeros( (NA,3) )

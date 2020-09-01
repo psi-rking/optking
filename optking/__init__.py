@@ -18,6 +18,7 @@ del get_versions
 _optking_provenance_stamp = {"creator": "optking", "routine": None, "version": __version__}
 
 from .optimize import optimize
+from .optHelper import optHelper
 from . import lj_functions
 from .optwrapper import optimize_psi4, optimize_qcengine
 
