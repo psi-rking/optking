@@ -12,12 +12,13 @@ from . import caseInsensitiveDict
 from . import molsys
 from . import optparams as op
 from .optimize import optimize
-from .compute_wrappers import QCEngineComputer, Psi4Computer
+from .compute_wrappers import QCEngineComputer, Psi4Computer, UserComputer
 from .printTools import welcome
 from .exceptions import OptError
 
 
-def optimize_psi4(calc_name, program='psi4', dertype=None, XtraOptParams=None, runOptimization=[True]):
+def optimize_psi4(calc_name, program='psi4', dertype=None, XtraOptParams=None,
+                  runOptimization=[True], computer_type='qc'):
     """
     Wrapper for optimize.optimize() Looks for an active psi4 molecule and optimizes.
     This is the written warning that Optking will try to use psi4 if no program is provided
@@ -94,7 +95,7 @@ def optimize_psi4(calc_name, program='psi4', dertype=None, XtraOptParams=None, r
 
     try:
         initialize_options(opt_keys)
-        computer = make_computer(opt_input)
+        computer = make_computer(opt_input, computer_type)
         if runOptimization[0] == False:
             runOptimization[1] = op.Params
             runOptimization[2] = oMolsys
@@ -118,7 +119,7 @@ def optimize_psi4(calc_name, program='psi4', dertype=None, XtraOptParams=None, r
         return opt_input
 
 
-def optimize_qcengine(opt_input):
+def optimize_qcengine(opt_input, computer_type='qc'):
     """ Try to optimize, find TS, or find IRC of the system as specifed by a QCSchema
     OptimizationInput.
 
@@ -141,7 +142,7 @@ def optimize_qcengine(opt_input):
     oMolsys = molsys.Molsys.from_json_molecule(opt_input['initial_molecule'])
     try:
         initialize_options(opt_input['keywords'])
-        computer = make_computer(opt_input)
+        computer = make_computer(opt_input, computer_type)
         opt_output = optimize(oMolsys, computer)
     except (OptError, KeyError, ValueError, AttributeError) as error:
         opt_output = {"success": False, "error": {"error_type": error.err_type,
@@ -162,9 +163,9 @@ def optimize_qcengine(opt_input):
     # from qcel.models.procedures.py
 
 
-def make_computer(opt_input: dict, computer_type='qc'):
+def make_computer(opt_input: dict, computer_type):
     logger = logging.getLogger(__name__)
-    logger.debug("Creating a Compute Wrapper")
+    logger.info("Creating a Compute Wrapper")
     program = op.Params.program
 
     # This gets updated so it shouldn't be a reference
@@ -176,8 +177,13 @@ def make_computer(opt_input: dict, computer_type='qc'):
     if computer_type == 'psi4':
         # Please note that program is not actually used here
         return Psi4Computer(molecule, model, options, program)
-    else:
+    elif computer_type == 'qc':
         return QCEngineComputer(molecule, model, options, program)
+    elif computer_type == 'user':
+        logger.info("Creating a UserComputer")
+        return UserComputer(molecule, model, options, program)
+    else:
+        raise OptError("computer_type is unknown")
 
 
 def initialize_options(opt_keys):
@@ -192,7 +198,7 @@ def initialize_options(opt_keys):
         op.Params = op.OptParams(userOptions)
     except (KeyError, ValueError, AttributeError) as e:
         logger.debug(str(e))
-        raise
+        raise OptError("unable to parse params from userOptions")
 
     # TODO we should make this just be a normal object
     #  we should return it to the optimize method

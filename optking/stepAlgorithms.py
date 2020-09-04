@@ -46,9 +46,9 @@ def take_step(oMolsys, E, q_forces, H, stepType=None, computer=None, hist=None, 
     step_grad and step_hess are the gradient and hessian in the direction of the step.
 
     """
-    if hist == None:
+    if hist is None:
          hist = oHistory
-    if params == None:
+    if params is None:
          params = op.Params
     logger = logging.getLogger(__name__)
 

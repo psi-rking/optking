@@ -401,7 +401,7 @@ def get_pes_info(H, computer, oMolsys, step_number, irc_step_number, hist = None
     -------
     np.ndarray,
     """
-    if hist == None:
+    if hist is None:
         hist = history.oHistory
 
     logger = logging.getLogger(__name__)
@@ -496,7 +496,7 @@ def make_internal_coords(oMolsys, params=None):
     oMolsys: Molsys
         The molecular system updated with internal coordinates.
     """
-    if params == None:
+    if params is None:
         params = op.Params
     optimize_log = logging.getLogger(__name__)
     optimize_log.debug("\t Adding internal coordinates to molecular system")

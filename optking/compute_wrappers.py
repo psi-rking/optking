@@ -1,4 +1,4 @@
-import copy
+from copy import deepcopy
 import math
 import json
 import numpy as np
@@ -28,6 +28,9 @@ class ComputeWrapper:
         self.program = program
         self.trajectory = []
         self.energies = []
+        self.external_energy = None
+        self.external_gradient = None
+        self.external_hessian = None
 
     def update_geometry(self, geom: np.ndarray):
         """Updates EngineWrapper for requesting calculation
@@ -70,7 +73,6 @@ class ComputeWrapper:
             dict 
         """
 
-        
         logger = logging.getLogger(__name__)
         
         self.update_geometry(geom)
@@ -124,3 +126,66 @@ class QCEngineComputer(ComputeWrapper):
         inp = self.generate_schema_input(driver)
         ret = qcengine.compute(inp, self.program)
         return ret
+
+# Class to produce a compliant output with user provided energy/gradient/hessian
+class UserComputer(ComputeWrapper):
+
+    output_skeleton = {
+        'id': None,
+        'schema_name': 'qcschema_output',
+        'schema_version': 1,
+        'model': {'method': 'unknown', 'basis': 'unknown'},
+        'provenance': {'creator': 'User', 'version': '0.1'},
+        'properties': {},
+        'extras': { 'qcvars':{} },
+        'stdout': "User provided energy, gradient, or hessian is returned",
+        'stderr': None, 'success': True, 'error': None
+    }
+
+    def _compute(self, driver):
+        logger = logging.getLogger(__name__)
+        logger.info('UserComputer only returning provided values')
+        E = self.external_energy
+        gX = self.external_gradient
+        HX = self.external_hessian
+
+        if driver == 'hessian':
+            if (Hx is None) or (gX is None) or (E is None):
+                raise OptError("Must provide hessian, gradient, and energy.")
+        elif driver == 'gradient':
+            if (gX is None) or (E is None):
+                raise OptError("Must provide gradient and energy.")
+        elif driver == 'energy':
+            if E is None:
+                raise OptError("Must provide energy.")
+
+        result = deepcopy(UserComputer.output_skeleton)
+        result['driver'] = driver
+        mol = Molecule(**self.molecule)
+        result['molecule'] = mol
+        NRE = mol.nuclear_repulsion_energy()
+        result['properties']['nuclear_repulsion_energy'] = NRE
+        result['extras']['qcvars']['NUCLEAR REPULSION ENERGY'] = NRE
+
+        result['properties']['return_energy'] = E
+        result['extras']['qcvars']['CURRENT ENERGY'] = E
+
+        if driver in ['gradient', 'hessian']:
+            result['extras']['qcvars']['CURRENT GRADIENT'] = gX
+
+        if driver == 'hessian':
+            result['extras']['qcvars']['CURRENT HESSIAN'] = HX
+
+        if driver == 'energy':
+            result['return_result'] = E
+        elif driver == 'gradient':
+            result['return_result'] = gX
+        elif driver == 'hessian':
+            result['return_result'] = HX
+
+        # maybe do this to protect against repeatedly going back for same?
+        self.external_energy = None
+        self.external_gradient = None
+        self.external_hessian = None
+        return Result(**result)
+
