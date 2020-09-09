@@ -71,7 +71,6 @@ class Frag:
         masses =  D['masses']
         frozen =  D.get('frozen', False)
         if 'intcos' in D: # class constructor (cls), e.g., stre.Stre
-            print(D) # RAK
             intcos = []
             for i in D['intcos']:
                 clc = str.lower(i['type']) + '.' + i['type']

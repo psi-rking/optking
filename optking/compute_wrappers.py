@@ -32,6 +32,15 @@ class ComputeWrapper:
         self.external_gradient = None
         self.external_hessian = None
 
+
+    @classmethod
+    def init_full(cls, molecule, model, keywords, program, trajectory, energies):
+        wrapper = cls(molecule, model, keywords, program)
+        wrapper.trajectory = trajectory
+        wrapper.energies = energies
+        return wrapper
+
+
     def update_geometry(self, geom: np.ndarray):
         """Updates EngineWrapper for requesting calculation
 
@@ -103,6 +112,24 @@ class ComputeWrapper:
 
     def hessian(self, return_full=False):
         return self._compute("hessian", return_full)
+
+
+def make_computer_from_dict(computer_type, d):
+    mol = d.get('molecule')
+    mod = d.get('model')
+    key = d.get('keywords')
+    prog = d.get('program')
+    traj = d.get('trajectory')
+    ener = d.get('energies')
+
+    if computer_type == 'psi4':
+        return Psi4Computer.init_full(mol, mod, key, prog, traj, ener)
+    elif computer_type == 'qc':
+        return QCEngineComputer.init_full(mol, mod, key, prog, traj, ener)
+    elif computer_type == 'user':
+        return UserComputer.init_full(mol, mod, key, prog, traj, ener)
+    else:
+        raise OptError("computer_type is unknown")
 
 
 class Psi4Computer(ComputeWrapper):
