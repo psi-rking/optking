@@ -10,6 +10,7 @@ from .linearAlgebra import abs_max, rms, sign_of_double
 from .printTools import print_mat_string, print_array_string
 from .exceptions import OptError
 
+
 class Step(object):
     def __init__(self, geom, E, forces):
         self.geom = geom.copy()  # Store as 2D object
@@ -29,15 +30,14 @@ class Step(object):
         self.oneDhessian = oneDhessian
 
     def to_dict(self):
-        d = {}
-        d['geom']              = self.geom.copy()
-        d['E']                 = self.E
-        d['forces']            = self.forces.copy()
-        d['projectedDE']       = self.projectedDE
-        d['Dq']                = self.Dq.copy()
-        d['followedUnitVector']= self.followedUnitVector.copy()
-        d['oneDgradient']      = self.oneDgradient
-        d['oneDhessian']       = self.oneDhessian
+        d = {'geom': self.geom.copy(),
+             'E': self.E,
+             'forces': self.forces.copy(),
+             'projectedDE': self.projectedDE,
+             'Dq': self.Dq.copy(),
+             'followedUnitVector': self.followedUnitVector.copy(),
+             'oneDgradient': self.oneDgradient,
+             'oneDhessian': self.oneDhessian}
         return d
 
     @staticmethod
@@ -45,7 +45,7 @@ class Step(object):
         if all(['geom' in d.keys(), 'E' in d.keys(), 'forces' in d.keys()]):
             s = Step(d['geom'], d['E'], d['forces'])
         else:
-            OptError('Missing necessary keywords to construct step')
+            raise OptError('Missing necessary keywords to construct step')
 
         s.record(d.get('projectedDE', None),
                  d.get('Dq', np.array([])),
@@ -126,10 +126,10 @@ class History(object):
 
     def from_dict(d):
         h = History()
-        History.stepsSinceLastHessian = d.get('stepsSinceLastHessian',0)
-        History.consecutiveBacksteps = d.get('consecutiveBacksteps',0)
-        History.nuclear_repulsion_energy = d.get('nuclear_repulsion_energy',0)
-        h.steps = [Step.from_dict(s) for s in d.get('steps',[])]
+        History.stepsSinceLastHessian = d.get('stepsSinceLastHessian', 0)
+        History.consecutiveBacksteps = d.get('consecutiveBacksteps', 0)
+        History.nuclear_repulsion_energy = d.get('nuclear_repulsion_energy', 0)
+        h.steps = [Step.from_dict(s) for s in d.get('steps', [])]
         return h
 
     def trajectory(self, Zs):
@@ -170,8 +170,9 @@ class History(object):
                 'rms_disp': rms_disp,
             })
 
-            opt_summary += ("\t  %4d %20.12lf  %18.12lf    %12.8lf    %12.8lf    %12.8lf    %12.8lf  ~\n" % (
-                (i + 1), self.steps[i].E, DE, max_force, rms_force, max_disp, rms_disp))
+            opt_summary += ("\t  %4d %20.12lf  %18.12lf    %12.8lf    %12.8lf    %12.8lf    %12.8lf"
+                            "  ~\n" % ((i + 1), self.steps[i].E, DE, max_force, rms_force,
+                                       max_disp, rms_disp))
 
         opt_summary += ("\t" + "-" * 112 + "\n\n")
 
@@ -200,7 +201,7 @@ class History(object):
         logger.info("\tCurrent Step Report \n %s" % opt_step_report)
 
         if projectedChange is None:
-            return True # no previous projection; could be first step?
+            return True  # no previous projection; could be first step?
 
         Energy_ratio = energyChange / projectedChange
 
@@ -238,10 +239,10 @@ class History(object):
     def hessian_update(self, H, oMolsys):
         logger = logging.getLogger(__name__)
         if op.Params.hess_update == 'NONE' or len(self.steps) < 2:
-            return
+            return H
 
         logger.info("\tPerforming %s update." % op.Params.hess_update)
-        Nintco = oMolsys.num_intcos # working dimension
+        Nintco = oMolsys.num_intcos  # working dimension
         orig_save_geom = oMolsys.geom
 
         f = np.zeros(Nintco)
@@ -271,11 +272,11 @@ class History(object):
         # Make list of old geometries to update with.
         # Check each one to see if it is too close (so stable denominators).
         use_steps = []
-        iStep = len(self.steps)-2 # just in case called with only 1 pt.
-        while iStep > -1 and len(use_steps) < numToUse:
-            oldStep = self.steps[iStep]
-            f_old = oldStep.forces
-            x_old = oldStep.geom
+        i_step = len(self.steps) - 2  # just in case called with only 1 pt.
+        while i_step > -1 and len(use_steps) < numToUse:
+            old_step = self.steps[i_step]
+            f_old = old_step.forces
+            x_old = old_step.geom
             oMolsys.geom = x_old
             q_old[:] = oMolsys.q_array()
             dq[:] = q - q_old
@@ -285,23 +286,23 @@ class History(object):
             max_change = abs_max(dq)
 
             # If there is only one left, take it no matter what.
-            if len(use_steps) == 0 and iStep == 0:
-                use_steps.append(iStep)
+            if len(use_steps) == 0 and i_step == 0:
+                use_steps.append(i_step)
             elif (math.fabs(gq) < op.Params.hess_update_den_tol or
-                math.fabs(qq) < op.Params.hess_update_den_tol):
+                  math.fabs(qq) < op.Params.hess_update_den_tol):
                 logger.warning("\tDenominators (dg)(dq) or (dq)(dq) are very small.")
-                logger.warning("\tSkipping Hessian update for step %d." % (iStep + 1))
+                logger.warning("\tSkipping Hessian update for step %d." % (i_step + 1))
                 pass
             elif max_change > op.Params.hess_update_dq_tol:
                 logger.warning("\tChange in internal coordinate of %5.2e exceeds limit of %5.2e."
                                % (max_change, op.Params.hess_update_dq_tol))
-                logger.warning("\tSkipping Hessian update for step %d." % (iStep + 1))
+                logger.warning("\tSkipping Hessian update for step %d." % (i_step + 1))
                 pass
             else:
-                use_steps.append(iStep)
-            iStep -= 1
+                use_steps.append(i_step)
+            i_step -= 1
 
-        hessian_steps = ("\tSteps to be used in Hessian update: ")
+        hessian_steps = "\tSteps to be used in Hessian update: "
         for i in use_steps:
             hessian_steps += " %d" % (i + 1)
         hessian_steps += "\n"
@@ -310,10 +311,11 @@ class History(object):
 
         H_new = np.zeros(H.shape)
         for i_step in use_steps:
-            oldStep = self.steps[i_step]
+            # TODO code duplication. Why do we set oMolsys.geom to an old geometry?
+            old_step = self.steps[i_step]
 
-            f_old = oldStep.forces
-            x_old = oldStep.geom
+            f_old = old_step.forces
+            x_old = old_step.geom
             oMolsys.geom = x_old
             q_old[:] = oMolsys.q_array()
             dq[:] = q - q_old
@@ -350,7 +352,7 @@ class History(object):
                 for i in range(Nintco):
                     for j in range(Nintco):
                         H_new[i, j] = H[i, j] - qz / (qq * qq) * dq[i] * dq[j] + (
-                            Z[i] * dq[j] + dq[i] * Z[j]) / qq
+                                Z[i] * dq[j] + dq[i] * Z[j]) / qq
 
             elif op.Params.hess_update == 'BOFILL':
                 # Bofill = (1-phi) * MS + phi * Powell
@@ -402,7 +404,7 @@ class History(object):
             logger.info("\tUpdated Hessian (in au) \n %s" % print_mat_string(H))
 
         oMolsys.geom = orig_save_geom
-        return
+        return H
 
     def summary_string(self):
         output_string = """\n\t==> Optimization Summary <==\n

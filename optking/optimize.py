@@ -1,9 +1,5 @@
 import numpy as np
-import copy
 import logging
-import json
-
-from qcelemental.models import Molecule
 
 from . import hessian
 from . import stepAlgorithms
@@ -23,8 +19,8 @@ from .molsys import Molsys
 
 
 def optimize(oMolsys, computer):
-    """ Driver for OptKing's optimization procedure. Suggested that users use optimize_psi4 or optimize_qcengine
-        to perform a normal (full) optimization
+    """ Driver for OptKing's optimization procedure. Suggested that users use optimize_psi4 or
+     optimize_qcengine to perform a normal (full) optimization
 
     Parameters
     ----------
@@ -42,12 +38,13 @@ def optimize(oMolsys, computer):
     logger.info("Running optimize(oMolsys,computer)")
     
     # Take care of some initial variable declarations
-    step_number = 0 # number of steps taken. Partial. IRC alg uses two step counters
+    step_number = 0  # number of steps taken. Partial. IRC alg uses two step counters
     irc_step_number = None
     total_steps_taken = 0
-    H = 0 # hessian in internals
+    H = 0  # hessian in internals
 
-    try:  # Try to optimize one structure OR set of IRC points. OptError and all Exceptions caught below.
+    # Try to optimize one structure OR set of IRC points. OptError and all Exceptions caught below.
+    try:
 
         # Prepare for multiple IRC computation
         if op.Params.opt_type == 'IRC':
@@ -386,7 +383,7 @@ def optimize(oMolsys, computer):
         return qc_output
 
 
-def get_pes_info(H, computer, oMolsys, step_number, irc_step_number, hist = None):
+def get_pes_info(H, computer, oMolsys, step_number, irc_step_number, hist=None):
     """ Calculate, update, or guess hessian as appropriate. Calculate gradient, pulling
     gradient from hessian output if possible.
     Parameters
@@ -397,6 +394,8 @@ def get_pes_info(H, computer, oMolsys, step_number, irc_step_number, hist = None
     oMolsys : molsys.Molsys
     step_number: int
     irc_step_number: int
+    hist: history.History
+
     Returns
     -------
     np.ndarray,
@@ -445,8 +444,8 @@ def get_pes_info(H, computer, oMolsys, step_number, irc_step_number, hist = None
 
 
 def get_hess_grad(computer, oMolsys):
-    """ Compute hessian and get gradient from output if possible
-        Perform separate gradient calculation if needed
+    """ Compute hessian and fetch gradient from output if possible. Perform separate gradient
+    calculation if needed
     Parameters
     ----------
     computer: compute_wrappers.ComputeWrapper

@@ -12,13 +12,12 @@ from . import caseInsensitiveDict
 from . import molsys
 from . import optparams as op
 from .optimize import optimize
-from .compute_wrappers import QCEngineComputer, Psi4Computer, UserComputer
+from .compute_wrappers import ComputeWrapper, QCEngineComputer, Psi4Computer, UserComputer
 from .printTools import welcome
 from .exceptions import OptError
 
 
-def optimize_psi4(calc_name, program='psi4', dertype=None, XtraOptParams=None,
-                  runOptimization=[True], computer_type='qc'):
+def optimize_psi4(calc_name, program='psi4', dertype=None, **xtra_opt_params):
     """
     Wrapper for optimize.optimize() Looks for an active psi4 molecule and optimizes.
     This is the written warning that Optking will try to use psi4 if no program is provided
@@ -30,10 +29,8 @@ def optimize_psi4(calc_name, program='psi4', dertype=None, XtraOptParams=None,
         program used for gradients, hessians...
     dertype: ?
         hack to try to get finite differences working in psi4
-    XtraOptParams: dictionary
+    xtra_opt_params: dictionary
         extra keywords currently forbidden by psi4's read_options, but supported by optking
-    runOptimization: [boolean, if False on return params, molsys, computer]
-        if set to false, then return (params,molsys,computer) but do NOT actually run the opt
 
     Returns
     -------
@@ -42,8 +39,59 @@ def optimize_psi4(calc_name, program='psi4', dertype=None, XtraOptParams=None,
         see https://github.com/MolSSI/QCElemental/blob/master/qcelemental/models/procedures.py
     """
 
-    import psi4
+    logger = logging.getLogger(__name__)
 
+    opt_input = {}
+    opt_output = {}
+
+    try:
+        op.Params, oMolsys, computer, opt_input = initialize_from_psi4(calc_name, program,
+                                                                       computer_type='psi4',
+                                                                       dertype=dertype,
+                                                                       **xtra_opt_params)
+        opt_output = copy.deepcopy(opt_input)
+        logger.info("psi4 has been initialized")
+        opt_output = optimize(oMolsys, computer)
+        print("optimize has finished")
+    except (OptError, KeyError, ValueError, AttributeError) as error:
+        opt_output = {"success": False, "error": {"error_type": error.err_type,
+                                                  "error_message": error.mesg}}
+        logger.critical(f"Error placed in qcschema: {opt_output}")
+        logger.debug(str(opt_output))
+    except Exception as error:
+        logger.critical("An unknown error has occured and evaded error checking")
+        opt_output = {"success": False, "error": {"error_type": error,
+                                                  "error_message": str(error)}}
+        logger.critical(f"Error placed in qcschema: {opt_output}")
+    finally:
+        opt_input.update({"provenance": optking._optking_provenance_stamp})
+        opt_input["provenance"]["routine"] = "optimize_psi4"
+        opt_input.update(opt_output)
+        return opt_input
+
+
+def initialize_from_psi4(calc_name, program, computer_type, dertype=None, **xtra_opt_params):
+    """ Gathers information from an active psi4 instance. to cleanly run optking from a
+    psithon or psi4api input file
+
+    Parameters
+    ----------
+    calc_name: str
+    computer_type: str
+    dertype: Union[int, None]
+    program: str
+    **xtra_opt_params
+        extra keywords which are not recognized by psi4
+
+    Returns
+    -------
+    params: op.OptParams
+    oMolsys: molsys.Molsys
+    computer: ComputeWrapper
+    opt_input: qcelemental.models.OptimizationInput
+
+    """
+    import psi4
     logger = logging.getLogger(__name__)
     mol = psi4.core.get_active_molecule()
     oMolsys = molsys.Molsys.from_psi4_molecule(mol)
@@ -51,7 +99,6 @@ def optimize_psi4(calc_name, program='psi4', dertype=None, XtraOptParams=None,
     # Get optking options and globals from psi4
     # Look through optking module specific options first. If a global has already appeared
     # in optking's options, don't include as a qc package option
-
     logger.debug("Getting module and psi4 options for qcschema construction")
     module_options = psi4.driver.p4util.prepare_options_for_modules()
     all_options = psi4.core.get_global_option_list()
@@ -65,16 +112,14 @@ def optimize_psi4(calc_name, program='psi4', dertype=None, XtraOptParams=None,
         if optval['has_changed']:
             opt_keys[opt.lower()] = optval['value']
 
+    if xtra_opt_params:
+        for xtra_key, xtra_value in xtra_opt_params.items():
+            opt_keys[xtra_key.lower()] = xtra_value
+
     for option in all_options:
         if psi4.core.has_global_option_changed(option):
-            if option in opt_keys:
-                pass
-            else:
+            if option not in opt_keys:
                 qc_keys[option.lower()] = psi4.core.get_global_option(option)
-
-    if XtraOptParams is not None:
-        for XtraKey, XtraValue in XtraOptParams.items():
-            opt_keys[XtraKey.lower()] = XtraValue
 
     # Make a qcSchema OptimizationInput
     opt_input = {"keywords": opt_keys,
@@ -85,38 +130,16 @@ def optimize_psi4(calc_name, program='psi4', dertype=None, XtraOptParams=None,
                          'method': calc_name},
                      "driver": "gradient",
                      "keywords": qc_keys}}
-
     logger.debug("Creating OptimizationInput")
-    opt_input = OptimizationInput(**opt_input)
 
+    opt_input = OptimizationInput(**opt_input)
     # Remove numpy elements to allow at will json serialization
     opt_input = json.loads(json_dumps(opt_input))
-    opt_output = copy.deepcopy(opt_input)
 
-    try:
-        initialize_options(opt_keys)
-        computer = make_computer(opt_input, computer_type)
-        if runOptimization[0] == False:
-            runOptimization[1] = op.Params
-            runOptimization[2] = oMolsys
-            runOptimization[3] = computer
-            return
-        opt_output = optimize(oMolsys, computer)
-    except (OptError, KeyError, ValueError, AttributeError) as error:
-        opt_output = {"success": False, "error": {"error_type": error.err_type,
-                                                  "error_message": error.mesg}}
-        logger.critical(f"Error placed in qcschema: {opt_output}")
-    except Exception as error:
-        logger.critical("An unknown error has occured and evaded all error checking")
-
-        opt_output = {"success": False, "error": {"error_type": error,
-                                                  "error_message": str(error)}}
-        logger.critical(f"Error placed in qcschema: {opt_output}")
-    finally:
-        opt_input.update({"provenance": optking._optking_provenance_stamp})
-        opt_input["provenance"]["routine"] = "optimize_psi4"
-        opt_input.update(opt_output)
-        return opt_input
+    initialize_options(opt_keys)
+    params = op.Params
+    computer = make_computer(opt_input, computer_type)
+    return params, oMolsys, computer, opt_input
 
 
 def optimize_qcengine(opt_input, computer_type='qc'):
@@ -128,6 +151,8 @@ def optimize_qcengine(opt_input, computer_type='qc'):
         opt_input: Union[OptimizationInput, dict]
             Pydantic Schema of the OptimizationInput model.
             see https://github.com/MolSSI/QCElemental/blob/master/qcelemental/models/procedures.py
+        computer_type: str
+
         Returns
         -------
         dict
@@ -136,7 +161,7 @@ def optimize_qcengine(opt_input, computer_type='qc'):
 
     if isinstance(opt_input, OptimizationInput):
         opt_input = json.loads(json_dumps(opt_input))  # Remove numpy elements turn into dictionary
-    opt_output = copy.deepcopy(opt_input)  # If we can't even make it into optimize
+    opt_output = copy.deepcopy(opt_input)
 
     # Make basic optking molecular system
     oMolsys = molsys.Molsys.from_json_molecule(opt_input['initial_molecule'])
@@ -202,6 +227,6 @@ def initialize_options(opt_keys):
 
     # TODO we should make this just be a normal object
     #  we should return it to the optimize method
-    #logger.debug(str(op.Params))
+    # logger.debug(str(op.Params))
     logger.info(str(op.Params))
 

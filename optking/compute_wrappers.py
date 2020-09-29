@@ -4,11 +4,12 @@ import json
 import numpy as np
 import logging
 
-from qcelemental.models import AtomicInput, Result, Molecule
+from qcelemental.models import AtomicInput, AtomicResult, Molecule
 from qcelemental.util.serialization import json_dumps
 
 from . import history
 from .exceptions import OptError
+
 
 class ComputeWrapper:
     """ An implementation of MolSSI's qc schema
@@ -28,10 +29,6 @@ class ComputeWrapper:
         self.program = program
         self.trajectory = []
         self.energies = []
-        self.external_energy = None
-        self.external_gradient = None
-        self.external_hessian = None
-
 
     @classmethod
     def init_full(cls, molecule, model, keywords, program, trajectory, energies):
@@ -39,7 +36,6 @@ class ComputeWrapper:
         wrapper.trajectory = trajectory
         wrapper.energies = energies
         return wrapper
-
 
     def update_geometry(self, geom: np.ndarray):
         """Updates EngineWrapper for requesting calculation
@@ -96,8 +92,8 @@ class ComputeWrapper:
         if ret['success']: 
             self.energies.append(ret['properties']['return_energy'])
         else:
-           raise OptError(f"Error encountered for {driver} calc. {ret['error']['error_message']}",
-                          ret['error']['error_type'])
+            raise OptError(f"Error encountered for {driver} calc. {ret['error']['error_message']}",
+                           ret['error']['error_type'])
 
         if return_full:
             return ret
@@ -105,13 +101,13 @@ class ComputeWrapper:
             return ret['return_result']
 
     def energy(self, return_full=False):
-        return self._compute("energy", return_full)
+        return self._compute("energy")
 
     def gradient(self, return_full=False):
-        return self._compute("gradient", return_full)
+        return self._compute("gradient")
 
     def hessian(self, return_full=False):
-        return self._compute("hessian", return_full)
+        return self._compute("hessian")
 
 
 def make_computer_from_dict(computer_type, d):
@@ -139,8 +135,13 @@ class Psi4Computer(ComputeWrapper):
         import psi4
 
         inp = self.generate_schema_input(driver)
-        ret = psi4.json_wrapper.run_json(inp.dict())
-        ret = Result(**ret)
+
+        if '1.3' in psi4.__version__:
+            ret = psi4.json_wrapper.run_json_qcschema(inp.dict(), clean=True)
+        else:
+            ret = psi4.schema_wrapper.run_json_qcschema(inp.dict(), clean=True,
+                                                        json_serialization=True)
+        ret = AtomicResult(**ret)
         return ret
 
 
@@ -154,8 +155,15 @@ class QCEngineComputer(ComputeWrapper):
         ret = qcengine.compute(inp, self.program)
         return ret
 
+
 # Class to produce a compliant output with user provided energy/gradient/hessian
 class UserComputer(ComputeWrapper):
+
+    def __init__(self, molecule, model, keywords, program):
+        super().__init__(molecule, model, keywords, program)
+        self.external_energy = None
+        self.external_gradient = None
+        self.external_hessian = None
 
     output_skeleton = {
         'id': None,
@@ -164,7 +172,7 @@ class UserComputer(ComputeWrapper):
         'model': {'method': 'unknown', 'basis': 'unknown'},
         'provenance': {'creator': 'User', 'version': '0.1'},
         'properties': {},
-        'extras': { 'qcvars':{} },
+        'extras': {'qcvars': {}},
         'stdout': "User provided energy, gradient, or hessian is returned",
         'stderr': None, 'success': True, 'error': None
     }
@@ -177,10 +185,10 @@ class UserComputer(ComputeWrapper):
         HX = self.external_hessian
 
         if driver == 'hessian':
-            if (Hx is None) or (gX is None) or (E is None):
+            if HX is None or gX is None or E is None:
                 raise OptError("Must provide hessian, gradient, and energy.")
         elif driver == 'gradient':
-            if (gX is None) or (E is None):
+            if gX is None or E is None:
                 raise OptError("Must provide gradient and energy.")
         elif driver == 'energy':
             if E is None:
@@ -214,5 +222,5 @@ class UserComputer(ComputeWrapper):
         self.external_energy = None
         self.external_gradient = None
         self.external_hessian = None
-        return Result(**result)
+        return AtomicResult(**result)
 

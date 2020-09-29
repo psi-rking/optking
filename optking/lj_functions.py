@@ -12,34 +12,34 @@ def calc_energy_and_gradient(positions, sigma, epsilon, do_gradient=True):
     V_{ij} = 4 \epsilon [ (sigma / r) ^ 12 - (sigma / r)^6]
     """
 
-    Natom = positions.shape[0]
+    natom = positions.shape[0]
     # Holds the energy and the energy gradient
     E = 0.0
-    if do_gradient:
-        gradient = np.zeros((Natom, 3))
 
-    sigma6 = sigma**6
-    sigma12 = sigma6**2
+    gradient = np.zeros((natom, 3))
+
+    sigma6 = sigma ** 6
+    sigma12 = sigma6 ** 2
 
     # Double loop over all particles
-    for I,J in combinations(range(Natom), 2):
-        vIJ = positions[J] - positions[I]
-        r = np.linalg.norm(vIJ)
-        vIJ[:] = vIJ / r
+    for i, j in combinations(range(natom), 2):
+        v_ij = positions[j] - positions[i]
+        r = np.linalg.norm(v_ij)
+        v_ij[:] = v_ij / r
         r6 = np.power(r, 6)
         r12 = np.power(r6, 2)
-        E += sigma12/r12 - sigma6/r6
+        E += sigma12 / r12 - sigma6 / r6
 
         if do_gradient:
-            dVdr = - 12*sigma12/(r12*r) + 6*sigma6/(r6*r)
+            dVdr = - 12 * sigma12 / (r12 * r) + 6 * sigma6 / (r6 * r)
             for xyz in range(3):
-                gradient[I,xyz] -=  dVdr * vIJ[xyz]
-                gradient[J,xyz] +=  dVdr * vIJ[xyz]
+                gradient[i, xyz] -= dVdr * v_ij[xyz]
+                gradient[j, xyz] += dVdr * v_ij[xyz]
 
     E *= 4.0 * epsilon
 
     if do_gradient:
-        gradient = 4.0 * epsilon * gradient.reshape(3*Natom)
+        gradient = 4.0 * epsilon * gradient.reshape(3 * natom)
         return E, gradient
     else:
         return E
