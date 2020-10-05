@@ -1,9 +1,5 @@
 import numpy as np
-import copy
 import logging
-import json
-
-from qcelemental.models import Molecule
 
 from . import hessian
 from . import stepAlgorithms
@@ -23,8 +19,8 @@ from .molsys import Molsys
 
 
 def optimize(oMolsys, computer):
-    """ Driver for OptKing's optimization procedure. Suggested that users use optimize_psi4 or optimize_qcengine
-        to perform a normal (full) optimization
+    """ Driver for OptKing's optimization procedure. Suggested that users use optimize_psi4 or
+     optimize_qcengine to perform a normal (full) optimization
 
     Parameters
     ----------
@@ -42,12 +38,13 @@ def optimize(oMolsys, computer):
     logger.info("Running optimize(oMolsys,computer)")
     
     # Take care of some initial variable declarations
-    step_number = 0 # number of steps taken. Partial. IRC alg uses two step counters
+    step_number = 0  # number of steps taken. Partial. IRC alg uses two step counters
     irc_step_number = None
     total_steps_taken = 0
-    H = 0 # hessian in internals
+    H = 0  # hessian in internals
 
-    try:  # Try to optimize one structure OR set of IRC points. OptError and all Exceptions caught below.
+    # Try to optimize one structure OR set of IRC points. OptError and all Exceptions caught below.
+    try:
 
         # Prepare for multiple IRC computation
         if op.Params.opt_type == 'IRC':
@@ -300,7 +297,7 @@ def optimize(oMolsys, computer):
                     history.oHistory.consecutiveBacksteps = 0
 
         # print summary
-        logger.info("\tOptimization Finished\n" + history.summary_string())
+        logger.info("\tOptimization Finished\n" + history.oHistory.summary_string())
 
         if op.Params.opt_type == 'linesearch':
             logger.info("\tObtaining gradient at the final geometry for line-search optimization\n")
@@ -341,7 +338,7 @@ def optimize(oMolsys, computer):
         logger.exception("Error caught:" + str(error))
         # Dump histories if possible
         try:
-            logging.debug("\tDumping history: Warning last point not converged.\n" + history.summary_string())
+            logging.debug("\tDumping history: Warning last point not converged.\n" + history.oHistory.summary_string())
             if op.Params.opt_type == 'IRC':
                 logging.info("\tDumping IRC points completed")
                 IRCdata.history.progress_report()
@@ -386,7 +383,7 @@ def optimize(oMolsys, computer):
         return qc_output
 
 
-def get_pes_info(H, computer, oMolsys, step_number, irc_step_number):
+def get_pes_info(H, computer, oMolsys, step_number, irc_step_number, hist=None):
     """ Calculate, update, or guess hessian as appropriate. Calculate gradient, pulling
     gradient from hessian output if possible.
     Parameters
@@ -397,10 +394,14 @@ def get_pes_info(H, computer, oMolsys, step_number, irc_step_number):
     oMolsys : molsys.Molsys
     step_number: int
     irc_step_number: int
+    hist: history.History
+
     Returns
     -------
     np.ndarray,
     """
+    if hist is None:
+        hist = history.oHistory
 
     logger = logging.getLogger(__name__)
 
@@ -427,14 +428,14 @@ def get_pes_info(H, computer, oMolsys, step_number, irc_step_number):
     else:
         if op.Params.full_hess_every < 1:
             logger.debug(f"Updating Hessian with {str(op.Params.hess_update)}")
-            history.oHistory.hessian_update(H, oMolsys)
+            hist.hessian_update(H, oMolsys)
             grad = computer.compute(oMolsys.geom, driver='gradient', return_full=False)
             g_X = np.asarray(grad)
         elif step_number % op.Params.full_hess_every == 0:
             H, g_X = get_hess_grad(computer, oMolsys)
         else:
             logger.debug(f"Updating Hessian with {str(op.Params.hess_update)}")
-            history.oHistory.hessian_update(H, oMolsys)
+            hist.hessian_update(H, oMolsys)
             grad = computer.compute(oMolsys.geom, driver='gradient', return_full=False)
             g_X = np.asarray(grad)
 
@@ -443,8 +444,8 @@ def get_pes_info(H, computer, oMolsys, step_number, irc_step_number):
 
 
 def get_hess_grad(computer, oMolsys):
-    """ Compute hessian and get gradient from output if possible
-        Perform separate gradient calculation if needed
+    """ Compute hessian and fetch gradient from output if possible. Perform separate gradient
+    calculation if needed
     Parameters
     ----------
     computer: compute_wrappers.ComputeWrapper
@@ -477,7 +478,7 @@ def get_hess_grad(computer, oMolsys):
     return H, g_cart
 
 
-def make_internal_coords(oMolsys):
+def make_internal_coords(oMolsys, params=None):
     """
     Add optimization coordinates to molecule system.
     May be called if coordinates have not been added yet, or have been removed due to an
@@ -487,12 +488,15 @@ def make_internal_coords(oMolsys):
     ----------
     oMolsys: Molsys
         current molecular system.
+    params: OptParams object or else use default module level
 
     Returns
     -------
     oMolsys: Molsys
         The molecular system updated with internal coordinates.
     """
+    if params is None:
+        params = op.Params
     optimize_log = logging.getLogger(__name__)
     optimize_log.debug("\t Adding internal coordinates to molecular system")
 
@@ -500,7 +504,7 @@ def make_internal_coords(oMolsys):
     connectivity = addIntcos.connectivity_from_distances(oMolsys.geom, oMolsys.Z)
     optimize_log.debug("Connectivity Matrix\n" + print_mat_string(connectivity))
 
-    if op.Params.frag_mode == 'SINGLE':
+    if params.frag_mode == 'SINGLE':
         # Make a single, supermolecule.
         oMolsys.consolidate_fragments()          # collapse into one frag (if > 1)
         oMolsys.split_fragments_by_connectivity()  # separate by connectivity
@@ -508,13 +512,13 @@ def make_internal_coords(oMolsys):
         oMolsys.augment_connectivity_to_single_fragment(connectivity)
         oMolsys.consolidate_fragments()         # collapse into one frag
 
-        if op.Params.opt_coordinates in ['REDUNDANT', 'BOTH']:
+        if params.opt_coordinates in ['REDUNDANT', 'BOTH']:
             oMolsys.fragments[0].add_intcos_from_connectivity(connectivity)
 
-        if op.Params.opt_coordinates in ['CARTESIAN', 'BOTH']:
+        if params.opt_coordinates in ['CARTESIAN', 'BOTH']:
             oMolsys.fragments[0].add_cartesian_intcos()
 
-    elif op.Params.frag_mode == 'MULTI':
+    elif params.frag_mode == 'MULTI':
         # if provided multiple frags, then we use these.
         # if not, then split them (if not connected).
         if oMolsys.nfragments == 1:
@@ -526,13 +530,13 @@ def make_internal_coords(oMolsys):
             # between fragments
             oMolsys.purge_interfragment_connectivity(connectivity)
 
-        if op.Params.opt_coordinates in ['REDUNDANT', 'BOTH']:
+        if params.opt_coordinates in ['REDUNDANT', 'BOTH']:
             for iF, F in enumerate(oMolsys.fragments):
                 C = np.ndarray((F.natom, F.natom))
                 C[:] = connectivity[oMolsys.frag_atom_slice(iF), oMolsys.frag_atom_slice(iF)]
                 F.add_intcos_from_connectivity(C)
 
-        if op.Params.opt_coordinates in ['CARTESIAN', 'BOTH']:
+        if params.opt_coordinates in ['CARTESIAN', 'BOTH']:
             for F in oMolsys.fragments:
                 F.add_cartesian_intcos()
 

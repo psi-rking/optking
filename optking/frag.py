@@ -3,7 +3,7 @@ import logging
 import numpy as np
 import qcelemental as qcel
 
-from . import stre, bend, tors, oofp
+from . import stre, bend, tors, oofp, cart
 from . import addIntcos
 from .printTools import print_array_string, print_mat_string
 from itertools import combinations
@@ -12,7 +12,7 @@ from .v3d import are_collinear
 
 class Frag:
 
-    def __init__(self, Z, geom, masses, intcos=None):
+    def __init__(self, Z, geom, masses, intcos=None, frozen=False):
         """ Group of bonded atoms
 
         Parameters
@@ -31,7 +31,7 @@ class Frag:
         self._Z = Z
         self._geom = geom
         self._masses = masses
-        self._frozen = False
+        self._frozen = frozen
 
         self._intcos = []
         if intcos:
@@ -50,6 +50,35 @@ class Frag:
             s += ("\t%-18s=%17.6f%19.6f\n" % (x, x.q(self._geom), x.q_show(self._geom)))
         s += "\n"
         return s
+
+
+    def to_dict(self):
+        d = {}
+        d['Z'] = self._Z.copy()
+        d['geom'] = self._geom.copy()
+        d['masses'] = self._masses.copy()
+        d['frozen'] = self._frozen
+        d['intcos'] = [i.to_dict() for i in self._intcos]
+        return d
+
+
+    @classmethod
+    def from_dict(cls, D):
+        if 'Z' not in D or 'geom' not in D or 'masses' not in D:
+            raise OptError('Missing required Z/geom/masses in dict input')
+        Z =  D['Z']
+        geom = D['geom']
+        masses =  D['masses']
+        frozen =  D.get('frozen', False)
+        if 'intcos' in D: # class constructor (cls), e.g., stre.Stre
+            intcos = []
+            for i in D['intcos']:
+                clc = str.lower(i['type']) + '.' + i['type']
+                intcos.append( eval(clc).from_dict(i) )
+        else:
+            intcos = None
+        return cls(Z, geom, masses, intcos, frozen)
+
 
 #    @classmethod
 #    def fromPsi4Molecule(cls, mol):

@@ -5,12 +5,14 @@ import optking
 import pytest
 import numpy as np
 
+# Before 9-4-2020, these were in error because function expected
+# sigma first, then epsilon.
 @pytest.mark.parametrize("R,ref",
-    [(1.5, 415.21017761),
-     (2.0, -2.34083462),
-     (2.5, -0.19329605),
-     (3.0, -0.02191777),
-     (5.0, -0.0000477756)]
+    [(2.0,   1893.6914062),
+     (3.0,      0.0000000), # V = 0 at r = sigma
+     (3.0* np.power(2,1/6), -4.0), # Vmin=-epsilon at r = 2^(1/6)*sigma
+     (4.0,     -2.3408346),
+     (6.0,     -0.2460937500)]
 )
 def test_lj_energy(R, ref):
     positions = np.array([[0, 0, -R/2.0], [0, 0, R/2.0]])

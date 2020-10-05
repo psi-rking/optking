@@ -17,7 +17,7 @@ from .printTools import print_array_string, print_mat_string
 from .linearAlgebra import abs_max, symm_mat_eig, asymm_mat_eig, symm_mat_inv, norm
 
 
-def take_step(oMolsys, E, q_forces, H, stepType=None, computer=None):
+def take_step(oMolsys, E, q_forces, H, stepType=None, computer=None, hist=None, params=None):
     """  This method computes the step, calls displaces the geometry and updates history with
      the results.
 
@@ -34,6 +34,7 @@ def take_step(oMolsys, E, q_forces, H, stepType=None, computer=None):
     stepType : string, optional
         defaults to stepType in options
     computer : computeWrapper, optional
+    hist : history.History object
 
     Returns
     -------
@@ -45,6 +46,10 @@ def take_step(oMolsys, E, q_forces, H, stepType=None, computer=None):
     step_grad and step_hess are the gradient and hessian in the direction of the step.
 
     """
+    if hist is None:
+         hist = oHistory
+    if params is None:
+         params = op.Params
     logger = logging.getLogger(__name__)
 
     if len(H) == 0 or len(q_forces) == 0:
@@ -52,7 +57,7 @@ def take_step(oMolsys, E, q_forces, H, stepType=None, computer=None):
         return np.zeros(0)
 
     if not stepType:
-        stepType = op.Params.step_type
+        stepType = params.step_type
 
     if stepType == 'NR':
         delta_E_projected, dq, unit_step, step_grad, step_hess = dq_nr(q_forces, H)
@@ -79,7 +84,7 @@ def take_step(oMolsys, E, q_forces, H, stepType=None, computer=None):
     dq_norm = np.linalg.norm(achieved_dq)
     logger.info("\tNorm of achieved step-size %15.10f" % dq_norm)
 
-    oHistory.append_record(delta_E_projected, achieved_dq, unit_step, step_grad, step_hess)
+    hist.append_record(delta_E_projected, achieved_dq, unit_step, step_grad, step_hess)
 
     linearList = linear_bend_check(oMolsys, achieved_dq)
     if linearList:
@@ -88,7 +93,7 @@ def take_step(oMolsys, E, q_forces, H, stepType=None, computer=None):
     # Before quitting, make sure step is reasonable.  It should only be
     # screwball if we are using the "First Guess" after the back-transformation failed.
     dq_norm = np.linalg.norm(achieved_dq[0:oMolsys.num_intrafrag_intcos])
-    if dq_norm > 5 * op.Params.intrafrag_trust:
+    if dq_norm > 5 * params.intrafrag_trust:
         raise AlgError("opt.py: Step is far too large.")
 
     return achieved_dq

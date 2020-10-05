@@ -2,6 +2,7 @@ from math import fabs, acos
 import logging
 import numpy as np
 import qcelemental as qcel
+import copy
 
 from .exceptions import OptError, AlgError
 from . import optparams as op
@@ -49,6 +50,12 @@ class RefPoint(object):
         for w in self:
              s+= "\t\t\t%5d     %15.10f\n" % (w.atom+1, w.weight)
         return s
+
+    def atoms(self):
+        return [w.atom for w in self._weights]
+
+    def coeffs(self):
+        return [w.weight for w in self._weights]
 
 
 class DimerFrag(object):
@@ -332,9 +339,48 @@ class DimerFrag(object):
         A_lbl = user.get('A Label', None)
         B_lbl = user.get('B Label', None)
         frozen = user.get('Frozen', None)
+        if frozen:  # user numbers from 1; internally from 0
+            for coord in frozen:
+                if str(coord).isnumeric():
+                    coord -= 1
 
+        print(frozen)
         return cls(A_idx, A_atoms, B_idx, B_atoms, A_weights, B_weights,
                    A_lbl, B_lbl,frozen)
+
+    
+    def to_dict(self):
+        d = {}
+        d['A_idx'] = self._A_idx
+        d['B_idx'] = self._B_idx
+        d['A_atoms'] = [ref.atoms() for ref in self._Arefs]
+        d['B_atoms'] = [ref.atoms() for ref in self._Brefs]
+        d['A_weights'] = [ref.coeffs() for ref in self._Arefs]
+        d['B_weights'] = [ref.coeffs() for ref in self._Brefs]
+        d['A_lbl'] = self._A_lbl
+        d['B_lbl'] = self._B_lbl
+        d['frozen_list'] = self.frozen_list
+        # need? d['D_on'] = [i for i in self._D_on]
+        return d
+
+
+    # Similar to fromUserDict but less error checking, and numbering of atoms
+    # starts at 0.  Be aware this as well as __init__ does not update reference
+    # points (because geometries are stored with the fragments).
+    @classmethod
+    def from_dict(cls, D):
+        A_idx = D['A_idx']
+        B_idx = D['B_idx']
+        A_atoms = copy.deepcopy(D['A_atoms'])
+        B_atoms = copy.deepcopy(D['B_atoms'])
+        A_weights = copy.deepcopy(D['A_weights'])
+        B_weights = copy.deepcopy(D['B_weights'])
+        A_lbl = D['A_lbl']
+        B_lbl = D['B_lbl']
+        frozen = D['frozen_list']
+        return cls(A_idx, A_atoms, B_idx, B_atoms, A_weights, B_weights,
+                   A_lbl, B_lbl, frozen)
+
 
     def __str__(self):
 
@@ -435,17 +481,26 @@ class DimerFrag(object):
         return lbls.index(label_in)
 
     # Accept a variety of input formats
-    def freeze(self, coords_to_freeze=None): # input starts at 1!
+    def freeze(self, coords_to_freeze=None): # input starts at 0!
       try:
         if isinstance(coords_to_freeze, list):
             for coords in coords_to_freeze:
                 if str(coords).isnumeric():
-                    self._pseudo_frag._intcos[coords-1].frozen = True
+                    self._pseudo_frag._intcos[coords].frozen = True
                 else:
                     I = self.label2index(coords)
                     self._pseudo_frag._intcos[I].frozen = True
       except:
         raise OptError('did not understand coord to freeze %s' % str(coords))
+
+    # Generate list of dimer coordinates that are frozen, e.g. [0,3,5]
+    @property
+    def frozen_list(self):
+         l = []
+         for i,intco in enumerate(self._pseudo_frag._intcos):
+             if intco.frozen:
+                 l.append(i)
+         return l
 
     @property
     def num_intcos(self):
@@ -893,7 +948,7 @@ class DimerFrag(object):
         #if self.d_on(4):
         #if self.d_on(5):
     
-def test_orient(NA, NB, printInfo=False) :
+def test_orient(NA, NB, printInfo=False, randomSeed=None) :
     """ Test the orient_fragment function to see if pre-determined target
     # coordinate values can be met.  Technically, this only tests consistency
     # within the class, i.e., whether computed values of the interfragment
@@ -906,8 +961,10 @@ def test_orient(NA, NB, printInfo=False) :
     #  For each fragment, 1,2,or 3 random atoms is chosento define reference points.
     #  Does not test a linear polyatomic at present.
     """
-    from random import random,shuffle,choice,sample,uniform
+    from random import seed,random,choice,sample,uniform
     logger = logging.getLogger(__name__)
+    if randomSeed is not None:
+        seed(randomSeed)
 
     # Choose a random geometry
     Axyz = np.zeros( (NA,3) )

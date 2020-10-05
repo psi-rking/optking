@@ -92,4 +92,3 @@ def test_frozen_cart_h2o():
     assert psi4.compare_values( h2o.y(0), 1.88972613289, 6, "Y Frozen coordinate")
     assert psi4.compare_values( h2o.z(0), 1.88972613289, 6, "Z Frozen coordinate")
 
-
