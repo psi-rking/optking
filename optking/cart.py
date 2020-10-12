@@ -5,11 +5,22 @@ from .simple import Simple
 
 
 class Cart(Simple):
-    def __init__(self, a, xyz_in, frozen=False, fixed_eq_val=None):
+    """ Cartesian displacement coordinate on one atom
+
+    Parameters
+    ----------
+    a : int
+        atom number (zero indexing)
+    constraint : string
+        set coordinate as 'free', 'frozen', etc.
+    fixed_eq_val : double
+        value to fix stretch at
+    """
+    def __init__(self, a, xyz_in, constraint='free', fixed_eq_val=None):
 
         self.xyz = xyz_in  # uses setter below
         atoms = (a, )
-        Simple.__init__(self, atoms, frozen, fixed_eq_val)
+        Simple.__init__(self, atoms, constraint, fixed_eq_val)
 
     def __str__(self):
         if self.frozen: s = '*'

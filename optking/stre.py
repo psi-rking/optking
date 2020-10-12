@@ -18,15 +18,15 @@ class Stre(Simple):
         atom 1 (zero indexing)
     b : int
         atom 2 (zero indexing)
-    frozen : boolean, optional
-        set stretch as frozen
+    constraint : string
+        set stretch as 'free', 'frozen', etc.
     fixed_eq_val : double
         value to fix stretch at
     inverse : boolean
         identifies 1/R coordinate
 
     """
-    def __init__(self, a, b, frozen=False, fixed_eq_val=None, inverse=False):
+    def __init__(self, a, b, constraint='free', fixed_eq_val=None, inverse=False):
 
         self._inverse = inverse  # bool - is really 1/R coordinate?
 
@@ -35,7 +35,7 @@ class Stre(Simple):
         else:
             atoms = (b, a)
 
-        Simple.__init__(self, atoms, frozen, fixed_eq_val)
+        Simple.__init__(self, atoms, constraint, fixed_eq_val)
 
     def __str__(self):
         if self.frozen:

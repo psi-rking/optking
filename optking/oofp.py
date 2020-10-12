@@ -13,7 +13,7 @@ from .simple import Simple
 
 
 class Oofp(Simple):
-    def __init__(self, a, b, c, d, frozen=False, fixedEqVal=None, near180=0):
+    def __init__(self, a, b, c, d, constraint='free', fixedEqVal=None, near180=0):
 
         atoms = (a, b, c, d)
         if c < d:
@@ -21,7 +21,7 @@ class Oofp(Simple):
         else:
             self.neg = -1
         self._near180 = near180
-        Simple.__init__(self, atoms, frozen, fixedEqVal)
+        Simple.__init__(self, atoms, constraint, fixedEqVal)
         
         try:
             import coordinates

@@ -375,11 +375,11 @@ def freeze_stretches_from_input_atom_list(frozenStreList, oMolsys):
             "Number of atoms in frozen stretch list not divisible by 2.")
 
     for i in range(0, len(frozenStreList), 2):
-        stretch = stre.Stre(frozenStreList[i] - 1, frozenStreList[i + 1] - 1, frozen=True)
+        stretch = stre.Stre(frozenStreList[i] - 1, frozenStreList[i + 1] - 1, constraint='frozen')
         f = check_fragment(stretch.atoms, oMolsys)
         try:
             frozen_stretch = oMolsys.fragments[f].intcos.index(stretch)
-            oMolsys.fragments[f].intcos[frozen_stretch].frozen = True
+            oMolsys.fragments[f].intcos[frozen_stretch].freeze()
         except ValueError:
             logger.info("Stretch to be frozen not present, so adding it.\n")
             oMolsys.fragments[f].intcos.append(stretch)
@@ -405,11 +405,11 @@ def freeze_bends_from_input_atom_list(frozenBendList, oMolsys):
             frozenBendList[i] - 1,
             frozenBendList[i + 1] - 1,
             frozenBendList[i + 2] - 1,
-            frozen=True)
+            constraint='frozen')
         f = check_fragment(bendFroz.atoms, oMolsys)
         try:
             freezing_bend = oMolsys.fragments[f].intcos.index(bendFroz)
-            oMolsys.fragments[f].intcos[freezing_bend].frozen = True
+            oMolsys.fragments[f].intcos[freezing_bend].freeze()
         except ValueError:
             logger.info("Frozen bend not present, so adding it.\n")
             oMolsys.fragments[f].intcos.append(bendFroz)
@@ -435,11 +435,11 @@ def freeze_torsions_from_input_atom_list(frozenTorsList, oMolsys):
             frozenTorsList[i + 1] - 1,
             frozenTorsList[i + 2] - 1,
             frozenTorsList[i + 3] - 1,
-            frozen=True)
+            constraint='frozen')
         f = check_fragment(torsAngle.atoms, oMolsys)
         try:
             freezing_tors = oMolsys.fragments[f].intcos.index(torsAngle)
-            oMolsys.fragments[f].intcos[freezing_tors].frozen = True
+            oMolsys.fragments[f].intcos[freezing_tors].freeze()
         except ValueError:
             logging.info("Frozen dihedral not present, so adding it.\n")
             oMolsys.fragments[f].intcos.append(torsAngle)
@@ -461,10 +461,10 @@ def freeze_cartesians_from_input_list(frozen_cart_list, oMolsys):
         at = frozen_cart_list[i] - 1
         f = oMolsys.atom2frag_index(at)  # get frag
         for xyz in frozen_cart_list[i+1]:
-            newCart = cart.Cart(at, xyz, frozen=True)
+            newCart = cart.Cart(at, xyz, constraint='frozen')
             try:
                 freezing_cart = oMolsys.fragments[f].intcos.index(newCart)
-                oMolsys.fragments[f].intcos[freezing_cart].frozen = True
+                oMolsys.fragments[f].intcos[freezing_cart].freeze()
             except ValueError:
                 logger.info("\tFrozen cartesian not present, so adding it.\n")
                 oMolsys.fragments[f].intcos.append(newCart)

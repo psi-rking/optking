@@ -1,14 +1,17 @@
 from abc import ABCMeta, abstractmethod
 from .exceptions import AlgError, OptError
 
+supported_constraint_types = ('free', 'frozen', 'ranged')
 
 class Simple(object):
     __metaclass__ = ABCMeta
 
-    def __init__(self, atoms, frozen=False, fixed_eq_val=None):
+    def __init__(self, atoms, constraint='free', fixed_eq_val=None):
         # these lines use the property's and setters below
         self.atoms = atoms  # atom indices for internal definition
-        self.frozen = frozen  # bool - is internal coordinate frozen?
+        if constraint.lower() not in supported_constraint_types:
+            raise OptError('status for simple intco unknown')
+        self.constraint = constraint.lower()
         self.fixed_eq_val = fixed_eq_val  # target value if artificial forces are to be added
 
     @property
@@ -27,7 +30,10 @@ class Simple(object):
 
     @property
     def frozen(self):
-        return self._frozen
+        if self.constraint == 'frozen':
+            return True
+        else:
+            return False
 
     @property
     def fixed(self):
@@ -36,10 +42,16 @@ class Simple(object):
         else:
             return True
 
-    @frozen.setter
-    def frozen(self, setval):
-        self._frozen = bool(setval)
+    def freeze(self):
+        if self.constraint == 'free':
+            self.constraint = 'frozen'
+        # for now if 'ranged', don't change
         return
+
+    def unfreeze(self):
+        if self.constraint == 'frozen':
+            self.constraint = 'free'
+        # for now if 'ranged', don't change
 
     @property
     def fixed_eq_val(self):

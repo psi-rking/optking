@@ -21,8 +21,8 @@ class Bend(Simple):
         second atom
     c : int
         third atom
-    frozen : boolean, optional
-        set bend as frozen
+    constraint : string
+        set bend as 'free', 'frozen', etc.
     fixed_eq_val : float
         value to fix bend at
     bend_type : string, optional
@@ -33,7 +33,7 @@ class Bend(Simple):
         atoms must be listed in order. Uses 0-based indexing.
 
     """
-    def __init__(self, a, b, c, frozen=False, fixed_eq_val=None, bend_type="REGULAR", axes_fixed=False):
+    def __init__(self, a, b, c, constraint='free', fixed_eq_val=None, bend_type="REGULAR", axes_fixed=False):
 
         if a < c:
             atoms = (a, b, c)
@@ -45,7 +45,7 @@ class Bend(Simple):
         self._x = np.zeros(3)
         self._w = np.zeros(3)
 
-        Simple.__init__(self, atoms, frozen, fixed_eq_val)
+        Simple.__init__(self, atoms, constraint, fixed_eq_val)
 
     def __str__(self):
         if self.frozen:

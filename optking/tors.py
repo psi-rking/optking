@@ -12,13 +12,36 @@ from .simple import Simple
 
 
 class Tors(Simple):
-    def __init__(self, a, b, c, d, frozen=False, fixed_eq_val=None, near180=0):
+    """ torsion coordinate between four atoms
+
+    Parameters
+    ----------
+    a : int
+        first atom
+    b : int
+        second atom
+    c : int
+        third atom
+    d : int
+        fourth atom
+    constraint : string
+        set tors as 'free', 'frozen', etc.
+    fixed_eq_val : float
+        value to fix tors at
+    near180 : int
+        +1 => near +180; -1 => near -180; else 0
+    Notes
+    -----
+        atoms must be listed in order. Uses 0-based indexing.
+    """
+
+    def __init__(self, a, b, c, d, constraint='free', fixed_eq_val=None, near180=0):
 
         if a < d: atoms = (a, b, c, d)
         else: atoms = (d, c, b, a)
         self._near180 = near180
 
-        Simple.__init__(self, atoms, frozen, fixed_eq_val)
+        Simple.__init__(self, atoms, constraint, fixed_eq_val)
 
     def __str__(self):
         if self.frozen: s = '*'
