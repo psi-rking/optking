@@ -23,8 +23,12 @@ class Cart(Simple):
         Simple.__init__(self, atoms, constraint, fixed_eq_val)
 
     def __str__(self):
-        if self.frozen: s = '*'
-        else: s = ' '
+        if self.frozen:
+            s = '*'
+        elif self.ranged:
+            s = '['
+        else:
+            s = ' '
 
         if self._xyz == 0:
              s += 'X'
@@ -34,6 +38,10 @@ class Cart(Simple):
              s += 'Z'
 
         s += "(%d)" % (self.A + 1)
+        if self.ranged:
+            s += '[{:.3f},{:.3f}]'.format(
+                     self.minval * self.q_show_factor,
+                     self.maxval * self.q_show_factor)
         if self.fixed_eq_val:
             s += "[%.4f]" % (self.fixed_eq_val * self.q_show_factor)
         return s
@@ -82,17 +90,17 @@ class Cart(Simple):
         d['type'] = Cart.__name__ # 'Cart'
         d['atoms'] = self.atoms # id to a tuple
         d['xyz'] = self.xyz
-        d['frozen'] = self.frozen
+        d['constraint'] = self.constraint
         d['fixed_eq_val'] = self.fixed_eq_val
         return d
 
     @classmethod
     def from_dict(cls, d):
         a = d['atoms'][0]
-        frozen = d.get('frozen', False)
+        constraint = d.get('constraint', 'free')
         fixed_eq_val = d.get('fixed_eq_val', None)
         xyz = d.get('xyz', None)
-        return cls(a, xyz, frozen, fixed_eq_val)
+        return cls(a, xyz, constraint, fixed_eq_val)
 
     # Compute and return in-place array of first derivative (row of B matrix)
     def DqDx(self, geom, dqdx, mini=False):

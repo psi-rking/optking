@@ -34,12 +34,18 @@ class Oofp(Simple):
     def __str__(self):
         if self.frozen:
             s = '*'
+        elif self.ranged:
+            s = '['
         else:
             s = ' '
 
         s += "O"
 
         s += "(%d,%d,%d,%d)" % (self.A + 1, self.B + 1, self.C + 1, self.D + 1)
+        if self.ranged:
+            s += '[{:.3f},{:.3f}]'.format(
+                     self.minval * self.q_show_factor,
+                     self.maxval * self.q_show_factor)
         if self.fixed_eq_val:
             s += "[%.4f]" % self.fixed_eq_val
         return s
@@ -82,7 +88,7 @@ class Oofp(Simple):
         d = {}
         d['type'] = Oofp.__name__ # 'Oofp'
         d['atoms'] = self.atoms # id to a tuple
-        d['frozen'] = self.frozen
+        d['constraint'] = self.constraint
         d['fixed_eq_val'] = self.fixed_eq_val
         d['near180'] = self._near180
         return d
@@ -94,10 +100,10 @@ class Oofp(Simple):
         b = D['atoms'][1]
         c = D['atoms'][2]
         d = D['atoms'][3]
-        frozen = D.get('frozen', False)
+        constraint = D.get('constraint', 'free')
         fixed_eq_val = D.get('fixed_eq_val', None)
         near180 = D.get('near180', 0)
-        return cls(a, b, c, d, frozen, fixed_eq_val, near180)
+        return cls(a, b, c, d, constraint, fixed_eq_val, near180)
 
 
     def q(self, geom):

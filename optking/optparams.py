@@ -8,6 +8,7 @@ import logging
 from .exceptions import AlgError, OptError
 from .misc import (int_list,
                    int_int_float_list,
+                   int_int_float_float_list,
                    int_int_int_float_list,
                    int_int_int_int_float_list,
                    tokenize_input_string,
@@ -79,8 +80,12 @@ class OptParams(object):
 
         # Maximum number of geometry optimization steps
         self.geom_maxiter = uod.get('geom_maxiter', 50)
-        # Maximum number of geometry optimization steps for one algorithm
-        self.alg_geom_maxiter = uod.get('alg_geom_maxiter', 50)
+        # If user sets one, assume this.
+        if 'geom_maxiter' in uod and 'alg_geom_maxiter' not in uod:  
+            self.alg_geom_maxiter = self.geom_maxiter
+        else:
+            # Maximum number of geometry optimization steps for one algorithm
+            self.alg_geom_maxiter = uod.get('alg_geom_maxiter', 50)
         # Print level.  1 = normal
         # P.print_lvl = uod.get('print_lvl', 1)
         self.print_lvl = uod.get('print', 1)
@@ -142,7 +147,6 @@ class OptParams(object):
         self.trajectory = uod.get('TRAJECTORY', False)
 
         # Specify distances between atoms to be frozen (unchanged)
-        # P.frozen_distance = uod.get('FROZEN_DISTANCE','')
         frozen = uod.get('FROZEN_DISTANCE', '')
         self.frozen_distance = int_list(tokenize_input_string(frozen))
         # Specify angles between atoms to be frozen (unchanged)
@@ -155,6 +159,11 @@ class OptParams(object):
         frozen = uod.get('FROZEN_CARTESIAN', '')
         self.frozen_cartesian = int_xyz_list(tokenize_input_string(frozen))
         # Specify distances between atoms to be fixed (eq. value specified)
+
+        # Specify distances between atoms to be frozen (unchanged)
+        ranged = uod.get('RANGED_DISTANCE', '')
+        self.ranged_distance = int_int_float_float_list(tokenize_input_string(ranged))
+
         # P.fixed_distance = uod.get("FIXED_DISTANCE", "")
         fixed = uod.get("FIXED_DISTANCE", "")
         self.fixed_distance = int_int_float_list(tokenize_input_string(fixed))

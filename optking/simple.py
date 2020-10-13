@@ -13,6 +13,8 @@ class Simple(object):
             raise OptError('status for simple intco unknown')
         self.constraint = constraint.lower()
         self.fixed_eq_val = fixed_eq_val  # target value if artificial forces are to be added
+        self._minval = None
+        self._maxval = None
 
     @property
     def atoms(self):
@@ -30,10 +32,11 @@ class Simple(object):
 
     @property
     def frozen(self):
-        if self.constraint == 'frozen':
-            return True
-        else:
-            return False
+        return self.constraint == 'frozen'
+
+    @property
+    def ranged(self):
+        return self.constraint == 'ranged'
 
     @property
     def fixed(self):
@@ -52,6 +55,19 @@ class Simple(object):
         if self.constraint == 'frozen':
             self.constraint = 'free'
         # for now if 'ranged', don't change
+
+    def set_range(self, minval, maxval):
+        self.constraint = 'ranged'
+        self._minval = minval
+        self._maxval = maxval
+
+    @property
+    def minval(self):
+        return self._minval
+
+    @property
+    def maxval(self):
+        return self._maxval
 
     @property
     def fixed_eq_val(self):

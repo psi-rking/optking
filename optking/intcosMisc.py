@@ -75,7 +75,6 @@ def q_forces(intcos, geom, gradient_x, B=None):
 
 def project_redundancies_and_constraints(oMolsys, fq, H):
     """Project redundancies and constraints out of forces and Hessian"""
-    # def project_redundancies_and_constraints(intcos, geom, fq, H):
     logger = logging.getLogger(__name__)
     Nint = oMolsys.num_intcos
     # compute projection matrix = G G^-1
@@ -84,7 +83,8 @@ def project_redundancies_and_constraints(oMolsys, fq, H):
     Pprime = np.dot(G, G_inv)
     # logger.debug("\tProjection matrix for redundancies.\n\n" + print_mat_string(Pprime))
     # Add constraints to projection matrix
-    C = oMolsys.constraint_matrix # returns None, if aren't any
+    C = oMolsys.constraint_matrix(fq) # returns None, if aren't any
+    # fq is passed to Supplement matrix with ranged variables that are at their limit
 
     if C is not None:
         logger.debug("Adding constraints for projection.\n" + print_mat_string(C))
@@ -148,19 +148,6 @@ def apply_fixed_forces(oMolsys, fq, H, stepNumber):
                 for j in range(len(H)):  # gives first dimension length
                     if j != location:
                         H[j][location] = H[location][j] = 0.0
-
-
-# """
-# def massWeightedUMatrixCart(masses):
-#    atom = 1
-#    masses = [15.9994, 1.00794, 1.00794]
-#    U = np.zeros((3 * nAtom, 3 * nAtom) )
-#    for i in range (0, (3 * nAtom)):
-#        U[i][i] = 1 / sqrt(masses[atom - 1])
-#        if (i % 3 == 0):
-#            nAtom += 1
-#    return U
-# """
 
 
 def hessian_to_internals(H, oMolsys, g_x=None):

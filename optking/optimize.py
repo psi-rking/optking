@@ -131,6 +131,8 @@ def optimize(oMolsys, computer):
                     total_steps_taken += 1
                     # compute energy and gradient
                     # xyz = oMolsys.geom.copy() unused warning in IDE
+                    #mol = oMolsys.to_dict()
+                    #oMolsys = Molsys.from_dict(mol)
 
                     H, gX = get_pes_info(H, computer, oMolsys, step_number, irc_step_number)
                     E = computer.energies[-1]

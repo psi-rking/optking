@@ -102,6 +102,16 @@ def int_int_float_list(inList):
         outList.append(float(inList[i + 2]))
     return outList
 
+def int_int_float_float_list(inList):
+    if len(inList) % 4 != 0:
+        raise OptError("List is not comprised of int-int-float elements")
+    outList = []
+    for i in range(0, len(inList), 4):
+        outList.append(int(inList[i + 0]))
+        outList.append(int(inList[i + 1]))
+        outList.append(float(inList[i + 2]))
+        outList.append(float(inList[i + 3]))
+    return outList
 
 def int_int_int_float_list(inList):
     if len(inList) % 4 != 0:

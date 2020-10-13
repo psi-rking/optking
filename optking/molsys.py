@@ -304,24 +304,55 @@ class Molsys(object):
     @property
     def frozen_intco_list(self):
         """Determine vector with 1 for any frozen internal coordinate"""
-        frozen = np.zeros(self.num_intcos)
+        frozen = np.zeros(self.num_intcos, dtype=bool)
         cnt = 0
         for F in self._fragments:
             for intco in F._intcos:
                 if intco.frozen:
-                    frozen[cnt] = 1
+                    frozen[cnt] = True
                 cnt += 1
         for DI in self._dimer_intcos:
             for intco in DI._pseudo_frag._intcos:
                 if intco.frozen:
-                    frozen[cnt] = 1
+                    frozen[cnt] = True
                 cnt += 1
         return frozen
 
-    @property
-    def constraint_matrix(self):
+    # Used to zero out forces.  For any ranged intco, indicate frozen if
+    # within 0.1% of boundary and its corresponding force is in that direction.
+    def ranged_frozen_intco_list(self, fq):
+        """Determine vector with 1 for any ranged intco that is at its limit"""
+        qvals = self.q()
+        frozen = np.zeros(self.num_intcos, dtype=bool)
+        cnt = 0
+        for F in self._fragments:
+            for intco in F._intcos:
+                if intco.ranged:
+                    tol = 0.001*(intco.maxval-intco.minval)
+                    if np.fabs(qvals[cnt] - intco.maxval)<tol and fq[cnt] > 0:
+                        frozen[cnt] = True
+                    elif np.fabs(qvals[cnt] - intco.minval)<tol and fq[cnt] < 0:
+                        frozen[cnt] = True
+                cnt += 1
+        for DI in self._dimer_intcos:
+            for intco in DI._pseudo_frag._intcos:
+                if intco.ranged:
+                    tol = 0.001*(intco.maxval-intco.minval)
+                    if np.fabs(qvals[cnt] - intco.maxval)<tol and fq[cnt] > 0:
+                        frozen[cnt] = True
+                    elif np.fabs(qvals[cnt] - intco.minval)<tol and fq[cnt] < 0:
+                        frozen[cnt] = True
+                cnt += 1
+        return frozen
+
+    def constraint_matrix(self, fq=None):
         """Returns constraint matrix with 1 on diagonal for frozen coordinates"""
         frozen = self.frozen_intco_list
+
+        if fq is not None:
+            range_frozen = self.ranged_frozen_intco_list(fq)
+            frozen = np.logical_or(frozen, range_frozen)
+
         if np.any(frozen):
            return np.diagflat(frozen)
         else:

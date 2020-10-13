@@ -40,6 +40,8 @@ class Stre(Simple):
     def __str__(self):
         if self.frozen:
             s = '*'
+        elif self.ranged:
+            s = '['
         else:
             s = ' '
 
@@ -49,6 +51,10 @@ class Stre(Simple):
             s += 'R'
 
         s += "(%d,%d)" % (self.A + 1, self.B + 1)
+        if self.ranged:
+            s += '[{:.3f},{:.3f}]'.format(
+                     self.minval * self.q_show_factor,
+                     self.maxval * self.q_show_factor)
         if self.fixed_eq_val:
             s += "[%.4f]" % (self.fixed_eq_val * self.q_show_factor)
         return s
@@ -89,7 +95,7 @@ class Stre(Simple):
         d = {}
         d['type'] = Stre.__name__ # 'Stre'
         d['atoms'] = self.atoms # id to a tuple
-        d['frozen'] = self.frozen
+        d['constraint'] = self.constraint
         d['fixed_eq_val'] = self.fixed_eq_val
         d['inverse'] = self._inverse
         return d
@@ -98,10 +104,10 @@ class Stre(Simple):
     def from_dict(cls, d):
         a = d['atoms'][0]
         b = d['atoms'][1]
-        frozen = d.get('frozen', False)
+        constraint = d.get('constraint', 'free')
         fixed_eq_val = d.get('fixed_eq_val', None)
         inverse = d.get('inverse', False)
-        return cls(a, b, frozen, fixed_eq_val, inverse)
+        return cls(a, b, constraint, fixed_eq_val, inverse)
 
     # If mini == False, dqdx is 1x(3*number of atoms in fragment).
     # if mini == True, dqdx is 1x6.

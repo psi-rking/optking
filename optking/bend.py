@@ -50,6 +50,8 @@ class Bend(Simple):
     def __str__(self):
         if self.frozen:
             s = '*'
+        elif self.ranged:
+            s = '['
         else:
             s = ' '
 
@@ -61,6 +63,10 @@ class Bend(Simple):
             s += "l"
 
         s += "(%d,%d,%d)" % (self.A + 1, self.B + 1, self.C + 1)
+        if self.ranged:
+            s += '[{:.3f},{:.3f}]'.format(
+                     self.minval * self.q_show_factor,
+                     self.maxval * self.q_show_factor)
         if self.fixed_eq_val:
             s += "[%.1f]" % (self.fixed_eq_val * self.q_show_factor)
         return s
@@ -199,7 +205,7 @@ class Bend(Simple):
         d = {}
         d['type'] = Bend.__name__ # 'Bend'
         d['atoms'] = self.atoms # id to a tuple
-        d['frozen'] = self.frozen
+        d['constraint'] = self.constraint
         d['fixed_eq_val'] = self.fixed_eq_val
         d['bend_type'] = self.bend_type
         d['axes_fixed'] = self._axes_fixed
@@ -211,11 +217,11 @@ class Bend(Simple):
         a = d['atoms'][0]
         b = d['atoms'][1]
         c = d['atoms'][2]
-        frozen = d.get('frozen', False)
+        constraint = d.get('constraint', 'free')
         fixed_eq_val = d.get('fixed_eq_val', None)
         bend_type = d.get('bend_type', 'REGULAR')
         axes_fixed = d.get('axes_fixed', False)
-        return cls(a, b, c, frozen, fixed_eq_val, bend_type, axes_fixed)
+        return cls(a, b, c, constraint, fixed_eq_val, bend_type, axes_fixed)
 
 
     def DqDx(self, geom, dqdx, mini=False):

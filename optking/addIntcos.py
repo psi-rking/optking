@@ -385,6 +385,36 @@ def freeze_stretches_from_input_atom_list(frozenStreList, oMolsys):
             oMolsys.fragments[f].intcos.append(stretch)
 
 
+def ranged_stretches_from_input_atom_list(rangedStreList, oMolsys):
+    """
+    Creates ranged stretch coordinate between atoms
+    Parameters
+    ----------
+    rangedStreList : list of quartet values 
+        int/atomA, int/atomB, float/minval, float/maxval ; atoms from 1
+    oMolsys : molsys.Molsys
+        optking molecular system
+    """
+    if len(rangedStreList) % (2+2) != 0:
+        raise OptError(
+            "Number of ranged stretch parameters should be divisible by 4.")
+
+    for i in range(0, len(rangedStreList), 4):
+        stretch = stre.Stre(rangedStreList[i+0]-1,
+                            rangedStreList[i+1]-1)
+        qmin = rangedStreList[i+2] / stretch.q_show_factor
+        qmax = rangedStreList[i+3] / stretch.q_show_factor
+
+        f = check_fragment(stretch.atoms, oMolsys)
+        try:
+            I = oMolsys.fragments[f].intcos.index(stretch)
+            oMolsys.fragments[f].intcos[I].set_range(qmin,qmax)
+        except ValueError:
+            logger = logging.getLogger(__name__)
+            logger.info("Stretch to be ranged not present, so adding it.\n")
+            oMolsys.fragments[f].intcos.append(stretch)
+
+
 def freeze_bends_from_input_atom_list(frozenBendList, oMolsys):
     """
     Freezes bend coordinates
@@ -549,6 +579,9 @@ def add_frozen_and_fixed_intcos(oMolsys):
         freeze_torsions_from_input_atom_list(op.Params.frozen_dihedral, oMolsys)
     if op.Params.frozen_cartesian:
         freeze_cartesians_from_input_list(op.Params.frozen_cartesian, oMolsys)
+
+    if op.Params.ranged_distance:
+        ranged_stretches_from_input_atom_list(op.Params.ranged_distance, oMolsys)
 
     if op.Params.fixed_distance:
         fix_stretches_from_input_list(op.Params.fixed_distance, oMolsys)
