@@ -6,15 +6,15 @@ supported_constraint_types = ('free', 'frozen', 'ranged')
 class Simple(object):
     __metaclass__ = ABCMeta
 
-    def __init__(self, atoms, constraint='free', fixed_eq_val=None):
+    def __init__(self, atoms, constraint, fixed_eq_val, range_min, range_max):
         # these lines use the property's and setters below
         self.atoms = atoms  # atom indices for internal definition
         if constraint.lower() not in supported_constraint_types:
             raise OptError('status for simple intco unknown')
         self.constraint = constraint.lower()
         self.fixed_eq_val = fixed_eq_val  # target value if artificial forces are to be added
-        self._minval = None
-        self._maxval = None
+        self._range_min = range_min
+        self._range_max = range_max
 
     @property
     def atoms(self):
@@ -56,18 +56,18 @@ class Simple(object):
             self.constraint = 'free'
         # for now if 'ranged', don't change
 
-    def set_range(self, minval, maxval):
+    def set_range(self, range_min, range_max):
         self.constraint = 'ranged'
-        self._minval = minval
-        self._maxval = maxval
+        self._range_min = range_min
+        self._range_max = range_max
 
     @property
-    def minval(self):
-        return self._minval
+    def range_min(self):
+        return self._range_min
 
     @property
-    def maxval(self):
-        return self._maxval
+    def range_max(self):
+        return self._range_max
 
     @property
     def fixed_eq_val(self):

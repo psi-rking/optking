@@ -35,13 +35,14 @@ class Tors(Simple):
         atoms must be listed in order. Uses 0-based indexing.
     """
 
-    def __init__(self, a, b, c, d, constraint='free', fixed_eq_val=None, near180=0):
+    def __init__(self, a, b, c, d, constraint='free', fixed_eq_val=None, near180=0,
+                 range_min=None, range_max=None):
 
         if a < d: atoms = (a, b, c, d)
         else: atoms = (d, c, b, a)
         self._near180 = near180
 
-        Simple.__init__(self, atoms, constraint, fixed_eq_val)
+        Simple.__init__(self, atoms, constraint, fixed_eq_val, range_min, range_max)
 
     def __str__(self):
         if self.frozen:
@@ -55,9 +56,9 @@ class Tors(Simple):
 
         s += "(%d,%d,%d,%d)" % (self.A + 1, self.B + 1, self.C + 1, self.D + 1)
         if self.ranged:
-            s += '[{:.3f},{:.3f}]'.format(
-                     self.minval * self.q_show_factor,
-                     self.maxval * self.q_show_factor)
+            s += '[{:.2f},{:.2f}]'.format(
+                     self.range_min * self.q_show_factor,
+                     self.range_max * self.q_show_factor)
         if self.fixed_eq_val:
             s += "[%.1f]" % (self.fixed_eq_val * self.q_show_factor)
         return s
@@ -111,6 +112,8 @@ class Tors(Simple):
         d['type'] = Tors.__name__ # 'Tors'
         d['atoms'] = self.atoms # id to a tuple
         d['constraint'] = self.constraint
+        d['range_min'] = self.range_min
+        d['range_max'] = self.range_max
         d['fixed_eq_val'] = self.fixed_eq_val
         d['near180'] = self._near180
         return d
@@ -123,9 +126,12 @@ class Tors(Simple):
         c = D['atoms'][2]
         d = D['atoms'][3]
         constraint = D.get('constraint', 'free')
+        range_min = d.get('range_min', None)
+        range_max = d.get('range_max', None)
         fixed_eq_val = D.get('fixed_eq_val', None)
         near180 = D.get('near180', 0)
-        return cls(a, b, c, d, constraint, fixed_eq_val, near180)
+        return cls(a, b, c, d, constraint, fixed_eq_val, near180,
+                   range_min, range_max)
 
 
     # compute angle and return value in radians

@@ -87,71 +87,63 @@ def tokenize_input_string(inString):
     return outString.split()
 
 
-def int_list(inList):
-    outList = [int(i) for i in inList]
+# Organize a single input list into a new list, each entry
+# of which is Nint integers.
+def int_list(inList, Nint=1):
+    if len(inList) % Nint != 0:
+        raise OptError('List does not have {}*n entries as expected'.
+                       format(Nint))
+    outList = []
+    for i in range(0, len(inList), Nint):
+        entry = []
+        for I in range(Nint):
+            entry.append(int(inList[i+I]))
+        outList.append(entry)
     return outList
 
 
-def int_int_float_list(inList):
-    if len(inList) % 3 != 0:
-        raise OptError("List is not comprised of int-int-float elements")
+# Organize a single input list into a new list, each entry
+# of which is Nint integers and Nfloat floats.
+def int_float_list(inList, Nint=1, Nfloat=1):
+    entry_length = Nint + Nfloat
+    if len(inList) % entry_length != 0:
+        raise OptError('List does not have {}*n entries as expected'.
+                       format(entry_length))
     outList = []
-    for i in range(0, len(inList), 3):
-        outList.append(int(inList[i + 0]))
-        outList.append(int(inList[i + 1]))
-        outList.append(float(inList[i + 2]))
-    return outList
-
-def int_int_float_float_list(inList):
-    if len(inList) % 4 != 0:
-        raise OptError("List is not comprised of int-int-float elements")
-    outList = []
-    for i in range(0, len(inList), 4):
-        outList.append(int(inList[i + 0]))
-        outList.append(int(inList[i + 1]))
-        outList.append(float(inList[i + 2]))
-        outList.append(float(inList[i + 3]))
-    return outList
-
-def int_int_int_float_list(inList):
-    if len(inList) % 4 != 0:
-        raise OptError(
-            "List is not comprised of int-int-int-float elements")
-    outList = []
-    for i in range(0, len(inList), 4):
-        outList.append(int(inList[i + 0]))
-        outList.append(int(inList[i + 1]))
-        outList.append(int(inList[i + 2]))
-        outList.append(float(inList[i + 3]))
+    for i in range(0, len(inList), entry_length):
+        entry = []
+        for I in range(Nint):
+            entry.append(int(inList[i+I]))
+        for F in range(Nfloat):
+            entry.append(float(inList[i+Nint+F]))
+        outList.append(entry)
     return outList
 
 
-def int_int_int_int_float_list(inList):
-    if len(inList) % 5 != 0:
-        raise OptError(
-            "List is not comprised of int-int-int-int-float elements")
+# Organize a single input list into a new list, each entry
+# of which is Nint integers, Nxyz lists (probably 1), and Nfloat floats
+# e.g., ['2', 'xz', '1', '3'] => [2, ['x','z'], 1.0, 3.0]
+def int_xyz_float_list(inList, Nint=1, Nxyz=1, Nfloat=1):
+    entry_length = Nint + Nxyz + Nfloat
+    if len(inList) % entry_length != 0:
+        raise OptError('List does not have {}*n entries as expected'.
+                       format(entry_length))
     outList = []
-    for i in range(0, len(inList), 5):
-        outList.append(int(inList[i + 0]))
-        outList.append(int(inList[i + 1]))
-        outList.append(int(inList[i + 2]))
-        outList.append(int(inList[i + 3]))
-        outList.append(float(inList[i + 4]))
-    return outList
-
-
-def int_xyz_list(inList):
-    if len(inList) % 2 != 0:
-        raise OptError("int-XYZ list does not have even number of entries")
-    outList = []
-    for i in range(0, len(inList), 2):
-        outList.append(int(inList[i + 0]))
-        cart_string = str(inList[i + 1]).upper()
-        if len(cart_string) > 3 or len(cart_string) < 1:
-            raise OptError("Could not decipher xyz coordinate string")
-        for c in cart_string:
-            if c not in ('X', 'Y', 'Z'):
+    for i in range(0, len(inList), entry_length):
+        entry = []
+        for I in range(Nint):
+            entry.append(int(inList[i+I]))
+        for X in range(Nxyz):
+            cart_string = str(inList[i+Nint+X]).upper()
+            if len(cart_string) > 3 or len(cart_string) < 1:
                 raise OptError("Could not decipher xyz coordinate string")
-        cart_string = sorted(cart_string)  # x , then y, then z
-        outList.append(cart_string)
+            for c in cart_string:
+                if c not in ('X', 'Y', 'Z'):
+                    raise OptError("Could not decipher xyz coordinate string")
+            cart_string = sorted(cart_string)  # x , then y, then z
+            entry.append(cart_string)
+        for F in range(Nfloat):
+            entry.append(float(inList[i+Nint+Nxyz+F]))
+        outList.append(entry)
     return outList
+

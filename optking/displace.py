@@ -48,10 +48,10 @@ def displace_molsys(oMolsys, dq_in, fq=None, ensure_convergence=False):
                 dq_in[start+i] = 0.0
             elif I.ranged:
                 tentative = q_in[start+i] + dq_in[start+i]
-                if tentative > I.maxval:
-                    dq_in[start+i] = I.maxval - q_in[start+i]
-                elif tentative < I.minval:
-                    dq_in[start+i] = I.minval - q_in[start+i]
+                if tentative > I.range_max:
+                    dq_in[start+i] = I.range_max - q_in[start+i]
+                elif tentative < I.range_min:
+                    dq_in[start+i] = I.range_min - q_in[start+i]
                 else:
                     pass # value within range
 

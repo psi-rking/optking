@@ -76,15 +76,16 @@ def print_array_string(M, Ncol=7, title=None):
 def print_geom_grad(geom, grad):
     logger = logging.getLogger(__name__)
     Natom = geom.shape[0]
-    geometry_str = "\tGeometry\n\n"
-    gradient_str = "\tGradient\n\n"
+    geometry_str = "\tGeometry (au)\n"
     for i in range(Natom):
-        geometry_str += ("\t%20.10f%20.10f%20.10f\n" % (geom[i, 0], geom[i, 1], geom[i, 2]))
-    geometry_str += ("\n")
-    for i in range(Natom):
-        gradient_str += ("\t%20.10f%20.10f%20.10f\n" % (grad[3 * i + 0], grad[3 * i + 1],
-                                                        grad[3 * i + 2]))
+        geometry_str += '\t{:20.10f}{:20.10f}{:20.10f}\n'.format(
+            geom[i, 0], geom[i, 1], geom[i, 2])
     logger.info(geometry_str)
+
+    gradient_str = "\tGradient (au)\n"
+    for i in range(Natom):
+        gradient_str += '\t{:20.10f}{:20.10f}{:20.10f}\n'.format(
+            grad[3*i + 0], grad[3*i + 1], grad[3*i + 2])
     logger.info(gradient_str)
 
 

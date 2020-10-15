@@ -33,7 +33,8 @@ class Bend(Simple):
         atoms must be listed in order. Uses 0-based indexing.
 
     """
-    def __init__(self, a, b, c, constraint='free', fixed_eq_val=None, bend_type="REGULAR", axes_fixed=False):
+    def __init__(self, a, b, c, constraint='free', fixed_eq_val=None, bend_type="REGULAR", axes_fixed=False,
+                 range_min=None, range_max=None):
 
         if a < c:
             atoms = (a, b, c)
@@ -45,7 +46,8 @@ class Bend(Simple):
         self._x = np.zeros(3)
         self._w = np.zeros(3)
 
-        Simple.__init__(self, atoms, constraint, fixed_eq_val)
+        Simple.__init__(self, atoms, constraint, fixed_eq_val, range_min, range_max)
+
 
     def __str__(self):
         if self.frozen:
@@ -64,9 +66,9 @@ class Bend(Simple):
 
         s += "(%d,%d,%d)" % (self.A + 1, self.B + 1, self.C + 1)
         if self.ranged:
-            s += '[{:.3f},{:.3f}]'.format(
-                     self.minval * self.q_show_factor,
-                     self.maxval * self.q_show_factor)
+            s += '[{:.2f},{:.2f}]'.format(
+                     self.range_min * self.q_show_factor,
+                     self.range_max * self.q_show_factor)
         if self.fixed_eq_val:
             s += "[%.1f]" % (self.fixed_eq_val * self.q_show_factor)
         return s
@@ -206,6 +208,8 @@ class Bend(Simple):
         d['type'] = Bend.__name__ # 'Bend'
         d['atoms'] = self.atoms # id to a tuple
         d['constraint'] = self.constraint
+        d['range_min'] = self.range_min
+        d['range_max'] = self.range_max
         d['fixed_eq_val'] = self.fixed_eq_val
         d['bend_type'] = self.bend_type
         d['axes_fixed'] = self._axes_fixed
@@ -218,10 +222,13 @@ class Bend(Simple):
         b = d['atoms'][1]
         c = d['atoms'][2]
         constraint = d.get('constraint', 'free')
+        range_min = d.get('range_min', None)
+        range_max = d.get('range_max', None)
         fixed_eq_val = d.get('fixed_eq_val', None)
         bend_type = d.get('bend_type', 'REGULAR')
         axes_fixed = d.get('axes_fixed', False)
-        return cls(a, b, c, constraint, fixed_eq_val, bend_type, axes_fixed)
+        return cls(a, b, c, constraint, fixed_eq_val, bend_type, axes_fixed, 
+                   range_min, range_max)
 
 
     def DqDx(self, geom, dqdx, mini=False):

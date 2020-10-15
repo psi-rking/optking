@@ -13,7 +13,8 @@ from .simple import Simple
 
 
 class Oofp(Simple):
-    def __init__(self, a, b, c, d, constraint='free', fixedEqVal=None, near180=0):
+    def __init__(self, a, b, c, d, constraint='free', fixedEqVal=None, near180=0,
+                 range_min=None, range_max=None):
 
         atoms = (a, b, c, d)
         if c < d:
@@ -21,7 +22,7 @@ class Oofp(Simple):
         else:
             self.neg = -1
         self._near180 = near180
-        Simple.__init__(self, atoms, constraint, fixedEqVal)
+        Simple.__init__(self, atoms, constraint, fixedEqVal, range_min, range_max)
         
         try:
             import coordinates
@@ -43,9 +44,9 @@ class Oofp(Simple):
 
         s += "(%d,%d,%d,%d)" % (self.A + 1, self.B + 1, self.C + 1, self.D + 1)
         if self.ranged:
-            s += '[{:.3f},{:.3f}]'.format(
-                     self.minval * self.q_show_factor,
-                     self.maxval * self.q_show_factor)
+            s += '[{:.2f},{:.2f}]'.format(
+                     self.range_min * self.q_show_factor,
+                     self.range_max * self.q_show_factor)
         if self.fixed_eq_val:
             s += "[%.4f]" % self.fixed_eq_val
         return s
@@ -89,6 +90,8 @@ class Oofp(Simple):
         d['type'] = Oofp.__name__ # 'Oofp'
         d['atoms'] = self.atoms # id to a tuple
         d['constraint'] = self.constraint
+        d['range_min'] = self.range_min
+        d['range_max'] = self.range_max
         d['fixed_eq_val'] = self.fixed_eq_val
         d['near180'] = self._near180
         return d
@@ -101,9 +104,12 @@ class Oofp(Simple):
         c = D['atoms'][2]
         d = D['atoms'][3]
         constraint = D.get('constraint', 'free')
+        range_min = d.get('range_min', None)
+        range_max = d.get('range_max', None)
         fixed_eq_val = D.get('fixed_eq_val', None)
         near180 = D.get('near180', 0)
-        return cls(a, b, c, d, constraint, fixed_eq_val, near180)
+        return cls(a, b, c, d, constraint, fixed_eq_val, near180,
+                   range_min, range_max)
 
 
     def q(self, geom):

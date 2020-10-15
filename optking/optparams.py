@@ -7,12 +7,9 @@
 import logging
 from .exceptions import AlgError, OptError
 from .misc import (int_list,
-                   int_int_float_list,
-                   int_int_float_float_list,
-                   int_int_int_float_list,
-                   int_int_int_int_float_list,
-                   tokenize_input_string,
-                   int_xyz_list)
+                   int_float_list,
+                   int_xyz_float_list,
+                   tokenize_input_string)
 
 
 # Class for enumerated string options.
@@ -148,33 +145,45 @@ class OptParams(object):
 
         # Specify distances between atoms to be frozen (unchanged)
         frozen = uod.get('FROZEN_DISTANCE', '')
-        self.frozen_distance = int_list(tokenize_input_string(frozen))
+        self.frozen_distance = int_list(tokenize_input_string(frozen),2)
         # Specify angles between atoms to be frozen (unchanged)
         frozen = uod.get('FROZEN_BEND', '')
-        self.frozen_bend = int_list(tokenize_input_string(frozen))
+        self.frozen_bend = int_list(tokenize_input_string(frozen),3)
         # Specify dihedral angles between atoms to be frozen (unchanged)
         frozen = uod.get('FROZEN_DIHEDRAL', '')
-        self.frozen_dihedral = int_list(tokenize_input_string(frozen))
+        self.frozen_dihedral = int_list(tokenize_input_string(frozen),4)
+        # Specify out-of-plane angles between atoms to be frozen (unchanged)
+        frozen = uod.get('FROZEN_OOFP', '')
+        self.frozen_oofp = int_list(tokenize_input_string(frozen),4)
         # Specify atom and X, XY, XYZ, ... to be frozen (unchanged)
         frozen = uod.get('FROZEN_CARTESIAN', '')
-        self.frozen_cartesian = int_xyz_list(tokenize_input_string(frozen))
-        # Specify distances between atoms to be fixed (eq. value specified)
+        self.frozen_cartesian = int_xyz_float_list(tokenize_input_string(frozen),1,1,0)
 
-        # Specify distances between atoms to be frozen (unchanged)
+        # Specify distance between atoms to be ranged
         ranged = uod.get('RANGED_DISTANCE', '')
-        self.ranged_distance = int_int_float_float_list(tokenize_input_string(ranged))
+        self.ranged_distance = int_float_list(tokenize_input_string(ranged),2,2)
+        # Specify angles between atoms to be ranged
+        ranged = uod.get('RANGED_BEND', '')
+        self.ranged_bend = int_float_list(tokenize_input_string(ranged),3,2)
+        # Specify dihedral angles between atoms to be ranged
+        ranged = uod.get('RANGED_DIHEDRAL', '')
+        self.ranged_dihedral = int_float_list(tokenize_input_string(ranged),4,2)
+        # Specify out-of-plane angles between atoms to be ranged
+        ranged = uod.get('RANGED_OOFP', '')
+        self.ranged_oofp = int_float_list(tokenize_input_string(ranged),4,2)
+        # Specify atom and X, XY, XYZ, ... to be ranged
+        frozen = uod.get('RANGED_CARTESIAN', '')
+        self.ranged_cartesian = int_xyz_float_list(tokenize_input_string(frozen),1,1,2)
 
-        # P.fixed_distance = uod.get("FIXED_DISTANCE", "")
+        # Specify distances between atoms to be fixed (eq. value specified)
         fixed = uod.get("FIXED_DISTANCE", "")
-        self.fixed_distance = int_int_float_list(tokenize_input_string(fixed))
+        self.fixed_distance = int_float_list(tokenize_input_string(fixed),2,1)
         # Specify angles between atoms to be fixed (eq. value specified)
-        # P.fixed_bend    = uod.get("FIXED_BEND", "")
         fixed = uod.get("FIXED_BEND", "")
-        self.fixed_bend = int_int_int_float_list(tokenize_input_string(fixed))
+        self.fixed_bend = int_float_list(tokenize_input_string(fixed),3,1)
         # Specify dihedral angles between atoms to be fixed (eq. value specified)
-        # P.fixed_dihedral = uod.get("FIXED_DIHEDRAL","")
         fixed = uod.get("FIXED_DIHEDRAL", "")
-        self.fixed_dihedral = int_int_int_int_float_list(tokenize_input_string(fixed))
+        self.fixed_dihedral = int_float_list(tokenize_input_string(fixed),4,1)
         #
         # Should an xyz trajectory file be kept (useful for visualization)?
         # P.print_trajectory_xyz = uod.get('PRINT_TRAJECTORY_XYZ', False)

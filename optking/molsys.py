@@ -328,19 +328,19 @@ class Molsys(object):
         for F in self._fragments:
             for intco in F._intcos:
                 if intco.ranged:
-                    tol = 0.001*(intco.maxval-intco.minval)
-                    if np.fabs(qvals[cnt] - intco.maxval)<tol and fq[cnt] > 0:
+                    tol = 0.001*(intco.range_max-intco.range_min)
+                    if np.fabs(qvals[cnt] - intco.range_max)<tol and fq[cnt] > 0:
                         frozen[cnt] = True
-                    elif np.fabs(qvals[cnt] - intco.minval)<tol and fq[cnt] < 0:
+                    elif np.fabs(qvals[cnt] - intco.range_min)<tol and fq[cnt] < 0:
                         frozen[cnt] = True
                 cnt += 1
         for DI in self._dimer_intcos:
             for intco in DI._pseudo_frag._intcos:
                 if intco.ranged:
-                    tol = 0.001*(intco.maxval-intco.minval)
-                    if np.fabs(qvals[cnt] - intco.maxval)<tol and fq[cnt] > 0:
+                    tol = 0.001*(intco.range_max-intco.range_min)
+                    if np.fabs(qvals[cnt] - intco.range_max)<tol and fq[cnt] > 0:
                         frozen[cnt] = True
-                    elif np.fabs(qvals[cnt] - intco.minval)<tol and fq[cnt] < 0:
+                    elif np.fabs(qvals[cnt] - intco.range_min)<tol and fq[cnt] < 0:
                         frozen[cnt] = True
                 cnt += 1
         return frozen
@@ -430,7 +430,7 @@ class Molsys(object):
         """Return a string of the geometry in [A]"""
         molsys_geometry = ''
         for iF, F in enumerate(self._fragments):
-            molsys_geometry += ("\tFragment %d\n" % (iF + 1))
+            molsys_geometry += '\tFragment {:d} (Ang)\n'.format(iF+1)
             molsys_geometry += F.show_geom()
         return molsys_geometry
 

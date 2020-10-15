@@ -139,6 +139,7 @@ def optimize(oMolsys, computer):
 
                     # oMolsys.geom = xyz  # use setter function to save data in fragments
                     print_geom_grad(oMolsys.geom, gX)
+                    logger.info(oMolsys.show_geom())
 
                     if op.Params.print_lvl >= 4:
                         hessian.show(H, oMolsys)
@@ -224,7 +225,7 @@ def optimize(oMolsys, computer):
                     if converged:  # changed from elif when above if statement active
                         logger.info("\tConverged in %d steps!" % (step_number + 1))
                         logger.info("\tFinal energy is %20.13f" % E)
-                        logger.info("\tFinal structure (Angstroms): \n\n"
+                        logger.info("\tFinal structure (Angstroms): \n"
                                     + oMolsys.show_geom())
                         break  # break out of step_number loop
 

@@ -26,7 +26,8 @@ class Stre(Simple):
         identifies 1/R coordinate
 
     """
-    def __init__(self, a, b, constraint='free', fixed_eq_val=None, inverse=False):
+    def __init__(self, a, b, constraint='free', fixed_eq_val=None, inverse=False,
+                 range_min=None, range_max=None):
 
         self._inverse = inverse  # bool - is really 1/R coordinate?
 
@@ -35,7 +36,7 @@ class Stre(Simple):
         else:
             atoms = (b, a)
 
-        Simple.__init__(self, atoms, constraint, fixed_eq_val)
+        Simple.__init__(self, atoms, constraint, fixed_eq_val, range_min, range_max)
 
     def __str__(self):
         if self.frozen:
@@ -53,8 +54,8 @@ class Stre(Simple):
         s += "(%d,%d)" % (self.A + 1, self.B + 1)
         if self.ranged:
             s += '[{:.3f},{:.3f}]'.format(
-                     self.minval * self.q_show_factor,
-                     self.maxval * self.q_show_factor)
+                     self.range_min * self.q_show_factor,
+                     self.range_max * self.q_show_factor)
         if self.fixed_eq_val:
             s += "[%.4f]" % (self.fixed_eq_val * self.q_show_factor)
         return s
@@ -96,6 +97,8 @@ class Stre(Simple):
         d['type'] = Stre.__name__ # 'Stre'
         d['atoms'] = self.atoms # id to a tuple
         d['constraint'] = self.constraint
+        d['range_min'] = self.range_min
+        d['range_max'] = self.range_max
         d['fixed_eq_val'] = self.fixed_eq_val
         d['inverse'] = self._inverse
         return d
@@ -105,9 +108,11 @@ class Stre(Simple):
         a = d['atoms'][0]
         b = d['atoms'][1]
         constraint = d.get('constraint', 'free')
+        range_min = d.get('range_min', None)
+        range_max = d.get('range_max', None)
         fixed_eq_val = d.get('fixed_eq_val', None)
         inverse = d.get('inverse', False)
-        return cls(a, b, constraint, fixed_eq_val, inverse)
+        return cls(a, b, constraint, fixed_eq_val, inverse, range_min, range_max)
 
     # If mini == False, dqdx is 1x(3*number of atoms in fragment).
     # if mini == True, dqdx is 1x6.

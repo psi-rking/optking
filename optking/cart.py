@@ -16,11 +16,12 @@ class Cart(Simple):
     fixed_eq_val : double
         value to fix stretch at
     """
-    def __init__(self, a, xyz_in, constraint='free', fixed_eq_val=None):
+    def __init__(self, a, xyz_in, constraint='free', fixed_eq_val=None,
+                 range_min=None, range_max=None):
 
         self.xyz = xyz_in  # uses setter below
         atoms = (a, )
-        Simple.__init__(self, atoms, constraint, fixed_eq_val)
+        Simple.__init__(self, atoms, constraint, fixed_eq_val, range_min, range_max)
 
     def __str__(self):
         if self.frozen:
@@ -40,8 +41,8 @@ class Cart(Simple):
         s += "(%d)" % (self.A + 1)
         if self.ranged:
             s += '[{:.3f},{:.3f}]'.format(
-                     self.minval * self.q_show_factor,
-                     self.maxval * self.q_show_factor)
+                     self.range_min * self.q_show_factor,
+                     self.range_max * self.q_show_factor)
         if self.fixed_eq_val:
             s += "[%.4f]" % (self.fixed_eq_val * self.q_show_factor)
         return s
@@ -91,6 +92,8 @@ class Cart(Simple):
         d['atoms'] = self.atoms # id to a tuple
         d['xyz'] = self.xyz
         d['constraint'] = self.constraint
+        d['range_min'] = self.range_min
+        d['range_max'] = self.range_max
         d['fixed_eq_val'] = self.fixed_eq_val
         return d
 
@@ -98,9 +101,11 @@ class Cart(Simple):
     def from_dict(cls, d):
         a = d['atoms'][0]
         constraint = d.get('constraint', 'free')
+        range_min = d.get('range_min', None)
+        range_max = d.get('range_max', None)
         fixed_eq_val = d.get('fixed_eq_val', None)
         xyz = d.get('xyz', None)
-        return cls(a, xyz, constraint, fixed_eq_val)
+        return cls(a, xyz, constraint, fixed_eq_val, range_min, range_max)
 
     # Compute and return in-place array of first derivative (row of B matrix)
     def DqDx(self, geom, dqdx, mini=False):

@@ -358,24 +358,22 @@ def linear_bend_check(oMolsys, dq):
     return linearBendsMissing
 
 
-def freeze_stretches_from_input_atom_list(frozenStreList, oMolsys):
+def frozen_stre_from_input(frozenStreList, oMolsys):
     """
     Freezes stretch coordinate between atoms
     Parameters
     ----------
     frozenStreList : list
-        (2*x) list of pairs of atoms. 1 indexed
+        each entry is a list of 2 atoms, indexed from 1
     oMolsys : molsys.Molsys
         optking molecular system
     """
-
     logger = logging.getLogger(__name__)
-    if len(frozenStreList) % 2 != 0:
-        raise OptError(
-            "Number of atoms in frozen stretch list not divisible by 2.")
+    for S in frozenStreList:
+        if len(S) != 2:
+            raise OptError("Num. of atoms in frozen stretch should be 2.")
 
-    for i in range(0, len(frozenStreList), 2):
-        stretch = stre.Stre(frozenStreList[i] - 1, frozenStreList[i + 1] - 1, constraint='frozen')
+        stretch = stre.Stre(S[0] - 1, S[1] - 1, constraint='frozen')
         f = check_fragment(stretch.atoms, oMolsys)
         try:
             frozen_stretch = oMolsys.fragments[f].intcos.index(stretch)
@@ -385,25 +383,23 @@ def freeze_stretches_from_input_atom_list(frozenStreList, oMolsys):
             oMolsys.fragments[f].intcos.append(stretch)
 
 
-def ranged_stretches_from_input_atom_list(rangedStreList, oMolsys):
+def ranged_stre_from_input(rangedStreList, oMolsys):
     """
     Creates ranged stretch coordinate between atoms
     Parameters
     ----------
-    rangedStreList : list of quartet values 
-        int/atomA, int/atomB, float/minval, float/maxval ; atoms from 1
+    rangedStreList : list
+        each entry is a list of 2 atoms (indexed from 1) and 2 floats
     oMolsys : molsys.Molsys
         optking molecular system
     """
-    if len(rangedStreList) % (2+2) != 0:
-        raise OptError(
-            "Number of ranged stretch parameters should be divisible by 4.")
+    for S in rangedStreList:
+        if len(S) != 4:
+            raise OptError("Num. of entries in ranged stretch should be 4.")
 
-    for i in range(0, len(rangedStreList), 4):
-        stretch = stre.Stre(rangedStreList[i+0]-1,
-                            rangedStreList[i+1]-1)
-        qmin = rangedStreList[i+2] / stretch.q_show_factor
-        qmax = rangedStreList[i+3] / stretch.q_show_factor
+        stretch = stre.Stre(S[0]-1, S[1]-1)
+        qmin = S[2] / stretch.q_show_factor
+        qmax = S[3] / stretch.q_show_factor
 
         f = check_fragment(stretch.atoms, oMolsys)
         try:
@@ -412,30 +408,26 @@ def ranged_stretches_from_input_atom_list(rangedStreList, oMolsys):
         except ValueError:
             logger = logging.getLogger(__name__)
             logger.info("Stretch to be ranged not present, so adding it.\n")
+            stretch.set_range(qmin,qmax)
             oMolsys.fragments[f].intcos.append(stretch)
 
 
-def freeze_bends_from_input_atom_list(frozenBendList, oMolsys):
+def frozen_bend_from_input(frozenBendList, oMolsys):
     """
     Freezes bend coordinates
     Parameters
     ----------
     frozenBendList : list
-        (3*x) list of triplets of atoms
+        each entry is a list of 3 atoms numbers, indexed from 1
     oMolsys : molsys.Molsys
         optking molecular system
     """
     logger = logging.getLogger(__name__)
-    if len(frozenBendList) % 3 != 0:
-        raise OptError(
-            "Number of atoms in frozen bend list not divisible by 3.")
+    for B in frozenBendList:
+        if len(B) != 3:
+            raise OptError("Num. of atoms in frozen bend should be 3.")
 
-    for i in range(0, len(frozenBendList), 3):
-        bendFroz = bend.Bend(
-            frozenBendList[i] - 1,
-            frozenBendList[i + 1] - 1,
-            frozenBendList[i + 2] - 1,
-            constraint='frozen')
+        bendFroz = bend.Bend(B[0]-1, B[1]-1, B[2]-1, constraint='frozen')
         f = check_fragment(bendFroz.atoms, oMolsys)
         try:
             freezing_bend = oMolsys.fragments[f].intcos.index(bendFroz)
@@ -444,53 +436,152 @@ def freeze_bends_from_input_atom_list(frozenBendList, oMolsys):
             logger.info("Frozen bend not present, so adding it.\n")
             oMolsys.fragments[f].intcos.append(bendFroz)
 
+def ranged_bend_from_input(rangedBendList, oMolsys):
+    """
+    Creates ranged bend coordinates
+    Parameters
+    ----------
+    frozenBendList : list
+        each entry is a list of 3 atoms, followed by 2 floats
+    oMolsys : molsys.Molsys
+        optking molecular system
+    """
+    logger = logging.getLogger(__name__)
+    for B in rangedBendList:
+        if len(B) != 5:
+            raise OptError("Num. of entries in ranged bend should be 5.")
 
-def freeze_torsions_from_input_atom_list(frozenTorsList, oMolsys):
+        Rbend = bend.Bend(B[0]-1, B[1]-1, B[2]-1)
+        qmin = B[3] / Rbend.q_show_factor
+        qmax = B[4] / Rbend.q_show_factor
+        f = check_fragment(Rbend.atoms, oMolsys)
+        try:
+            I = oMolsys.fragments[f].intcos.index(Rbend)
+            oMolsys.fragments[f].intcos[I].set_range(qmin,qmax)
+        except ValueError:
+            logger.info("Frozen bend not present, so adding it.\n")
+            Rbend.set_range(qmin,qmax)
+            oMolsys.fragments[f].intcos.append(Rbend)
+
+
+def frozen_tors_from_input(frozenTorsList, oMolsys):
     """
     Freezes dihedral angles
-    Paramters
+    Parameters
     ---------
     frozenTorsList : list
-        (4*x) list of atoms in sets of four
+        each entry is list with 4 atoms (indexed from 1)
     oMolsys: object
         optking molecular system
     """
-    if len(frozenTorsList) % 4 != 0:
-        raise OptError(
-            "Number of atoms in frozen torsion list not divisible by 4.")
+    for T in frozenTorsList:
+        if len(T) != 4:
+            raise OptError("Num. of atoms in frozen torsion should be 4.")
 
-    for i in range(0, len(frozenTorsList), 4):
-        torsAngle = tors.Tors(
-            frozenTorsList[i] - 1,
-            frozenTorsList[i + 1] - 1,
-            frozenTorsList[i + 2] - 1,
-            frozenTorsList[i + 3] - 1,
-            constraint='frozen')
+        torsAngle = tors.Tors(T[0]-1,T[1]-1,T[2]-1,T[3]-1,constraint='frozen')
         f = check_fragment(torsAngle.atoms, oMolsys)
         try:
-            freezing_tors = oMolsys.fragments[f].intcos.index(torsAngle)
-            oMolsys.fragments[f].intcos[freezing_tors].freeze()
+            I = oMolsys.fragments[f].intcos.index(torsAngle)
+            oMolsys.fragments[f].intcos[I].freeze()
         except ValueError:
             logging.info("Frozen dihedral not present, so adding it.\n")
             oMolsys.fragments[f].intcos.append(torsAngle)
 
 
-def freeze_cartesians_from_input_list(frozen_cart_list, oMolsys):
-    """ params: List of integers indicating atoms, and then 'x' or 'xy', etc.
-    indicating cartesians to be frozen
+def ranged_tors_from_input(rangedTorsList, oMolsys):
+    """
+    Creates ranged dihedral angles from input
+    Parameters
+    ---------
+    frozenTorsList : list
+        each entry is list with 4 atoms plus 2 floats
+    oMolsys: object
+        optking molecular system
+    """
+    for T in rangedTorsList:
+        if len(T) != 6:
+            raise OptError("Num. of entries in ranged dihedral should be 6.")
 
+        torsAngle = tors.Tors(T[0]-1,T[1]-1,T[2]-1,T[3]-1)
+        qmin = T[4] / torsAngle.q_show_factor
+        qmax = T[5] / torsAngle.q_show_factor
+        f = check_fragment(torsAngle.atoms, oMolsys)
+        try:
+            I = oMolsys.fragments[f].intcos.index(torsAngle)
+            oMolsys.fragments[f].intcos[I].set_range(qmin,qmax)
+        except ValueError:
+            logging.info("Frozen dihedral not present, so adding it.\n")
+            torsAngle.set_range(qmin,qmax)
+            oMolsys.fragments[f].intcos.append(torsAngle)
+
+
+def frozen_oofp_from_input(frozenOofpList, oMolsys):
+    """
+    Freezes out-of-plane angles
+    Parameters
+    ---------
+    frozenOofpList : list
+        each entry is list with 4 atoms (indexed from 1)
+    oMolsys: object
+        optking molecular system
+    """
+    for T in frozenOofpList:
+        if len(T) != 4:
+            raise OptError("Num. of atoms in frozen out-of-plane should be 4.")
+
+        oofpAngle = oofp.Oofp(T[0]-1,T[1]-1,T[2]-1,T[3]-1,constraint='frozen')
+        f = check_fragment(oofpAngle.atoms, oMolsys)
+        try:
+            I = oMolsys.fragments[f].intcos.index(oofpAngle)
+            oMolsys.fragments[f].intcos[I].freeze()
+        except ValueError:
+            logging.info("Frozen out-of-plane not present, so adding it.\n")
+            oMolsys.fragments[f].intcos.append(oofpAngle)
+
+
+def ranged_oofp_from_input(rangedOofpList, oMolsys):
+    """
+    Creates ranged out-of-plane angles from input
+    Parameters
+    ---------
+    frozenOofpList : list
+        each entry is list with 4 atoms plus 2 floats
+    oMolsys: object
+        optking molecular system
+    """
+    for T in rangedOofpList:
+        if len(T) != 6:
+            raise OptError("Num. of entries in ranged out-of-plane should be 6.")
+
+        oofpAngle = oofp.Oofp(T[0]-1,T[1]-1,T[2]-1,T[3]-1)
+        qmin = T[4] / oofpAngle.q_show_factor
+        qmax = T[5] / oofpAngle.q_show_factor
+        f = check_fragment(oofpAngle.atoms, oMolsys)
+        try:
+            I = oMolsys.fragments[f].intcos.index(oofpAngle)
+            oMolsys.fragments[f].intcos[I].set_range(qmin,qmax)
+        except ValueError:
+            logging.info("Frozen out-of-plane not present, so adding it.\n")
+            oofpAngle.set_range(qmin,qmax)
+            oMolsys.fragments[f].intcos.append(oofpAngle)
+
+
+def frozen_cart_from_input(frozen_cart_list, oMolsys):
+    """
+    Creates frozen cartesian coordinates from input
     Parameters
     ----------
-    frozen_cart_list : string
-        uses 1 indexing for atoms. number xy or z or any combo
-        add example
+    frozen_cart_list : list
+        each entry is list with atom number, then list of 'x','y',or'z'
     oMolsys : molsys.Molsys
     """
     logger = logging.getLogger(__name__)
-    for i in range(0, len(frozen_cart_list), 2):
-        at = frozen_cart_list[i] - 1
+    for C in frozen_cart_list:
+        if len(C) != 2:
+            raise OptError("Num. of entries in frozen cart should be 2.")
+        at = C[0]-1
         f = oMolsys.atom2frag_index(at)  # get frag
-        for xyz in frozen_cart_list[i+1]:
+        for xyz in C[1]:
             newCart = cart.Cart(at, xyz, constraint='frozen')
             try:
                 freezing_cart = oMolsys.fragments[f].intcos.index(newCart)
@@ -498,6 +589,37 @@ def freeze_cartesians_from_input_list(frozen_cart_list, oMolsys):
             except ValueError:
                 logger.info("\tFrozen cartesian not present, so adding it.\n")
                 oMolsys.fragments[f].intcos.append(newCart)
+
+def ranged_cart_from_input(ranged_cart_list, oMolsys):
+    """
+    Creates ranged cartesian coordinates from input
+    Parameters
+    ----------
+    frozen_cart_list : list
+        each entry is list with atom number, then list with only 1 of
+        'x','y', or 'z', then 2 floats, min and max
+        so if user wants to range x, y and z coordinates, then user should
+        enter three separate entries with their ranges
+    oMolsys : molsys.Molsys
+    """
+    logger = logging.getLogger(__name__)
+    for C in ranged_cart_list:
+        if len(C) != 4:
+            raise OptError("Num. of entries in frozen cart should be 4.")
+        atom = C[0]-1
+        f = oMolsys.atom2frag_index(atom)  # get frag
+        if len(C[1]) != 1:
+            raise OptError("Ranged cartesian only takes 1 of x, y, or z.")
+        newCart = cart.Cart(atom, C[1][0])
+        qmin = C[2] / newCart.q_show_factor
+        qmax = C[3] / newCart.q_show_factor
+        try:
+            I = oMolsys.fragments[f].intcos.index(newCart)
+            oMolsys.fragments[f].intcos[I].set_range(qmin,qmax)
+        except ValueError:
+            logger.info("\tFrozen cartesian not present, so adding it.\n")
+            newCart.set_range(qmin,qmax)
+            oMolsys.fragments[f].intcos.append(newCart)
 
 
 def check_fragment(atomList, oMolsys):
@@ -516,7 +638,7 @@ def check_fragment(atomList, oMolsys):
 
 
 # TODO Length mod 3 should be checked in OptParams
-def fix_stretches_from_input_list(fixedStreList, oMolsys):
+def fix_stretches_from_input(fixedStreList, oMolsys):
     logger = logging.getLogger(__name__)
     for i in range(0, len(fixedStreList), 3):  # loop over fixed stretches
         stretch = stre.Stre(fixedStreList[i] - 1, fixedStreList[i + 1] - 1)
@@ -531,7 +653,7 @@ def fix_stretches_from_input_list(fixedStreList, oMolsys):
             oMolsys.fragments[f].intcos.append(stretch)
 
 
-def fix_bends_from_input_list(fixedBendList, oMolsys):
+def fix_bends_from_input(fixedBendList, oMolsys):
     logger = logging.getLogger(__name__)
     for i in range(0, len(fixedBendList), 4):  # loop over fixed bends
         one_bend = bend.Bend(fixedBendList[i] - 1, fixedBendList[i + 1] - 1,
@@ -547,7 +669,7 @@ def fix_bends_from_input_list(fixedBendList, oMolsys):
             oMolsys.fragments[f].intcos.append(one_bend)
 
 
-def fix_torsions_from_input_list(fixedTorsList, oMolsys):
+def fix_torsions_from_input(fixedTorsList, oMolsys):
     logger = logging.getLogger(__name__)
     for i in range(0, len(fixedTorsList), 5):  # loop over fixed dihedrals
         one_tors = tors.Tors(fixedTorsList[i] - 1, fixedTorsList[i + 1] - 1,
@@ -572,23 +694,33 @@ def freeze_intrafrag(oMolsys):
 
 def add_frozen_and_fixed_intcos(oMolsys):
     if op.Params.frozen_distance:
-        freeze_stretches_from_input_atom_list(op.Params.frozen_distance, oMolsys)
+        frozen_stre_from_input(op.Params.frozen_distance, oMolsys)
     if op.Params.frozen_bend:
-        freeze_bends_from_input_atom_list(op.Params.frozen_bend, oMolsys)
+        frozen_bend_from_input(op.Params.frozen_bend, oMolsys)
     if op.Params.frozen_dihedral:
-        freeze_torsions_from_input_atom_list(op.Params.frozen_dihedral, oMolsys)
+        frozen_tors_from_input(op.Params.frozen_dihedral, oMolsys)
+    if op.Params.frozen_oofp:
+        frozen_oofp_from_input(op.Params.frozen_oofp, oMolsys)
     if op.Params.frozen_cartesian:
-        freeze_cartesians_from_input_list(op.Params.frozen_cartesian, oMolsys)
+        frozen_cart_from_input(op.Params.frozen_cartesian, oMolsys)
 
     if op.Params.ranged_distance:
-        ranged_stretches_from_input_atom_list(op.Params.ranged_distance, oMolsys)
+        ranged_stre_from_input(op.Params.ranged_distance, oMolsys)
+    if op.Params.ranged_bend:
+        ranged_bend_from_input(op.Params.ranged_bend, oMolsys)
+    if op.Params.ranged_dihedral:
+        ranged_tors_from_input(op.Params.ranged_dihedral, oMolsys)
+    if op.Params.ranged_oofp:
+        ranged_oofp_from_input(op.Params.ranged_oofp, oMolsys)
+    if op.Params.ranged_cartesian:
+        ranged_cart_from_input(op.Params.ranged_cartesian, oMolsys)
 
     if op.Params.fixed_distance:
-        fix_stretches_from_input_list(op.Params.fixed_distance, oMolsys)
+        fix_stretches_from_input(op.Params.fixed_distance, oMolsys)
     if op.Params.fixed_bend:
-        fix_bends_from_input_list(op.Params.fixed_bend, oMolsys)
+        fix_bends_from_input(op.Params.fixed_bend, oMolsys)
     if op.Params.fixed_dihedral:
-        fix_torsions_from_input_list(op.Params.fixed_dihedral, oMolsys)
+        fix_torsions_from_input(op.Params.fixed_dihedral, oMolsys)
     if op.Params.freeze_intrafrag:
         freeze_intrafrag(oMolsys)
 
