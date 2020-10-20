@@ -7,7 +7,7 @@ import qcelemental as qcel
 from .exceptions import AlgError, OptError
 from . import optparams as op
 from . import v3d
-from .misc import hguess_lindh_rho
+from .misc import hguess_lindh_rho, string_math_fx
 from .simple import Simple
 
 
@@ -26,8 +26,6 @@ class Tors(Simple):
         fourth atom
     constraint : string
         set tors as 'free', 'frozen', etc.
-    fixed_eq_val : float
-        value to fix tors at
     near180 : int
         +1 => near +180; -1 => near -180; else 0
     Notes
@@ -35,14 +33,15 @@ class Tors(Simple):
         atoms must be listed in order. Uses 0-based indexing.
     """
 
-    def __init__(self, a, b, c, d, constraint='free', fixed_eq_val=None, near180=0,
-                 range_min=None, range_max=None):
+    def __init__(self, a, b, c, d, constraint='free', near180=0,
+                 range_min=None, range_max=None, ext_force=None):
 
         if a < d: atoms = (a, b, c, d)
         else: atoms = (d, c, b, a)
         self._near180 = near180
 
-        Simple.__init__(self, atoms, constraint, fixed_eq_val, range_min, range_max)
+        Simple.__init__(self, atoms, constraint, range_min, range_max,
+                        ext_force)
 
     def __str__(self):
         if self.frozen:
@@ -59,8 +58,6 @@ class Tors(Simple):
             s += '[{:.2f},{:.2f}]'.format(
                      self.range_min * self.q_show_factor,
                      self.range_max * self.q_show_factor)
-        if self.fixed_eq_val:
-            s += "[%.1f]" % (self.fixed_eq_val * self.q_show_factor)
         return s
 
     def __eq__(self, other):
@@ -114,8 +111,11 @@ class Tors(Simple):
         d['constraint'] = self.constraint
         d['range_min'] = self.range_min
         d['range_max'] = self.range_max
-        d['fixed_eq_val'] = self.fixed_eq_val
-        d['near180'] = self._near180
+        d['near180'] = self.near180
+        if self.has_ext_force:
+            d['ext_force_str'] = self.ext_force.formula_string
+        else:
+            d['ext_force_str'] = None
         return d
 
 
@@ -126,12 +126,16 @@ class Tors(Simple):
         c = D['atoms'][2]
         d = D['atoms'][3]
         constraint = D.get('constraint', 'free')
-        range_min = d.get('range_min', None)
-        range_max = d.get('range_max', None)
-        fixed_eq_val = D.get('fixed_eq_val', None)
+        range_min = D.get('range_min', None)
+        range_max = D.get('range_max', None)
         near180 = D.get('near180', 0)
-        return cls(a, b, c, d, constraint, fixed_eq_val, near180,
-                   range_min, range_max)
+        fstr = D.get('ext_force_str', None)
+        if fstr is None:
+            ext_force = None
+        else:
+            ext_force = string_math_fx(fstr)
+        return cls(a, b, c, d, constraint, near180,
+                   range_min, range_max, ext_force)
 
 
     # compute angle and return value in radians

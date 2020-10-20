@@ -38,7 +38,7 @@ from . import history
 from . import hessian
 from . import compute_wrappers
 from .optimize import make_internal_coords, prepare_opt_output, get_pes_info
-from .intcosMisc import (apply_fixed_forces,
+from .intcosMisc import (apply_external_forces,
                          project_redundancies_and_constraints,
                          hessian_to_internals)
 from .stepAlgorithms import take_step
@@ -141,7 +141,7 @@ class OptHelper(object):
         self.compute()
         self.fq = self.molsys.q_forces(self.gX)
 
-        apply_fixed_forces(self.molsys, self.fq, self._Hq, self.step_num)
+        apply_external_forces(self.molsys, self.fq, self._Hq, self.step_num)
         project_redundancies_and_constraints(self.molsys, self.fq, self._Hq)
 
         self.history.append(self.molsys.geom, self.E, self.fq)

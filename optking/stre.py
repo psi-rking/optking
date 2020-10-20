@@ -5,7 +5,7 @@ import qcelemental as qcel
 
 from .exceptions import AlgError, OptError
 from . import v3d
-from .misc import delta, hguess_lindh_rho
+from .misc import delta, hguess_lindh_rho, string_math_fx
 from .simple import Simple
 
 
@@ -20,14 +20,12 @@ class Stre(Simple):
         atom 2 (zero indexing)
     constraint : string
         set stretch as 'free', 'frozen', etc.
-    fixed_eq_val : double
-        value to fix stretch at
     inverse : boolean
         identifies 1/R coordinate
 
     """
-    def __init__(self, a, b, constraint='free', fixed_eq_val=None, inverse=False,
-                 range_min=None, range_max=None):
+    def __init__(self, a, b, constraint='free', inverse=False,
+                 range_min=None, range_max=None, ext_force=None):
 
         self._inverse = inverse  # bool - is really 1/R coordinate?
 
@@ -36,7 +34,8 @@ class Stre(Simple):
         else:
             atoms = (b, a)
 
-        Simple.__init__(self, atoms, constraint, fixed_eq_val, range_min, range_max)
+        Simple.__init__(self, atoms, constraint, range_min, range_max,
+                        ext_force)
 
     def __str__(self):
         if self.frozen:
@@ -45,6 +44,9 @@ class Stre(Simple):
             s = '['
         else:
             s = ' '
+
+        if self.has_ext_force:
+            s += '>'
 
         if self.inverse:
             s += '1/R'
@@ -56,8 +58,6 @@ class Stre(Simple):
             s += '[{:.3f},{:.3f}]'.format(
                      self.range_min * self.q_show_factor,
                      self.range_max * self.q_show_factor)
-        if self.fixed_eq_val:
-            s += "[%.4f]" % (self.fixed_eq_val * self.q_show_factor)
         return s
 
     def __eq__(self, other):
@@ -99,8 +99,11 @@ class Stre(Simple):
         d['constraint'] = self.constraint
         d['range_min'] = self.range_min
         d['range_max'] = self.range_max
-        d['fixed_eq_val'] = self.fixed_eq_val
-        d['inverse'] = self._inverse
+        d['inverse'] = self.inverse
+        if self.has_ext_force:
+            d['ext_force_str'] = self.ext_force.formula_string
+        else:
+            d['ext_force_str'] = None
         return d
 
     @classmethod
@@ -110,9 +113,13 @@ class Stre(Simple):
         constraint = d.get('constraint', 'free')
         range_min = d.get('range_min', None)
         range_max = d.get('range_max', None)
-        fixed_eq_val = d.get('fixed_eq_val', None)
         inverse = d.get('inverse', False)
-        return cls(a, b, constraint, fixed_eq_val, inverse, range_min, range_max)
+        fstr = d.get('ext_force_str', None)
+        if fstr is None:
+            ext_force = None
+        else:
+            ext_force = string_math_fx(fstr)
+        return cls(a, b, constraint, inverse, range_min, range_max, ext_force)
 
     # If mini == False, dqdx is 1x(3*number of atoms in fragment).
     # if mini == True, dqdx is 1x6.
@@ -252,8 +259,6 @@ class HBond(Stre):
             s += 'H'
 
         s += "(%d,%d)" % (self.A + 1, self.B + 1)
-        if self.fixed_eq_val:
-            s += "[%.4f]" % self.fixed_eq_val
         return s
 
     # overrides Stre eq in comparisons, regardless of order

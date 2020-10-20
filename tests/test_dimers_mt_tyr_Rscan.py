@@ -1,5 +1,5 @@
 # PES scan of tyrosine side group with methylthiophene.
-# The fragments and the relative orientation of the two molecules is fixed.
+# The fragments and the relative orientation of the two molecules is frozen.
 # The distance between the center of the rings of the monomers is varied.
 import psi4
 import optking

@@ -5,11 +5,11 @@ import pytest
 #! Various constrained energy minimizations of HOOH with cc-pvdz RHF.
 #! Cartesian-coordinate constrained optimizations of HOOH in Cartesians.
 #! 1. Cartesian optimization.
-#! 2. Cartesian optimization with fixed H's.
-#! 3. Cartesian optimization with fixed O's.
+#! 2. Cartesian optimization with frozen H's.
+#! 3. Cartesian optimization with frozen O's.
 HOOH_E             = -150.7866742 # TEST
-HOOH_E_fixed_H_xyz = -150.7866491 # TEST
-HOOH_E_fixed_O_xyz = -150.7866390 # TEST
+HOOH_E_frozen_H_xyz = -150.7866491 # TEST
+HOOH_E_frozen_O_xyz = -150.7866390 # TEST
 
 f0 = ''''''
 # Freeze H xyz in HOOH.
@@ -31,8 +31,8 @@ opt2 = {'frozen_cartesian': f2}
 opt3 = {'frozen_cartesian': f3}
 opt4 = {'frozen_cartesian': f1, 'opt_coordinates': 'redundant'}
 
-freeze_params = [(opt0, HOOH_E), (opt1, HOOH_E_fixed_H_xyz), (opt2, HOOH_E_fixed_O_xyz), (opt3, HOOH_E_fixed_H_xyz), 
-                 (opt4, HOOH_E_fixed_H_xyz)]
+freeze_params = [(opt0, HOOH_E), (opt1, HOOH_E_frozen_H_xyz), (opt2, HOOH_E_frozen_O_xyz), (opt3, HOOH_E_frozen_H_xyz), 
+                 (opt4, HOOH_E_frozen_H_xyz)]
 
 @pytest.mark.parametrize("options, expected", freeze_params, ids=["Only backstep", "freeze H", "freeze O", 
                                                                  "freeze individual x,y,z", "freeze then change coord"])

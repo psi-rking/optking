@@ -7,7 +7,7 @@ import qcelemental as qcel
 from .exceptions import AlgError, OptError
 from . import v3d
 from .simple import Simple
-from .misc import delta, hguess_lindh_rho
+from .misc import delta, hguess_lindh_rho, string_math_fx
 
 
 class Bend(Simple):
@@ -23,8 +23,6 @@ class Bend(Simple):
         third atom
     constraint : string
         set bend as 'free', 'frozen', etc.
-    fixed_eq_val : float
-        value to fix bend at
     bend_type : string, optional
         can be regular, linear, or complement (used to describe linear bends)
 
@@ -33,8 +31,8 @@ class Bend(Simple):
         atoms must be listed in order. Uses 0-based indexing.
 
     """
-    def __init__(self, a, b, c, constraint='free', fixed_eq_val=None, bend_type="REGULAR", axes_fixed=False,
-                 range_min=None, range_max=None):
+    def __init__(self, a, b, c, constraint='free', bend_type="REGULAR",
+                 axes_fixed=False, range_min=None, range_max=None, ext_force=None):
 
         if a < c:
             atoms = (a, b, c)
@@ -46,8 +44,8 @@ class Bend(Simple):
         self._x = np.zeros(3)
         self._w = np.zeros(3)
 
-        Simple.__init__(self, atoms, constraint, fixed_eq_val, range_min, range_max)
-
+        Simple.__init__(self, atoms, constraint, range_min, range_max,
+                        ext_force)
 
     def __str__(self):
         if self.frozen:
@@ -69,8 +67,6 @@ class Bend(Simple):
             s += '[{:.2f},{:.2f}]'.format(
                      self.range_min * self.q_show_factor,
                      self.range_max * self.q_show_factor)
-        if self.fixed_eq_val:
-            s += "[%.1f]" % (self.fixed_eq_val * self.q_show_factor)
         return s
 
     def __eq__(self, other):
@@ -210,9 +206,12 @@ class Bend(Simple):
         d['constraint'] = self.constraint
         d['range_min'] = self.range_min
         d['range_max'] = self.range_max
-        d['fixed_eq_val'] = self.fixed_eq_val
         d['bend_type'] = self.bend_type
-        d['axes_fixed'] = self._axes_fixed
+        d['axes_fixed'] = self.axes_fixed
+        if self.has_ext_force:
+            d['ext_force_str'] = self.ext_force.formula_string
+        else:
+            d['ext_force_str'] = None
         return d
 
 
@@ -224,11 +223,15 @@ class Bend(Simple):
         constraint = d.get('constraint', 'free')
         range_min = d.get('range_min', None)
         range_max = d.get('range_max', None)
-        fixed_eq_val = d.get('fixed_eq_val', None)
         bend_type = d.get('bend_type', 'REGULAR')
         axes_fixed = d.get('axes_fixed', False)
-        return cls(a, b, c, constraint, fixed_eq_val, bend_type, axes_fixed, 
-                   range_min, range_max)
+        fstr = d.get('ext_force_str', None)
+        if fstr is None:
+            ext_force = None
+        else:
+            ext_force = string_math_fx(fstr)
+        return cls(a, b, c, constraint, bend_type, axes_fixed, 
+                   range_min, range_max, ext_force)
 
 
     def DqDx(self, geom, dqdx, mini=False):

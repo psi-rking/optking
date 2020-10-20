@@ -7,14 +7,15 @@ from .exceptions import AlgError, OptError
 from . import optparams as op
 from . import v3d
 from .simple import Simple
+from .misc import string_math_fx
 
 # Class for out-of-plane angle.  Definition (A,B,C,D) means angle AB with respect
 # to the CBD plane; canonical order is C < D
 
 
 class Oofp(Simple):
-    def __init__(self, a, b, c, d, constraint='free', fixedEqVal=None, near180=0,
-                 range_min=None, range_max=None):
+    def __init__(self, a, b, c, d, constraint='free', near180=0,
+                 range_min=None, range_max=None, ext_force=None):
 
         atoms = (a, b, c, d)
         if c < d:
@@ -22,7 +23,8 @@ class Oofp(Simple):
         else:
             self.neg = -1
         self._near180 = near180
-        Simple.__init__(self, atoms, constraint, fixedEqVal, range_min, range_max)
+        Simple.__init__(self, atoms, constraint, range_min, range_max,
+                        ext_force)
         
         try:
             import coordinates
@@ -47,8 +49,6 @@ class Oofp(Simple):
             s += '[{:.2f},{:.2f}]'.format(
                      self.range_min * self.q_show_factor,
                      self.range_max * self.q_show_factor)
-        if self.fixed_eq_val:
-            s += "[%.4f]" % self.fixed_eq_val
         return s
 
     def __eq__(self, other):
@@ -92,8 +92,11 @@ class Oofp(Simple):
         d['constraint'] = self.constraint
         d['range_min'] = self.range_min
         d['range_max'] = self.range_max
-        d['fixed_eq_val'] = self.fixed_eq_val
-        d['near180'] = self._near180
+        d['near180'] = self.near180
+        if self.has_ext_force:
+            d['ext_force_str'] = self.ext_force.formula_string
+        else:
+            d['ext_force_str'] = None
         return d
 
 
@@ -106,10 +109,14 @@ class Oofp(Simple):
         constraint = D.get('constraint', 'free')
         range_min = d.get('range_min', None)
         range_max = d.get('range_max', None)
-        fixed_eq_val = D.get('fixed_eq_val', None)
         near180 = D.get('near180', 0)
-        return cls(a, b, c, d, constraint, fixed_eq_val, near180,
-                   range_min, range_max)
+        fstr = d.get('ext_force_str', None)
+        if fstr is None:
+            ext_force = None
+        else:
+            ext_force = string_math_fx(fstr)
+        return cls(a, b, c, d, constraint, near180, range_min, range_max,
+                   ext_force)
 
 
     def q(self, geom):

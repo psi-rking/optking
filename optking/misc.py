@@ -1,6 +1,7 @@
-import numpy as np
+import math
 import logging
 
+import numpy as np
 import qcelemental as qcel
 
 from .exceptions import AlgError, OptError
@@ -145,5 +146,141 @@ def int_xyz_float_list(inList, Nint=1, Nxyz=1, Nfloat=1):
         for F in range(Nfloat):
             entry.append(float(inList[i+Nint+Nxyz+F]))
         outList.append(entry)
+    return outList
+
+
+class string_math_fx(object):
+    allowed_ops = {
+     "sin" : "math.sin",
+     "cos" : "math.cos",
+     "log"   : "math.log",
+     "ln"    : "math.log",
+     "log10" : "math.log10",
+     "exp"   : "math.exp",
+     "pow"   : "pow",
+     "abs"   : "abs"
+    }
+    def __init__(self, formula_string_in):
+        s = formula_string_in.lower()
+        self.formula_string = s
+        self.check_allowed_ops(s)
+        self.make_fx(s)
+
+    # Ensure nothing nefarious; only allowed functions.
+    def check_allowed_ops(self, s):
+        white = ['[','(',']',')','+','-','*','/','.']
+        for c in s:
+            if c in white:
+                s = s.replace(c,' ')
+        words = s.split()
+        for w in words:
+            if w.isdigit():
+                #print('number')
+                pass
+            elif w in self.allowed_ops:
+                #print('operation')
+                pass
+            elif w == 'x':
+                #print('variable x')
+                pass
+            else:
+                raise Exception('Could not identify substring: {}'.format(w))
+        return
+
+    def make_fx(self, s):
+        logger = logging.getLogger(__name__)
+        for key,val in self.allowed_ops.items():
+            s = s.replace(key,val)
+        
+        logger.info('make_fx: formula to evaluate: ' + s)
+        self.fx = eval("lambda x: " + s)
+
+    def evaluate(self, x):
+        return self.fx(x)
+
+
+# Process input string (not yet tokenized) containing atoms, then formula.
+# Formula will take x in Angstroms or degrees, return force in au
+def int_fx_string(inString, Nint=1):
+    if len(inString) == 0:
+        return []
+    logger = logging.getLogger(__name__)
+    logger.debug(inString)
+
+    # split out the formulae string
+    if '\'' in inString:
+        words = inString.split('\'')
+    elif '\"' in inString:
+        words = inString.split('\"')
+    else:
+        raise OptError('Cannot find embedded string format function.')
+    words = [w for w in words if len(w)] # remove empty string at end
+
+    if len(words) % 2 != 0:
+        raise OptError('Input is not string of atoms containing string of formulae.')
+
+    outList = []
+    for i in range(0, len(words), 2):
+        entry = []
+        atoms = words[i].replace('(', '').replace(')', '').split(' ') # allow ()
+        atoms = [at for at in atoms if len(at)] # remove empty string at end
+        if len(atoms) != Nint:
+            raise OptError('Not finding {:d} atoms for formula'.format(Nint))
+
+        for at in atoms:
+            entry.append(int(at))
+        entry.append( string_math_fx(words[i+1]) )
+
+        outList.append(entry)
+        logger.debug(entry)
+
+    return outList
+
+
+# Process input string (not yet tokenized), into entries in list,
+# each of which has  [atom, [x,y,z] (probably only 1 of), formula]
+# Formula may not contain spaces
+def int_xyz_fx_string(inString, Nint=1):
+    if len(inString) == 0:
+        return []
+    logger = logging.getLogger(__name__)
+    logger.debug(inString)
+
+    # split out the formulae string
+    if '\'' in inString:
+        words = inString.split('\'')
+    elif '\"' in inString:
+        words = inString.split('\"')
+    else:
+        raise OptError('Cannot find embedded string format function.')
+    words = [w for w in words if len(w)] # remove empty string at end
+
+    if len(words) % 2 != 0:
+        raise OptError('Input string does not contain:  atom x/y/z "formulae".')
+
+    outList = []
+    for i in range(0, len(words), 2):
+        entry = []
+        cart = words[i].replace('(', '').replace(')', '').split(' ') # allow ()
+        cart = [at for at in cart if len(at)] # remove empty string at end
+        if len(cart) != Nint+1:
+            raise OptError('Not finding {:d} atom + x/y/z for formula'.format(Nint))
+        for at in cart[:-1]:
+            entry.append(int(at))
+
+        cart_string = cart[1].upper()
+        if len(cart_string) > 3 or len(cart_string) < 1:
+            raise OptError("Could not decipher xyz coordinate string")
+        for c in cart_string:
+            if c not in ('X', 'Y', 'Z'):
+                raise OptError("Could not decipher xyz coordinate string")
+        cart_string = sorted(cart_string)  # x , then y, then z
+        entry.append(cart_string)
+
+        entry.append( string_math_fx(words[i+1]) )
+
+        outList.append(entry)
+        logger.debug(entry)
+
     return outList
 

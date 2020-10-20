@@ -117,37 +117,32 @@ def project_redundancies_and_constraints(oMolsys, fq, H):
         logger.debug("Projected (PHP) Hessian matrix\n" + print_mat_string(H))
 
 
-def apply_fixed_forces(oMolsys, fq, H, stepNumber):
+def apply_external_forces(oMolsys, fq, H, stepNumber):
     logger = logging.getLogger(__name__)
-    x = oMolsys.geom
+    report = ''
     for iF, F in enumerate(oMolsys._fragments):
         for i, intco in enumerate(F.intcos):
-            if intco.fixed:
+            if intco.has_ext_force:
+                if report == '': report = 'Adding external forces\n'
                 # TODO we may need to add iF to the location to get unique locations
                 # for each fragment
+                val = intco.q_show(oMolsys.geom)
+                ext_force = intco.ext_force_val(oMolsys.geom)
+
                 location = oMolsys.frag_1st_intco(iF) + i
-                val = intco.q(x)
-                eqVal = intco.fixed_eq_val
-
-                # Increase force constant by 5% of initial value per iteration
-                k = (1 + 0.05 * stepNumber) * op.Params.fixed_coord_force_constant
-                force = k * (eqVal - val)
-                H[location][location] = k
-                fq[location] = force
-                fix_forces_report = ("\n\tAdding user-defined constraint:"
-                                     + "Fragment %d; Coordinate %d:\n" % (iF + 1, i + 1))
-                fix_forces_report += ("\t\tValue = %12.6f; Fixed value    = %12.6f"
-                                      % (val, eqVal))
-                fix_forces_report += ("\t\tForce = %12.6f; Force constant = %12.6f"
-                                      % (force, k))
-                logger.info(fix_forces_report)
-
+                fq[location] += ext_force
+                report += 'Frag {:d}, Coord {:d}, Value {:10.5f}, Force {:12.6f}\n'.format(
+                           iF+1, i+1, val, ext_force)
+                # modify Hessian later ?
+                # H[location][location] = k
                 # Delete coupling between this coordinate and others.
-                logger.info("\t\tRemoving off-diagonal coupling between coordinate"
-                            + "%d and others." % (location + 1))
-                for j in range(len(H)):  # gives first dimension length
-                    if j != location:
-                        H[j][location] = H[location][j] = 0.0
+                #logger.info("\t\tRemoving off-diagonal coupling between coordinate"
+                #            + "%d and others." % (location + 1))
+                #for j in range(len(H)):  # gives first dimension length
+                #    if j != location:
+                #        H[j][location] = H[location][j] = 0.0
+
+    logger.info(report)
 
 
 def hessian_to_internals(H, oMolsys, g_x=None):

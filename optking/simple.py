@@ -6,15 +6,15 @@ supported_constraint_types = ('free', 'frozen', 'ranged')
 class Simple(object):
     __metaclass__ = ABCMeta
 
-    def __init__(self, atoms, constraint, fixed_eq_val, range_min, range_max):
+    def __init__(self, atoms, constraint, range_min, range_max, ext_force):
         # these lines use the property's and setters below
         self.atoms = atoms  # atom indices for internal definition
         if constraint.lower() not in supported_constraint_types:
             raise OptError('status for simple intco unknown')
         self.constraint = constraint.lower()
-        self.fixed_eq_val = fixed_eq_val  # target value if artificial forces are to be added
         self._range_min = range_min
         self._range_max = range_max
+        self._ext_force = ext_force
 
     @property
     def atoms(self):
@@ -37,13 +37,6 @@ class Simple(object):
     @property
     def ranged(self):
         return self.constraint == 'ranged'
-
-    @property
-    def fixed(self):
-        if self._fixed_eq_val is None:
-            return False
-        else:
-            return True
 
     def freeze(self):
         if self.constraint == 'free':
@@ -70,17 +63,22 @@ class Simple(object):
         return self._range_max
 
     @property
-    def fixed_eq_val(self):
-        return self._fixed_eq_val
+    def has_ext_force(self):
+        return bool(self._ext_force is not None)
 
-    @fixed_eq_val.setter
-    def fixed_eq_val(self, qTarget=None):
-        if qTarget is not None:
-            try:
-                float(qTarget)
-            except:
-                raise OptError("Eq. value must be a float or None.")
-        self._fixed_eq_val = qTarget
+    @property
+    def ext_force(self):
+        print(type(self._ext_force))
+        return self._ext_force
+
+    # could add checking here later
+    @ext_force.setter
+    def ext_force(self, eqn):
+        self._ext_force = eqn
+
+    def ext_force_val(self, geom):
+        val = self.q_show(geom) # angstroms or degrees
+        return self._ext_force.evaluate(val)
 
     @property
     def A(self):
@@ -110,7 +108,8 @@ class Simple(object):
         except:
             raise OptError("D() called but atoms[3] does not exist")
 
-    # ** constructor + 7 abstract methods are currently required **
+    # ** constructor + 9 abstract methods are currently required 
+    # for full functionality **
     @abstractmethod  # Given geometry, return value in Bohr or radians
     def q(self, geom):
         pass

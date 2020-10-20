@@ -145,7 +145,7 @@ def optimize(oMolsys, computer):
                         hessian.show(H, oMolsys)
 
                     f_q = oMolsys.q_forces(gX)
-                    intcosMisc.apply_fixed_forces(oMolsys, f_q, H, step_number)
+                    intcosMisc.apply_external_forces(oMolsys, f_q, H, step_number)
                     intcosMisc.project_redundancies_and_constraints(oMolsys, f_q, H)
                     oMolsys.q_show()
 
@@ -543,7 +543,7 @@ def make_internal_coords(oMolsys, params=None):
             for F in oMolsys.fragments:
                 F.add_cartesian_intcos()
 
-    addIntcos.add_frozen_and_fixed_intcos(oMolsys)  # make sure these are in the set
+    addIntcos.add_constrained_intcos(oMolsys)  # make sure these are in the set
     return
 
 

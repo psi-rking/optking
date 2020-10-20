@@ -411,6 +411,29 @@ def ranged_stre_from_input(rangedStreList, oMolsys):
             stretch.set_range(qmin,qmax)
             oMolsys.fragments[f].intcos.append(stretch)
 
+def ext_force_stre_from_input(extForceStreList, oMolsys):
+    """
+    Creates distance coordinate with external force
+    Parameters
+    ----------
+    extForceStreList : list
+        each entry is a list of 2 atoms (indexed from 1), followed by a formula
+    oMolsys : molsys.Molsys
+        optking molecular system
+    """
+    logger = logging.getLogger(__name__)
+    for S in extForceStreList:
+        if len(S) != 3:
+            raise OptError("Num. of entries in ext. force stretch should be 3.")
+        stretch = stre.Stre(S[0]-1, S[1]-1)
+        f = check_fragment(stretch.atoms, oMolsys)
+        try:
+            I = oMolsys.fragments[f].intcos.index(stretch)
+            oMolsys.fragments[f].intcos[I].ext_force = S[2]
+        except ValueError:
+            logger.info("External force stretch not present, so adding it.\n")
+            stretch.ext_force = S[2]
+            oMolsys.fragments[f].intcos.append(stretch)
 
 def frozen_bend_from_input(frozenBendList, oMolsys):
     """
@@ -463,6 +486,29 @@ def ranged_bend_from_input(rangedBendList, oMolsys):
             Rbend.set_range(qmin,qmax)
             oMolsys.fragments[f].intcos.append(Rbend)
 
+def ext_force_bend_from_input(extForceBendList, oMolsys):
+    """
+    Creates bend coordinate with external force
+    Parameters
+    ----------
+    extForceBendList : list
+        each entry is a list of 3 atoms (indexed from 1), followed by a formula
+    oMolsys : molsys.Molsys
+        optking molecular system
+    """
+    logger = logging.getLogger(__name__)
+    for B in extForceBendList:
+        if len(B) != 4:
+            raise OptError("Num. of entries in ext. force bend should be 4.")
+        eBend = bend.Bend(B[0]-1, B[1]-1, B[2]-1)
+        f = check_fragment(eBend.atoms, oMolsys)
+        try:
+            I = oMolsys.fragments[f].intcos.index(eBend)
+            oMolsys.fragments[f].intcos[I].ext_force = B[3]
+        except ValueError:
+            logger.info("External force bend not present, so adding it.\n")
+            eBend.ext_force = B[3]
+            oMolsys.fragments[f].intcos.append(eBend)
 
 def frozen_tors_from_input(frozenTorsList, oMolsys):
     """
@@ -512,6 +558,30 @@ def ranged_tors_from_input(rangedTorsList, oMolsys):
         except ValueError:
             logging.info("Frozen dihedral not present, so adding it.\n")
             torsAngle.set_range(qmin,qmax)
+            oMolsys.fragments[f].intcos.append(torsAngle)
+
+def ext_force_tors_from_input(extForceTorsList, oMolsys):
+    """
+    Creates tors coordinate with external force
+    Parameters
+    ----------
+    extForceTorsList : list
+        each entry is a list of 4 atoms (indexed from 1), followed by a formula
+    oMolsys : molsys.Molsys
+        optking molecular system
+    """
+    logger = logging.getLogger(__name__)
+    for T in extForceTorsList:
+        if len(T) != 5:
+            raise OptError("Num. of entries in ext. force dihedral should be 5.")
+        torsAngle = tors.Tors(T[0]-1, T[1]-1, T[2]-1, T[3]-1)
+        f = check_fragment(torsAngle.atoms, oMolsys)
+        try:
+            I = oMolsys.fragments[f].intcos.index(torsAngle)
+            oMolsys.fragments[f].intcos[I].ext_force = T[4]
+        except ValueError:
+            logger.info("External force dihedral not present, so adding it.\n")
+            torsAngle.ext_force = T[4]
             oMolsys.fragments[f].intcos.append(torsAngle)
 
 
@@ -566,6 +636,31 @@ def ranged_oofp_from_input(rangedOofpList, oMolsys):
             oMolsys.fragments[f].intcos.append(oofpAngle)
 
 
+def ext_force_oofp_from_input(extForceOofpList, oMolsys):
+    """
+    Creates out-of-plane coordinate with external force
+    Parameters
+    ----------
+    extForceOofpList : list
+        each entry is a list of 4 atoms (indexed from 1), followed by a formula
+    oMolsys : molsys.Molsys
+        optking molecular system
+    """
+    logger = logging.getLogger(__name__)
+    for T in extForceOofpList:
+        if len(T) != 5:
+            raise OptError("Num. of entries in ext. force out-of-plane should be 5.")
+        oofpAngle = oofp.Oofp(T[0]-1, T[1]-1, T[2]-1, T[3]-1)
+        f = check_fragment(oofpAngle.atoms, oMolsys)
+        try:
+            I = oMolsys.fragments[f].intcos.index(oofpAngle)
+            oMolsys.fragments[f].intcos[I].ext_force = T[4]
+        except ValueError:
+            logger.info("External force out-of-plane not present, so adding it.")
+            oofpAngle.ext_force = T[4]
+            oMolsys.fragments[f].intcos.append(oofpAngle)
+
+
 def frozen_cart_from_input(frozen_cart_list, oMolsys):
     """
     Creates frozen cartesian coordinates from input
@@ -605,7 +700,7 @@ def ranged_cart_from_input(ranged_cart_list, oMolsys):
     logger = logging.getLogger(__name__)
     for C in ranged_cart_list:
         if len(C) != 4:
-            raise OptError("Num. of entries in frozen cart should be 4.")
+            raise OptError("Num. of entries in ranged cart should be 4.")
         atom = C[0]-1
         f = oMolsys.atom2frag_index(atom)  # get frag
         if len(C[1]) != 1:
@@ -617,8 +712,36 @@ def ranged_cart_from_input(ranged_cart_list, oMolsys):
             I = oMolsys.fragments[f].intcos.index(newCart)
             oMolsys.fragments[f].intcos[I].set_range(qmin,qmax)
         except ValueError:
-            logger.info("\tFrozen cartesian not present, so adding it.\n")
+            logger.info("\tRanged cartesian not present, so adding it.\n")
             newCart.set_range(qmin,qmax)
+            oMolsys.fragments[f].intcos.append(newCart)
+
+def ext_force_cart_from_input(extForceCartList, oMolsys):
+    """
+    Creates cartesian coordinate with external force
+    Parameters
+    ----------
+    frozen_cart_list : list
+        each entry is list with atom number, then list with only 1 of
+        'x','y', or 'z', then formula for external force
+    oMolsys : molsys.Molsys
+    """
+    logger = logging.getLogger(__name__)
+    for C in extForceCartList:
+        if len(C) != 3:
+            raise OptError("Num. of entries in ext. force Cartesian should be 3.")
+
+        atom = C[0]-1
+        if len(C[1]) != 1:
+            raise OptError("External force Cartesian takes only 1 of x/y/z.")
+        newCart = cart.Cart(atom, C[1][0])
+        f = oMolsys.atom2frag_index(atom)
+        try:
+            I = oMolsys.fragments[f].intcos.index(newCart)
+            oMolsys.fragments[f].intcos[I].ext_force = C[2]
+        except ValueError:
+            logger.info("External force Cartesian not present, so adding it.")
+            newCart.ext_force = C[2]
             oMolsys.fragments[f].intcos.append(newCart)
 
 
@@ -637,54 +760,6 @@ def check_fragment(atomList, oMolsys):
     return fragList[0]
 
 
-# TODO Length mod 3 should be checked in OptParams
-def fix_stretches_from_input(fixedStreList, oMolsys):
-    logger = logging.getLogger(__name__)
-    for i in range(0, len(fixedStreList), 3):  # loop over fixed stretches
-        stretch = stre.Stre(fixedStreList[i] - 1, fixedStreList[i + 1] - 1)
-        val = fixedStreList[i + 2] / stretch.q_show_factor
-        stretch.fixedEqVal = val
-        f = check_fragment(stretch.atoms, oMolsys)
-        try:
-            fixing_stretch = oMolsys.fragments[f].intcos.index(stretch)
-            oMolsys.fragments[f].intcos[fixing_stretch].fixed_eq_val = val
-        except ValueError:
-            logger.info("Fixed stretch not present, so adding it.\n")
-            oMolsys.fragments[f].intcos.append(stretch)
-
-
-def fix_bends_from_input(fixedBendList, oMolsys):
-    logger = logging.getLogger(__name__)
-    for i in range(0, len(fixedBendList), 4):  # loop over fixed bends
-        one_bend = bend.Bend(fixedBendList[i] - 1, fixedBendList[i + 1] - 1,
-                             fixedBendList[i + 2] - 1)
-        val = fixedBendList[i + 3] / one_bend.q_show_factor
-        one_bend.fixedEqVal = val
-        f = check_fragment(one_bend.atoms, oMolsys)
-        try:
-            fixing_bend = oMolsys.fragments[f].intcos.index(one_bend)
-            oMolsys.fragments[f].intcos[fixing_bend].fixed_eq_val = val
-        except ValueError:
-            logger.info("Fixed bend not present, so adding it.\n")
-            oMolsys.fragments[f].intcos.append(one_bend)
-
-
-def fix_torsions_from_input(fixedTorsList, oMolsys):
-    logger = logging.getLogger(__name__)
-    for i in range(0, len(fixedTorsList), 5):  # loop over fixed dihedrals
-        one_tors = tors.Tors(fixedTorsList[i] - 1, fixedTorsList[i + 1] - 1,
-                             fixedTorsList[i + 2] - 1, fixedTorsList[i + 3] - 1)
-        val = fixedTorsList[i + 4] / one_tors.q_show_factor
-        one_tors.fixedEqVal = val
-        f = check_fragment(one_tors.atoms, oMolsys)
-        try:
-            fixing_tors = oMolsys.fragments[f].intcos.index(one_tors)
-            oMolsys.fragments[f].intcos[fixing_tors].fixed_eq_val = val
-        except ValueError:
-            logger.info("Fixed torsion not present, so adding it.\n")
-            oMolsys.fragments[f].intcos.append(one_tors)
-
-
 def freeze_intrafrag(oMolsys):
     if oMolsys.nfragments < 2:
         raise OptError('Fragments are to be frozen, but there is only one of them')
@@ -692,7 +767,8 @@ def freeze_intrafrag(oMolsys):
         F.freeze()
 
 
-def add_frozen_and_fixed_intcos(oMolsys):
+def add_constrained_intcos(oMolsys):
+    # Frozen coordinates
     if op.Params.frozen_distance:
         frozen_stre_from_input(op.Params.frozen_distance, oMolsys)
     if op.Params.frozen_bend:
@@ -704,6 +780,7 @@ def add_frozen_and_fixed_intcos(oMolsys):
     if op.Params.frozen_cartesian:
         frozen_cart_from_input(op.Params.frozen_cartesian, oMolsys)
 
+    # Ranged coordinates
     if op.Params.ranged_distance:
         ranged_stre_from_input(op.Params.ranged_distance, oMolsys)
     if op.Params.ranged_bend:
@@ -715,15 +792,20 @@ def add_frozen_and_fixed_intcos(oMolsys):
     if op.Params.ranged_cartesian:
         ranged_cart_from_input(op.Params.ranged_cartesian, oMolsys)
 
-    if op.Params.fixed_distance:
-        fix_stretches_from_input(op.Params.fixed_distance, oMolsys)
-    if op.Params.fixed_bend:
-        fix_bends_from_input(op.Params.fixed_bend, oMolsys)
-    if op.Params.fixed_dihedral:
-        fix_torsions_from_input(op.Params.fixed_dihedral, oMolsys)
+    # Coordinates with extra forces
+    if op.Params.ext_force_distance:
+        ext_force_stre_from_input(op.Params.ext_force_distance, oMolsys)
+    if op.Params.ext_force_bend:
+        ext_force_bend_from_input(op.Params.ext_force_bend, oMolsys)
+    if op.Params.ext_force_dihedral:
+        ext_force_tors_from_input(op.Params.ext_force_dihedral, oMolsys)
+    if op.Params.ext_force_oofp:
+        ext_force_oofp_from_input(op.Params.ext_force_oofp, oMolsys)
+    if op.Params.ext_force_cartesian:
+        ext_force_cart_from_input(op.Params.ext_force_cartesian, oMolsys)
+
     if op.Params.freeze_intrafrag:
         freeze_intrafrag(oMolsys)
-
 
 def add_dimer_frag_intcos(oMolsys):
     # Look for coordinates in the following order:
