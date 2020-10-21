@@ -2,18 +2,34 @@ import qcelemental as qcel
 
 from .exceptions import AlgError, OptError
 from .simple import Simple
+from .misc import string_math_fx
 
 
 class Cart(Simple):
-    def __init__(self, a, xyz_in, frozen=False, fixed_eq_val=None):
+    """ Cartesian displacement coordinate on one atom
+
+    Parameters
+    ----------
+    a : int
+        atom number (zero indexing)
+    constraint : string
+        set coordinate as 'free', 'frozen', etc.
+    """
+    def __init__(self, a, xyz_in, constraint='free', 
+                 range_min=None, range_max=None, ext_force=None):
 
         self.xyz = xyz_in  # uses setter below
         atoms = (a, )
-        Simple.__init__(self, atoms, frozen, fixed_eq_val)
+        Simple.__init__(self, atoms, constraint, range_min, range_max,
+                        ext_force)
 
     def __str__(self):
-        if self.frozen: s = '*'
-        else: s = ' '
+        if self.frozen:
+            s = '*'
+        elif self.ranged:
+            s = '['
+        else:
+            s = ' '
 
         if self._xyz == 0:
              s += 'X'
@@ -23,8 +39,10 @@ class Cart(Simple):
              s += 'Z'
 
         s += "(%d)" % (self.A + 1)
-        if self.fixed_eq_val:
-            s += "[%.4f]" % (self.fixed_eq_val * self.q_show_factor)
+        if self.ranged:
+            s += '[{:.3f},{:.3f}]'.format(
+                     self.range_min * self.q_show_factor,
+                     self.range_max * self.q_show_factor)
         return s
 
     def __eq__(self, other):
@@ -71,17 +89,28 @@ class Cart(Simple):
         d['type'] = Cart.__name__ # 'Cart'
         d['atoms'] = self.atoms # id to a tuple
         d['xyz'] = self.xyz
-        d['frozen'] = self.frozen
-        d['fixed_eq_val'] = self.fixed_eq_val
+        d['constraint'] = self.constraint
+        d['range_min'] = self.range_min
+        d['range_max'] = self.range_max
+        if self.has_ext_force:
+            d['ext_force_str'] = self.ext_force.formula_string
+        else:
+            d['ext_force_str'] = None
         return d
 
     @classmethod
     def from_dict(cls, d):
         a = d['atoms'][0]
-        frozen = d.get('frozen', False)
-        fixed_eq_val = d.get('fixed_eq_val', None)
+        constraint = d.get('constraint', 'free')
+        range_min = d.get('range_min', None)
+        range_max = d.get('range_max', None)
         xyz = d.get('xyz', None)
-        return cls(a, xyz, frozen, fixed_eq_val)
+        fstr = d.get('ext_force_str', None)
+        if fstr is None:
+            ext_force = None
+        else:
+            ext_force = string_math_fx(fstr)
+        return cls(a, xyz, constraint, range_min, range_max, ext_force)
 
     # Compute and return in-place array of first derivative (row of B matrix)
     def DqDx(self, geom, dqdx, mini=False):

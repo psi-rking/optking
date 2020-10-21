@@ -229,7 +229,7 @@ class Frag:
 
     def freeze(self):
         for intco in self._intcos:
-            intco.frozen = True
+            intco.freeze()
         self._frozen = True
 
     def update_dihedral_orientations(self):

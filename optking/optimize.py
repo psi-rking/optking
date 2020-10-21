@@ -131,18 +131,21 @@ def optimize(oMolsys, computer):
                     total_steps_taken += 1
                     # compute energy and gradient
                     # xyz = oMolsys.geom.copy() unused warning in IDE
+                    #mol = oMolsys.to_dict()
+                    #oMolsys = Molsys.from_dict(mol)
 
                     H, gX = get_pes_info(H, computer, oMolsys, step_number, irc_step_number)
                     E = computer.energies[-1]
 
                     # oMolsys.geom = xyz  # use setter function to save data in fragments
                     print_geom_grad(oMolsys.geom, gX)
+                    logger.info(oMolsys.show_geom())
 
                     if op.Params.print_lvl >= 4:
                         hessian.show(H, oMolsys)
 
                     f_q = oMolsys.q_forces(gX)
-                    intcosMisc.apply_fixed_forces(oMolsys, f_q, H, step_number)
+                    intcosMisc.apply_external_forces(oMolsys, f_q, H, step_number)
                     intcosMisc.project_redundancies_and_constraints(oMolsys, f_q, H)
                     oMolsys.q_show()
 
@@ -222,7 +225,7 @@ def optimize(oMolsys, computer):
                     if converged:  # changed from elif when above if statement active
                         logger.info("\tConverged in %d steps!" % (step_number + 1))
                         logger.info("\tFinal energy is %20.13f" % E)
-                        logger.info("\tFinal structure (Angstroms): \n\n"
+                        logger.info("\tFinal structure (Angstroms): \n"
                                     + oMolsys.show_geom())
                         break  # break out of step_number loop
 
@@ -540,7 +543,7 @@ def make_internal_coords(oMolsys, params=None):
             for F in oMolsys.fragments:
                 F.add_cartesian_intcos()
 
-    addIntcos.add_frozen_and_fixed_intcos(oMolsys)  # make sure these are in the set
+    addIntcos.add_constrained_intcos(oMolsys)  # make sure these are in the set
     return
 
 

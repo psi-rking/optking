@@ -7,28 +7,57 @@ import qcelemental as qcel
 from .exceptions import AlgError, OptError
 from . import optparams as op
 from . import v3d
-from .misc import hguess_lindh_rho
+from .misc import hguess_lindh_rho, string_math_fx
 from .simple import Simple
 
 
 class Tors(Simple):
-    def __init__(self, a, b, c, d, frozen=False, fixed_eq_val=None, near180=0):
+    """ torsion coordinate between four atoms
+
+    Parameters
+    ----------
+    a : int
+        first atom
+    b : int
+        second atom
+    c : int
+        third atom
+    d : int
+        fourth atom
+    constraint : string
+        set tors as 'free', 'frozen', etc.
+    near180 : int
+        +1 => near +180; -1 => near -180; else 0
+    Notes
+    -----
+        atoms must be listed in order. Uses 0-based indexing.
+    """
+
+    def __init__(self, a, b, c, d, constraint='free', near180=0,
+                 range_min=None, range_max=None, ext_force=None):
 
         if a < d: atoms = (a, b, c, d)
         else: atoms = (d, c, b, a)
         self._near180 = near180
 
-        Simple.__init__(self, atoms, frozen, fixed_eq_val)
+        Simple.__init__(self, atoms, constraint, range_min, range_max,
+                        ext_force)
 
     def __str__(self):
-        if self.frozen: s = '*'
-        else: s = ' '
+        if self.frozen:
+            s = '*'
+        elif self.ranged:
+            s = '['
+        else:
+            s = ' '
 
         s += "D"
 
         s += "(%d,%d,%d,%d)" % (self.A + 1, self.B + 1, self.C + 1, self.D + 1)
-        if self.fixed_eq_val:
-            s += "[%.1f]" % (self.fixed_eq_val * self.q_show_factor)
+        if self.ranged:
+            s += '[{:.2f},{:.2f}]'.format(
+                     self.range_min * self.q_show_factor,
+                     self.range_max * self.q_show_factor)
         return s
 
     def __eq__(self, other):
@@ -79,9 +108,14 @@ class Tors(Simple):
         d = {}
         d['type'] = Tors.__name__ # 'Tors'
         d['atoms'] = self.atoms # id to a tuple
-        d['frozen'] = self.frozen
-        d['fixed_eq_val'] = self.fixed_eq_val
-        d['near180'] = self._near180
+        d['constraint'] = self.constraint
+        d['range_min'] = self.range_min
+        d['range_max'] = self.range_max
+        d['near180'] = self.near180
+        if self.has_ext_force:
+            d['ext_force_str'] = self.ext_force.formula_string
+        else:
+            d['ext_force_str'] = None
         return d
 
 
@@ -91,10 +125,17 @@ class Tors(Simple):
         b = D['atoms'][1]
         c = D['atoms'][2]
         d = D['atoms'][3]
-        frozen = D.get('frozen', False)
-        fixed_eq_val = D.get('fixed_eq_val', None)
+        constraint = D.get('constraint', 'free')
+        range_min = D.get('range_min', None)
+        range_max = D.get('range_max', None)
         near180 = D.get('near180', 0)
-        return cls(a, b, c, d, frozen, fixed_eq_val, near180)
+        fstr = D.get('ext_force_str', None)
+        if fstr is None:
+            ext_force = None
+        else:
+            ext_force = string_math_fx(fstr)
+        return cls(a, b, c, d, constraint, near180,
+                   range_min, range_max, ext_force)
 
 
     # compute angle and return value in radians

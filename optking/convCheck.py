@@ -24,36 +24,43 @@ from .printTools import print_array_string, print_mat_string
 def conv_check(iterNum, oMolsys, dq, f, energies, q_pivot=None):
     logger = logging.getLogger(__name__)
     logger.info("Performing convergence check.")
-    has_fixed = False
-    for F in oMolsys._fragments:
-        if any([ints.fixed_eq_val for ints in F.intcos]):
-            has_fixed = True
-    for DI in oMolsys._dimer_intcos:
-        if any([ints.fixed_eq_val for ints in DI._pseudo_frag._intcos]):
-            has_fixed = True
+    #
+    # We MIGHT need to remove coordinates for analysis of convergence
+    # check, but this is not clear.
+    # 1. if frozen, fq already set to 0.
+    # 2. if ranged and 'at wall', fq already set to 0.
+    # 3. if ext_force, still desired force will -> 0.
+    #
+    # For now, saving here the old code to remove the deprecated 'fixed'
+    #has_fixed = False
+    #for F in oMolsys._fragments:
+    #    if any([ints.fixed_eq_val for ints in F.intcos]):
+    #        has_fixed = True
+    #for DI in oMolsys._dimer_intcos:
+    #    if any([ints.fixed_eq_val for ints in DI._pseudo_frag._intcos]):
+    #        has_fixed = True
+    # Remove arbitrary forces for user-specified equilibrium values.
+    #if has_fixed:
+    #    cnt = -1
+    #    for F in oMolsys.fragments:
+    #        for I in F.intcos:
+    #            cnt += 1
+    #            if I.fixed_eq_val:
+    #                f[cnt] = 0
+    #    for DI in oMolsys.dimer_intcos:
+    #        for I in DI.pseudo_frag.intcos:
+    #            cnt += 1
+    #            if I.fixed_eq_val:
+    #                f[cnt] = 0
+
     energy = energies[-1]
     last_energy = energies[-2] if len(energies) > 1 else 0.0
 
     # Save original forces and put back in below.
-    if op.Params.opt_type == 'IRC' or has_fixed:
+    if op.Params.opt_type == 'IRC':
         f_backup = np.copy(f)
 
     DE = energy - last_energy
-
-    # Remove arbitrary forces for user-specified equilibrium values.
-    if has_fixed:
-        logger.info("Forces used to impose fixed constraints are not included in convergence check.")
-        cnt = -1
-        for F in oMolsys.fragments:
-            for I in F.intcos:
-                cnt += 1
-                if I.fixed_eq_val:
-                    f[cnt] = 0
-        for DI in oMolsys.dimer_intcos:
-            for I in DI.pseudo_frag.intcos:
-                cnt += 1
-                if I.fixed_eq_val:
-                    f[cnt] = 0
 
     if op.Params.opt_type == 'IRC':
         G_m = oMolsys.compute_g_mat(oMolsys.masses)
@@ -156,7 +163,7 @@ def conv_check(iterNum, oMolsys, dq, f, energies, q_pivot=None):
         logger.info(conv_str)
 
 # Return forces to what they were when conv_check was called (Why?? What does this do? - Alex)
-    if op.Params.opt_type == 'IRC' or has_fixed:
+    if op.Params.opt_type == 'IRC':
         f[:] = f_backup
 
     return test_for_convergence(DE, max_force, rms_force, max_disp, rms_disp)

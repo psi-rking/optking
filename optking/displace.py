@@ -34,19 +34,34 @@ def displace_molsys(oMolsys, dq_in, fq=None, ensure_convergence=False):
     np.ndarray
     """
     logger = logging.getLogger(__name__)
+    # Modify dq_in to account for frozen coordinates and ranged coordinates
+    # These do not represent desired Delta(q)
+    q_in     = oMolsys.q_array()
+    for iF, F in enumerate(oMolsys.fragments):
+        if F.frozen:
+            # For accounting only, since displace_frag is not called.
+            dq_in[oMolsys.frag_intco_range(iF)] = 0
+            logger.info("\tFragment %d is frozen, so not displacing" % (iF+1))
+        start = oMolsys.frag_1st_intco(iF)
+        for i, I in enumerate(F.intcos):
+            if I.frozen:
+                dq_in[start+i] = 0.0
+            elif I.ranged:
+                tentative = q_in[start+i] + dq_in[start+i]
+                if tentative > I.range_max:
+                    dq_in[start+i] = I.range_max - q_in[start+i]
+                elif tentative < I.range_min:
+                    dq_in[start+i] = I.range_min - q_in[start+i]
+                else:
+                    pass # value within range
 
     geom_in  = oMolsys.geom
-    q_in     = oMolsys.q_array()
+    q_in     = oMolsys.q_array() # recompute with limitations above
     q_target = q_in + dq_in
 
     for iF, F in enumerate(oMolsys.fragments):
-        if F.frozen:
-            logger.info("\tFragment %d is frozen, so not displacing" % (iF+1))
+        if F.frozen or F.num_intcos == 0:
             continue
-        elif not F.num_intcos:
-            logger.info("\tFragment %d has no intcos, so not displacing" % (iF+1))
-            continue
-        
         logger.info("\tDetermining Cartesian step for fragment %d." % (iF+1))
         #print('dq for frag:', dq_in[oMolsys.frag_intco_slice(iF)])
         dq_frag, conv = displace_frag(F, dq_in[oMolsys.frag_intco_slice(iF)], ensure_convergence)

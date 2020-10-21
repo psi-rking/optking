@@ -6,13 +6,9 @@
 # The enumerated string types are translated to all upper-case within the parameter object.
 import logging
 from .exceptions import AlgError, OptError
-from .misc import (int_list,
-                   int_int_float_list,
-                   int_int_int_float_list,
-                   int_int_int_int_float_list,
-                   tokenize_input_string,
-                   int_xyz_list)
-
+from .misc import (int_list,           int_float_list,
+                   int_xyz_float_list, tokenize_input_string,
+                   int_fx_string,      int_xyz_fx_string)
 
 # Class for enumerated string options.
 def string_option(storage_name):
@@ -79,8 +75,12 @@ class OptParams(object):
 
         # Maximum number of geometry optimization steps
         self.geom_maxiter = uod.get('geom_maxiter', 50)
-        # Maximum number of geometry optimization steps for one algorithm
-        self.alg_geom_maxiter = uod.get('alg_geom_maxiter', 50)
+        # If user sets one, assume this.
+        if 'geom_maxiter' in uod and 'alg_geom_maxiter' not in uod:  
+            self.alg_geom_maxiter = self.geom_maxiter
+        else:
+            # Maximum number of geometry optimization steps for one algorithm
+            self.alg_geom_maxiter = uod.get('alg_geom_maxiter', 50)
         # Print level.  1 = normal
         # P.print_lvl = uod.get('print_lvl', 1)
         self.print_lvl = uod.get('print', 1)
@@ -142,31 +142,53 @@ class OptParams(object):
         self.trajectory = uod.get('TRAJECTORY', False)
 
         # Specify distances between atoms to be frozen (unchanged)
-        # P.frozen_distance = uod.get('FROZEN_DISTANCE','')
         frozen = uod.get('FROZEN_DISTANCE', '')
-        self.frozen_distance = int_list(tokenize_input_string(frozen))
+        self.frozen_distance = int_list(tokenize_input_string(frozen),2)
         # Specify angles between atoms to be frozen (unchanged)
         frozen = uod.get('FROZEN_BEND', '')
-        self.frozen_bend = int_list(tokenize_input_string(frozen))
+        self.frozen_bend = int_list(tokenize_input_string(frozen),3)
         # Specify dihedral angles between atoms to be frozen (unchanged)
         frozen = uod.get('FROZEN_DIHEDRAL', '')
-        self.frozen_dihedral = int_list(tokenize_input_string(frozen))
+        self.frozen_dihedral = int_list(tokenize_input_string(frozen),4)
+        # Specify out-of-plane angles between atoms to be frozen (unchanged)
+        frozen = uod.get('FROZEN_OOFP', '')
+        self.frozen_oofp = int_list(tokenize_input_string(frozen),4)
         # Specify atom and X, XY, XYZ, ... to be frozen (unchanged)
         frozen = uod.get('FROZEN_CARTESIAN', '')
-        self.frozen_cartesian = int_xyz_list(tokenize_input_string(frozen))
-        # Specify distances between atoms to be fixed (eq. value specified)
-        # P.fixed_distance = uod.get("FIXED_DISTANCE", "")
-        fixed = uod.get("FIXED_DISTANCE", "")
-        self.fixed_distance = int_int_float_list(tokenize_input_string(fixed))
-        # Specify angles between atoms to be fixed (eq. value specified)
-        # P.fixed_bend    = uod.get("FIXED_BEND", "")
-        fixed = uod.get("FIXED_BEND", "")
-        self.fixed_bend = int_int_int_float_list(tokenize_input_string(fixed))
-        # Specify dihedral angles between atoms to be fixed (eq. value specified)
-        # P.fixed_dihedral = uod.get("FIXED_DIHEDRAL","")
-        fixed = uod.get("FIXED_DIHEDRAL", "")
-        self.fixed_dihedral = int_int_int_int_float_list(tokenize_input_string(fixed))
-        #
+        self.frozen_cartesian = int_xyz_float_list(tokenize_input_string(frozen),1,1,0)
+
+        # Specify distance between atoms to be ranged
+        ranged = uod.get('RANGED_DISTANCE', '')
+        self.ranged_distance = int_float_list(tokenize_input_string(ranged),2,2)
+        # Specify angles between atoms to be ranged
+        ranged = uod.get('RANGED_BEND', '')
+        self.ranged_bend = int_float_list(tokenize_input_string(ranged),3,2)
+        # Specify dihedral angles between atoms to be ranged
+        ranged = uod.get('RANGED_DIHEDRAL', '')
+        self.ranged_dihedral = int_float_list(tokenize_input_string(ranged),4,2)
+        # Specify out-of-plane angles between atoms to be ranged
+        ranged = uod.get('RANGED_OOFP', '')
+        self.ranged_oofp = int_float_list(tokenize_input_string(ranged),4,2)
+        # Specify atom and X, XY, XYZ, ... to be ranged
+        ranged = uod.get('RANGED_CARTESIAN', '')
+        self.ranged_cartesian = int_xyz_float_list(tokenize_input_string(ranged),1,1,2)
+
+        # Specify distances for which extra force will be added
+        force = uod.get("EXT_FORCE_DISTANCE",'')
+        self.ext_force_distance = int_fx_string(force,2)
+        # Specify angles for which extra force will be added
+        force = uod.get("EXT_FORCE_BEND",'')
+        self.ext_force_bend = int_fx_string(force,3)
+        # Specify dihedral angles for which extra force will be added
+        force = uod.get("EXT_FORCE_DIHEDRAL",'')
+        self.ext_force_dihedral = int_fx_string(force,4)
+        # Specify out-of-plane angles for which extra force will be added
+        force = uod.get("EXT_FORCE_OOFP",'')
+        self.ext_force_oofp = int_fx_string(force,4)
+        # Specify cartesian coordinates for which extra force will be added
+        force = uod.get("EXT_FORCE_CARTESIAN",'')
+        self.ext_force_cartesian = int_xyz_fx_string(force,1)
+         
         # Should an xyz trajectory file be kept (useful for visualization)?
         # P.print_trajectory_xyz = uod.get('PRINT_TRAJECTORY_XYZ', False)
         # Symmetry tolerance for testing whether a mode is symmetric.
@@ -285,10 +307,6 @@ class OptParams(object):
         self.test_derivative_B = uod.get('TEST_DERIVATIVE_B', False)
         # Keep internal coordinate definition file.
         self.keep_intcos = uod.get('KEEP_INTCOS', False)
-        # In constrained optimizations, for coordinates with user-specified
-        # equilibrium values, this is the initial force constant (in au) used to apply an
-        # additional force to each coordinate.
-        self.fixed_coord_force_constant = uod.get('FIXED_COORD_FORCE_CONSTANT', 0.5)
         self.linesearch_step = uod.get('LINESEARCH_STEP', 0.100)
         # Guess at Hessian in steepest-descent direction.
         self.sd_hessian = uod.get('SD_HESSIAN', 1.0)
@@ -309,8 +327,13 @@ class OptParams(object):
         if 'INTRAFRAG_TRUST_MIN' not in uod:
             if self.opt_coordinates == 'BOTH':
                 self.intrafrag_trust_min = self.intrafrag_trust / 2.0
-            elif self.step_type == 'SD':
+            elif self.step_type == 'SD': # steepest descent, use constant stepsize
                 self.intrafrag_trust_min = self.intrafrag_trust
+            elif any([self.ext_force_distance, self.ext_force_bend, self.ext_force_dihedral,
+                      self.ext_force_oofp, self.ext_force_cartesian]):
+                # with external forces, the check for trust radius will be inapt
+                # so don't let minimum step get shrunk too much.
+                self.intrafrag_trust_min = self.intrafrag_trust / 2.0
 
         # Original Lindh specification was to redo at every step.
         if 'H_GUESS_EVERY' not in uod and self.intrafrag_hess == 'LINDH':
@@ -357,14 +380,6 @@ class OptParams(object):
         # if P.fragment_mode == 'MULTI' and 'RFO_NORMALIZATION_MAX' not in uod:
         # P.rfo_normalization_max = 1.0e5
         # If arbitrary user forces, don't shrink step_size if Delta(E) is poor.
-
-        if self.fixed_distance or self.fixed_bend or self.fixed_dihedral:
-            if 'INTRAFRAGMENT_TRUST' not in uod:
-                self.intrafrag_trust = 0.1
-            if 'INTRAFRAGMENT_TRUST_MIN' not in uod:
-                self.intrafrag_trust_min = 0.1
-            if 'INTRAFRAGMENT_TRUST_MAX' not in uod:
-                self.intrafrag_trust_max = 0.1
 
         # -- Items below are unlikely to need modified
 
