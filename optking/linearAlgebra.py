@@ -1,10 +1,12 @@
 from math import fabs, sqrt
 import numpy as np
 import operator
+import logging
 
 from numpy.linalg import LinAlgError
 
 from .exceptions import AlgError, OptError
+from .printTools import print_array_string
 #  Linear algebra routines. #
 
 
@@ -101,6 +103,10 @@ def symm_mat_inv(A, redundant=False, redundant_eval_tol=1.0e-10):
     except LinAlgError:
         raise OptError("symmMatrixInv: could not compute eigenvectors")
         # could be LinAlgError?
+
+    logger = logging.getLogger(__name__)
+    logger.debug('Eigenvalues for symm matrix inversion')
+    logger.debug('\n'+print_array_string(evals,form=':12.3e'))
 
     for i in range(dim):
         det *= evals[i]

@@ -40,7 +40,7 @@ def print_mat_string(M, Ncol=7, title=None):
     return s
 
 
-def print_array_string(M, Ncol=7, title=None):
+def print_array_string(M, Ncol=7, title=None, form=':10.6f'):
     """Formats Arrays for Logging or Printing
 
     Parameters
@@ -63,9 +63,10 @@ def print_array_string(M, Ncol=7, title=None):
     if title != None:
         s += title + '\n\t'
     tab = 0
+    formstring = "{" + form + "}"
     for i, entry in enumerate(M):
         tab += 1
-        s += " %10.6f" % entry
+        s += formstring.format(entry)
         if tab == Ncol and i != (len(M) - 1):
            s += '\n'
            tab = 0

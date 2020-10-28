@@ -8,9 +8,10 @@ from .exceptions import AlgError, OptError
 from . import optparams as op
 from . import v3d
 from . import stre
-from . import tors
 from . import bend
+from . import tors
 from . import cart
+from . import oofp
 from . import dimerfrag
 from .v3d import are_collinear
 
@@ -66,6 +67,8 @@ def add_intcos_from_connectivity(C, intcos, geom):
     add_stre_from_connectivity(C, intcos)
     add_bend_from_connectivity(C, intcos, geom)
     add_tors_from_connectivity(C, intcos, geom)
+    if op.Params.include_oofp or check_if_oofp_needed(C, intcos, geom):
+        add_oofp_from_connectivity(C, intcos, geom)
 
 
 def add_stre_from_connectivity(C, intcos):
@@ -282,6 +285,51 @@ def add_tors_from_connectivity(C, intcos, geom):
                                         l += 1
                             i += 1
     # return len(intcos) - Norig
+
+# For now, let's just check for a single central atom bonded to all others
+def check_if_oofp_needed(C, intcos, geom):
+    logger = logging.getLogger(__name__)
+    Natom = len(C)
+    maxNneighbors = max( [sum(C[i]) for i in range(Natom)] )
+    if maxNneighbors == Natom -1:
+        logger.debug("check_if_oofp_needed() is turning oofp ON")
+        return True
+    else:
+        return False
+
+def add_oofp_from_connectivity(C, intcos, geom):
+    # Look for:  (terminal atom)-connected to-(tertiary atom)
+    Nneighbors = [ sum(C[i]) for i in range(len(C)) ]
+    terminal_atoms = [i for i in range(len(Nneighbors)) if Nneighbors[i] == 1]
+
+    # Find adjacent atoms
+    vertex_atoms = []
+    for T in terminal_atoms:
+        vertex_atoms.append( np.where(C[T] == True)[0][0] )
+
+    for (T,V) in zip(terminal_atoms,vertex_atoms):
+        if Nneighbors[V] < 3:
+            pass
+        # Find at least 2 other/side atoms
+        side = []
+        for N in np.where(C[V] == True)[0]:
+            if N == T:
+                pass
+            else:
+                side.append(N)
+
+        if len(side) >= 2:
+            try:
+                val = v3d.oofp(geom[T], geom[V], geom[side[0]], geom[side[1]])
+            except AlgError:
+                raise OptError("Tried to add out-of-plane angle but couldn't evaluate it.")
+                pass
+            else:
+                oneOofp = oofp.Oofp(T, V, side[0], side[1])
+                if oneOofp not in intcos:
+                    intcos.append(oneOofp)
+            
+    return
 
 
 def add_cartesian_intcos(intcos, geom):

@@ -5,6 +5,7 @@ from . import intcosMisc
 from .exceptions import AlgError, OptError
 from . import optparams as op
 from .linearAlgebra import abs_max, rms, symm_mat_inv
+from .printTools import print_mat_string
 
 # Functions in this file displace.py
 #
@@ -365,7 +366,7 @@ def dq_to_dx(intcos, geom, dq, printDetails=False):
     logger = logging.getLogger(__name__)
     B = intcosMisc.Bmat(intcos, geom)
     G = np.dot(B, B.T)
-    Ginv = symm_mat_inv(G, redundant=True)
+    Ginv = symm_mat_inv(G, redundant=True) #redundant_eval_tol = 1.0e-7)
     tmp_v_Nint = np.dot(Ginv, dq)
     dx = np.dot(B.T, tmp_v_Nint)
 
