@@ -9,10 +9,31 @@ from . import v3d
 from .simple import Simple
 from .misc import string_math_fx
 
-# Class for out-of-plane angle.  Definition (A,B,C,D) means angle AB with respect
-# to the CBD plane; canonical order is C < D
-
 class Oofp(Simple):
+    """ out-of-plane angle coordinate a-b-c-d. Means angle made by AB and the
+        CBD plane; canonical order is C < D
+
+    Parameters
+    ----------
+    a : int
+        first (terminal) atom
+    b : int
+        second (vertex) atom
+    c : int
+        third atom
+    d : int
+        fourth atom
+    constraint : string
+        set stretch as 'free', 'frozen', 'ranged', etc.
+    near180 : int
+        +1 => near +180; -1 => near -180; else 0
+    range_min : float
+        don't let value get smaller than this
+    range_max : float
+        don't let value get larger than this
+    ext_force : string_math_fx
+        class for evaluating additional external force
+    """
     def __init__(self, a, b, c, d, constraint='free', near180=0,
                  range_min=None, range_max=None, ext_force=None):
 
@@ -40,6 +61,9 @@ class Oofp(Simple):
             s = '['
         else:
             s = ' '
+
+        if self.has_ext_force:
+            s += '>'
 
         s += "O"
 

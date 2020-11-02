@@ -19,10 +19,15 @@ class Stre(Simple):
     b : int
         atom 2 (zero indexing)
     constraint : string
-        set stretch as 'free', 'frozen', etc.
+        set stretch as 'free', 'frozen', 'ranged', etc.
     inverse : boolean
         identifies 1/R coordinate
-
+    range_min : float
+        don't let value get smaller than this
+    range_max : float
+        don't let value get larger than this
+    ext_force : string_math_fx
+        class for evaluating additional external force
     """
     def __init__(self, a, b, constraint='free', inverse=False,
                  range_min=None, range_max=None, ext_force=None):
