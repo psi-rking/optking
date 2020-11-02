@@ -213,24 +213,19 @@ def displace_frag(F, dq_in, ensure_convergence=False):
     frozen_conv = True
     if any(intco.frozen for intco in F.intcos) or any(intco.ranged for intco in F.intcos):
 
-        # Set dq for unfrozen intcos to zero.
         F.update_dihedral_orientations()
         F.fix_bend_axes()
-        # This is -Dq taken so far.
         qnow = intcosMisc.q_values(F.intcos, geom)
-        dq_adjust_frozen = q_orig - qnow
+        dq_adjust_frozen = np.zeros( len(F.intcos) )
 
         for i, intco in enumerate(F.intcos):
-            if intco.frozen:  # cleanup step = -Dq
-                pass
-            elif intco.ranged: # put within range
+            if intco.frozen:    # cleanup step = -Dq
+                dq_adjust_frozen[i] = q_orig[i] - qnow[i]
+            elif intco.ranged:  # put within range
                 if qnow[i] > intco.range_max:
                     dq_adjust_frozen[i] = intco.range_max - qnow[i]
                 elif qnow[i] < intco.range_min:
                     dq_adjust_frozen[i] = intco.range_min - qnow[i]
-            else:             # keep what we have
-                dq_adjust_frozen[i] = 0
-
 
         frozen_msg = (
                 "\tAdditional back-transformation to adjust frozen/ranged coordinates: ")
