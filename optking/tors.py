@@ -12,7 +12,7 @@ from .simple import Simple
 
 
 class Tors(Simple):
-    """ torsion coordinate between four atoms
+    """ torsion coordinate between four atoms a-b-c-d
 
     Parameters
     ----------
@@ -25,14 +25,16 @@ class Tors(Simple):
     d : int
         fourth atom
     constraint : string
-        set tors as 'free', 'frozen', etc.
+        set stretch as 'free', 'frozen', 'ranged', etc.
     near180 : int
         +1 => near +180; -1 => near -180; else 0
-    Notes
-    -----
-        atoms must be listed in order. Uses 0-based indexing.
+    range_min : float
+        don't let value get smaller than this
+    range_max : float
+        don't let value get larger than this
+    ext_force : string_math_fx
+        class for evaluating additional external force
     """
-
     def __init__(self, a, b, c, d, constraint='free', near180=0,
                  range_min=None, range_max=None, ext_force=None):
 
@@ -50,6 +52,9 @@ class Tors(Simple):
             s = '['
         else:
             s = ' '
+
+        if self.has_ext_force:
+            s += '>'
 
         s += "D"
 

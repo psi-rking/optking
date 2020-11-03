@@ -27,9 +27,11 @@ def conv_check(iterNum, oMolsys, dq, f, energies, q_pivot=None):
     #
     # We MIGHT need to remove coordinates for analysis of convergence
     # check, but this is not clear.
-    # 1. if frozen, fq already set to 0.
-    # 2. if ranged and 'at wall', fq already set to 0.
-    # 3. if ext_force, still desired force will -> 0.
+    # 1. if frozen, fq was set to 0, and then displace tried its best
+    # to make sure dq was also zero..
+    # 2. if additional ext_force is applied, we presume total force
+    # should still -> 0.
+    # 3. If ranged and 'at wall', fq already set to 0.
     #
     # For now, saving here the old code to remove the deprecated 'fixed'
     #has_fixed = False
@@ -162,7 +164,8 @@ def conv_check(iterNum, oMolsys, dq, f, energies, q_pivot=None):
                 + "-----------------------\n\n")
         logger.info(conv_str)
 
-# Return forces to what they were when conv_check was called (Why?? What does this do? - Alex)
+    # Return forces to what they were when conv_check was called (Why?? What does this do? - Alex)
+    # seems bad form for a conv check to change in place the input forces. 
     if op.Params.opt_type == 'IRC':
         f[:] = f_backup
 
@@ -170,7 +173,7 @@ def conv_check(iterNum, oMolsys, dq, f, energies, q_pivot=None):
 
 
 def test_for_convergence(DE, max_force, rms_force, max_disp, rms_disp):
-    """ Tests whether all condditions for convergence have been met"""
+    """ Tests whether all conditions for convergence have been met"""
 
     logger = logging.getLogger(__name__)
     logger.debug("Testing convergence parameters.")

@@ -31,6 +31,9 @@ class Cart(Simple):
         else:
             s = ' '
 
+        if self.has_ext_force:
+            s += '>'
+
         if self._xyz == 0:
              s += 'X'
         elif self._xyz == 1:

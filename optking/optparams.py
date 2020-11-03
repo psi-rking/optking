@@ -293,6 +293,8 @@ class OptParams(object):
         self.h_bond_connect = uod.get('h_bond_connect', 4.3)
         # Only generate the internal coordinates and then stop (boolean)
         self.generate_intcos_exit = uod.get('GENERATE_INTCOS_EXIT', False)
+        # Add out-of-plane angles (usually not needed)
+        self.include_oofp = uod.get('INCLUDE_OOFP', False)
         #
         #
         # SUBSECTION Misc.

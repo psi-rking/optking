@@ -11,25 +11,26 @@ from .misc import delta, hguess_lindh_rho, string_math_fx
 
 
 class Bend(Simple):
-    """ bend coordinate between three atoms
+    """ bend coordinate between three atoms a-b-c
 
     Parameters
     ----------
     a : int
         first atom
     b : int
-        second atom
+        second (middle) atom
     c : int
         third atom
     constraint : string
-        set bend as 'free', 'frozen', etc.
+        set stretch as 'free', 'frozen', 'ranged', etc.
     bend_type : string, optional
         can be regular, linear, or complement (used to describe linear bends)
-
-    Notes
-    -----
-        atoms must be listed in order. Uses 0-based indexing.
-
+    range_min : float
+        don't let value get smaller than this
+    range_max : float
+        don't let value get larger than this
+    ext_force : string_math_fx
+        class for evaluating additional external force
     """
     def __init__(self, a, b, c, constraint='free', bend_type="REGULAR",
                  axes_fixed=False, range_min=None, range_max=None, ext_force=None):
@@ -54,6 +55,9 @@ class Bend(Simple):
             s = '['
         else:
             s = ' '
+
+        if self.has_ext_force:
+            s += '>'
 
         if self.bend_type == "REGULAR":
             s += "B"

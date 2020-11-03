@@ -5,13 +5,15 @@ from . import intcosMisc
 from .exceptions import AlgError, OptError
 from . import optparams as op
 from .linearAlgebra import abs_max, rms, symm_mat_inv
+from .printTools import print_mat_string
 
 # Functions in this file displace.py
 #
 #  displace_molsys: Displace each fragment.  Displace dimer coordinates.
 #  displace_frag  : Displace a fragment by dq.  Double check frozen coordinates
 #                 are satisfied.  Reduce stepsize as needed if
-#                 ensure_convergence is true.
+#                 ensure_convergence is true.  Also double check to ensure
+#                 ranged coordinates are now outside prescribed range.
 #  back_transformation:  Call dq_to_dx iteratively to try to converge to desired
 #                  Dq as much as possible.
 #  dq_to_dx       : Given Delta(q), compute and invert B, take Delta(x) step.
@@ -50,8 +52,10 @@ def displace_molsys(oMolsys, dq_in, fq=None, ensure_convergence=False):
                 tentative = q_in[start+i] + dq_in[start+i]
                 if tentative > I.range_max:
                     dq_in[start+i] = I.range_max - q_in[start+i]
+                    logger.info('setting to max: {:10.5f}'.format(dq_in[start+i]))
                 elif tentative < I.range_min:
                     dq_in[start+i] = I.range_min - q_in[start+i]
+                    logger.info('setting to min: {:10.5f}'.format(dq_in[start+i]))
                 else:
                     pass # value within range
 
@@ -207,19 +211,24 @@ def displace_frag(F, dq_in, ensure_convergence=False):
 
     # Fix drift/error in any frozen coordinates
     frozen_conv = True
-    if any(intco.frozen for intco in F.intcos):
+    if any(intco.frozen for intco in F.intcos) or any(intco.ranged for intco in F.intcos):
 
-        # Set dq for unfrozen intcos to zero.
         F.update_dihedral_orientations()
         F.fix_bend_axes()
-        dq_adjust_frozen = q_orig - intcosMisc.q_values(F.intcos, geom)
+        qnow = intcosMisc.q_values(F.intcos, geom)
+        dq_adjust_frozen = np.zeros( len(F.intcos) )
 
         for i, intco in enumerate(F.intcos):
-            if not intco.frozen:
-                dq_adjust_frozen[i] = 0
+            if intco.frozen:    # cleanup step = -Dq
+                dq_adjust_frozen[i] = q_orig[i] - qnow[i]
+            elif intco.ranged:  # put within range
+                if qnow[i] > intco.range_max:
+                    dq_adjust_frozen[i] = intco.range_max - qnow[i]
+                elif qnow[i] < intco.range_min:
+                    dq_adjust_frozen[i] = intco.range_min - qnow[i]
 
         frozen_msg = (
-                "\tAdditional back-transformation to adjust frozen coordinates: ")
+                "\tAdditional back-transformation to adjust frozen/ranged coordinates: ")
 
         frozen_conv = back_transformation(F.intcos, geom,
                                           dq_adjust_frozen,
@@ -365,7 +374,7 @@ def dq_to_dx(intcos, geom, dq, printDetails=False):
     logger = logging.getLogger(__name__)
     B = intcosMisc.Bmat(intcos, geom)
     G = np.dot(B, B.T)
-    Ginv = symm_mat_inv(G, redundant=True)
+    Ginv = symm_mat_inv(G, redundant=True) #redundant_eval_tol = 1.0e-7)
     tmp_v_Nint = np.dot(Ginv, dq)
     dx = np.dot(B.T, tmp_v_Nint)
 
