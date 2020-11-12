@@ -58,6 +58,8 @@ def optimize(oMolsys, computer):
         converged = False
         # oMolsys = make_internal_coords(oMolsys)
         if not oMolsys.intcos_present:
+            logger.debug("Molecular systems before make_internal_coords:")
+            logger.debug(str(oMolsys))
             make_internal_coords(oMolsys)
             logger.debug("Molecular systems after make_internal_coords:")
             logger.debug(str(oMolsys))
@@ -500,16 +502,16 @@ def make_internal_coords(oMolsys, params=None):
     """
     if params is None:
         params = op.Params
-    optimize_log = logging.getLogger(__name__)
-    optimize_log.debug("\t Adding internal coordinates to molecular system")
+    logger = logging.getLogger(__name__)
+    logger.debug("\t Adding internal coordinates to molecular system")
 
     # Use covalent radii to determine bond connectivity.
     connectivity = addIntcos.connectivity_from_distances(oMolsys.geom, oMolsys.Z)
-    optimize_log.debug("Connectivity Matrix\n" + print_mat_string(connectivity))
+    logger.debug("Connectivity Matrix\n" + print_mat_string(connectivity))
 
     if params.frag_mode == 'SINGLE':
         # Make a single, supermolecule.
-        oMolsys.consolidate_fragments()          # collapse into one frag (if > 1)
+        oMolsys.consolidate_fragments()     # collapse into one frag (if > 1)
         oMolsys.split_fragments_by_connectivity()  # separate by connectivity
         # increase connectivity until all atoms are connected
         oMolsys.augment_connectivity_to_single_fragment(connectivity)
@@ -551,6 +553,8 @@ def prepare_opt_output(oMolsys, computer, rxnpath=False, error=None):
     logger = logging.getLogger(__name__)
     logger.debug("Preparing OptimizationResult")
     # Get molecule from most recent step. Add provenance and fill in non-required fills. Turn back to dict
+    logger.debug("Final molsys before conversion to qc_molecule:")
+    logger.debug(oMolsys)
     final_molecule = oMolsys.molsys_to_qc_molecule()
 
     qc_output = {"schema_name": 'qcschema_optimization_output', "trajectory": computer.trajectory,

@@ -12,25 +12,30 @@ from .v3d import are_collinear
 
 class Frag:
 
-    def __init__(self, Z, geom, masses, intcos=None, frozen=False):
+    def __init__(self, Z, geom, masses, charge=0, multiplicity=1,
+                 intcos=None, frozen=False):
         """ Group of bonded atoms
-
         Parameters
         ----------
         Z : list[int]
             atomic numbers
         geom : np.ndarray
             (nat, 3) cartesian geometry
+        charge : int
+            charge of fragment
+        multiplicity: int
+            multiplicit of fragment
         masses : list[float]
             atomic masses
         intcos : list(Simple), optional
             internal coordinates (stretches, bends, etch...)
-
         """
 
         self._Z = Z
         self._geom = geom
         self._masses = masses
+        self._charge = charge
+        self._multiplicity = multiplicity
         self._frozen = frozen
 
         self._intcos = []
@@ -48,6 +53,8 @@ class Frag:
         s += "\t - Coordinate -           - BOHR/RAD -       - ANG/DEG -\n"
         for x in self._intcos:
             s += ("\t%-18s=%17.6f%19.6f\n" % (x, x.q(self._geom), x.q_show(self._geom)))
+        s += "\tCharge: {:d}     Multiplicity: {:d}     Frozen: {:s}".format(
+            self._charge, self._multiplicity, str(self._frozen))
         s += "\n"
         return s
 
@@ -57,6 +64,8 @@ class Frag:
         d['Z'] = self._Z.copy()
         d['geom'] = self._geom.copy()
         d['masses'] = self._masses.copy()
+        d['charge'] = self._charge
+        d['multiplicty'] = self._multiplicity
         d['frozen'] = self._frozen
         d['intcos'] = [i.to_dict() for i in self._intcos]
         return d
@@ -69,6 +78,8 @@ class Frag:
         Z =  D['Z']
         geom = D['geom']
         masses =  D['masses']
+        charge =  D.get('charge', 0)
+        multiplicity =  D.get('multiplicity', 1)
         frozen =  D.get('frozen', False)
         if 'intcos' in D: # class constructor (cls), e.g., stre.Stre
             intcos = []
@@ -77,46 +88,8 @@ class Frag:
                 intcos.append( eval(clc).from_dict(i) )
         else:
             intcos = None
-        return cls(Z, geom, masses, intcos, frozen)
+        return cls(Z, geom, masses, charge, multiplicity, intcos, frozen)
 
-
-#    @classmethod
-#    def fromPsi4Molecule(cls, mol):
-#        mol.update_geometry()
-#        geom = np.array(mol.geometry(),float)
-#        natom = mol.natom()
-#
-#        #Z = np.zeros( natom, int)
-#        Z = []
-#        for i in range(natom):
-#            Z.append(int(mol.Z(i)))
-#
-#        masses = np.zeros(natom)
-#        for i in range(natom):
-#            masses[i] = mol.mass(i)
-#
-#        return cls(Z, geom, masses)
-#
-#
-#    #todo
-#    @classmethod
-#    def from_json_molecule(cls, pmol):
-#        #taking in psi4.core.molecule and converting to schema
-#        jmol = pmol.to_schema()
-#        print(jmol)
-#        natom = len(jmol['symbols'])
-#        geom = np.asarray(molecule['geometry']).reshape(-1,3) #?need to reshape in some way todo
-#        print(geom)
-#        Z = []
-#        for i in range(natom):
-#            Z.append(qcel.periodictable.to_Z(jmol['symbols'][i]))
-#
-#        print(Z)
-#
-#        masses = jmol['masses']
-#        print(masses)
-#
-#        return cls(Z, geom, masses)
 
     @property
     def natom(self):
@@ -137,6 +110,14 @@ class Frag:
     @property
     def intcos(self):
         return self._intcos
+
+    @property
+    def charge(self):
+        return self._charge
+
+    @property
+    def multiplicity(self):
+        return self._multiplicity
 
     @property
     def frozen(self):

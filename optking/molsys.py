@@ -46,7 +46,8 @@ class Molsys(object):
         self._multiplicity = multiplicity
 
     def __str__(self):
-        s = ''
+        s = 'Molsys, Charge:{:d}, Multiplicity:{:d}'.format(
+             self.charge, self._multiplicity)
         for iF, F in enumerate(self._fragments):
             s += "\n\tFragment %d\n" % (iF + 1)
             s += F.__str__()
@@ -81,6 +82,9 @@ class Molsys(object):
             logger.critical("from_psi4_molecule cannot handle a non psi4 molecule")
             raise OptError("Cannot make molecular system from this molecule")
 
+        frag_charges = mol.get_fragment_charges()
+        frag_multiplicities = mol.get_fragment_multiplicities()
+
         NF = mol.nfragments()
         logger.info("\t%d fragments in PSI4 molecule object." % NF)
         frags = []
@@ -94,7 +98,11 @@ class Molsys(object):
             frag_z = [frag_mol.Z(i) for i in range(frag_natom)]
             frag_masses = [frag_mol.mass(i) for i in range(frag_natom)]
 
-            frags.append(frag.Frag(frag_z, frag_geom, frag_masses))
+            frag_charge = frag_charges[iF]
+            frag_mult = frag_multiplicities[iF]
+
+            frags.append(frag.Frag(frag_z, frag_geom, frag_masses, frag_charge,
+                         frag_mult))
 
         m = mol.multiplicity()
         return cls(frags, multiplicity=m)
@@ -128,10 +136,29 @@ class Molsys(object):
 
         frags = []
         if 'fragments' in qc_molecule:
-            for fr in qc_molecule['fragments']:
-                frags.append(frag.Frag(np.array(z_list)[fr], geom[fr], np.array(masses_list)[fr]))
+            for i, frSlice in enumerate(qc_molecule['fragments']):
+                if 'fragment_charges' in qc_molecule:
+                    charge = qc_molecule['fragment_charges'][i]
+                else:
+                    charge = 0
+                if 'fragment_multiplicities' in qc_molecule:
+                    multiplicity = qc_molecule['fragment_multiplicities'][i]
+                else:
+                    multiplicity = 0
+                newFrag = frag.Frag(np.array(z_list)[frSlice], geom[frSlice],
+                                    np.array(masses_list)[frSlice],charge, multiplicity)
+                frags.append(newFrag)
         else:
-            frags.append(frag.Frag(z_list, geom, masses_list))
+            if 'molecular_charge' in qc_molecule:
+                charge = qc_molecule['molecular_charge']
+            elif 'fragment_charges' in qc_molecule:
+                charge = sum( qc_molecule['fragment_charges'] )
+            else:
+                charge = 0
+            if 'molecular_multiplicity' in qc_molecule:
+                multiplicity = qc_molecule['molecular_multiplicity']
+            newFrag = frag.Frag(z_list, geom, masses_list, charge, multiplicity)
+            frags.append(newFrag)
 
         return cls(frags)
 
@@ -165,6 +192,10 @@ class Molsys(object):
     @property
     def multiplicity(self):
         return self._multiplicity
+
+    @property
+    def charge(self):
+        return sum( F.charge for F in self._fragments )
 
     @property
     def nfragments(self):
@@ -460,7 +491,10 @@ class Molsys(object):
         qc_mol = {"symbols": self.atom_symbols,
                   "geometry": geom,
                   "masses": self.masses.tolist(),
+                  "molecular_charge": self.charge,
                   "molecular_multiplicity": self.multiplicity,
+                  "fragment_charges": [F.charge for F in self.fragments],
+                  "fragment_multiplicities": [F.multiplicity for F in self.fragments],
                   "fragments":self.fragments_atom_list,
                   # "molecular_charge": self.charge, Should be unnecessary
                   "fix_com": True,
@@ -508,9 +542,10 @@ class Molsys(object):
             Z = np.concatenate((Z, self._fragments[i].Z))
             g = np.concatenate((g, self._fragments[i].geom))
             m = np.concatenate((m, self._fragments[i].masses))
-        # self._fragments.append(consolidatedFrag)
+        ch = sum(F.charge for F in self._fragments)
+        # unusual bug may occur here as pre-existing fragment multiplicities will be lost.
         del self._fragments[:]
-        consolidatedFrag = frag.Frag(Z, g, m)
+        consolidatedFrag = frag.Frag(Z, g, m, ch)
         self._fragments.append(consolidatedFrag)
 
     def split_fragments_by_connectivity(self):
@@ -551,8 +586,15 @@ class Molsys(object):
                     subMasses[i] = tempMasses[I]
                 newFragments.append(frag.Frag(subZ, subGeom, subMasses))
 
-        del self._fragments[:]
-        self._fragments = newFragments
+        # Don't change molsys at all if no change in # of fragments.
+        if len(self._fragments) == len(newFragments):
+            return
+        else:
+            # TODO fix or at least warn over annoying case in which user
+            # provides multiple fragments with spin and multiplicity that
+            # matter but doesn't use same fragments for optimizatoin.
+            del self._fragments[:]
+            self._fragments = newFragments
 
     def purge_interfragment_connectivity(self, C):
         for f1,f2 in permutations([i for i in range(self.nfragments)], 2):

@@ -95,6 +95,8 @@ def initialize_from_psi4(calc_name, program, computer_type, dertype=None, **xtra
     logger = logging.getLogger(__name__)
     mol = psi4.core.get_active_molecule()
     oMolsys = molsys.Molsys.from_psi4_molecule(mol)
+    logger.debug('Optking molsys from psi4.core.get_active_molecule():')
+    logger.debug( oMolsys )
 
     # Get optking options and globals from psi4
     # Look through optking module specific options first. If a global has already appeared
@@ -130,7 +132,8 @@ def initialize_from_psi4(calc_name, program, computer_type, dertype=None, **xtra
                          'method': calc_name},
                      "driver": "gradient",
                      "keywords": qc_keys}}
-    logger.debug("Creating OptimizationInput")
+    logger.debug("Creating OptimizationInput, Initial qc molecule from Molsys:")
+    logger.debug(opt_input["initial_molecule"])
 
     opt_input = OptimizationInput(**opt_input)
     # Remove numpy elements to allow at will json serialization
