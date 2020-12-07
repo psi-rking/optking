@@ -4,7 +4,7 @@
 # points are collinear.
 import logging
 import numpy as np
-from math import fabs, sin, acos, asin, fsum
+from math import fabs, sin, acos, asin, fsum, sqrt
 
 from . import optparams as op
 from .exceptions import AlgError, OptError
@@ -297,11 +297,17 @@ def oofp(A, B, C, D):
         tau = asin(dotprod)
     return tau
 
-def are_collinear(A, B, C, threshold=1.0e-8):
-    eAB = B - A
-    eAC = C - A
-    cr = cross(eAB,eAC)
-    if dot(cr,cr) < threshold:
+def are_collinear(A, B, C, threshold=1.0e-4):
+    try:
+        eab = eAB(A, B)
+        eac = eAB(A, C)
+    except AlgError as error:
+        return True # points on top of each other
+
+    cr = cross(eab,eac)
+    N = sqrt(dot(cr,cr))
+    print('N {}'.format(N))
+    if N < threshold:
         return True
     else: 
         return False

@@ -274,6 +274,10 @@ class OptParams(object):
         # P.auxiliary_bond_factor = uod.get('AUXILIARYBOND_FACTOR', 2.5)
         # Do use 1/R for the interfragment stretching coordinate instead of R?
         self.interfrag_dist_inv = uod.get('INTERFRAG_DIST_INV', False)
+        # Used for determining which atoms in a system are too collinear to
+        # be chosen as default reference atoms. We avoid collinearity. Greater
+        # is more restrictive.
+        self.interfrag_collinear_tol = uod.get('INTERFRAG_COLLINEAR_TOL', 0.01)
 
         # Let the user submit a dictionary (or array of dictionaries) for
         # the interfrag coordinates.
@@ -388,11 +392,6 @@ class OptParams(object):
         # Boundary to guess if a torsion or out-of-plane angle has passed through 180
         # during a step.
         self.fix_val_near_pi = 1.57
-
-        # Only used for determining which atoms in a fragment are acceptable for use
-        # as reference atoms.  We avoid collinear sets.
-        # angle is 0/pi if the bond angle is within this fraction of pi from 0/pi
-        # P.interfrag_collinear_tol = 0.01
 
         # Torsional angles will not be computed if the contained bond angles are within
         # this many radians of zero or 180. (< ~1 and > ~179 degrees)

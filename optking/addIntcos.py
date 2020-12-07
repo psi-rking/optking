@@ -893,6 +893,9 @@ def add_dimer_frag_intcos(oMolsys):
             oMolsys.dimer_intcos.append(df)
 
     else: # autogenerate interfragment coordinates
+       # Tolerance for collinearity of ref points. Can be mad smaller, but its
+       # riskier to start wth ref points the make very large angles
+        col_tol = op.Params.interfrag_collinear_tol
         for A, B in combinations(range(oMolsys.nfragments),r=2):
             xyzA = oMolsys.frag_geom(A)
             xyzB = oMolsys.frag_geom(B)
@@ -903,7 +906,7 @@ def add_dimer_frag_intcos(oMolsys):
             # Find ref. pt. 2 on A.
             if not oMolsys.fragments[A].is_atom():
                 for i in range(oMolsys.fragments[A].natom):
-                    if i == refA1 or are_collinear(xyzA[i],xyzA[refA1],xyzB[refB1]):
+                    if i == refA1 or are_collinear(xyzA[i],xyzA[refA1],xyzB[refB1],col_tol):
                         continue
                     refA2 = i
                     frag_ref_atomsA.append([refA2])
@@ -913,7 +916,7 @@ def add_dimer_frag_intcos(oMolsys):
             # Find ref. pt. 2 on B.
             if not oMolsys.fragments[B].is_atom():
                 for i in range(oMolsys.fragments[B].natom):
-                    if i == refB1 or are_collinear(xyzB[i],xyzB[refB1],xyzA[refA1]):
+                    if i == refB1 or are_collinear(xyzB[i],xyzB[refB1],xyzA[refA1],col_tol):
                         continue
                     refB2 = i
                     frag_ref_atomsB.append([refB2])
@@ -923,7 +926,7 @@ def add_dimer_frag_intcos(oMolsys):
             # Find ref. pt. 3 on A.
             if oMolsys.fragments[A].natom > 2 and not oMolsys.fragments[A].is_linear():
                 for i in range(oMolsys.fragments[A].natom):
-                    if i in [refA1,refA2] or are_collinear(xyzA[i],xyzA[refA2],xyzA[refA1]):
+                    if i in [refA1,refA2] or are_collinear(xyzA[i],xyzA[refA2],xyzA[refA1],col_tol):
                         continue
                     frag_ref_atomsA.append([i])
                     break
@@ -932,7 +935,7 @@ def add_dimer_frag_intcos(oMolsys):
             # Find ref. pt. 3 on B.
             if oMolsys.fragments[B].natom > 2 and not oMolsys.fragments[B].is_linear():
                 for i in range(oMolsys.fragments[B].natom):
-                    if i in [refB1,refB2] or are_collinear(xyzB[i],xyzB[refB2],xyzB[refB1]):
+                    if i in [refB1,refB2] or are_collinear(xyzB[i],xyzB[refB2],xyzB[refB1],col_tol):
                         continue
                     frag_ref_atomsB.append([i])
                     break
