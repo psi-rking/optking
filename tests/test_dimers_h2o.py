@@ -75,6 +75,7 @@ def test_dimers_h2o_auto(): # auto reference pt. creation
       O  -0.105182    -1.256691    -1.722965
       H   0.334700    -0.589454    -2.277374
       nocom
+      noreorient
     """)
 
     psi4.core.clean_options()
@@ -82,11 +83,13 @@ def test_dimers_h2o_auto(): # auto reference pt. creation
       'basis': 'aug-cc-pvdz',
       'geom_maxiter': 40,
       'frag_mode':'MULTI',
-      'g_convergence':'gau_tight'
+      'g_convergence':'gau_tight',
     }
     psi4.set_options(psi4_options)
-    json_output = optking.optimize_psi4('mp2')
+
+    newOptParams = {'interfrag_collinear_tol': 0.2} #increase to prevent too colinear reference points
+    json_output = optking.optimize_psi4('mp2', **newOptParams)
+
     E = json_output['energies'][-1]
     assert psi4.compare_values(MP2minEnergy, E, 6, "MP2 Energy opt from afar, auto")
-
 
