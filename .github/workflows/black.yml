@@ -8,5 +8,4 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
-      - uses: psf/black@stable
-      - run: black optking -l 120 --check
+      - uses: psf/black@stable -l 120 optking
