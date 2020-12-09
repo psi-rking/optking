@@ -59,7 +59,7 @@ class RefPoint(object):
 
 
 class DimerFrag(object):
-    """ Set of (up to 6) coordinates between two distinct fragments.
+    """Set of (up to 6) coordinates between two distinct fragments.
     The fragments 'A' and 'B' have up to 3 reference atoms each (dA[3] and dB[3]).
     The reference atoms are defined in one of two ways:
     1. If interfrag_mode == FIXED, then fixed, linear combinations of atoms
@@ -78,7 +78,7 @@ class DimerFrag(object):
     ref_geom[3] = dB[0];
     ref_geom[4] = dB[1];
     ref_geom[5] = dB[2];
-    # 
+    #
     The six coordinates, if present, formed from the d{A-B}{0-2} sets are assumed to be the
     following in this canonical order:
     pos sym      type      atom-definition          present, if
@@ -112,7 +112,16 @@ class DimerFrag(object):
     """
 
     def __init__(
-        self, A_idx, A_atoms, B_idx, B_atoms, A_weights=None, B_weights=None, A_lbl="A", B_lbl="B", frozen=None,
+        self,
+        A_idx,
+        A_atoms,
+        B_idx,
+        B_atoms,
+        A_weights=None,
+        B_weights=None,
+        A_lbl="A",
+        B_lbl="B",
+        frozen=None,
     ):
         self._A_lbl = A_lbl
         self._B_lbl = B_lbl
@@ -382,7 +391,10 @@ class DimerFrag(object):
 
         s = "\tFragment %s\n" % self._A_lbl
         for i, r in enumerate(reversed(self._Arefs)):
-            s += "\t\tDimer point %d (Ref. pt. %d):\n" % (4 - self.n_arefs + i, self.n_arefs - i,)
+            s += "\t\tDimer point %d (Ref. pt. %d):\n" % (
+                4 - self.n_arefs + i,
+                self.n_arefs - i,
+            )
             s += r.__str__()
         s += "\n\tFragment %s\n" % self._B_lbl
         for i, r in enumerate(self._Brefs):
@@ -540,11 +552,17 @@ class DimerFrag(object):
         return
 
     def orient_fragment(
-        self, Ageom_in, Bgeom_in, q_target, printCoords=False, unit_length="bohr", unit_angle="rad",
+        self,
+        Ageom_in,
+        Bgeom_in,
+        q_target,
+        printCoords=False,
+        unit_length="bohr",
+        unit_angle="rad",
     ):
-        """ orient_fragment() moves the geometry of fragment B so that the
+        """orient_fragment() moves the geometry of fragment B so that the
             interfragment coordinates have the given values
- 
+
         Parameters
         ----------
         Ageom_in : array
@@ -617,7 +635,10 @@ class DimerFrag(object):
             cnt += 1
 
         # print this to DEBUG log always; to INFO upon request
-        s = "\t---DimerFrag coordinates between fragments %s and %s\n" % (self._A_lbl, self._B_lbl,)
+        s = "\t---DimerFrag coordinates between fragments %s and %s\n" % (
+            self._A_lbl,
+            self._B_lbl,
+        )
         s += "\t---Internal Coordinate Step in ANG or DEG, aJ/ANG or AJ/DEG ---\n"
         s += "\t ----------------------------------------------------------------------\n"
         s += "\t Coordinate             Previous     Change       Target\n"
@@ -625,7 +646,12 @@ class DimerFrag(object):
 
         for i in range(self.num_intcos):
             c = self.pseudo_frag.intcos[i].q_show_factor  # for printing to Angstroms/degrees
-            s += "\t%-20s%12.5f%13.5f%13.5f\n" % (active_lbls[i], c * q_orig[i], c * dq_target[i], c * q_target[i],)
+            s += "\t%-20s%12.5f%13.5f%13.5f\n" % (
+                active_lbls[i],
+                c * q_orig[i],
+                c * dq_target[i],
+                c * q_target[i],
+            )
 
         s += "\t ----------------------------------------------------------------------"
         logger.debug(s)
@@ -752,7 +778,7 @@ class DimerFrag(object):
     # end def orient_fragment()
 
     def compute_b_mat(self, A_geom, B_geom, Bmat_in, A_xyz_off=None, B_xyz_off=None):
-        """ This function adds interfragment rows into an existing B matrix.
+        """This function adds interfragment rows into an existing B matrix.
             B is (internals, Cartesians).  Often, 6 x 3*(Natoms).
         Parameters
         ----------
@@ -947,7 +973,7 @@ class DimerFrag(object):
 
 
 def test_orient(NA, NB, printInfo=False, randomSeed=None):
-    """ Test the orient_fragment function to see if pre-determined target
+    """Test the orient_fragment function to see if pre-determined target
     # coordinate values can be met.  Technically, this only tests consistency
     # within the class, i.e., whether computed values of the interfragment
     # coordinates match the target ones.  The point of this function is also

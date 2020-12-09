@@ -12,7 +12,7 @@ from .exceptions import OptError
 
 
 class ComputeWrapper:
-    """ An implementation of MolSSI's qc schema
+    """An implementation of MolSSI's qc schema
 
     Parameters
     ----------
@@ -64,18 +64,18 @@ class ComputeWrapper:
         pass
 
     def compute(self, geom, driver, return_full=True, print_result=False):
-        """ Perform calculation of type driver
-            
-            Parameters
-            ----------
-            geom: np.ndarray
-            driver: str
-            return_full: boolean
-            print_result: boolean
-            
-            Returns
-            -------
-            dict 
+        """Perform calculation of type driver
+
+        Parameters
+        ----------
+        geom: np.ndarray
+        driver: str
+        return_full: boolean
+        print_result: boolean
+
+        Returns
+        -------
+        dict
         """
 
         logger = logging.getLogger(__name__)
@@ -93,7 +93,8 @@ class ComputeWrapper:
             self.energies.append(ret["properties"]["return_energy"])
         else:
             raise OptError(
-                f"Error encountered for {driver} calc. {ret['error']['error_message']}", ret["error"]["error_type"],
+                f"Error encountered for {driver} calc. {ret['error']['error_message']}",
+                ret["error"]["error_type"],
             )
 
         if return_full:

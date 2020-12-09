@@ -19,7 +19,7 @@ from .printTools import print_array_string, print_mat_string
 
 
 def take_step(o_molsys, E, q_forces, H, stepType=None, computer=None, hist=None, params=None):
-    """  This method computes the step, calls displaces the geometry and updates history with
+    """This method computes the step, calls displaces the geometry and updates history with
      the results.
 
     Parameters
@@ -125,7 +125,7 @@ def de_projected(model, step, grad, hess):
 
 
 def dq_nr(fq, H):
-    """ Takes a step according to Newton Raphson algorithm
+    """Takes a step according to Newton Raphson algorithm
 
     Parameters
     ----------
@@ -176,7 +176,7 @@ def dq_nr(fq, H):
 
 # Take Rational Function Optimization step
 def dq_rfo(oMolsys, fq, H):
-    """ Takes a step using Rational Function Optimization
+    """Takes a step using Rational Function Optimization
 
     Parameters
     ----------
@@ -325,7 +325,10 @@ def dq_rfo(oMolsys, fq, H):
 
         else:  # Do root following.
             # Find maximum overlap. Dot only within H block.
-            dots = np.array([v3d.dot(SRFOevects[i], last_iter_evect, dim) for i in range(dim)], float,)
+            dots = np.array(
+                [v3d.dot(SRFOevects[i], last_iter_evect, dim) for i in range(dim)],
+                float,
+            )
             bestfit = np.argmax(dots)
             if bestfit != rfo_root:
                 logger.info("\tRoot-following has changed rfo_root value to %d." % (bestfit + 1))
@@ -376,7 +379,12 @@ def dq_rfo(oMolsys, fq, H):
             logger.info(rfo_step_report)
 
         elif alphaIter > 0 and not op.Params.simple_step_scaling:
-            rfo_step_report = "\t%5d%12.5lf%14.5lf%12d\n" % (alphaIter + 1, sqrt(dqtdq), alpha, rfo_root + 1,)
+            rfo_step_report = "\t%5d%12.5lf%14.5lf%12d\n" % (
+                alphaIter + 1,
+                sqrt(dqtdq),
+                alpha,
+                rfo_root + 1,
+            )
             logger.info(rfo_step_report)
 
         # Find the analytical derivative, d(norm step squared) / d(alpha)
@@ -566,7 +574,7 @@ def dq_p_rfo(fq, H):
 
 
 def dq_sd(fq):
-    """ Take a step using steepest descent method
+    """Take a step using steepest descent method
 
     Parameters
     ----------
@@ -616,7 +624,7 @@ def dq_sd(fq):
 
 
 def dq_backstep(o_molsys):
-    """ takes a partial step backwards
+    """takes a partial step backwards
 
     Notes
     -----
@@ -676,7 +684,7 @@ def dq_backstep(o_molsys):
 
 
 def dq_linesearch(o_molsys, E, fq, H, computer):
-    """ performs linesearch in direction of gradient
+    """performs linesearch in direction of gradient
 
     Parameters
     ----------

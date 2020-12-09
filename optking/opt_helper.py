@@ -44,7 +44,13 @@ from .stepAlgorithms import take_step
 
 class OptHelper(object):
     def __init__(
-        self, calc_name, program="psi4", dertype=None, xtra_opt_params=None, comp_type="qc", init_mode="setup",
+        self,
+        calc_name,
+        program="psi4",
+        dertype=None,
+        xtra_opt_params=None,
+        comp_type="qc",
+        init_mode="setup",
     ):
 
         self.calc_name = calc_name
@@ -65,7 +71,11 @@ class OptHelper(object):
                 optwrapper.optimize_psi4(calc_name, program, dertype, **xtra_opt_params)
             elif init_mode == "setup":
                 init_tuple = optwrapper.initialize_from_psi4(
-                    calc_name, program, computer_type=comp_type, dertype=None, **self.xtra_opt_params,
+                    calc_name,
+                    program,
+                    computer_type=comp_type,
+                    dertype=None,
+                    **self.xtra_opt_params,
                 )
                 self.params, self.molsys, self.computer, _ = init_tuple
 
@@ -146,7 +156,15 @@ class OptHelper(object):
         self.history.current_step_report()
 
     def step(self):
-        self.Dq = take_step(self.molsys, self.E, self.fq, self._Hq, self.params.step_type, self.computer, self.history,)
+        self.Dq = take_step(
+            self.molsys,
+            self.E,
+            self.fq,
+            self._Hq,
+            self.params.step_type,
+            self.computer,
+            self.history,
+        )
         self.new_geom = self.molsys.geom
         self.step_num += 1
 
@@ -222,7 +240,7 @@ class OptHelper(object):
         return self.molsys.geom
 
     def compute(self):
-        """ If self.computer does not use user input. Use standard method to get any information
+        """If self.computer does not use user input. Use standard method to get any information
         for a step will require execution of an AtomicInput.
 
         Otherwise, simulate a computation with a mock Computer to CREATE an AtomicResult for

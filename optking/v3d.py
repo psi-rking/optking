@@ -112,7 +112,7 @@ def are_parallel_or_antiparallel(u, v):
 
 
 def angle(A, B, C, tol=1.0e-14):
-    """ Compute and return angle in radians A-B-C (between vector B->A and vector B->C)
+    """Compute and return angle in radians A-B-C (between vector B->A and vector B->C)
     If points are absurdly close or far apart, returns False
 
     Parameters

@@ -149,8 +149,8 @@ def apply_external_forces(o_molsys, fq, H, stepNumber):
 
 
 def hessian_to_internals(H, o_molsys, g_x=None):
-    """ converts the hessian from cartesian coordinates into internal coordinates 
-    
+    """converts the hessian from cartesian coordinates into internal coordinates
+
     Parameters
     ----------
     H : ndarray
@@ -263,8 +263,8 @@ def tors_contains_bend(b, t):
 
 
 def remove_old_now_linear_bend(atoms, intcos):
-    """ For given bend [A,B,C], remove any regular bends as well as any torsions
-    which contain it 
+    """For given bend [A,B,C], remove any regular bends as well as any torsions
+    which contain it
     """
     logger = logging.getLogger(__name__)
     b = bend.Bend(atoms[0], atoms[1], atoms[2])

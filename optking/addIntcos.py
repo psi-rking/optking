@@ -92,7 +92,7 @@ def add_stre_from_connectivity(C, intcos):
 
 
 def add_h_bonds(geom, zs: list, num_atoms):
-    """ Add Hydrogen bonds to a fragments coordinate list
+    """Add Hydrogen bonds to a fragments coordinate list
     Parameters
     ----------
     geom : np.ndarray
@@ -270,7 +270,12 @@ def add_tors_from_connectivity(C, intcos, geom):
                                             else:  # Have found I-J-K-L.
                                                 L = l
                                                 try:
-                                                    val = v3d.tors(geom[I], geom[J], geom[K], geom[L],)
+                                                    val = v3d.tors(
+                                                        geom[I],
+                                                        geom[J],
+                                                        geom[K],
+                                                        geom[L],
+                                                    )
                                                 except AlgError:
                                                     pass
                                                 else:

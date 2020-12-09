@@ -15,7 +15,7 @@ class IRCpoint(object):
     step_number : int
         step number
     q_pivot :    ndarray
-        pivot point for next step 
+        pivot point for next step
     x_pivot :    ndarray
         pivot point for next step; save so that q_pivot can be recomputed if desired
     q       :    ndarray
@@ -34,7 +34,18 @@ class IRCpoint(object):
     """
 
     def __init__(
-        self, step_number, q, x, f_q, f_x, energy, q_pivot, x_pivot, step_dist, arc_dist, line_dist,
+        self,
+        step_number,
+        q,
+        x,
+        f_q,
+        f_x,
+        energy,
+        q_pivot,
+        x_pivot,
+        step_dist,
+        arc_dist,
+        line_dist,
     ):
         self.step_number = step_number
         self.q = q
@@ -70,8 +81,8 @@ class IRCpoint(object):
 
 
 class IRCdata(object):
-    """ Stores obtained points along the IRC as well as information about
-        the status of the IRC computation"""
+    """Stores obtained points along the IRC as well as information about
+    the status of the IRC computation"""
 
     __step_size = 0.0
     __direction = None
@@ -211,9 +222,9 @@ class IRCdata(object):
         return False
 
     def final_geom_coords(self, intcos):
-        """ For clarity, display geometry and internal coordinates for the final IRC step
-            IRC algorithm will display an additional IRC step and constrained optimization
-            after this step has been reached """
+        """For clarity, display geometry and internal coordinates for the final IRC step
+        IRC algorithm will display an additional IRC step and constrained optimization
+        after this step has been reached"""
 
         s = "Final Geometry: [Ang] \n"
         s += print_mat_string(self.x())
@@ -221,7 +232,11 @@ class IRCdata(object):
         s += "\t - Coordinate -           - BOHR/RAD -       - ANG/DEG -\n"
 
         for itr, x in enumerate(intcos):
-            s += "\t%-18s=%17.6f%19.6f\n" % (x, self.q()[itr], self.q()[itr] * x.q_show_factor,)
+            s += "\t%-18s=%17.6f%19.6f\n" % (
+                x,
+                self.q()[itr],
+                self.q()[itr] * x.q_show_factor,
+            )
             # s += ("\t%-18s=%17.6f\n" % (x, IRCdata.history.q()[itr] * x.q_show_factor))
 
         return s

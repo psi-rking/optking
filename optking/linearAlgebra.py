@@ -50,7 +50,7 @@ def symm_mat_eig(mat):
 
 
 def lowest_eigenvector_symm_mat(mat):
-    """ Returns eigenvector with lowest eigenvalues; makes the largest
+    """Returns eigenvector with lowest eigenvalues; makes the largest
         magnitude element positive.
 
     Parameters

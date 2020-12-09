@@ -11,7 +11,7 @@ from .simple import Simple
 
 
 class Bend(Simple):
-    """ bend coordinate between three atoms a-b-c
+    """bend coordinate between three atoms a-b-c
 
     Parameters
     ----------
@@ -328,9 +328,9 @@ class Bend(Simple):
         return
 
     def diagonal_hessian_guess(self, geom, Z, connectivity, guess_type="SIMPLE"):
-        """ Generates diagonal empirical Hessians in a.u. such as
-          Schlegel, Theor. Chim. Acta, 66, 333 (1984) and
-          Fischer and Almlof, J. Phys. Chem., 96, 9770 (1992).
+        """Generates diagonal empirical Hessians in a.u. such as
+        Schlegel, Theor. Chim. Acta, 66, 333 (1984) and
+        Fischer and Almlof, J. Phys. Chem., 96, 9770 (1992).
         """
         if guess_type == "SIMPLE":
             return 0.2

@@ -10,8 +10,7 @@ from .tors import Tors
 
 
 def show(H, oMolsys):
-    """ Print the Hessian in common spectroscopic units of [aJ/Ang^2], [aJ/deg^2] or [aJ/(Ang deg)]
-    """
+    """Print the Hessian in common spectroscopic units of [aJ/Ang^2], [aJ/deg^2] or [aJ/(Ang deg)]"""
     logger = logging.getLogger(__name__)
 
     factors = np.zeros(oMolsys.num_intcos)
@@ -33,7 +32,7 @@ def show(H, oMolsys):
 
 # def guess(intcos, geom, Z, connectivity=None, guessType="SIMPLE"):
 def guess(oMolsys, connectivity=None, guessType="SIMPLE"):
-    """ Generates diagonal empirical Hessian in a.u.
+    """Generates diagonal empirical Hessian in a.u.
 
     Parameters
     ----------

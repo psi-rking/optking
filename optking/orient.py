@@ -10,7 +10,7 @@ from .exceptions import AlgError
 
 
 def rotate_vector(rot_axis, phi, v):
-    """ rotate_vecs(): Rotate a set of vectors around an arbitrary axis
+    """rotate_vecs(): Rotate a set of vectors around an arbitrary axis
 
     Parameters
     ----------
@@ -54,7 +54,7 @@ def rotate_vector(rot_axis, phi, v):
 
 
 def zmat_point(A, B, C, R_CD, theta_BCD, phi_ABCD):
-    """ zmat_point(): Given the xyz coordinates for three points and
+    """zmat_point(): Given the xyz coordinates for three points and
         R, theta, and phi, as traditionally understood in a Z-matrix,
         returns the location of a 4th point.
 
@@ -66,7 +66,7 @@ def zmat_point(A, B, C, R_CD, theta_BCD, phi_ABCD):
         Cartesian coordinates of atom B
     C : numpy array float[3]
         Cartesian coordinates of atom C
-    R_CD : float 
+    R_CD : float
         Distance between atoms C and d
     theta_BCD :
         Angle between atoms B, C and d

@@ -6,7 +6,7 @@ from .simple import Simple
 
 
 class Cart(Simple):
-    """ Cartesian displacement coordinate on one atom
+    """Cartesian displacement coordinate on one atom
 
     Parameters
     ----------
@@ -17,7 +17,13 @@ class Cart(Simple):
     """
 
     def __init__(
-        self, a, xyz_in, constraint="free", range_min=None, range_max=None, ext_force=None,
+        self,
+        a,
+        xyz_in,
+        constraint="free",
+        range_min=None,
+        range_max=None,
+        ext_force=None,
     ):
 
         self.xyz = xyz_in  # uses setter below
@@ -124,8 +130,8 @@ class Cart(Simple):
         pass
 
     def diagonal_hessian_guess(self, geom, Z, connectivity, guess_type="Simple"):
-        """ Generates diagonal empirical Hessians in a.u. such as 
-          Schlegel, Theor. Chim. Acta, 66, 333 (1984) and
-          Fischer and Almlof, J. Phys. Chem., 96, 9770 (1992).
+        """Generates diagonal empirical Hessians in a.u. such as
+        Schlegel, Theor. Chim. Acta, 66, 333 (1984) and
+        Fischer and Almlof, J. Phys. Chem., 96, 9770 (1992).
         """
         return 0.1

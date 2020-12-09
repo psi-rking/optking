@@ -74,7 +74,7 @@ def optimize_psi4(calc_name, program="psi4", dertype=None, **xtra_opt_params):
 
 
 def initialize_from_psi4(calc_name, program, computer_type, dertype=None, **xtra_opt_params):
-    """ Gathers information from an active psi4 instance. to cleanly run optking from a
+    """Gathers information from an active psi4 instance. to cleanly run optking from a
     psithon or psi4api input file
 
     Parameters
@@ -149,7 +149,7 @@ def initialize_from_psi4(calc_name, program, computer_type, dertype=None, **xtra
 
 
 def optimize_qcengine(opt_input, computer_type="qc"):
-    """ Try to optimize, find TS, or find IRC of the system as specifed by a QCSchema
+    """Try to optimize, find TS, or find IRC of the system as specifed by a QCSchema
     OptimizationInput.
 
         Parameters

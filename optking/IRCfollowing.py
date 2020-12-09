@@ -23,9 +23,9 @@ def irc_de_projected(step_size, grad, hess):
 
 
 def compute_pivot_and_guess_points(oMolsys, v, IRCstepSize):
-    """ Takes a half step along v to the 'pivot point', then 
+    """Takes a half step along v to the 'pivot point', then
     an additional half step as first guess in constrained opt.
-    
+
     Parameters
     ----------
     oMolsys : class
@@ -64,7 +64,7 @@ def compute_pivot_and_guess_points(oMolsys, v, IRCstepSize):
 
 
 def dq_irc(oMolsys, E, f_q, H_q, s, dqGuess):
-    """ Before dq_irc is called, the geometry must be updated to the guess point
+    """Before dq_irc is called, the geometry must be updated to the guess point
     Returns Dq from qk+1 to gprime.
     TODO: What is dqGuess for?  Remove it?
     """

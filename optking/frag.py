@@ -12,7 +12,7 @@ from .v3d import are_collinear
 
 class Frag:
     def __init__(self, Z, geom, masses, intcos=None, frozen=False):
-        """ Group of bonded atoms
+        """Group of bonded atoms
 
         Parameters
         ----------
@@ -160,7 +160,11 @@ class Frag:
         intcos_report = "\tInternal Coordinate Values\n"
         intcos_report += "\n\t - Coordinate -           - BOHR/RAD -       - ANG/DEG -\n"
         for coord in self._intcos:
-            intcos_report += "\t%-18s=%17.6f%19.6f\n" % (coord, coord.q(self._geom), coord.q_show(self._geom),)
+            intcos_report += "\t%-18s=%17.6f%19.6f\n" % (
+                coord,
+                coord.q(self._geom),
+                coord.q_show(self._geom),
+            )
         intcos_report += "\n"
         logger.info(intcos_report)
         return
@@ -233,11 +237,11 @@ class Frag:
         self._frozen = True
 
     def update_dihedral_orientations(self):
-        """ Update orientation of each dihedrals/tors coordinate
-         This saves an indicator if dihedral is slightly less than pi,
-         or slighly more than -pi.  Subsequently, computation of values
-         can be greater than pi or less than -pi to enable computation
-         of Delta(q) when q passed through pi.
+        """Update orientation of each dihedrals/tors coordinate
+        This saves an indicator if dihedral is slightly less than pi,
+        or slighly more than -pi.  Subsequently, computation of values
+        can be greater than pi or less than -pi to enable computation
+        of Delta(q) when q passed through pi.
         """
         for intco in self._intcos:
             if isinstance(intco, tors.Tors) or isinstance(intco, oofp.Oofp):

@@ -12,7 +12,7 @@ from .simple import Simple
 
 
 class Tors(Simple):
-    """ torsion coordinate between four atoms a-b-c-d
+    """torsion coordinate between four atoms a-b-c-d
 
     Parameters
     ----------
@@ -37,7 +37,16 @@ class Tors(Simple):
     """
 
     def __init__(
-        self, a, b, c, d, constraint="free", near180=0, range_min=None, range_max=None, ext_force=None,
+        self,
+        a,
+        b,
+        c,
+        d,
+        constraint="free",
+        near180=0,
+        range_min=None,
+        range_max=None,
+        ext_force=None,
     ):
 
         if a < d:
@@ -357,9 +366,9 @@ class Tors(Simple):
         return
 
     def diagonal_hessian_guess(self, geom, Z, connectivity, guess_type="SIMPLE"):
-        """ Generates diagonal empirical Hessians in a.u. such as 
-          Schlegel, Theor. Chim. Acta, 66, 333 (1984) and
-          Fischer and Almlof, J. Phys. Chem., 96, 9770 (1992).
+        """Generates diagonal empirical Hessians in a.u. such as
+        Schlegel, Theor. Chim. Acta, 66, 333 (1984) and
+        Fischer and Almlof, J. Phys. Chem., 96, 9770 (1992).
         """
 
         logger = logging.getLogger(__name__)

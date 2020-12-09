@@ -10,7 +10,7 @@ from .simple import Simple
 
 
 class Stre(Simple):
-    """ stretching coordinate between two atoms
+    """stretching coordinate between two atoms
 
     Parameters
     ----------
@@ -31,7 +31,14 @@ class Stre(Simple):
     """
 
     def __init__(
-        self, a, b, constraint="free", inverse=False, range_min=None, range_max=None, ext_force=None,
+        self,
+        a,
+        b,
+        constraint="free",
+        inverse=False,
+        range_min=None,
+        range_max=None,
+        ext_force=None,
     ):
 
         self._inverse = inverse  # bool - is really 1/R coordinate?
@@ -193,7 +200,7 @@ class Stre(Simple):
                             )
 
     def diagonal_hessian_guess(self, geom, Z, connectivity, guess_type="SIMPLE"):
-        """ Generates diagonal empirical Hessians in a.u. such as
+        """Generates diagonal empirical Hessians in a.u. such as
         Schlegel, Theor. Chim. Acta, 66, 333 (1984) and
         Fischer and Almlof, J. Phys. Chem., 96, 9770 (1992).
         """
@@ -276,7 +283,7 @@ class HBond(Stre):
             return True
 
     def diagonal_hessian_guess(self, geom, Z, connectivity, guess_type="SIMPLE"):
-        """ Generates diagonal empirical Hessians in a.u. such as
+        """Generates diagonal empirical Hessians in a.u. such as
         Schlegel, Theor. Chim. Acta, 66, 333 (1984) and
         Fischer and Almlof, J. Phys. Chem., 96, 9770 (1992).
         """

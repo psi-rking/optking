@@ -14,7 +14,7 @@ from .linearAlgebra import symm_mat_inv
 
 class Molsys(object):
     def __init__(self, fragments, dimer_intcos=None):
-        """ The molecular system consisting of a collection of fragments
+        """The molecular system consisting of a collection of fragments
 
         Parameters
         ----------
@@ -54,7 +54,7 @@ class Molsys(object):
 
     @classmethod
     def from_schema(cls, qc_molecule):
-        """ Creates optking molecular system from JSON input.
+        """Creates optking molecular system from JSON input.
 
         Parameters
         ----------
@@ -90,7 +90,7 @@ class Molsys(object):
 
     @staticmethod
     def from_psi4(mol):
-        """ Creates a optking molecular system from psi4 mol. Note that not all information
+        """Creates a optking molecular system from psi4 mol. Note that not all information
         is preserved.
         Parameters
         ----------
@@ -679,12 +679,12 @@ class Molsys(object):
 
     # Returns mass-weighted Gmatrix if masses are supplied.
     def compute_g_mat(self, masses=None):
-        """ Calculates BuB^T (calculates B matrix)
+        """Calculates BuB^T (calculates B matrix)
 
         Parameters
         ----------
         masses : List, optional
-    
+
         """
         B = self.compute_b_mat(masses)
         return np.dot(B, B.T)
@@ -704,7 +704,7 @@ class Molsys(object):
         Notes
         -----
         fq = (BuB^T)^(-1)*B*f_x
-    
+
         """
         if not self.intcos_present or self.natom == 0:
             return np.zeros(0)
