@@ -7,6 +7,7 @@ dependencies:
   - numpy
   - python
   - qcelemental
+  - msgpack-python
 
     # Testing
   - pytest
