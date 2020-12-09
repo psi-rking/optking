@@ -1,73 +1,54 @@
-# After changing this file, check it on:
-#   http://lint.travis-ci.org/
+name: CI
 
-language: python
+on: [push, pull_request]
 
-# Run jobs on container-based infrastructure, can be overridden per job
-sudo: false
+jobs:
+  build:
 
-matrix:
-  include:
-    #- os: linux
-    #  python: 3.5
-    #  env:
-    #    - PYTHON_VER=3.5
-    - os: linux
-      python: 3.6
-      env:
-        - PYTHON_VER=3.6
-    #- os: linux
-    #  #python: 3.7
-    #  env:
-    #    - PYTHON_VER=3.7
-
-before_install:
-  - uname -a
-  - free -m
-  - df -h
-  - ulimit -a
-
-  # Setup python environment
-  - source devtools/travis-ci/before_install.sh
-  - python -V
-
-install:
-    # Create test environment for package
-  - python devtools/scripts/conda_env.py -n=test -p=$PYTHON_VER devtools/conda-envs/base.yaml
-  - source activate test
-
-    # Extra upstream for testing
-  - conda install ci-psi4 psi4 -c psi4/label/dev
-  - conda install msgpack-python
-
-    # Build and install package
-  - python setup.py develop --no-deps
-
-before_script:
-  - python -V
-  - conda list
-
-script:
-  - pwd
-  - cd tests
-  - export PYTHONPATH=..:optking:.:tests
-
-    # Get a bit of info first
-  - python -c "import optking; print(optking.__version__)"
-
-    # Run canonical tests (not quite b/c testing source, not install)
-    # -v run in verbose mode
-    # -r short test summary info at the end of test session
-    # --durations=5 list the slowest 5 test durations
-  - pytest -v -rws --durations=5 --cov -m "not long"
-
-notifications:
-    email: false
-
-after_success:
-  - codecov
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        cfg:
+          - conda-env: base
+            python-version: 3.6
+          - conda-env: base
+            python-version: 3.7
+          - conda-env: base
+            python-version: 3.8
+    env:
+      PYVER: ${{ matrix.cfg.python-version }}
+      CONDA_ENV: ${{ matrix.cfg.conda-env }}
 
 
-#  - conda create -q -n tenv ci-psi4 psi4  -c psi4/label/dev
-#  - conda install pytest qcelemental>=0.1.2 #pytest-cov codecov -c conda-forge
-#  - pip install -e .
+    steps:
+    - uses: actions/checkout@v1
+
+    - name: Setup Information
+      shell: bash
+      run: |
+        uname -a
+        df -h
+        ulimit -a
+        conda --version
+    - name: Create Environment
+      shell: bash
+      run: |
+        eval "$(conda shell.bash hook)" && conda activate
+        python devtools/scripts/create_conda_env.py -n=test -p=$PYVER devtools/conda-envs/$CONDA_ENV.yaml
+    - name: Install
+      shell: bash
+      run: |
+        eval "$(conda shell.bash hook)" && conda activate test
+        python -m pip install . --no-deps
+    - name: Environment Information
+      shell: bash
+      run: |
+        eval "$(conda shell.bash hook)" && conda activate test
+        conda list --show-channel-urls
+    - name: PyTest
+      shell: bash
+      run: |
+        eval "$(conda shell.bash hook)" && conda activate test
+        pytest -rws -v --cov=optking --color=yes --cov-report=xml optking/
+    - name: CodeCov  
+      uses: codecov/codecov-action@v1
