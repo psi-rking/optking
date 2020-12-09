@@ -2,8 +2,9 @@
 A simple set of functions to compute LJ energies and gradients.
 """
 
-import numpy as np
 from itertools import combinations
+
+import numpy as np
 
 
 def calc_energy_and_gradient(positions, sigma, epsilon, do_gradient=True):
@@ -31,7 +32,7 @@ def calc_energy_and_gradient(positions, sigma, epsilon, do_gradient=True):
         E += sigma12 / r12 - sigma6 / r6
 
         if do_gradient:
-            dVdr = - 12 * sigma12 / (r12 * r) + 6 * sigma6 / (r6 * r)
+            dVdr = -12 * sigma12 / (r12 * r) + 6 * sigma6 / (r6 * r)
             for xyz in range(3):
                 gradient[i, xyz] -= dVdr * v_ij[xyz]
                 gradient[j, xyz] += dVdr * v_ij[xyz]

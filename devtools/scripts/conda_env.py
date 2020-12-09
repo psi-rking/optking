@@ -4,13 +4,22 @@ import shutil
 import subprocess as sp
 
 # Args
-parser = argparse.ArgumentParser(description='Creates a conda environment from file for a given Python version.')
-parser.add_argument('-n', '--name', type=str, nargs=1,
-                    help='The name of the created Python environment')
-parser.add_argument('-p', '--python', type=str, nargs=1,
-                    help='The version of the created Python environment')
-parser.add_argument('conda_file', nargs='*',
-                    help='The file for the created Python environment')
+parser = argparse.ArgumentParser(
+    description="Creates a conda environment from file for a given Python version."
+)
+parser.add_argument(
+    "-n", "--name", type=str, nargs=1, help="The name of the created Python environment"
+)
+parser.add_argument(
+    "-p",
+    "--python",
+    type=str,
+    nargs=1,
+    help="The version of the created Python environment",
+)
+parser.add_argument(
+    "conda_file", nargs="*", help="The file for the created Python environment"
+)
 
 args = parser.parse_args()
 
@@ -30,5 +39,7 @@ print("PYTHON VERSION  {}".format(args.python[0]))
 print("CONDA FILE NAME {}".format(args.conda_file[0]))
 print("CONDA path      {}".format(conda_path))
 
-sp.call("{} env create -n {} -f {}".format(conda_path, args.name[0], tmp_file), shell=True)
+sp.call(
+    "{} env create -n {} -f {}".format(conda_path, args.name[0], tmp_file), shell=True
+)
 os.unlink(tmp_file)

@@ -3,8 +3,8 @@ import logging
 import numpy as np
 import qcelemental as qcel
 
-from .exceptions import AlgError, OptError
 from . import v3d
+from .exceptions import AlgError, OptError
 from .misc import delta, hguess_lindh_rho, string_math_fx
 from .simple import Simple
 
@@ -29,8 +29,10 @@ class Stre(Simple):
     ext_force : string_math_fx
         class for evaluating additional external force
     """
-    def __init__(self, a, b, constraint='free', inverse=False,
-                 range_min=None, range_max=None, ext_force=None):
+
+    def __init__(
+        self, a, b, constraint="free", inverse=False, range_min=None, range_max=None, ext_force=None,
+    ):
 
         self._inverse = inverse  # bool - is really 1/R coordinate?
 
@@ -39,30 +41,27 @@ class Stre(Simple):
         else:
             atoms = (b, a)
 
-        Simple.__init__(self, atoms, constraint, range_min, range_max,
-                        ext_force)
+        Simple.__init__(self, atoms, constraint, range_min, range_max, ext_force)
 
     def __str__(self):
         if self.frozen:
-            s = '*'
+            s = "*"
         elif self.ranged:
-            s = '['
+            s = "["
         else:
-            s = ' '
+            s = " "
 
         if self.has_ext_force:
-            s += '>'
+            s += ">"
 
         if self.inverse:
-            s += '1/R'
+            s += "1/R"
         else:
-            s += 'R'
+            s += "R"
 
         s += "(%d,%d)" % (self.A + 1, self.B + 1)
         if self.ranged:
-            s += '[{:.3f},{:.3f}]'.format(
-                     self.range_min * self.q_show_factor,
-                     self.range_max * self.q_show_factor)
+            s += "[{:.3f},{:.3f}]".format(self.range_min * self.q_show_factor, self.range_max * self.q_show_factor)
         return s
 
     def __eq__(self, other):
@@ -99,27 +98,27 @@ class Stre(Simple):
 
     def to_dict(self):
         d = {}
-        d['type'] = Stre.__name__ # 'Stre'
-        d['atoms'] = self.atoms # id to a tuple
-        d['constraint'] = self.constraint
-        d['range_min'] = self.range_min
-        d['range_max'] = self.range_max
-        d['inverse'] = self.inverse
+        d["type"] = Stre.__name__  # 'Stre'
+        d["atoms"] = self.atoms  # id to a tuple
+        d["constraint"] = self.constraint
+        d["range_min"] = self.range_min
+        d["range_max"] = self.range_max
+        d["inverse"] = self.inverse
         if self.has_ext_force:
-            d['ext_force_str'] = self.ext_force.formula_string
+            d["ext_force_str"] = self.ext_force.formula_string
         else:
-            d['ext_force_str'] = None
+            d["ext_force_str"] = None
         return d
 
     @classmethod
     def from_dict(cls, d):
-        a = d['atoms'][0]
-        b = d['atoms'][1]
-        constraint = d.get('constraint', 'free')
-        range_min = d.get('range_min', None)
-        range_max = d.get('range_max', None)
-        inverse = d.get('inverse', False)
-        fstr = d.get('ext_force_str', None)
+        a = d["atoms"][0]
+        b = d["atoms"][1]
+        constraint = d.get("constraint", "free")
+        range_min = d.get("range_min", None)
+        range_max = d.get("range_max", None)
+        inverse = d.get("inverse", False)
+        fstr = d.get("ext_force_str", None)
         if fstr is None:
             ext_force = None
         else:
@@ -141,13 +140,13 @@ class Stre(Simple):
             startA = 3 * self.A
             startB = 3 * self.B
 
-        dqdx[startA:startA + 3] = -1 * eAB[0:3]
-        dqdx[startB:startB + 3] = eAB[0:3]
+        dqdx[startA : startA + 3] = -1 * eAB[0:3]
+        dqdx[startB : startB + 3] = eAB[0:3]
 
         if self._inverse:
             val = self.q(geom)
-            dqdx[startA:startA + 3] *= -1.0 * val * val  # -(1/R)^2 * (dR/da)
-            dqdx[startB:startB + 3] *= -1.0 * val * val
+            dqdx[startA : startA + 3] *= -1.0 * val * val  # -(1/R)^2 * (dR/da)
+            dqdx[startB : startB + 3] *= -1.0 * val * val
 
     def Dq2Dx2(self, geom, dq2dx2):
         """
@@ -174,25 +173,24 @@ class Stre(Simple):
                 for a_xyz in range(3):
                     for b in range(2):
                         for b_xyz in range(3):
-                            tval = (
-                                eAB[a_xyz] * eAB[b_xyz] - delta(a_xyz, b_xyz)) / length
+                            tval = (eAB[a_xyz] * eAB[b_xyz] - delta(a_xyz, b_xyz)) / length
                             if a == b:
                                 tval *= -1.0
-                            dq2dx2[3*self.atoms[a]+a_xyz,
-                                   3*self.atoms[b]+b_xyz] = tval
+                            dq2dx2[3 * self.atoms[a] + a_xyz, 3 * self.atoms[b] + b_xyz] = tval
 
         else:  # using 1/R
             val = self.q(geom)
 
-            dqdx = np.zeros((3 * len(self.atoms)) )
+            dqdx = np.zeros((3 * len(self.atoms)))
             self.DqDx(geom, dqdx, mini=True)  # returned matrix is 1x6 for stre
 
             for a in range(2):
                 for a_xyz in range(3):
                     for b in range(2):
                         for b_xyz in range(3):
-                            dq2dx2[3*self.atoms[a]+a_xyz, 3*self.atoms[b]+b_xyz] \
-                                = 2.0 / val * dqdx[3*a+a_xyz] * dqdx[3*b+b_xyz]
+                            dq2dx2[3 * self.atoms[a] + a_xyz, 3 * self.atoms[b] + b_xyz] = (
+                                2.0 / val * dqdx[3 * a + a_xyz] * dqdx[3 * b + b_xyz]
+                            )
 
     def diagonal_hessian_guess(self, geom, Z, connectivity, guess_type="SIMPLE"):
         """ Generates diagonal empirical Hessians in a.u. such as
@@ -254,14 +252,14 @@ class Stre(Simple):
 class HBond(Stre):
     def __str__(self):
         if self.frozen:
-            s = '*'
+            s = "*"
         else:
-            s = ' '
+            s = " "
 
         if self.inverse:
-            s += '1/H'
+            s += "1/H"
         else:
-            s += 'H'
+            s += "H"
 
         s += "(%d,%d)" % (self.A + 1, self.B + 1)
         return s
@@ -277,7 +275,7 @@ class HBond(Stre):
         else:
             return True
 
-    def diagonal_hessian_guess(self, geom, Z, connectivity, guess_type='SIMPLE'):
+    def diagonal_hessian_guess(self, geom, Z, connectivity, guess_type="SIMPLE"):
         """ Generates diagonal empirical Hessians in a.u. such as
         Schlegel, Theor. Chim. Acta, 66, 333 (1984) and
         Fischer and Almlof, J. Phys. Chem., 96, 9770 (1992).
@@ -285,9 +283,9 @@ class HBond(Stre):
         logger = logging.getLogger(__name__)
         if guess_type == "SIMPLE":
             return 0.5
-        elif guess_type in ['SCHLEGEL', 'FISCHER']:
+        elif guess_type in ["SCHLEGEL", "FISCHER"]:
             return 0.03
-        elif guess_type == 'LINDH_SIMPLE':
+        elif guess_type == "LINDH_SIMPLE":
             # Same as standard stretch
             R = v3d.dist(geom[self.A], geom[self.B])
             k_r = 0.45
