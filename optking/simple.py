@@ -1,7 +1,9 @@
 from abc import ABCMeta, abstractmethod
+
 from .exceptions import AlgError, OptError
 
-supported_constraint_types = ('free', 'frozen', 'ranged')
+supported_constraint_types = ("free", "frozen", "ranged")
+
 
 class Simple(object):
     __metaclass__ = ABCMeta
@@ -10,7 +12,7 @@ class Simple(object):
         # these lines use the property's and setters below
         self.atoms = atoms  # atom indices for internal definition
         if constraint.lower() not in supported_constraint_types:
-            raise OptError('status for simple intco unknown')
+            raise OptError("status for simple intco unknown")
         self.constraint = constraint.lower()
         self._range_min = range_min
         self._range_max = range_max
@@ -25,32 +27,32 @@ class Simple(object):
         try:
             for v in values:
                 if int(v) < 0:
-                    raise OptError('Atom identifier cannot be negative.')
+                    raise OptError("Atom identifier cannot be negative.")
         except TypeError:
-            raise OptError('Atoms must be iterable list of whole numbers.')
+            raise OptError("Atoms must be iterable list of whole numbers.")
         self._atoms = values
 
     @property
     def frozen(self):
-        return self.constraint == 'frozen'
+        return self.constraint == "frozen"
 
     @property
     def ranged(self):
-        return self.constraint == 'ranged'
+        return self.constraint == "ranged"
 
     def freeze(self):
-        if self.constraint == 'free':
-            self.constraint = 'frozen'
+        if self.constraint == "free":
+            self.constraint = "frozen"
         # for now if 'ranged', don't change
         return
 
     def unfreeze(self):
-        if self.constraint == 'frozen':
-            self.constraint = 'free'
+        if self.constraint == "frozen":
+            self.constraint = "free"
         # for now if 'ranged', don't change
 
     def set_range(self, range_min, range_max):
-        self.constraint = 'ranged'
+        self.constraint = "ranged"
         self._range_min = range_min
         self._range_max = range_max
 
@@ -77,7 +79,7 @@ class Simple(object):
         self._ext_force = eqn
 
     def ext_force_val(self, geom):
-        val = self.q_show(geom) # angstroms or degrees
+        val = self.q_show(geom)  # angstroms or degrees
         return self._ext_force.evaluate(val)
 
     @property
@@ -106,9 +108,9 @@ class Simple(object):
         try:
             return self.atoms[3]
         except:
-            raise OptError("D() called but atoms[3] does not exist")
+            raise OptError("d() called but atoms[3] does not exist")
 
-    # ** constructor + 9 abstract methods are currently required 
+    # ** constructor + 9 abstract methods are currently required
     # for full functionality **
     @abstractmethod  # Given geometry, return value in Bohr or radians
     def q(self, geom):
@@ -143,7 +145,7 @@ class Simple(object):
     # then, e.g, DqDx is 2x6.
     @abstractmethod
     def DqDx(self, geom, dqdx, mini=False):
-        raise AlgError('no DqDx for this coordinate')
+        raise AlgError("no DqDx for this coordinate")
 
     # Modify provided Dq2Dx2 array with second derivative of value wrt cartesians
     #  i.e., provide derivative B matrix for coordinate.
@@ -151,8 +153,8 @@ class Simple(object):
     # cartesian by cartesian - of minimum size.
     @abstractmethod  # Derivative of value wrt cartesians, i.e., B-matrix elements.
     def Dq2Dx2(self, geom, dq2dx2):
-        raise AlgError('no Dq2Dx2 for this coordinate')
+        raise AlgError("no Dq2Dx2 for this coordinate")
 
     @abstractmethod  # Diagonal hessian guess
     def diagonal_hessian_guess(geom, Z, connectivity, guess_type):
-        raise AlgError('no hessian guess for this coordinate')
+        raise AlgError("no hessian guess for this coordinate")

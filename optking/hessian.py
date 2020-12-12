@@ -3,16 +3,14 @@ import logging
 import numpy as np
 import qcelemental as qcel
 
-from .printTools import print_mat_string
-# from bend import *
-from .stre import Stre
 from .bend import Bend
+from .printTools import print_mat_string
+from .stre import Stre
 from .tors import Tors
 
 
 def show(H, oMolsys):
-    """ Print the Hessian in common spectroscopic units of [aJ/Ang^2], [aJ/deg^2] or [aJ/(Ang deg)]
-    """
+    """Print the Hessian in common spectroscopic units of [aJ/Ang^2], [aJ/deg^2] or [aJ/(Ang deg)]"""
     logger = logging.getLogger(__name__)
 
     factors = np.zeros(oMolsys.num_intcos)
@@ -27,14 +25,14 @@ def show(H, oMolsys):
             factors[cnt] = I.q_show_factor
 
     factors_inv = np.divide(1.0, factors)
-    scaled_H = np.einsum('i,ij,j->ij', factors_inv, H, factors_inv)
+    scaled_H = np.einsum("i,ij,j->ij", factors_inv, H, factors_inv)
     scaled_H *= qcel.constants.hartree2aJ
     logger.info("Hessian in [aJ/Ang^2], [aJ/deg^2], etc.\n" + print_mat_string(scaled_H))
 
 
-#def guess(intcos, geom, Z, connectivity=None, guessType="SIMPLE"):
+# def guess(intcos, geom, Z, connectivity=None, guessType="SIMPLE"):
 def guess(oMolsys, connectivity=None, guessType="SIMPLE"):
-    """ Generates diagonal empirical Hessian in a.u.
+    """Generates diagonal empirical Hessian in a.u.
 
     Parameters
     ----------
@@ -56,8 +54,8 @@ def guess(oMolsys, connectivity=None, guessType="SIMPLE"):
     diag = []
     for F in oMolsys._fragments:
         if F.num_intcos:
-            geom         = F.geom
-            Z            = F.Z
+            geom = F.geom
+            Z = F.Z
             connectivity = F.connectivity_from_distances()
             for intco in F._intcos:
                 diag.append(intco.diagonal_hessian_guess(geom, Z, connectivity, guessType))
@@ -77,5 +75,5 @@ def guess(oMolsys, connectivity=None, guessType="SIMPLE"):
                 h = 0.111
             diag.append(h)
 
-    H = np.diagflat( np.asarray(diag) )
+    H = np.diagflat(np.asarray(diag))
     return H

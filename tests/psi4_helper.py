@@ -8,6 +8,7 @@ import pytest
 # Try to pull in Psi4
 try:
     import psi4
+
     found_psi4 = True
 except ImportError:
     found_psi4 = False

@@ -2,16 +2,24 @@ name: test
 channels:
   - defaults
   - psi4/label/dev
+  - conda-forge
 dependencies:
     # Base
   - numpy
   - python
   - qcelemental
+  - qcengine
   - msgpack-python
-
+  
     # Testing
   - pytest
   - pytest-cov
   - psi4
   - dftd3
   - codecov
+
+   # Dev
+  - sphinx
+  - sphinx-automodapi
+  - black
+  - isort

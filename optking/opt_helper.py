@@ -9,6 +9,8 @@ optimize.optimize():
   backward steps
   dynamic level parameter changing with automatic restart
 
+OptHelper can be used with in the following modes:
+
   init_mode = 'run' : psi4 will do optimization
   init_mode = 'setup' : setup params, molsys, computer, history
   init_mode = 'restart' : do minimal initialization
@@ -29,26 +31,27 @@ For an example please see tests/test_opthelper
 """
 
 import logging
+
 import numpy as np
 
-from . import optparams
-from . import optwrapper
-from . import molsys
-from . import history
-from . import hessian
-from . import compute_wrappers
-from .optimize import make_internal_coords, prepare_opt_output, get_pes_info
-from .intcosMisc import (apply_external_forces,
-                         project_redundancies_and_constraints,
-                         hessian_to_internals)
-from .stepAlgorithms import take_step
+from . import compute_wrappers, hessian, history, molsys, optparams, optwrapper
 from .convCheck import conv_check
 from .exceptions import OptError
+from .intcosMisc import apply_external_forces, hessian_to_internals, project_redundancies_and_constraints
+from .optimize import get_pes_info, make_internal_coords, prepare_opt_output
+from .stepAlgorithms import take_step
 
 
 class OptHelper(object):
-    def __init__(self, calc_name, program='psi4', dertype=None, xtra_opt_params=None,
-                 comp_type='qc', init_mode='setup'):
+    def __init__(
+        self,
+        calc_name,
+        program="psi4",
+        dertype=None,
+        xtra_opt_params=None,
+        comp_type="qc",
+        init_mode="setup",
+    ):
 
         self.calc_name = calc_name
         self.program = program
@@ -60,24 +63,26 @@ class OptHelper(object):
         self.comp_type = comp_type
         self.computer: compute_wrappers.ComputeWrapper
 
-        if init_mode == 'restart':
+        if init_mode == "restart":
             pass
         else:
 
-            if init_mode == 'run':
-                optwrapper.optimize_psi4(calc_name, program, dertype, comp_type, **xtra_opt_params)
-            elif init_mode == 'setup':
-                init_tuple = optwrapper.initialize_from_psi4(calc_name,
-                                                             program,
-                                                             computer_type=comp_type,
-                                                             dertype=None,
-                                                             **self.xtra_opt_params)
+            if init_mode == "run":
+                optwrapper.optimize_psi4(calc_name, program, dertype, **xtra_opt_params)
+            elif init_mode == "setup":
+                init_tuple = optwrapper.initialize_from_psi4(
+                    calc_name,
+                    program,
+                    computer_type=comp_type,
+                    dertype=None,
+                    **self.xtra_opt_params,
+                )
                 self.params, self.molsys, self.computer, _ = init_tuple
 
                 self.history = history.History()
 
             else:
-                raise OptError('OptHelper does not know given init_mode')
+                raise OptError("OptHelper does not know given init_mode")
 
             self.step_num = 0
             self.irc_step_num = 0  # IRC not supported by OptHelper for now.
@@ -93,38 +98,40 @@ class OptHelper(object):
             self.Dq = None
 
     def to_dict(self):
-        d = {'calc_name': self.calc_name,
-             'program': self.program,
-             'dertype': self.dertype,
-             'xtra_opt_params': self.xtra_opt_params,
-             'comp_type': self.comp_type,
-             'step_num': self.step_num,
-             'irc_step_num': self.irc_step_num,
-             'params': self.params.__dict__,
-             'molsys': self.molsys.to_dict(),
-             'history': self.history.to_dict(),
-             'computer': self.computer.__dict__,
-             'hessian': self._Hq}
+        d = {
+            "calc_name": self.calc_name,
+            "program": self.program,
+            "dertype": self.dertype,
+            "xtra_opt_params": self.xtra_opt_params,
+            "comp_type": self.comp_type,
+            "step_num": self.step_num,
+            "irc_step_num": self.irc_step_num,
+            "params": self.params.__dict__,
+            "molsys": self.molsys.to_dict(),
+            "history": self.history.to_dict(),
+            "computer": self.computer.__dict__,
+            "hessian": self._Hq,
+        }
 
         return d
 
     @classmethod
     def from_dict(cls, d):
-        calc_name = d.get('calc_name')
-        program = d.get('program')
-        dertype = d.get('dertyp')
-        XtraOptParams = d.get('xtra_opt_params')
-        comp_type = d.get('comp_type')
+        calc_name = d.get("calc_name")
+        program = d.get("program")
+        dertype = d.get("dertyp")
+        XtraOptParams = d.get("xtra_opt_params")
+        comp_type = d.get("comp_type")
 
-        helper = cls(calc_name, program, dertype, XtraOptParams, comp_type, init_mode='restart')
+        helper = cls(calc_name, program, dertype, XtraOptParams, comp_type, init_mode="restart")
 
-        helper.params = optparams.OptParams(d.get('params'))
-        helper.molsys = molsys.Molsys.from_dict(d.get('molsys'))
-        helper.history = history.History.from_dict(d.get('history'))
-        helper.computer = compute_wrappers.make_computer_from_dict(comp_type, d.get('computer'))
-        helper.step_num = d.get('step_num')
-        helper.irc_step_num = d.get('irc_step_num')
-        helper._Hq = d.get('hessian')
+        helper.params = optparams.OptParams(d.get("params"))
+        helper.molsys = molsys.Molsys.from_dict(d.get("molsys"))
+        helper.history = history.History.from_dict(d.get("history"))
+        helper.computer = compute_wrappers.make_computer_from_dict(comp_type, d.get("computer"))
+        helper.step_num = d.get("step_num")
+        helper.irc_step_num = d.get("irc_step_num")
+        helper._Hq = d.get("hessian")
         return helper
 
     def build_coordinates(self):
@@ -132,8 +139,8 @@ class OptHelper(object):
 
     def show(self):
         logger = logging.getLogger(__name__)
-        logger.info('Molsys:\n' + str(self.molsys))
-        return 
+        logger.info("Molsys:\n" + str(self.molsys))
+        return
 
     def energy_gradient_hessian(self):
         """E and gX must be set by the user before calling this method. """
@@ -145,13 +152,19 @@ class OptHelper(object):
         project_redundancies_and_constraints(self.molsys, self.fq, self._Hq)
 
         self.history.append(self.molsys.geom, self.E, self.fq)
-        self.history.nuclear_repulsion_energy = \
-            (self.computer.trajectory[-1]['properties']['nuclear_repulsion_energy'])
+        self.history.nuclear_repulsion_energy = self.computer.trajectory[-1]["properties"]["nuclear_repulsion_energy"]
         self.history.current_step_report()
 
     def step(self):
-        self.Dq = take_step(self.molsys, self.E, self.fq, self._Hq, self.params.step_type,
-                            self.computer, self.history)
+        self.Dq = take_step(
+            self.molsys,
+            self.E,
+            self.fq,
+            self._Hq,
+            self.params.step_type,
+            self.computer,
+            self.history,
+        )
         self.new_geom = self.molsys.geom
         self.step_num += 1
 
@@ -185,8 +198,7 @@ class OptHelper(object):
                 if isinstance(self.computer, compute_wrappers.UserComputer):
                     self.computer.external_gradient = val
             else:
-                raise TypeError(f'Gradient must be a 1D iterable with length '
-                                f'{self.molsys.natom * 3}')
+                raise TypeError(f"Gradient must be a 1D iterable with length " f"{self.molsys.natom * 3}")
 
     @property
     def HX(self):
@@ -206,7 +218,7 @@ class OptHelper(object):
                 if isinstance(self.computer, compute_wrappers.UserComputer):
                     self.computer.external_hessian = val
             else:
-                raise TypeError(f'Hessian must be a nxn iterable with n={self.molsys.natom * 3}')
+                raise TypeError(f"Hessian must be a nxn iterable with n={self.molsys.natom * 3}")
 
     @property
     def E(self):
@@ -228,7 +240,7 @@ class OptHelper(object):
         return self.molsys.geom
 
     def compute(self):
-        """ If self.computer does not use user input. Use standard method to get any information
+        """If self.computer does not use user input. Use standard method to get any information
         for a step will require execution of an AtomicInput.
 
         Otherwise, simulate a computation with a mock Computer to CREATE an AtomicResult for
@@ -236,10 +248,12 @@ class OptHelper(object):
         self.gX and self.E attributes.
         """
 
-        true_computers = (compute_wrappers.Psi4Computer, compute_wrappers.QCEngineComputer)
+        true_computers = (
+            compute_wrappers.Psi4Computer,
+            compute_wrappers.QCEngineComputer,
+        )
         if isinstance(self.computer, true_computers):
-            self._Hq, self.gX = get_pes_info(self._Hq, self.computer, self.molsys, self.step_num,
-                                             self.irc_step_num)
+            self._Hq, self.gX = get_pes_info(self._Hq, self.computer, self.molsys, self.step_num, self.irc_step_num)
             self.E = self.computer.energies[-1]
             return
 
@@ -248,11 +262,11 @@ class OptHelper(object):
                 self._Hq = hessian.guess(self.molsys)
             else:
                 self._Hq = self.history.hessian_update(self._Hq, self.molsys)
-            self.gX = self.computer.compute(self.geom, driver='gradient', return_full=False)
+            self.gX = self.computer.compute(self.geom, driver="gradient", return_full=False)
         else:
-            result = self.computer.compute(self.gX, driver='hessian')
-            self.HX = result['return_result']
-            self.gX = result['extras']['qcvars']['gradient']
+            result = self.computer.compute(self.gX, driver="hessian")
+            self.HX = result["return_result"]
+            self.gX = result["extras"]["qcvars"]["gradient"]
             self._Hq = hessian_to_internals(self.HX, self.molsys)
             self.HX = None  # set back to None
 
