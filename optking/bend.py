@@ -1,39 +1,50 @@
-import math
 import logging
+import math
 
 import numpy as np
 import qcelemental as qcel
 
-from .exceptions import AlgError, OptError
 from . import v3d
+from .exceptions import AlgError, OptError
+from .misc import delta, hguess_lindh_rho, string_math_fx
 from .simple import Simple
-from .misc import delta, hguess_lindh_rho
 
 
 class Bend(Simple):
-    """ bend coordinate between three atoms
+    """bend coordinate between three atoms a-b-c
 
     Parameters
     ----------
     a : int
         first atom
     b : int
-        second atom
+        second (middle) atom
     c : int
         third atom
-    frozen : boolean, optional
-        set bend as frozen
-    fixed_eq_val : float
-        value to fix bend at
+    constraint : string
+        set stretch as 'free', 'frozen', 'ranged', etc.
     bend_type : string, optional
         can be regular, linear, or complement (used to describe linear bends)
-
-    Notes
-    -----
-        atoms must be listed in order. Uses 0-based indexing.
-
+    range_min : float
+        don't let value get smaller than this
+    range_max : float
+        don't let value get larger than this
+    ext_force : string_math_fx
+        class for evaluating additional external force
     """
-    def __init__(self, a, b, c, frozen=False, fixed_eq_val=None, bend_type="REGULAR"):
+
+    def __init__(
+        self,
+        a,
+        b,
+        c,
+        constraint="free",
+        bend_type="REGULAR",
+        axes_fixed=False,
+        range_min=None,
+        range_max=None,
+        ext_force=None,
+    ):
 
         if a < c:
             atoms = (a, b, c)
@@ -41,17 +52,22 @@ class Bend(Simple):
             atoms = (c, b, a)
 
         self.bend_type = bend_type
-        self._axes_fixed = False
+        self._axes_fixed = axes_fixed
         self._x = np.zeros(3)
         self._w = np.zeros(3)
 
-        Simple.__init__(self, atoms, frozen, fixed_eq_val)
+        Simple.__init__(self, atoms, constraint, range_min, range_max, ext_force)
 
     def __str__(self):
         if self.frozen:
-            s = '*'
+            s = "*"
+        elif self.ranged:
+            s = "["
         else:
-            s = ' '
+            s = " "
+
+        if self.has_ext_force:
+            s += ">"
 
         if self.bend_type == "REGULAR":
             s += "B"
@@ -61,8 +77,8 @@ class Bend(Simple):
             s += "l"
 
         s += "(%d,%d,%d)" % (self.A + 1, self.B + 1, self.C + 1)
-        if self.fixed_eq_val:
-            s += "[%.1f]" % (self.fixed_eq_val * self.q_show_factor)
+        if self.ranged:
+            s += "[{:.2f},{:.2f}]".format(self.range_min * self.q_show_factor, self.range_max * self.q_show_factor)
         return s
 
     def __eq__(self, other):
@@ -88,8 +104,7 @@ class Bend(Simple):
         if intype in ["REGULAR", "LINEAR", "COMPLEMENT"]:
             self._bendType = intype
         else:
-            raise OptError(
-                "Bend.bend_type must be REGULAR, LINEAR, or COMPLEMENT")
+            raise OptError("Bend.bend_type must be REGULAR, LINEAR, or COMPLEMENT")
 
     def compute_axes(self, geom):
         u = v3d.eAB(geom[self.B], geom[self.A])  # B->A
@@ -187,12 +202,44 @@ class Bend(Simple):
             return 0
 
     def fix_bend_axes(self, geom):
-        if self.bend_type == 'LINEAR' or self.bend_type == 'COMPLEMENT':
+        if self.bend_type == "LINEAR" or self.bend_type == "COMPLEMENT":
             self.compute_axes(geom)
             self._axes_fixed = True
 
     def unfix_bend_axes(self):
         self._axes_fixed = False
+
+    def to_dict(self):
+        d = {}
+        d["type"] = Bend.__name__  # 'Bend'
+        d["atoms"] = self.atoms  # id to a tuple
+        d["constraint"] = self.constraint
+        d["range_min"] = self.range_min
+        d["range_max"] = self.range_max
+        d["bend_type"] = self.bend_type
+        d["axes_fixed"] = self.axes_fixed
+        if self.has_ext_force:
+            d["ext_force_str"] = self.ext_force.formula_string
+        else:
+            d["ext_force_str"] = None
+        return d
+
+    @classmethod
+    def from_dict(cls, d):
+        a = d["atoms"][0]
+        b = d["atoms"][1]
+        c = d["atoms"][2]
+        constraint = d.get("constraint", "free")
+        range_min = d.get("range_min", None)
+        range_max = d.get("range_max", None)
+        bend_type = d.get("bend_type", "REGULAR")
+        axes_fixed = d.get("axes_fixed", False)
+        fstr = d.get("ext_force_str", None)
+        if fstr is None:
+            ext_force = None
+        else:
+            ext_force = string_math_fx(fstr)
+        return cls(a, b, c, constraint, bend_type, axes_fixed, range_min, range_max, ext_force)
 
     def DqDx(self, geom, dqdx, mini=False):
         if not self.axes_fixed:
@@ -210,8 +257,7 @@ class Bend(Simple):
 
         # B = overall index of atom; a = 0,1,2 relative index for delta's
         for a, B in enumerate(self.atoms):
-            dqdx[3*B: 3 * B+3] = Bend.zeta(a, 0, 1) * uXw[0:3]/Lu + \
-                                Bend.zeta(a, 2, 1) * wXv[0:3]/Lv
+            dqdx[3 * B : 3 * B + 3] = Bend.zeta(a, 0, 1) * uXw[0:3] / Lu + Bend.zeta(a, 2, 1) * wXv[0:3] / Lv
         return
 
     # Return derivative B matrix elements.  Matrix is cart X cart and passed in.
@@ -234,8 +280,7 @@ class Bend(Simple):
         # packed, or mini dqdx where columns run only over 3 atoms
         dqdx = np.zeros(9)
         for a in range(3):
-            dqdx[3*a: 3*a+3] = Bend.zeta(a, 0, 1) * uXw[0:3]/Lu + \
-                                Bend.zeta(a, 2, 1) * wXv[0:3]/Lv
+            dqdx[3 * a : 3 * a + 3] = Bend.zeta(a, 0, 1) * uXw[0:3] / Lu + Bend.zeta(a, 2, 1) * wXv[0:3] / Lv
 
         val = self.q(geom)
         cos_q = math.cos(val)  # cos_q = v3d_dot(u,v);
@@ -249,19 +294,33 @@ class Bend(Simple):
             for i in range(3):  # i = a_xyz
                 for b in range(3):
                     for j in range(3):  # j=b_xyz
-                        tval = Bend.zeta(a, 0, 1) * Bend.zeta(b, 0, 1) \
-                            * (u[i]*v[j]+u[j]*v[i]-3*u[i]*u[j]*cos_q+delta(i, j)*cos_q) \
-                            / (Lu*Lu*sin_q)
+                        tval = (
+                            Bend.zeta(a, 0, 1)
+                            * Bend.zeta(b, 0, 1)
+                            * (u[i] * v[j] + u[j] * v[i] - 3 * u[i] * u[j] * cos_q + delta(i, j) * cos_q)
+                            / (Lu * Lu * sin_q)
+                        )
 
-                        tval += Bend.zeta(a, 2, 1) * Bend.zeta(b, 2, 1) \
-                            * (v[i]*u[j]+v[j]*u[i]-3*v[i]*v[j]*cos_q+delta(i, j)*cos_q) \
-                            / (Lv*Lv*sin_q)
+                        tval += (
+                            Bend.zeta(a, 2, 1)
+                            * Bend.zeta(b, 2, 1)
+                            * (v[i] * u[j] + v[j] * u[i] - 3 * v[i] * v[j] * cos_q + delta(i, j) * cos_q)
+                            / (Lv * Lv * sin_q)
+                        )
 
-                        tval += Bend.zeta(a, 0, 1) * Bend.zeta(b, 2, 1) \
-                            * (u[i]*u[j]+v[j]*v[i]-u[i]*v[j]*cos_q-delta(i, j)) / (Lu*Lv*sin_q)
+                        tval += (
+                            Bend.zeta(a, 0, 1)
+                            * Bend.zeta(b, 2, 1)
+                            * (u[i] * u[j] + v[j] * v[i] - u[i] * v[j] * cos_q - delta(i, j))
+                            / (Lu * Lv * sin_q)
+                        )
 
-                        tval += Bend.zeta(a, 2, 1) * Bend.zeta(b, 0, 1) \
-                            * (v[i]*v[j]+u[j]*u[i]-v[i]*u[j]*cos_q-delta(i, j)) / (Lu*Lv*sin_q)
+                        tval += (
+                            Bend.zeta(a, 2, 1)
+                            * Bend.zeta(b, 0, 1)
+                            * (v[i] * v[j] + u[j] * u[i] - v[i] * u[j] * cos_q - delta(i, j))
+                            / (Lu * Lv * sin_q)
+                        )
 
                         tval -= cos_q / sin_q * dqdx[3 * a + i] * dqdx[3 * b + j]
 
@@ -269,9 +328,9 @@ class Bend(Simple):
         return
 
     def diagonal_hessian_guess(self, geom, Z, connectivity, guess_type="SIMPLE"):
-        """ Generates diagonal empirical Hessians in a.u. such as
-          Schlegel, Theor. Chim. Acta, 66, 333 (1984) and
-          Fischer and Almlof, J. Phys. Chem., 96, 9770 (1992).
+        """Generates diagonal empirical Hessians in a.u. such as
+        Schlegel, Theor. Chim. Acta, 66, 333 (1984) and
+        Fischer and Almlof, J. Phys. Chem., 96, 9770 (1992).
         """
         if guess_type == "SIMPLE":
             return 0.2
@@ -291,8 +350,7 @@ class Bend(Simple):
             Rcov_BC = qcel.covalentradii.get(Z[self.C], missing=4.0) + qcel.covalentradii.get(Z[self.B], missing=4.0)
             R_AB = v3d.dist(geom[self.A], geom[self.B])
             R_BC = v3d.dist(geom[self.B], geom[self.C])
-            return a + b / (np.power(Rcov_AB * Rcov_BC, d)) * np.exp(
-                -c * (R_AB + R_BC - Rcov_AB - Rcov_BC))
+            return a + b / (np.power(Rcov_AB * Rcov_BC, d)) * np.exp(-c * (R_AB + R_BC - Rcov_AB - Rcov_BC))
 
         elif guess_type == "LINDH_SIMPLE":
             R_AB = v3d.dist(geom[self.A], geom[self.B])

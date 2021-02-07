@@ -1,13 +1,14 @@
-import math
 import logging
+import math
 
 import numpy as np
 import qcelemental as qcel
 
 from . import intcosMisc
 from . import optparams as op
+from .exceptions import OptError
 from .linearAlgebra import abs_max, rms, sign_of_double
-from .printTools import print_mat_string, print_array_string
+from .printTools import print_array_string, print_mat_string
 
 
 class Step(object):
@@ -16,8 +17,8 @@ class Step(object):
         self.E = E
         self.forces = forces.copy()
         self.projectedDE = None
-        self.Dq = None
-        self.followedUnitVector = None
+        self.Dq = np.array([])
+        self.followedUnitVector = np.array([])
         self.oneDgradient = None
         self.oneDhessian = None
 
@@ -28,6 +29,35 @@ class Step(object):
         self.oneDgradient = oneDgradient
         self.oneDhessian = oneDhessian
 
+    def to_dict(self):
+        d = {
+            "geom": self.geom.copy(),
+            "E": self.E,
+            "forces": self.forces.copy(),
+            "projectedDE": self.projectedDE,
+            "Dq": self.Dq.copy(),
+            "followedUnitVector": self.followedUnitVector.copy(),
+            "oneDgradient": self.oneDgradient,
+            "oneDhessian": self.oneDhessian,
+        }
+        return d
+
+    @staticmethod
+    def from_dict(d):
+        if all(["geom" in d.keys(), "E" in d.keys(), "forces" in d.keys()]):
+            s = Step(d["geom"], d["E"], d["forces"])
+        else:
+            raise OptError("Missing necessary keywords to construct step")
+
+        s.record(
+            d.get("projectedDE", None),
+            d.get("Dq", np.array([])),
+            d.get("followedUnitVector", np.array([])),
+            d.get("oneDgradient", None),
+            d.get("oneDhessian", None),
+        )
+        return s
+
     def __str__(self):
         s = "Step Info\n"
         s += "Geometry     = \n"
@@ -35,13 +65,18 @@ class Step(object):
         s += "Energy       = %15.10f\n" % self.E
         s += "forces       = "
         s += print_array_string(self.forces)
-        s += "Projected DE = %15.10f\n" % self.projectedDE
-        s += "Dq           = "
-        s += print_array_string(self.Dq)
-        s += "followedUnitVector       = "
-        s += print_array_string(self.followedUnitVector)
-        s += "oneDgradient = %15.10f\n" % self.oneDgradient
-        s += "oneDhessian  = %15.10f\n" % self.oneDhessian
+        if self.projectedDE is not None:
+            s += "Projected DE = %15.10f\n" % self.projectedDE
+        if len(self.Dq):
+            s += "Dq           = "
+            s += print_array_string(self.Dq)
+        if len(self.followedUnitVector):
+            s += "followedUnitVector       = "
+            s += print_array_string(self.followedUnitVector)
+        if self.oneDgradient is not None:
+            s += "oneDgradient = %15.10f\n" % self.oneDgradient
+        if self.oneDhessian is not None:
+            s += "oneDhessian  = %15.10f\n" % self.oneDhessian
         return s
 
 
@@ -80,10 +115,24 @@ class History(object):
         History.stepsSinceLastHessian += 1
 
     # Fill in details of new step.
-    def append_record(self, projectedDE, Dq, followedUnitVector, oneDgradient,
-                      oneDhessian):
-        self.steps[-1].record(projectedDE, Dq, followedUnitVector, oneDgradient,
-                              oneDhessian)
+    def append_record(self, projectedDE, Dq, followedUnitVector, oneDgradient, oneDhessian):
+        self.steps[-1].record(projectedDE, Dq, followedUnitVector, oneDgradient, oneDhessian)
+
+    def to_dict(self):
+        d = {}
+        d["stepsSinceLastHessian"] = History.stepsSinceLastHessian
+        d["consecutiveBacksteps"] = History.consecutiveBacksteps
+        d["nuclear_repulsion_energy"] = History.nuclear_repulsion_energy
+        d["steps"] = [s.to_dict() for s in self.steps]
+        return d
+
+    def from_dict(d):
+        h = History()
+        History.stepsSinceLastHessian = d.get("stepsSinceLastHessian", 0)
+        History.consecutiveBacksteps = d.get("consecutiveBacksteps", 0)
+        History.nuclear_repulsion_energy = d.get("nuclear_repulsion_energy", 0)
+        h.steps = [Step.from_dict(s) for s in d.get("steps", [])]
+        return h
 
     def trajectory(self, Zs):
         t = []
@@ -94,7 +143,7 @@ class History(object):
 
     # Summarize key quantities and return steps or string
     def summary(self, printoption=False):
-        opt_summary = ''
+        opt_summary = ""
         steps = []
 
         for i, step in enumerate(self.steps):
@@ -115,18 +164,27 @@ class History(object):
                 max_disp = -99.0
                 rms_disp = -99.0
 
-            steps.append({
-                'Energy': step.E,
-                'DE': DE,
-                'max_force': max_force,
-                'max_disp': max_disp,
-                'rms_disp': rms_disp,
-            })
+            steps.append(
+                {
+                    "Energy": step.E,
+                    "DE": DE,
+                    "max_force": max_force,
+                    "max_disp": max_disp,
+                    "rms_disp": rms_disp,
+                }
+            )
 
-            opt_summary += ("\t  %4d %20.12lf  %18.12lf    %12.8lf    %12.8lf    %12.8lf    %12.8lf  ~\n" % (
-                (i + 1), self.steps[i].E, DE, max_force, rms_force, max_disp, rms_disp))
+            opt_summary += "\t  %4d %20.12lf  %18.12lf    %12.8lf    %12.8lf    %12.8lf    %12.8lf" "  ~\n" % (
+                (i + 1),
+                self.steps[i].E,
+                DE,
+                max_force,
+                rms_force,
+                max_disp,
+                rms_disp,
+            )
 
-        opt_summary += ("\t" + "-" * 112 + "\n\n")
+        opt_summary += "\t" + "-" * 112 + "\n\n"
 
         if printoption:
             return opt_summary
@@ -153,14 +211,14 @@ class History(object):
         logger.info("\tCurrent Step Report \n %s" % opt_step_report)
 
         if projectedChange is None:
-            return True # no previous projection; could be first step?
+            return True  # no previous projection; could be first step?
 
         Energy_ratio = energyChange / projectedChange
 
         if op.Params.print_lvl >= 1:
             logger.info("\tEnergy ratio = %10.5lf" % Energy_ratio)
 
-        if op.Params.opt_type == 'MIN':
+        if op.Params.opt_type == "MIN":
             # Predicted up. Actual down.  OK.  Do nothing.
             if projectedChange > 0 and Energy_ratio < 0.0:
                 return True
@@ -190,11 +248,11 @@ class History(object):
     # Use History to update Hessian
     def hessian_update(self, H, oMolsys):
         logger = logging.getLogger(__name__)
-        if op.Params.hess_update == 'NONE' or len(self.steps) < 2:
-            return
+        if op.Params.hess_update == "NONE" or len(self.steps) < 2:
+            return H
 
         logger.info("\tPerforming %s update." % op.Params.hess_update)
-        Nintco = oMolsys.num_intcos # working dimension
+        Nintco = oMolsys.num_intcos  # working dimension
         orig_save_geom = oMolsys.geom
 
         f = np.zeros(Nintco)
@@ -217,18 +275,21 @@ class History(object):
         q_old = np.zeros(Nintco)
 
         # Don't go further back than the last Hessian calculation
-        numToUse = min(op.Params.hess_update_use_last,
-                       len(self.steps) - 1, History.stepsSinceLastHessian)
+        numToUse = min(
+            op.Params.hess_update_use_last,
+            len(self.steps) - 1,
+            History.stepsSinceLastHessian,
+        )
         logger.info("\tUsing %d previous steps for update." % numToUse)
 
         # Make list of old geometries to update with.
         # Check each one to see if it is too close (so stable denominators).
         use_steps = []
-        iStep = len(self.steps)-2 # just in case called with only 1 pt.
-        while iStep > -1 and len(use_steps) < numToUse:
-            oldStep = self.steps[iStep]
-            f_old = oldStep.forces
-            x_old = oldStep.geom
+        i_step = len(self.steps) - 2  # just in case called with only 1 pt.
+        while i_step > -1 and len(use_steps) < numToUse:
+            old_step = self.steps[i_step]
+            f_old = old_step.forces
+            x_old = old_step.geom
             oMolsys.geom = x_old
             q_old[:] = oMolsys.q_array()
             dq[:] = q - q_old
@@ -238,23 +299,24 @@ class History(object):
             max_change = abs_max(dq)
 
             # If there is only one left, take it no matter what.
-            if len(use_steps) == 0 and iStep == 0:
-                use_steps.append(iStep)
-            elif (math.fabs(gq) < op.Params.hess_update_den_tol or
-                math.fabs(qq) < op.Params.hess_update_den_tol):
+            if len(use_steps) == 0 and i_step == 0:
+                use_steps.append(i_step)
+            elif math.fabs(gq) < op.Params.hess_update_den_tol or math.fabs(qq) < op.Params.hess_update_den_tol:
                 logger.warning("\tDenominators (dg)(dq) or (dq)(dq) are very small.")
-                logger.warning("\tSkipping Hessian update for step %d." % (iStep + 1))
+                logger.warning("\tSkipping Hessian update for step %d." % (i_step + 1))
                 pass
             elif max_change > op.Params.hess_update_dq_tol:
-                logger.warning("\tChange in internal coordinate of %5.2e exceeds limit of %5.2e."
-                               % (max_change, op.Params.hess_update_dq_tol))
-                logger.warning("\tSkipping Hessian update for step %d." % (iStep + 1))
+                logger.warning(
+                    "\tChange in internal coordinate of %5.2e exceeds limit of %5.2e."
+                    % (max_change, op.Params.hess_update_dq_tol)
+                )
+                logger.warning("\tSkipping Hessian update for step %d." % (i_step + 1))
                 pass
             else:
-                use_steps.append(iStep)
-            iStep -= 1
+                use_steps.append(i_step)
+            i_step -= 1
 
-        hessian_steps = ("\tSteps to be used in Hessian update: ")
+        hessian_steps = "\tSteps to be used in Hessian update: "
         for i in use_steps:
             hessian_steps += " %d" % (i + 1)
         hessian_steps += "\n"
@@ -263,10 +325,11 @@ class History(object):
 
         H_new = np.zeros(H.shape)
         for i_step in use_steps:
-            oldStep = self.steps[i_step]
+            # TODO code duplication. Why do we set o_molsys.geom to an old geometry?
+            old_step = self.steps[i_step]
 
-            f_old = oldStep.forces
-            x_old = oldStep.geom
+            f_old = old_step.forces
+            x_old = old_step.geom
             oMolsys.geom = x_old
             q_old[:] = oMolsys.q_array()
             dq[:] = q - q_old
@@ -276,7 +339,7 @@ class History(object):
 
             # See  J. M. Bofill, J. Comp. Chem., Vol. 15, pages 1-11 (1994)
             #  and Helgaker, JCP 2002 for formula.
-            if op.Params.hess_update == 'BFGS':
+            if op.Params.hess_update == "BFGS":
                 for i in range(Nintco):
                     for j in range(Nintco):
                         H_new[i, j] = H[i, j] + dg[i] * dg[j] / gq
@@ -288,7 +351,7 @@ class History(object):
                     for j in range(Nintco):
                         H_new[i, j] -= Hdq[i] * Hdq[j] / dqHdq
 
-            elif op.Params.hess_update == 'MS':
+            elif op.Params.hess_update == "MS":
                 Z = -1.0 * np.dot(H, dq) + dg
                 qz = np.dot(dq, Z)
 
@@ -296,16 +359,15 @@ class History(object):
                     for j in range(Nintco):
                         H_new[i, j] = H[i, j] + Z[i] * Z[j] / qz
 
-            elif op.Params.hess_update == 'POWELL':
+            elif op.Params.hess_update == "POWELL":
                 Z = -1.0 * np.dot(H, dq) + dg
                 qz = np.dot(dq, Z)
 
                 for i in range(Nintco):
                     for j in range(Nintco):
-                        H_new[i, j] = H[i, j] - qz / (qq * qq) * dq[i] * dq[j] + (
-                            Z[i] * dq[j] + dq[i] * Z[j]) / qq
+                        H_new[i, j] = H[i, j] - qz / (qq * qq) * dq[i] * dq[j] + (Z[i] * dq[j] + dq[i] * Z[j]) / qq
 
-            elif op.Params.hess_update == 'BOFILL':
+            elif op.Params.hess_update == "BOFILL":
                 # Bofill = (1-phi) * MS + phi * Powell
                 Z = -1.0 * np.dot(H, dq) + dg
                 qz = np.dot(dq, Z)
@@ -323,8 +385,9 @@ class History(object):
 
                 for i in range(Nintco):  # (phi * Powell)
                     for j in range(Nintco):
-                        H_new[i, j] += phi * (-1.0 * qz / (qq * qq) * dq[i] * dq[j] +
-                                              (Z[i] * dq[j] + dq[i] * Z[j]) / qq)
+                        H_new[i, j] += phi * (
+                            -1.0 * qz / (qq * qq) * dq[i] * dq[j] + (Z[i] * dq[j] + dq[i] * Z[j]) / qq
+                        )
 
             if op.Params.hess_update_limit:  # limit changes in H
                 # Changes to the Hessian from the update scheme are limited to the larger of
@@ -355,18 +418,17 @@ class History(object):
             logger.info("\tUpdated Hessian (in au) \n %s" % print_mat_string(H))
 
         oMolsys.geom = orig_save_geom
-        return
+        return H
 
-def summary_string():
-    output_string = """\n\t==> Optimization Summary <==\n
-    \n\tMeasures of convergence in internal coordinates in au. (Any backward steps not shown.)
-    \n\t---------------------------------------------------------------------------------------------------------------  ~
-    \n\t Step         Total Energy             Delta E       MAX Force       RMS Force        MAX Disp        RMS Disp   ~
-    \n\t---------------------------------------------------------------------------------------------------------------  ~
-    \n"""
-    output_string += oHistory.summary(printoption=True)
-
-    return output_string
+    def summary_string(self):
+        output_string = """\n\t==> Optimization Summary <==\n
+        \n\tMeasures of convergence in internal coordinates in au. (Any backward steps not shown.)
+        \n\t---------------------------------------------------------------------------------------------------------------  ~
+        \n\t Step         Total Energy             Delta E       MAX Force       RMS Force        MAX Disp        RMS Disp   ~
+        \n\t---------------------------------------------------------------------------------------------------------------  ~
+        \n"""
+        output_string += self.summary(printoption=True)
+        return output_string
 
 
 oHistory = History()

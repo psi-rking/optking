@@ -8,6 +8,7 @@
 <a href="#"> <img src="https://img.shields.io/github/commits-since/psi-rking/optking/latest.svg" /></a>
 <a href="#"> <img src="https://img.shields.io/github/release-date/psi-rking/optking.svg" /></a>
 <a href="#"> <img src="https://img.shields.io/github/commit-activity/y/psi-rking/optking.svg" /></a>
+<a href="#"> <img alt="Code style: black" src="https://img.shields.io/badge/code%20style-black-000000.svg"></a>
 <br>
 </p>
 

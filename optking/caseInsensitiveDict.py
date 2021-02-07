@@ -1,6 +1,7 @@
 import copy
 from collections.abc import Mapping
 
+
 class CaseInsensitiveDict(Mapping):
     def __init__(self, d):
         self._d = d

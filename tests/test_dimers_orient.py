@@ -12,9 +12,9 @@ import pytest
 # annoying situations in which some of the 6 interfragment coordinates drop out.
 
 @pytest.mark.dimers
-@pytest.mark.parametrize("NA,NB", [(i,j) for i in range(1,5) for j in range(1,5)])
-def test_dimerfrag_orient(NA, NB):
-    rms_error = optking.dimerfrag.test_orient(NA, NB)
+@pytest.mark.parametrize("NA,NB,seed", [(i,j,s) for i in range(1,5) for j in range(1,5) for s in range(1,5)])
+def test_dimerfrag_orient(NA, NB, seed):
+    rms_error = optking.dimerfrag.test_orient(NA, NB, randomSeed=seed)
     print('Error: {:10.5e}'.format(rms_error))
     assert rms_error < 1.0e-10
 

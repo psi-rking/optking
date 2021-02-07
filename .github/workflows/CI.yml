@@ -1,0 +1,54 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        cfg:
+          - conda-env: base
+            python-version: 3.6
+          - conda-env: base
+            python-version: 3.7
+          - conda-env: base
+            python-version: 3.8
+    env:
+      PYVER: ${{ matrix.cfg.python-version }}
+      CONDA_ENV: ${{ matrix.cfg.conda-env }}
+
+
+    steps:
+    - uses: actions/checkout@v1
+
+    - name: Setup Information
+      shell: bash
+      run: |
+        uname -a
+        df -h
+        ulimit -a
+        conda --version
+    - name: Create Environment
+      shell: bash
+      run: |
+        eval "$(conda shell.bash hook)" && conda activate
+        python devtools/scripts/conda_env.py -n=test -p=$PYVER devtools/conda-envs/$CONDA_ENV.yaml
+    - name: Install
+      shell: bash
+      run: |
+        eval "$(conda shell.bash hook)" && conda activate test
+        python -m pip install . --no-deps
+    - name: Environment Information
+      shell: bash
+      run: |
+        eval "$(conda shell.bash hook)" && conda activate test
+        conda list --show-channel-urls
+    - name: PyTest
+      shell: bash
+      run: |
+        eval "$(conda shell.bash hook)" && conda activate test
+        pytest -rws -v --cov=optking --color=yes --cov-report=xml tests/
+    - name: CodeCov  
+      uses: codecov/codecov-action@v1

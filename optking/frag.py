@@ -1,19 +1,18 @@
 import logging
+from itertools import combinations
 
 import numpy as np
 import qcelemental as qcel
 
-from . import stre, bend, tors, oofp
-from . import addIntcos
+from . import addIntcos, bend, oofp, stre, tors
+from .exceptions import OptError
 from .printTools import print_array_string, print_mat_string
-from itertools import combinations
 from .v3d import are_collinear
 
 
 class Frag:
-
-    def __init__(self, Z, geom, masses, intcos=None):
-        """ Group of bonded atoms
+    def __init__(self, Z, geom, masses, intcos=None, frozen=False):
+        """Group of bonded atoms
 
         Parameters
         ----------
@@ -23,7 +22,7 @@ class Frag:
             (nat, 3) cartesian geometry
         masses : list[float]
             atomic masses
-        intcos : list(Simple), optional
+        intcos : list[Simple], optional
             internal coordinates (stretches, bends, etch...)
 
         """
@@ -31,7 +30,7 @@ class Frag:
         self._Z = Z
         self._geom = geom
         self._masses = masses
-        self._frozen = False
+        self._frozen = frozen
 
         self._intcos = []
         if intcos:
@@ -47,47 +46,74 @@ class Frag:
         s += print_array_string(self._masses, title="Masses")
         s += "\t - Coordinate -           - BOHR/RAD -       - ANG/DEG -\n"
         for x in self._intcos:
-            s += ("\t%-18s=%17.6f%19.6f\n" % (x, x.q(self._geom), x.q_show(self._geom)))
+            s += "\t%-18s=%17.6f%19.6f\n" % (x, x.q(self._geom), x.q_show(self._geom))
         s += "\n"
         return s
 
-#    @classmethod
-#    def fromPsi4Molecule(cls, mol):
-#        mol.update_geometry()
-#        geom = np.array(mol.geometry(),float)
-#        natom = mol.natom()
-#
-#        #Z = np.zeros( natom, int)
-#        Z = []
-#        for i in range(natom):
-#            Z.append(int(mol.Z(i)))
-#
-#        masses = np.zeros(natom)
-#        for i in range(natom):
-#            masses[i] = mol.mass(i)
-#
-#        return cls(Z, geom, masses)
-#
-#
-#    #todo
-#    @classmethod
-#    def from_json_molecule(cls, pmol):
-#        #taking in psi4.core.molecule and converting to schema
-#        jmol = pmol.to_schema()
-#        print(jmol)
-#        natom = len(jmol['symbols'])
-#        geom = np.asarray(molecule['geometry']).reshape(-1,3) #?need to reshape in some way todo
-#        print(geom)
-#        Z = []
-#        for i in range(natom):
-#            Z.append(qcel.periodictable.to_Z(jmol['symbols'][i]))
-#
-#        print(Z)
-#
-#        masses = jmol['masses']
-#        print(masses)
-#
-#        return cls(Z, geom, masses)
+    def to_dict(self):
+        d = {
+            "Z": self._Z.copy(),
+            "geom": self._geom.copy(),
+            "masses": self._masses.copy(),
+            "frozen": self._frozen,
+            "intcos": [i.to_dict() for i in self._intcos],
+        }
+        return d
+
+    @classmethod
+    def from_dict(cls, D):
+        if "Z" not in D or "geom" not in D or "masses" not in D:
+            raise OptError("Missing required Z/geom/masses in dict input")
+        Z = D["Z"]
+        geom = D["geom"]
+        masses = D["masses"]
+        frozen = D.get("frozen", False)
+        if "intcos" in D:  # class constructor (cls), e.g., stre.Stre
+            intcos = []
+            for i in D["intcos"]:
+                clc = str.lower(i["type"]) + "." + i["type"]
+                intcos.append(eval(clc).from_dict(i))
+        else:
+            intcos = None
+        return cls(Z, geom, masses, intcos, frozen)
+
+    #    @classmethod
+    #    def fromPsi4Molecule(cls, mol):
+    #        mol.update_geometry()
+    #        geom = np.array(mol.geometry(),float)
+    #        natom = mol.natom()
+    #
+    #        #Z = np.zeros( natom, int)
+    #        Z = []
+    #        for i in range(natom):
+    #            Z.append(int(mol.Z(i)))
+    #
+    #        masses = np.zeros(natom)
+    #        for i in range(natom):
+    #            masses[i] = mol.mass(i)
+    #
+    #        return cls(Z, geom, masses)
+    #
+    #
+    #    #todo
+    #    @classmethod
+    #    def from_schema(cls, pmol):
+    #        #taking in psi4.core.molecule and converting to schema
+    #        jmol = pmol.to_schema()
+    #        print(jmol)
+    #        natom = len(jmol['symbols'])
+    #        geom = np.asarray(molecule['geometry']).reshape(-1,3) #?need to reshape in some way todo
+    #        print(geom)
+    #        Z = []
+    #        for i in range(natom):
+    #            Z.append(qcel.periodictable.to_Z(jmol['symbols'][i]))
+    #
+    #        print(Z)
+    #
+    #        masses = jmol['masses']
+    #        print(masses)
+    #
+    #        return cls(Z, geom, masses)
 
     @property
     def natom(self):
@@ -121,7 +147,7 @@ class Frag:
         return [intco.q(self.geom) for intco in self._intcos]
 
     def q_array(self):
-        return np.asarray( self.q() )
+        return np.asarray(self.q())
 
     def q_show(self):
         return [intco.q_show(self.geom) for intco in self._intcos]
@@ -134,8 +160,11 @@ class Frag:
         intcos_report = "\tInternal Coordinate Values\n"
         intcos_report += "\n\t - Coordinate -           - BOHR/RAD -       - ANG/DEG -\n"
         for coord in self._intcos:
-            intcos_report += ('\t%-18s=%17.6f%19.6f\n'
-                              % (coord, coord.q(self._geom), coord.q_show(self._geom)))
+            intcos_report += "\t%-18s=%17.6f%19.6f\n" % (
+                coord,
+                coord.q(self._geom),
+                coord.q_show(self._geom),
+            )
         intcos_report += "\n"
         logger.info(intcos_report)
         return
@@ -152,12 +181,12 @@ class Frag:
     def add_cartesian_intcos(self):
         addIntcos.add_cartesian_intcos(self._intcos, self._geom)
 
-#    def print_geom(self):
-#        for i in range(self._geom.shape[0]):
-#            print_opt("\t%5s%15.10f%15.10f%15.10f\n" % \
-#               (qcel.periodictable.to_E(self._Z[i]), self._geom[i,0], self._geom[i,1],
-#                  self._geom[i,2]))
-#        print_opt("\n")
+    #    def print_geom(self):
+    #        for i in range(self._geom.shape[0]):
+    #            print_opt("\t%5s%15.10f%15.10f%15.10f\n" % \
+    #               (qcel.periodictable.to_E(self._Z[i]), self._geom[i,0], self._geom[i,1],
+    #                  self._geom[i,2]))
+    #        print_opt("\n")
 
     def add_h_bonds(self):
         """ Prepend h_bonds because that's where optking 2 places them """
@@ -168,11 +197,15 @@ class Frag:
         self._intcos = h_bonds + self._intcos  # prepend internal coordinates
 
     def show_geom(self):
-        geometry = ''
+        geometry = ""
         Ang = self._geom * qcel.constants.bohr2angstroms
         for i in range(self._geom.shape[0]):
-            geometry += ("\t%5s%15.10f%15.10f%15.10f\n"
-                         % (qcel.periodictable.to_E(self._Z[i]), Ang[i, 0], Ang[i, 1], Ang[i, 2]))
+            geometry += "\t%5s%15.10f%15.10f%15.10f\n" % (
+                qcel.periodictable.to_E(self._Z[i]),
+                Ang[i, 0],
+                Ang[i, 1],
+                Ang[i, 2],
+            )
         geometry += "\n"
         return geometry
 
@@ -200,15 +233,15 @@ class Frag:
 
     def freeze(self):
         for intco in self._intcos:
-            intco.frozen = True
+            intco.freeze()
         self._frozen = True
 
     def update_dihedral_orientations(self):
-        """ Update orientation of each dihedrals/tors coordinate
-         This saves an indicator if dihedral is slightly less than pi,
-         or slighly more than -pi.  Subsequently, computation of values
-         can be greater than pi or less than -pi to enable computation
-         of Delta(q) when q passed through pi.
+        """Update orientation of each dihedrals/tors coordinate
+        This saves an indicator if dihedral is slightly less than pi,
+        or slighly more than -pi.  Subsequently, computation of values
+        can be greater than pi or less than -pi to enable computation
+        of Delta(q) when q passed through pi.
         """
         for intco in self._intcos:
             if isinstance(intco, tors.Tors) or isinstance(intco, oofp.Oofp):
@@ -216,17 +249,16 @@ class Frag:
 
     def is_atom(self):
         if self.natom == 1:
-           return True
+            return True
         else:
-           return False
+            return False
 
     def is_linear(self):
-        if self.natom in [1,2]:  # lets tentatively call an atom linear here
+        if self.natom in [1, 2]:  # lets tentatively call an atom linear here
             return True
         else:
             xyz = self.geom
-            for (i,j,k) in combinations(range(self.natom),r=3):
+            for (i, j, k) in combinations(range(self.natom), r=3):
                 if not are_collinear(xyz[i], xyz[j], xyz[k]):
                     return False
             return True
-

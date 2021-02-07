@@ -1,47 +1,86 @@
-import math
 import logging
+import math
 
 import qcelemental as qcel
 
-from .exceptions import AlgError, OptError
 from . import optparams as op
 from . import v3d
+from .exceptions import AlgError
+from .misc import string_math_fx
 from .simple import Simple
-
-# Class for out-of-plane angle.  Definition (A,B,C,D) means angle AB with respect
-# to the CBD plane; canonical order is C < D
 
 
 class Oofp(Simple):
-    def __init__(self, a, b, c, d, frozen=False, fixedEqVal=None):
+    """out-of-plane angle coordinate a-b-c-d. Means angle made by AB and the
+        CBD plane; canonical order is C < d
+
+    Parameters
+    ----------
+    a : int
+        first (terminal) atom
+    b : int
+        second (vertex) atom
+    c : int
+        third atom
+    d : int
+        fourth atom
+    constraint : string
+        set stretch as 'free', 'frozen', 'ranged', etc.
+    near180 : int
+        +1 => near +180; -1 => near -180; else 0
+    range_min : float
+        don't let value get smaller than this
+    range_max : float
+        don't let value get larger than this
+    ext_force : string_math_fx
+        class for evaluating additional external force
+    """
+
+    def __init__(
+        self,
+        a,
+        b,
+        c,
+        d,
+        constraint="free",
+        near180=0,
+        range_min=None,
+        range_max=None,
+        ext_force=None,
+    ):
 
         atoms = (a, b, c, d)
         if c < d:
             self.neg = 1
         else:
             self.neg = -1
-        self._near180 = 0
-        Simple.__init__(self, atoms, frozen, fixedEqVal)
-        
-        try:
-            import coordinates
-        except ImportError:
-            raise ImportError("could not import coordinates. Sympy needed for out of " 
-                + "plane angles. please intstall sympy - conda install sympy")
-        else:
-            self.symbolic_coord = coordinates.OutOfPlane(atoms)
-    
+        self._near180 = near180
+        Simple.__init__(self, atoms, constraint, range_min, range_max, ext_force)
+
+        # try:
+        #    import coordinates
+        # except ImportError:
+        #    raise ImportError("could not import coordinates. Sympy needed for out of "
+        #        + "plane angles. please intstall sympy - conda install sympy")
+        # else:
+        #    self.symbolic_coord = coordinates.OutOfPlane(atoms)
+
     def __str__(self):
         if self.frozen:
-            s = '*'
+            s = "*"
+        elif self.ranged:
+            s = "["
         else:
-            s = ' '
+            s = " "
+
+        if self.has_ext_force:
+            s += ">"
 
         s += "O"
 
         s += "(%d,%d,%d,%d)" % (self.A + 1, self.B + 1, self.C + 1, self.D + 1)
-        if self.fixed_eq_val:
-            s += "[%.4f]" % self.fixed_eq_val
+        if self.ranged:
+            s += "[{:.2f},{:.2f}]".format(self.range_min * self.q_show_factor, self.range_max * self.q_show_factor)
         return s
 
     def __eq__(self, other):
@@ -77,6 +116,37 @@ class Oofp(Simple):
     def f_show_factor(self):
         return qcel.constants.hartree2aJ * math.pi / 180.0
 
+    def to_dict(self):
+        d = {}
+        d["type"] = Oofp.__name__  # 'Oofp'
+        d["atoms"] = self.atoms  # id to a tuple
+        d["constraint"] = self.constraint
+        d["range_min"] = self.range_min
+        d["range_max"] = self.range_max
+        d["near180"] = self.near180
+        if self.has_ext_force:
+            d["ext_force_str"] = self.ext_force.formula_string
+        else:
+            d["ext_force_str"] = None
+        return d
+
+    @classmethod
+    def from_dict(cls, D):
+        a = D["atoms"][0]
+        b = D["atoms"][1]
+        c = D["atoms"][2]
+        d = D["atoms"][3]
+        constraint = D.get("constraint", "free")
+        range_min = D.get("range_min", None)
+        range_max = D.get("range_max", None)
+        near180 = D.get("near180", 0)
+        fstr = D.get("ext_force_str", None)
+        if fstr is None:
+            ext_force = None
+        else:
+            ext_force = string_math_fx(fstr)
+        return cls(a, b, c, d, constraint, near180, range_min, range_max, ext_force)
+
     def q(self, geom):
         """Compute torsion angle for geometry.
 
@@ -108,9 +178,9 @@ class Oofp(Simple):
     # Assume angle phi_CBD is OK, or we couldn't calculate the value anyway.
     def DqDx(self, geom, dqdx, mini=False):
 
-        self.DqDx_sympy(geom, dqdx)
-        return
-        
+        # self.DqDx_sympy(geom, dqdx)
+        # return
+
         eBA = geom[self.A] - geom[self.B]
         eBC = geom[self.C] - geom[self.B]
         eBD = geom[self.D] - geom[self.B]
@@ -121,7 +191,7 @@ class Oofp(Simple):
         eBC *= 1.0 / rBC
         eBD *= 1.0 / rBD
 
-        # compute out-of-plane value, C-B-D angle
+        # compute out-of-plane value, C-B-d angle
         val = self.q(geom)
         phi_CBD = v3d.angle(geom[self.C], geom[self.B], geom[self.D])
 
@@ -129,7 +199,7 @@ class Oofp(Simple):
         tmp = v3d.cross(eBC, eBD)
         tmp /= math.cos(val) * math.sin(phi_CBD)
         tmp2 = math.tan(val) * eBA
-        dqdx[3 * self.A:3 * self.A + 3] = self.neg * (tmp - tmp2) / rBA
+        dqdx[3 * self.A : 3 * self.A + 3] = self.neg * (tmp - tmp2) / rBA
 
         # S vector for C
         tmp = v3d.cross(eBD, eBA)
@@ -137,43 +207,67 @@ class Oofp(Simple):
         tmp2 = math.cos(phi_CBD) * eBD
         tmp3 = -1.0 * tmp2 + eBC
         tmp3 *= math.tan(val) / (math.sin(phi_CBD) * math.sin(phi_CBD))
-        dqdx[3 * self.C:3 * self.C + 3] = self.neg * (tmp - tmp3) / rBC
+        dqdx[3 * self.C : 3 * self.C + 3] = self.neg * (tmp - tmp3) / rBC
 
-        # S vector for D
+        # S vector for d
         tmp = v3d.cross(eBA, eBC)
         tmp /= math.cos(val) * math.sin(phi_CBD)
         tmp2 = math.cos(phi_CBD) * eBC
         tmp3 = -1.0 * tmp2 + eBD
         tmp3 *= math.tan(val) / (math.sin(phi_CBD) * math.sin(phi_CBD))
-        dqdx[3 * self.D:3 * self.D + 3] = self.neg * (tmp - tmp3) / rBD
+        dqdx[3 * self.D : 3 * self.D + 3] = self.neg * (tmp - tmp3) / rBD
 
         # S vector for B
-        dqdx[3*self.B:3*self.B+3] = (self.neg * -1.0 * dqdx[3*self.A:3*self.A+3]
-            - dqdx[3*self.C:3*self.C+3] - dqdx[3*self.D:3*self.D+3])
+        dqdx[3 * self.B : 3 * self.B + 3] = (
+            self.neg * -1.0 * dqdx[3 * self.A : 3 * self.A + 3]
+            - dqdx[3 * self.C : 3 * self.C + 3]
+            - dqdx[3 * self.D : 3 * self.D + 3]
+        )
 
     def Dq2Dx2(self, geom, dqdx):
-        raise AlgError('no derivative B matrices for out-of-plane angles')
+        raise AlgError("no derivative B matrices for out-of-plane angles")
 
-    def diagonal_hessian_guess(self, geom, Z, connectivity, guess="SIMPLE"):
-        """ Generates diagonal empirical Hessians in a.u. such as
-          Schlegel, Theor. Chim. Acta, 66, 333 (1984) and
-          Fischer and Almlof, J. Phys. Chem., 96, 9770 (1992).
+    def diagonal_hessian_guess(self, geom, Z, connectivity, guess_type="SIMPLE"):
+        """Generates diagonal empirical Hessians in a.u. such as
+        Schlegel, Theor. Chim. Acta, 66, 333 (1984) and
+        Fischer and Almlof, J. Phys. Chem., 96, 9770 (1992).
         """
         logger = logging.getLogger(__name__)
-        if guess == "SIMPLE":
+        if guess_type == "SIMPLE":
             return 0.1
+
+        elif guess_type == "SCHLEGEL":
+            rval = 0.045 * self.q(geom) ** 4
+            # RAK doesn't think it is optimal to be too small
+            if rval < 0.001:
+                rval = 0.001
+            return rval
+
+        elif guess_type == "FISCHER":  # my A-B-C-d is their x-a-b-c
+            Rax = v3d.dist(geom[self.B], geom[self.A])
+            RCOVax = qcel.covalentradii.get(Z[self.B], missing=4.0) + qcel.covalentradii.get(Z[self.A], missing=4.0)
+            RCOVab = qcel.covalentradii.get(Z[self.B], missing=4.0) + qcel.covalentradii.get(Z[self.C], missing=4.0)
+            RCOVac = qcel.covalentradii.get(Z[self.B], missing=4.0) + qcel.covalentradii.get(Z[self.D], missing=4.0)
+            a = 0.0025
+            b = 0.0061
+            c = 3.0
+            d = 4.0
+            e = 0.80
+            val = self.q(geom)
+            rval = a + b * (RCOVab * RCOVac) ** e * math.cos(val) ** d * math.exp(-c * (Rax - RCOVax))
+            logger.debug("fisher: {:12.6e}".format(rval))
+            return rval
+
         else:
             logger.warning("Hessian guess encountered unknown coordinate type.\n")
-            return 1.0
+            return 0.1
 
-    def q_sympy(self, geom):
-        return self.symbolic_coord.q(geom)
+    # def q_sympy(self, geom):
+    #    return self.symbolic_coord.q(geom)
 
-    def DqDx_sympy(self, geom, dqdx):
-        dqdx_mat = self.symbolic_coord.dq_dx(geom)
-        dqdx[self.A * 3: (3 * self.A) + 3] = dqdx_mat[0]
-        dqdx[self.B * 3: (3 * self.B) + 3] = dqdx_mat[1]
-        dqdx[self.C * 3: (3 * self.C) + 3] = dqdx_mat[2]
-        dqdx[self.D * 3: (3 * self.D) + 3] = dqdx_mat[3]
-        
-        
+    # def DqDx_sympy(self, geom, dqdx):
+    #    dqdx_mat = self.symbolic_coord.dq_dx(geom)
+    #    dqdx[self.A * 3: (3 * self.A) + 3] = dqdx_mat[0]
+    #    dqdx[self.B * 3: (3 * self.B) + 3] = dqdx_mat[1]
+    #    dqdx[self.C * 3: (3 * self.C) + 3] = dqdx_mat[2]
+    #    dqdx[self.d * 3: (3 * self.d) + 3] = dqdx_mat[3]

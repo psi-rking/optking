@@ -32,7 +32,7 @@ def test_B_dB_matrices():
     assert 'test_derivative_b' in json_output['keywords'] #TEST
     assert "g_convergence" in json_output['keywords'] #TEST
     assert psi4.compare_values(refnucenergy, nucenergy, 3, "Nuclear repulsion energy") #TEST
-    assert psi4.compare_values(refenergy, E , 8, "Reference energy")           #TEST
+    assert psi4.compare_values(refenergy, E, 8, "Reference energy")           #TEST
 
 
 def test_maxiter():
@@ -62,7 +62,7 @@ def test_maxiter():
     assert "OptError" in json_output['error']['error_type'] #TEST
 
 
-#! Test the energy of geometry output, when maxiter is reached.
+# Test the energy of geometry output, when maxiter is reached.
 def test_maxiter_geom():
 
     h2o = psi4.geometry("""
@@ -83,10 +83,12 @@ def test_maxiter_geom():
 
     result = optking.optimize_psi4('hf')
 
-    nextStepSchema   = result['final_molecule'] #TEST
-    nextStepMolecule = psi4.core.Molecule.from_schema( nextStepSchema ) #TEST
-    psi4.core.set_active_molecule( nextStepMolecule ) #TEST
-    nextStepEnergy   = psi4.driver.energy('scf') #TEST
-    REF_energy = -76.0270381300 #TEST
-    assert psi4.compare_values(REF_energy, nextStepEnergy, 5, 'Energy of next-step molecule') #TEST
+    nextStepSchema = result['final_molecule']  # TEST
+    nextStepMolecule = psi4.core.Molecule.from_schema(nextStepSchema)  # TEST
+    psi4.core.set_active_molecule(nextStepMolecule)  # TEST
+    psi4.set_options(psi4options)
+    nextStepEnergy = psi4.driver.energy('scf/cc-pvdz')  # TEST
+    REF_energy = -76.0270381300  # TEST
+    assert psi4.compare_values(REF_energy, nextStepEnergy, 5, 'Energy of next-step molecule')
+    # TEST
 

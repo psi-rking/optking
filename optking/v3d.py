@@ -3,8 +3,9 @@
 # cannot be completed numerically, as for example a torsion in which 3
 # points are collinear.
 import logging
+from math import acos, asin, fabs, fsum, sin, sqrt
+
 import numpy as np
-from math import fabs, sin, acos, asin, fsum
 
 from . import optparams as op
 from .exceptions import AlgError, OptError
@@ -13,7 +14,7 @@ from .exceptions import AlgError, OptError
 #  phi_lim = op.Params.v3d_tors_angle_lim
 #  tors_cos_tol = op.Params.v3d_tors_cos_tol
 
-DOT_PARALLEL_LIMIT = 1.e-10
+DOT_PARALLEL_LIMIT = 1.0e-10
 
 
 def norm(v):
@@ -36,12 +37,12 @@ def dot(v1, v2, length=None):
 
 # avoid numerical problems by limiting range to [-1,+1]
 def dot_unit(v1, v2):
-    dot = np.dot(v1,v2)
-    return max(min(1.0,dot),-1.0)
+    dot = np.dot(v1, v2)
+    return max(min(1.0, dot), -1.0)
 
 
 def dist(v1, v2):
-    return np.linalg.norm(v1-v2)
+    return np.linalg.norm(v1 - v2)
     # return sqrt((v2[0] - v1[0])**2 + (v2[1] - v1[1])**2 + (v2[2] - v1[2])**2)
 
 
@@ -56,7 +57,7 @@ def normalize(v1, Rmin=1.0e-8, Rmax=1.0e15):
         v1 /= n
 
 
-#def axpy(a, X, Y):
+# def axpy(a, X, Y):
 #    Z = np.zeros(Y.shape)
 #    Z = a * X + Y
 #    return Z
@@ -111,7 +112,7 @@ def are_parallel_or_antiparallel(u, v):
 
 
 def angle(A, B, C, tol=1.0e-14):
-    """ Compute and return angle in radians A-B-C (between vector B->A and vector B->C)
+    """Compute and return angle in radians A-B-C (between vector B->A and vector B->C)
     If points are absurdly close or far apart, returns False
 
     Parameters
@@ -173,7 +174,7 @@ def _calc_angle(vec_1, vec_2, tol=1.0e-14):
 
 def tors(A, B, C, D):
     """
-    Compute and return angle in dihedral angle in radians A-B-C-D
+    Compute and return angle in dihedral angle in radians A-B-C-d
     Raises AlgError exception if bond angles are too large for good torsion definition
 
     Parameters
@@ -223,8 +224,11 @@ def tors(A, B, C, D):
     up_lim = acos(-1) - phi_lim
 
     if phi_123 < phi_lim or phi_123 > up_lim or phi_234 < phi_lim or phi_234 > up_lim:
-        raise AlgError("Interior angle of {:5.1f} or {:5.1f}  can't work in good torsion.".format(
-                       180.0*phi_123/np.pi,180.0*phi_234/np.pi))
+        raise AlgError(
+            "Interior angle of {:5.1f} or {:5.1f}  can't work in good torsion.".format(
+                180.0 * phi_123 / np.pi, 180.0 * phi_234 / np.pi
+            )
+        )
 
     tmp = cross(EAB, EBC)
     tmp2 = cross(EBC, ECD)
@@ -249,7 +253,7 @@ def tors(A, B, C, D):
 
 def oofp(A, B, C, D):
     """
-    Compute and return angle in dihedral angle in radians A-B-C-D
+    Compute and return angle in dihedral angle in radians A-B-C-d
     returns false if bond angles are too large for good torsion definition
 
     Parameters
@@ -283,7 +287,7 @@ def oofp(A, B, C, D):
 
     phi_CBD = _calc_angle(eBC, eBD)
 
-    # This shouldn't happen unless angle B-C-D -> 0,
+    # This shouldn't happen unless angle B-C-d -> 0,
     if sin(phi_CBD) < op.Params.v3d_tors_cos_tol:  # reusing parameter
         raise AlgError(f"Angle: {C}, {B}, {D} is to close to zero in oofp\n")
 
@@ -297,12 +301,18 @@ def oofp(A, B, C, D):
         tau = asin(dotprod)
     return tau
 
-def are_collinear(A, B, C, threshold=1.0e-8):
-    eAB = B - A
-    eAC = C - A
-    cr = cross(eAB,eAC)
-    if dot(cr,cr) < threshold:
-        return True
-    else: 
-        return False
 
+def are_collinear(A, B, C, threshold=1.0e-4):
+    try:
+        eab = eAB(A, B)
+        eac = eAB(A, C)
+    except AlgError as error:
+        return True  # points on top of each other
+
+    cr = cross(eab, eac)
+    N = sqrt(dot(cr, cr))
+    print("N {}".format(N))
+    if N < threshold:
+        return True
+    else:
+        return False

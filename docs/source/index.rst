@@ -6,10 +6,16 @@
 Welcome to pyoptking's documentation!
 =====================================
 
+.. image:: ../../media/optking.jpeg
+.. image:: ../../media/s8.png
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
-
+    
+   algorithms
+   optimizations
+   coords
    api
 
 
