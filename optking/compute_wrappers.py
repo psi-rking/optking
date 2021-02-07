@@ -85,6 +85,7 @@ class ComputeWrapper:
         if ret['success']: 
             self.energies.append(ret['properties']['return_energy'])
         else:
+           logger.info(ret['stdout'])
            raise OptError(f"Error encountered for {driver} calc. {ret['error']['error_message']}",
                           ret['error']['error_type'])
 
@@ -122,5 +123,12 @@ class QCEngineComputer(ComputeWrapper):
         import qcengine
 
         inp = self.generate_schema_input(driver)
-        ret = qcengine.compute(inp, self.program)
+
+        local_options = {}
+        if self.program == "psi4":
+            import psi4
+            local_options["memory"] = psi4.core.get_memory() / 1000000000
+            local_options["ncores"] = psi4.core.get_num_threads()
+
+        ret = qcengine.compute(inp, self.program, True, local_options)
         return ret
