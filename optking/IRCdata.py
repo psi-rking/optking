@@ -34,18 +34,7 @@ class IRCpoint(object):
     """
 
     def __init__(
-        self,
-        step_number,
-        q,
-        x,
-        f_q,
-        f_x,
-        energy,
-        q_pivot,
-        x_pivot,
-        step_dist,
-        arc_dist,
-        line_dist,
+        self, step_number, q, x, f_q, f_x, energy, q_pivot, x_pivot, step_dist, arc_dist, line_dist,
     ):
         self.step_number = step_number
         self.q = q
@@ -232,11 +221,7 @@ class IRCdata(object):
         s += "\t - Coordinate -           - BOHR/RAD -       - ANG/DEG -\n"
 
         for itr, x in enumerate(intcos):
-            s += "\t%-18s=%17.6f%19.6f\n" % (
-                x,
-                self.q()[itr],
-                self.q()[itr] * x.q_show_factor,
-            )
+            s += "\t%-18s=%17.6f%19.6f\n" % (x, self.q()[itr], self.q()[itr] * x.q_show_factor,)
             # s += ("\t%-18s=%17.6f\n" % (x, IRCdata.history.q()[itr] * x.q_show_factor))
 
         return s

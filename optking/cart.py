@@ -17,13 +17,7 @@ class Cart(Simple):
     """
 
     def __init__(
-        self,
-        a,
-        xyz_in,
-        constraint="free",
-        range_min=None,
-        range_max=None,
-        ext_force=None,
+        self, a, xyz_in, constraint="free", range_min=None, range_max=None, ext_force=None,
     ):
 
         self.xyz = xyz_in  # uses setter below

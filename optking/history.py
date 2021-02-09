@@ -165,13 +165,7 @@ class History(object):
                 rms_disp = -99.0
 
             steps.append(
-                {
-                    "Energy": step.E,
-                    "DE": DE,
-                    "max_force": max_force,
-                    "max_disp": max_disp,
-                    "rms_disp": rms_disp,
-                }
+                {"Energy": step.E, "DE": DE, "max_force": max_force, "max_disp": max_disp, "rms_disp": rms_disp,}
             )
 
             opt_summary += "\t  %4d %20.12lf  %18.12lf    %12.8lf    %12.8lf    %12.8lf    %12.8lf" "  ~\n" % (
@@ -275,11 +269,7 @@ class History(object):
         q_old = np.zeros(Nintco)
 
         # Don't go further back than the last Hessian calculation
-        numToUse = min(
-            op.Params.hess_update_use_last,
-            len(self.steps) - 1,
-            History.stepsSinceLastHessian,
-        )
+        numToUse = min(op.Params.hess_update_use_last, len(self.steps) - 1, History.stepsSinceLastHessian,)
         logger.info("\tUsing %d previous steps for update." % numToUse)
 
         # Make list of old geometries to update with.

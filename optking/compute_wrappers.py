@@ -93,8 +93,7 @@ class ComputeWrapper:
             self.energies.append(ret["properties"]["return_energy"])
         else:
             raise OptError(
-                f"Error encountered for {driver} calc. {ret['error']['error_message']}",
-                ret["error"]["error_type"],
+                f"Error encountered for {driver} calc. {ret['error']['error_message']}", ret["error"]["error_type"],
             )
 
         if return_full:
@@ -155,6 +154,7 @@ class QCEngineComputer(ComputeWrapper):
         local_options = {}
         if self.program == "psi4":
             import psi4
+
             local_options["memory"] = psi4.core.get_memory() / 1000000000
             local_options["ncores"] = psi4.core.get_num_threads()
 

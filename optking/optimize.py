@@ -197,12 +197,7 @@ def optimize(o_molsys, computer):
 
                     if op.Params.opt_type == "IRC":
                         converged = convCheck.conv_check(
-                            step_number,
-                            o_molsys,
-                            Dq,
-                            f_q,
-                            computer.energies,
-                            IRCdata.history.q_pivot(),
+                            step_number, o_molsys, Dq, f_q, computer.energies, IRCdata.history.q_pivot(),
                         )
                         logger.info("\tConvergence check returned %s." % converged)
 
@@ -244,8 +239,7 @@ def optimize(o_molsys, computer):
                             % (total_steps_taken, op.Params.geom_maxiter)
                         )
                         raise OptError(
-                            "Maximum number of steps exceeded: {}.".format(op.Params.geom_maxiter),
-                            "OptError",
+                            "Maximum number of steps exceeded: {}.".format(op.Params.geom_maxiter), "OptError",
                         )
 
                 else:  # Associated with above for loop, executes if break is not reached
@@ -577,10 +571,7 @@ def prepare_opt_output(o_molsys, computer, rxnpath=False, error=None):
 
     if error:
         qc_output.update(
-            {
-                "success": False,
-                "error": {"error_type": error.err_type, "error_message": error.mesg},
-            }
+            {"success": False, "error": {"error_type": error.err_type, "error_message": error.mesg},}
         )
 
     if rxnpath:

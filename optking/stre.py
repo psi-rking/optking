@@ -31,14 +31,7 @@ class Stre(Simple):
     """
 
     def __init__(
-        self,
-        a,
-        b,
-        constraint="free",
-        inverse=False,
-        range_min=None,
-        range_max=None,
-        ext_force=None,
+        self, a, b, constraint="free", inverse=False, range_min=None, range_max=None, ext_force=None,
     ):
 
         self._inverse = inverse  # bool - is really 1/R coordinate?

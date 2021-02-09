@@ -325,10 +325,7 @@ def dq_rfo(oMolsys, fq, H):
 
         else:  # Do root following.
             # Find maximum overlap. Dot only within H block.
-            dots = np.array(
-                [v3d.dot(SRFOevects[i], last_iter_evect, dim) for i in range(dim)],
-                float,
-            )
+            dots = np.array([v3d.dot(SRFOevects[i], last_iter_evect, dim) for i in range(dim)], float,)
             bestfit = np.argmax(dots)
             if bestfit != rfo_root:
                 logger.info("\tRoot-following has changed rfo_root value to %d." % (bestfit + 1))
@@ -379,12 +376,7 @@ def dq_rfo(oMolsys, fq, H):
             logger.info(rfo_step_report)
 
         elif alphaIter > 0 and not op.Params.simple_step_scaling:
-            rfo_step_report = "\t%5d%12.5lf%14.5lf%12d\n" % (
-                alphaIter + 1,
-                sqrt(dqtdq),
-                alpha,
-                rfo_root + 1,
-            )
+            rfo_step_report = "\t%5d%12.5lf%14.5lf%12d\n" % (alphaIter + 1, sqrt(dqtdq), alpha, rfo_root + 1,)
             logger.info(rfo_step_report)
 
         # Find the analytical derivative, d(norm step squared) / d(alpha)

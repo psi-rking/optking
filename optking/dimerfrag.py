@@ -112,16 +112,7 @@ class DimerFrag(object):
     """
 
     def __init__(
-        self,
-        A_idx,
-        A_atoms,
-        B_idx,
-        B_atoms,
-        A_weights=None,
-        B_weights=None,
-        A_lbl="A",
-        B_lbl="B",
-        frozen=None,
+        self, A_idx, A_atoms, B_idx, B_atoms, A_weights=None, B_weights=None, A_lbl="A", B_lbl="B", frozen=None,
     ):
         self._A_lbl = A_lbl
         self._B_lbl = B_lbl
@@ -391,10 +382,7 @@ class DimerFrag(object):
 
         s = "\tFragment %s\n" % self._A_lbl
         for i, r in enumerate(reversed(self._Arefs)):
-            s += "\t\tDimer point %d (Ref. pt. %d):\n" % (
-                4 - self.n_arefs + i,
-                self.n_arefs - i,
-            )
+            s += "\t\tDimer point %d (Ref. pt. %d):\n" % (4 - self.n_arefs + i, self.n_arefs - i,)
             s += r.__str__()
         s += "\n\tFragment %s\n" % self._B_lbl
         for i, r in enumerate(self._Brefs):
@@ -552,13 +540,7 @@ class DimerFrag(object):
         return
 
     def orient_fragment(
-        self,
-        Ageom_in,
-        Bgeom_in,
-        q_target,
-        printCoords=False,
-        unit_length="bohr",
-        unit_angle="rad",
+        self, Ageom_in, Bgeom_in, q_target, printCoords=False, unit_length="bohr", unit_angle="rad",
     ):
         """orient_fragment() moves the geometry of fragment B so that the
             interfragment coordinates have the given values
@@ -635,10 +617,7 @@ class DimerFrag(object):
             cnt += 1
 
         # print this to DEBUG log always; to INFO upon request
-        s = "\t---DimerFrag coordinates between fragments %s and %s\n" % (
-            self._A_lbl,
-            self._B_lbl,
-        )
+        s = "\t---DimerFrag coordinates between fragments %s and %s\n" % (self._A_lbl, self._B_lbl,)
         s += "\t---Internal Coordinate Step in ANG or DEG, aJ/ANG or AJ/DEG ---\n"
         s += "\t ----------------------------------------------------------------------\n"
         s += "\t Coordinate             Previous     Change       Target\n"
@@ -646,12 +625,7 @@ class DimerFrag(object):
 
         for i in range(self.num_intcos):
             c = self.pseudo_frag.intcos[i].q_show_factor  # for printing to Angstroms/degrees
-            s += "\t%-20s%12.5f%13.5f%13.5f\n" % (
-                active_lbls[i],
-                c * q_orig[i],
-                c * dq_target[i],
-                c * q_target[i],
-            )
+            s += "\t%-20s%12.5f%13.5f%13.5f\n" % (active_lbls[i], c * q_orig[i], c * dq_target[i], c * q_target[i],)
 
         s += "\t ----------------------------------------------------------------------"
         logger.debug(s)
