@@ -260,7 +260,12 @@ def displace_frag(F, dq_in, ensure_convergence=False):
         frag_report += "\t---------------------------------------------------\n"
         q_target = q_orig + dq_in
         for i in range(F.num_intcos):
-            frag_report += "\t%5d%15.10lf%15.10f%15.10lf\n" % (i + 1, q_final[i], q_target[i], (q_final - q_target)[i],)
+            frag_report += "\t%5d%15.10lf%15.10f%15.10lf\n" % (
+                i + 1,
+                q_final[i],
+                q_target[i],
+                (q_final - q_target)[i],
+            )
         frag_report += "\t--------------------------------------------------\n"
         logger.debug(frag_report)
 
@@ -268,7 +273,13 @@ def displace_frag(F, dq_in, ensure_convergence=False):
 
 
 def back_transformation(
-    intcos, geom, dq, print_lvl, bt_dx_conv=None, bt_dx_rms_change_conv=None, bt_max_iter=None,
+    intcos,
+    geom,
+    dq,
+    print_lvl,
+    bt_dx_conv=None,
+    bt_dx_rms_change_conv=None,
+    bt_max_iter=None,
 ):
 
     logger = logging.getLogger(__name__)
@@ -287,7 +298,11 @@ def back_transformation(
         target_step_str = "Back-transformation in back_transformation():\n"
         target_step_str += "          Original         Target           Dq\n"
         for i in range(len(dq)):
-            target_step_str += "%15.10f%15.10f%15.10f\n" % (q_orig[i], q_target[i], dq[i],)
+            target_step_str += "%15.10f%15.10f%15.10f\n" % (
+                q_orig[i],
+                q_target[i],
+                dq[i],
+            )
         logger.info(target_step_str)
 
     if print_lvl > 0:
@@ -328,7 +343,12 @@ def back_transformation(
             best_dq_rms = dq_rms
 
         if print_lvl > 0:
-            step_iter_str += "\t%5d %14.1e %14.1e %14.1e\n" % (bt_iter_cnt + 1, dx_rms, dx_max, dq_rms,)
+            step_iter_str += "\t%5d %14.1e %14.1e %14.1e\n" % (
+                bt_iter_cnt + 1,
+                dx_rms,
+                dx_max,
+                dq_rms,
+            )
         bt_iter_cnt += 1
 
     if print_lvl > 0:
@@ -388,7 +408,11 @@ def dq_to_dx(intcos, geom, dq, printDetails=False):
         displacement_str = "\t      Report of Single-step\n"
         displacement_str += "\t  int       dq_achieved     deviation from target\n"
         for i in range(len(intcos)):
-            displacement_str += "\t%5d%15.10f%15.10f\n" % (i + 1, dq_achieved[i], dq_achieved[i] - dq[i],)
+            displacement_str += "\t%5d%15.10f%15.10f\n" % (
+                i + 1,
+                dq_achieved[i],
+                dq_achieved[i] - dq[i],
+            )
         logger.debug(displacement_str)
 
     dx_rms = rms(dx)

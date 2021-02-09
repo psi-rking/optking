@@ -28,7 +28,14 @@ def string_option(storage_name):
 allowedStringOptions = {
     "opt_type": ("MIN", "TS", "IRC"),
     "step_type": ("RFO", "P_RFO", "NR", "SD", "LINESEARCH"),
-    "opt_coordinates": ("REDUNDANT", "INTERNAL", "DELOCALIZED", "NATURAL", "CARTESIAN", "BOTH",),
+    "opt_coordinates": (
+        "REDUNDANT",
+        "INTERNAL",
+        "DELOCALIZED",
+        "NATURAL",
+        "CARTESIAN",
+        "BOTH",
+    ),
     "irc_direction": ("FORWARD", "BACKWARD"),
     "g_convergence": (
         "QCHEM",
@@ -42,7 +49,14 @@ allowedStringOptions = {
         "NWCHEM_LOOSE",
     ),
     "hess_update": ("NONE", "BFGS", "MS", "POWELL", "BOFILL"),
-    "intrafrag_hess": ("SCHLEGEL", "FISCHER", "SCHLEGEL", "SIMPLE", "LINDH", "LINDH_SIMPLE",),
+    "intrafrag_hess": (
+        "SCHLEGEL",
+        "FISCHER",
+        "SCHLEGEL",
+        "SIMPLE",
+        "LINDH",
+        "LINDH_SIMPLE",
+    ),
     "frag_mode": ("SINGLE", "MULTI"),
     "interfrag_mode": ("FIXED", "PRINCIPAL_AXES"),
     "interfrag_hess": ("DEFAULT", "FISCHER_LIKE"),
