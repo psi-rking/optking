@@ -15,11 +15,9 @@ import optking.caseInsensitiveDict
 # bend displacement
 # whether h bond should be detected
 @pytest.mark.skip
-@pytest.mark.parametrize('options, expected', [
- ((     0,        0), True),
- ((-0.375,        0), False),
- ((     0, -np.pi/8), False),
- ((   0.8,        0), False)])
+@pytest.mark.parametrize(
+    "options, expected", [((0, 0), True), ((-0.375, 0), False), ((0, -np.pi / 8), False), ((0.8, 0), False)]
+)
 def test_hydrogen_bonds(options, expected):
 
     # Manually construct water dimer in single frag mode
@@ -27,12 +25,16 @@ def test_hydrogen_bonds(options, expected):
     op.Params = op.OptParams(optking.caseInsensitiveDict.CaseInsensitiveDict({}))
 
     # Geometry in Bohr
-    geom = np.array([[- 1.2824641813, - 2.3421356740, 0.0913301558],
-                     [- 0.0314167971, - 3.6520400907, 0.0340038272],
-                     [- 1.9858966815, - 2.4709212198, 1.7566192883],
-                     [1.3419482749, 2.4585411267, - 0.1017720514],
-                     [0.4210461244, 0.8871180358, - 0.1345980555],
-                     [0.6522116213, 3.3884042683, - 1.4903045984]])
+    geom = np.array(
+        [
+            [-1.2824641813, -2.3421356740, 0.0913301558],
+            [-0.0314167971, -3.6520400907, 0.0340038272],
+            [-1.9858966815, -2.4709212198, 1.7566192883],
+            [1.3419482749, 2.4585411267, -0.1017720514],
+            [0.4210461244, 0.8871180358, -0.1345980555],
+            [0.6522116213, 3.3884042683, -1.4903045984],
+        ]
+    )
 
     Z = [8, 1, 1, 8, 1, 1]
     masses = [15.999, 1.008, 1.008, 15.999, 1.008, 1.008]
@@ -67,5 +69,5 @@ def test_hydrogen_bonds(options, expected):
 
     assert (optking.stre.HBond(0, 4) in o_frag.intcos) == expected
 
-#test_hydrogen_bonds( (-0.5,0), True)
 
+# test_hydrogen_bonds( (-0.5,0), True)

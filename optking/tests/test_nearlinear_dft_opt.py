@@ -5,7 +5,8 @@ import optking
 #! not quite linear structure
 def test_b3lyp_phenylacetylene():
 
-    phenylacetylene = psi4.geometry("""
+    phenylacetylene = psi4.geometry(
+        """
       0 1
       C          0.50424        2.62143       -1.86897
       C         -0.79405        2.10443       -1.80601
@@ -21,18 +22,18 @@ def test_b3lyp_phenylacetylene():
       C          2.14399        4.16411       -2.85667
       C          3.26501        4.60083       -2.90366
       H          4.24594        4.99166       -2.95361
-    """)
+    """
+    )
 
     psi4.core.clean_options()
     psi4_options = {
-      'guess': 'sad',
-      'basis': 'cc-pVDZ',
+        "guess": "sad",
+        "basis": "cc-pVDZ",
     }
     psi4.set_options(psi4_options)
 
-    result = optking.optimize_psi4('B3LYP')
+    result = optking.optimize_psi4("B3LYP")
 
-    REF_b3lyp_E  = -308.413691796 #TEST 
-    E = result['energies'][-1] #TEST
-    assert psi4.compare_values(REF_b3lyp_E, E, 5, "B3LYP energy") #TEST
-
+    REF_b3lyp_E = -308.413691796  # TEST
+    E = result["energies"][-1]  # TEST
+    assert psi4.compare_values(REF_b3lyp_E, E, 5, "B3LYP energy")  # TEST

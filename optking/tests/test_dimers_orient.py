@@ -11,10 +11,10 @@ import pytest
 # 4) If number of atoms in a fragment is <3, then tests code for all the
 # annoying situations in which some of the 6 interfragment coordinates drop out.
 
+
 @pytest.mark.dimers
-@pytest.mark.parametrize("NA,NB,seed", [(i,j,s) for i in range(1,5) for j in range(1,5) for s in range(1,5)])
+@pytest.mark.parametrize("NA,NB,seed", [(i, j, s) for i in range(1, 5) for j in range(1, 5) for s in range(1, 5)])
 def test_dimerfrag_orient(NA, NB, seed):
     rms_error = optking.dimerfrag.test_orient(NA, NB, randomSeed=seed)
-    print('Error: {:10.5e}'.format(rms_error))
+    print("Error: {:10.5e}".format(rms_error))
     assert rms_error < 1.0e-10
-

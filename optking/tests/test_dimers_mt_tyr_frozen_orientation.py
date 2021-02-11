@@ -6,6 +6,7 @@ import optking
 import numpy as np
 import pytest
 
+
 @pytest.mark.long
 @pytest.mark.dimers
 def test_dimers_mt_tyr_frozen_orientation():
@@ -44,19 +45,19 @@ def test_dimers_mt_tyr_frozen_orientation():
      unit angstrom
     """
     # Note that nocom is needed so psi4 does not move the fragment COM's.
-    
+
     # Define the reference atoms for each fragment, as a linear combination
     # of the positions of one or more atoms of the fragment.
     # If no weights are given, then the atoms are equally weighted.
     MTdimer = {
-      'Natoms per frag': [12, 16],
-      'A Frag'     : 1,
-      'A Ref Atoms': [[1,3,4,6,8], [8], [11]],
-      'A Label'    : 'methylthiophene',
-      'B Frag'     : 2,
-      'B Ref Atoms': [[13,14,15,16,17,18], [13], [15]],
-      'B Label'    : 'tyrosine',
-      'Frozen'     : ['theta_A','theta_B','tau','phi_A','phi_B']
+        "Natoms per frag": [12, 16],
+        "A Frag": 1,
+        "A Ref Atoms": [[1, 3, 4, 6, 8], [8], [11]],
+        "A Label": "methylthiophene",
+        "B Frag": 2,
+        "B Ref Atoms": [[13, 14, 15, 16, 17, 18], [13], [15]],
+        "B Label": "tyrosine",
+        "Frozen": ["theta_A", "theta_B", "tau", "phi_A", "phi_B"],
     }
     # Here are the dimer coordinates that are used with their definitions.
     #  R         : Distance A1 to B1
@@ -65,36 +66,35 @@ def test_dimers_mt_tyr_frozen_orientation():
     #  tau       : Dihedral angle, A2-A1-B1-B2
     #  phi_A     : Dihedral angle, A3-A2-A1-B1
     #  phi_B     : Dihedral angle, A1-B1-B2-B3
-    
+
     # Build the psi4 molecule.
     MTmol = psi4.geometry(init_xyz)
-    
+
     # To see the values of the interfragment coordinates, do this:
-    #MTdimerCoord = optking.dimerfrag.DimerFrag.fromUserDict(MTdimer)
-    #Axyz = MTmol.geometry().np[0:12,]
-    #Bxyz = MTmol.geometry().np[12:,]
-    #MTdimerCoord.update_reference_geometry(Axyz, Bxyz)
-    #print( MTdimerCoord )
-    #quit()
-    
+    # MTdimerCoord = optking.dimerfrag.DimerFrag.fromUserDict(MTdimer)
+    # Axyz = MTmol.geometry().np[0:12,]
+    # Bxyz = MTmol.geometry().np[12:,]
+    # MTdimerCoord.update_reference_geometry(Axyz, Bxyz)
+    # print( MTdimerCoord )
+    # quit()
+
     # Choose a theory
-    psi4.set_memory('4000.0 MB')
+    psi4.set_memory("4000.0 MB")
     psi4.core.clean_options()
     psi4_options = {
-      'basis':'6-31G(d)',
-      'd_convergence': 9,
-      'frag_mode':'multi',
+        "basis": "6-31G(d)",
+        "d_convergence": 9,
+        "frag_mode": "multi",
     }
     psi4.set_options(psi4_options)
-    
+
     # For the moment, 'interfrag_coords' is a non-standard keyword and so
     # must be passed like this.
     # Optimize fragments and R but not interfragment angular coordinates.
-    result = optking.optimize_psi4('b3lyp-d3mbj', xtra_opt_params={'interfrag_coords': str(MTdimer)})
-    
-    E = result['energies'][-1]
+    result = optking.optimize_psi4("b3lyp-d3mbj", xtra_opt_params={"interfrag_coords": str(MTdimer)})
+
+    E = result["energies"][-1]
 
     REF_631Gd_Energy = -939.169521
-    REF_321G_Energy  = -934.237170
-    assert psi4.compare_values(REF_631Gd_Energy, E, 4, "B3LYP-D3MBJ energy")  #TEST
-    
+    REF_321G_Energy = -934.237170
+    assert psi4.compare_values(REF_631Gd_Energy, E, 4, "B3LYP-D3MBJ energy")  # TEST

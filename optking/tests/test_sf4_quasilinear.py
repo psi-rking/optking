@@ -7,27 +7,30 @@ import psi4
 import optking
 import pytest
 
+
 def test_sf4_quasilinear_cart():
-    sf4 = psi4.geometry("""
+    sf4 = psi4.geometry(
+        """
       S  0.00000000  -0.00000000  -0.30618267
       F -1.50688420  -0.00000000   0.56381732
       F  0.00000000  -1.74000000  -0.30618267
       F -0.00000000   1.74000000  -0.30618267
       F  1.50688420   0.00000000   0.56381732
-    """)
+    """
+    )
 
     psi4.core.clean_options()
     psi4_options = {
-      'basis': '6-31G(d)',
-      'scf_type': 'pk',
-      'opt_coordinates': 'cartesian',
+        "basis": "6-31G(d)",
+        "scf_type": "pk",
+        "opt_coordinates": "cartesian",
     }
     psi4.set_options(psi4_options)
 
-    json_output = optking.optimize_psi4('hf')
+    json_output = optking.optimize_psi4("hf")
 
-    E = json_output['energies'][-1]
-    REF_energy    = -795.1433965
+    E = json_output["energies"][-1]
+    REF_energy = -795.1433965
     assert psi4.compare_values(REF_energy, E, 6, "Reference energy")
 
 
@@ -40,26 +43,26 @@ def test_sf4_quasilinear_cart():
 # inside optking. (see the arbitrary ref. axes in Helgaker/Bakken).
 @pytest.mark.skip
 def test_sf4_quasilinear():
-    sf4 = psi4.geometry("""
+    sf4 = psi4.geometry(
+        """
       S  0.00000000  -0.00000000  -0.30618267
       F -1.50688420  -0.00000000   0.56381732
       F  0.00000000  -1.74000000  -0.30618267
       F -0.00000000   1.74000000  -0.30618267
       F  1.50688420   0.00000000   0.56381732
-    """)
+    """
+    )
 
     psi4.core.clean_options()
     psi4_options = {
-      'basis': '6-31G(d)',
-      'scf_type': 'pk',
-      'g_convergence' : 'gau_tight',
+        "basis": "6-31G(d)",
+        "scf_type": "pk",
+        "g_convergence": "gau_tight",
     }
     psi4.set_options(psi4_options)
 
-    json_output = optking.optimize_psi4('hf')
+    json_output = optking.optimize_psi4("hf")
 
-    E = json_output['energies'][-1]
-    REF_energy    = -795.1433965
+    E = json_output["energies"][-1]
+    REF_energy = -795.1433965
     assert psi4.compare_values(REF_energy, E, 6, "Reference energy")
-
-
