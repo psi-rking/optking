@@ -49,6 +49,6 @@ jobs:
       shell: bash
       run: |
         eval "$(conda shell.bash hook)" && conda activate test
-        pytest -rws -v --cov=optking --color=yes --cov-report=xml tests/
+        pytest -rws -v --cov=optking --color=yes --cov-report=xml optking/
     - name: CodeCov  
       uses: codecov/codecov-action@v1
