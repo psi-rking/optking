@@ -1,4 +1,4 @@
-recursive-include optking *.py
+recursive-include optking *.py *.json
 
 include setup.py
 include README.md
