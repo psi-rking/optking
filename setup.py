@@ -20,6 +20,7 @@ if __name__ == "__main__":
         version=versioneer.get_version(),
         cmdclass=versioneer.get_cmdclass(),
         packages=setuptools.find_packages(),
+        include_package_data=True,
         install_requires=[
             "numpy>=1.7",
             "qcelemental>=0.12.0",
