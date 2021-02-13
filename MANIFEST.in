@@ -1,2 +1,9 @@
+recursive-include optking *.py *.json
+
+include setup.py
+include README.md
+include LICENSE
+include MANIFEST.in
+
 include versioneer.py
 include optking/_version.py
