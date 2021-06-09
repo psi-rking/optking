@@ -24,4 +24,4 @@ jobs:
         python -m pip install black
     - name: Lint
       shell: bash
-      run: black optking --check -l 120
+      run: black optking -l 120
