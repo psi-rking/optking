@@ -10,6 +10,8 @@ from . import dimerfrag, frag, v3d
 from .addIntcos import add_cartesian_intcos, connectivity_from_distances
 from .exceptions import OptError
 from .linearAlgebra import symm_mat_inv
+from .printTools import print_array_string, print_mat_string
+from . import optparams as op
 
 
 class Molsys(object):
@@ -717,3 +719,129 @@ class Molsys(object):
         Ginv = symm_mat_inv(G, redundant=True)
         fq = np.dot(np.dot(Ginv, B), fx)
         return fq
+
+
+    def hessian_to_internals(self, H, g_x=None):
+        """converts the hessian from cartesian coordinates into internal coordinates
+
+        Parameters
+        ----------
+        H : np.ndarray
+            Hessian in cartesians
+        g_x : np.ndarray
+            (nat, 3) gradient in cartesians (optional)
+        Returns
+        -------
+        Hq : np.ndarray
+            hessian in internal coordinates
+        """
+        logger = logging.getLogger(__name__)
+        logger.info("Converting Hessian from cartesians to internals.\n")
+        # B = compute_b_mat(intcos, geom)
+        B = self.compute_b_mat()
+        G = np.dot(B, B.T)
+        geom = self.geom
+
+        Ginv = symm_mat_inv(G, redundant=True)
+        Atranspose = np.dot(Ginv, B)
+
+        Hworking = H.copy()
+        if g_x is None:  # A^t Hxy A
+            logger.info("Neglecting force/B-matrix derivative term, only correct at" + "stationary points.\n")
+        else:  # A^t (Hxy - Kxy) A;    K_xy = sum_q ( grad_q[I] d^2(q_I)/(dx dy) )
+            logger.info("Including force/B-matrix derivative term.\n")
+
+            g_q = np.dot(Atranspose, g_x)
+            Ncart = 3 * self.natom
+            dq2dx2 = np.zeros((Ncart, Ncart))  # should be cart x cart for fragment ?
+
+            for I, q in enumerate(self.intcos):
+                dq2dx2[:] = 0
+                q.Dq2Dx2(geom, dq2dx2)  # d^2(q_I)/ dx_i dx_j
+
+                for a in range(Ncart):
+                    for b in range(Ncart):
+                        # adjust indices for multiple fragments
+                        Hworking[a, b] -= g_q[I] * dq2dx2[a, b]
+
+        Hq = np.dot(Atranspose, np.dot(Hworking, Atranspose.T))
+        return Hq
+
+
+    def project_redundancies_and_constraints(self, fq, H):
+        """Project redundancies and constraints out of forces and Hessian"""
+        logger = logging.getLogger(__name__)
+        Nint = self.num_intcos
+        # compute projection matrix = G G^-1
+        G = self.compute_g_mat()
+        G_inv = symm_mat_inv(G, redundant=True)
+        Pprime = np.dot(G, G_inv)
+        # logger.debug("\tProjection matrix for redundancies.\n\n" + print_mat_string(Pprime))
+        # Add constraints to projection matrix
+        C = self.constraint_matrix(fq)  # returns None, if aren't any
+        # fq is passed to Supplement matrix with ranged variables that are at their limit
+
+        if C is not None:
+            logger.debug("Adding constraints for projection.\n" + print_mat_string(C))
+            CPC = np.zeros((Nint, Nint))
+            CPC[:, :] = np.dot(C, np.dot(Pprime, C))
+            CPCInv = symm_mat_inv(CPC, redundant=True)
+            P = np.zeros((Nint, Nint))
+            P[:, :] = Pprime - np.dot(Pprime, np.dot(C, np.dot(CPCInv, np.dot(C, Pprime))))
+        else:
+            P = Pprime
+
+        # Project redundancies out of forces.
+        # fq~ = P fq
+        fq[:] = np.dot(P, fq.T)
+
+        # if op.Params.print_lvl >= 3:
+        logger.debug(
+            "\n\tInternal forces in au, after projection of redundancies" +
+            " and constraints.\n" + print_array_string(fq)
+        )
+        # Project redundancies out of Hessian matrix.
+        # Peng, Ayala, Schlegel, JCC 1996 give H -> PHP + 1000(1-P)
+        # The second term appears unnecessary and sometimes messes up Hessian updating.
+        tempMat = np.dot(H, P)
+        H[:, :] = np.dot(P, tempMat)
+        # for i in range(dim)
+        #    H[i,i] += 1000 * (1.0 - P[i,i])
+        # for i in range(dim)
+        #    for j in range(i):
+        #        H[j,i] = H[i,j] = H[i,j] + 1000 * (1.0 - P[i,j])
+        if op.Params.print_lvl >= 3:
+            logger.debug("Projected (PHP) Hessian matrix\n" + print_mat_string(H))
+
+
+    def apply_external_forces(self, fq, H, stepNumber):
+        logger = logging.getLogger(__name__)
+        report = ""
+        for iF, F in enumerate(self.fragments):
+            for i, intco in enumerate(F.intcos):
+                if intco.has_ext_force:
+                    if report == "":
+                        report = "Adding external forces\n"
+                    # TODO we may need to add iF to the location to get
+                    #  unique locations for each fragment
+                    val = intco.q_show(self.geom)
+                    ext_force = intco.ext_force_val(self.geom)
+
+                    location = self.frag_1st_intco(iF) + i
+                    fq[location] += ext_force
+                    report += "Frag {:d}, Coord {:d}, Value {:10.5f}, Force {:12.6f}\n".format(
+                        iF + 1, i + 1, val, ext_force
+                    )
+                    # modify Hessian later ?
+                    # H[location][location] = k
+                    # Delete coupling between this coordinate and others.
+                    # logger.info("\t\tRemoving off-diagonal coupling between coordinate"
+                    #            + "%d and others." % (location + 1))
+                    # for j in range(len(H)):  # gives first dimension length
+                    #    if j != location:
+                    #        H[j][location] = H[location][j] = 0.0
+
+        logger.info(report)
+
+
+

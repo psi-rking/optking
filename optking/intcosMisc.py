@@ -38,8 +38,9 @@ def Bmat(intcos, geom, masses=None):
     return B
 
 
+"""
 def q_forces(intcos, geom, gradient_x, B=None):
-    """Transforms cartesian gradient to internals
+    #Transforms cartesian gradient to internals
 
     Parameters
     ----------
@@ -59,7 +60,7 @@ def q_forces(intcos, geom, gradient_x, B=None):
     -----
     fq = (BuB^T)^(-1)*B*f_x
 
-    """
+    #
     if not intcos or not len(geom):
         return np.zeros(0)
 
@@ -71,10 +72,12 @@ def q_forces(intcos, geom, gradient_x, B=None):
     Ginv = symm_mat_inv(G, redundant=True)
     fq = np.dot(np.dot(Ginv, B), fx)
     return fq
+"""
 
 
+"""
 def project_redundancies_and_constraints(o_molsys, fq, H):
-    """Project redundancies and constraints out of forces and Hessian"""
+    #Project redundancies and constraints out of forces and Hessian
     logger = logging.getLogger(__name__)
     Nint = o_molsys.num_intcos
     # compute projection matrix = G G^-1
@@ -116,8 +119,10 @@ def project_redundancies_and_constraints(o_molsys, fq, H):
     #        H[j,i] = H[i,j] = H[i,j] + 1000 * (1.0 - P[i,j])
     if op.Params.print_lvl >= 3:
         logger.debug("Projected (PHP) Hessian matrix\n" + print_mat_string(H))
+"""
 
 
+"""
 def apply_external_forces(o_molsys, fq, H, stepNumber):
     logger = logging.getLogger(__name__)
     report = ""
@@ -146,85 +151,6 @@ def apply_external_forces(o_molsys, fq, H, stepNumber):
                 #        H[j][location] = H[location][j] = 0.0
 
     logger.info(report)
-
-
-def hessian_to_internals(H, o_molsys, g_x=None):
-    """converts the hessian from cartesian coordinates into internal coordinates
-
-    Parameters
-    ----------
-    H : ndarray
-        Hessian in cartesians
-    o_molsys : molsys.Molsys
-    g_x : np.ndarray
-        (nat, 3) array
-    Returns
-    -------
-    Hq : ndarray
-    """
-    logger = logging.getLogger(__name__)
-    logger.info("Converting Hessian from cartesians to internals.\n")
-    # B = compute_b_mat(intcos, geom)
-    B = o_molsys.compute_b_mat()
-    G = np.dot(B, B.T)
-    geom = o_molsys.geom
-
-    Ginv = symm_mat_inv(G, redundant=True)
-    Atranspose = np.dot(Ginv, B)
-
-    Hworking = H.copy()
-    if g_x is None:  # A^t Hxy A
-        logger.info("Neglecting force/B-matrix derivative term, only correct at" + "stationary points.\n")
-    else:  # A^t (Hxy - Kxy) A;    K_xy = sum_q ( grad_q[I] d^2(q_I)/(dx dy) )
-        logger.info("Including force/B-matrix derivative term.\n")
-
-        g_q = np.dot(Atranspose, g_x)
-        Ncart = 3 * o_molsys.natom
-        dq2dx2 = np.zeros((Ncart, Ncart))  # should be cart x cart for fragment ?
-
-        for I, q in enumerate(o_molsys.intcos):
-            dq2dx2[:] = 0
-            q.Dq2Dx2(geom, dq2dx2)  # d^2(q_I)/ dx_i dx_j
-
-            for a in range(Ncart):
-                for b in range(Ncart):
-                    # adjust indices for multiple fragments
-                    Hworking[a, b] -= g_q[I] * dq2dx2[a, b]
-
-    Hq = np.dot(Atranspose, np.dot(Hworking, Atranspose.T))
-    return Hq
-
-
-"""
-def massWeightHessianInternals(Hq, intcos, geom, masses):
-    Mass-weights the internal coordinate hessian
-    
-    Parameters
-    ----------
-    Hq : ndarray
-        hessian in internal coordinates
-    intcos : list 
-        internal coordinates (stretches, bends, etc...)
-    geom : ndarray
-        Cartesian geometry
-    massses : ndarray
-
-    Returns
-    -------
-    Hq : ndarray
-
-    Notes
-    -----
-    Mass-weights the hessian by (G^1/2 Hq G^1/2.T) where G is mass-weighted.
-    
-    
-    logger = logging.getLogger(__name__)
-
-    GM = compute_g_mat(intcos, geom, masses)
-    GM_root = symm_mat_root(GM)
-    HqM = np.dot(np.dot(GM_root, Hq), GM_root.T)
-    
-    return HqM
 """
 
 
