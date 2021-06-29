@@ -81,7 +81,7 @@ def project_redundancies_and_constraints(o_molsys, fq, H):
     logger = logging.getLogger(__name__)
     Nint = o_molsys.num_intcos
     # compute projection matrix = G G^-1
-    G = o_molsys.compute_g_mat()
+    G = o_molsys.Gmat()
     G_inv = symm_mat_inv(G, redundant=True)
     Pprime = np.dot(G, G_inv)
     # logger.debug("\tProjection matrix for redundancies.\n\n" + print_mat_string(Pprime))
@@ -154,6 +154,7 @@ def apply_external_forces(o_molsys, fq, H, stepNumber):
 """
 
 
+"""
 def convert_hessian_to_cartesians(Hint, intcos, geom, masses=None, g_q=None):
     logger = logging.getLogger(__name__)
     logger.info("Converting Hessian from internals to cartesians.\n")
@@ -177,6 +178,7 @@ def convert_hessian_to_cartesians(Hint, intcos, geom, masses=None, g_q=None):
                     Hxy[a, b] += g_q[I] * dq2dx2[a, b]
 
     return Hxy
+"""
 
 
 def tors_contains_bend(b, t):

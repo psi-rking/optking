@@ -215,7 +215,7 @@ class Frag:
             frag_atom_symbol_list.append(qcel.periodictable.to_E(self._Z[i]))
         return frag_atom_symbol_list
 
-    def compute_b_mat(self):
+    def Bmat(self):
         B = np.zeros((self.num_intcos, 3 * self.natom))
         for i, intco in enumerate(self._intcos):
             intco.DqDx(self.geom, B[i])

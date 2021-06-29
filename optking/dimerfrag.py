@@ -777,7 +777,7 @@ class DimerFrag(object):
 
     # end def orient_fragment()
 
-    def compute_b_mat(self, A_geom, B_geom, Bmat_in, A_xyz_off=None, B_xyz_off=None):
+    def Bmat(self, A_geom, B_geom, Bmat_in, A_xyz_off=None, B_xyz_off=None):
         """This function adds interfragment rows into an existing B matrix.
             B is (internals, Cartesians).  Often, 6 x 3*(Natoms).
         Parameters
@@ -798,7 +798,7 @@ class DimerFrag(object):
         If A_off and B_off are not given, then the minimal (dimer-only) B-matrix is returned.
         """
         logger = logging.getLogger(__name__)
-        logger.debug("dimerfrag.compute_b_mat...")
+        logger.debug("dimerfrag.Bmat...")
 
         NatomA = len(A_geom)
         NatomB = len(B_geom)
@@ -902,7 +902,7 @@ class DimerFrag(object):
         Natoms = NA + len(Bxyz)
 
         B_analytic = np.zeros((self.num_intcos, 3 * Natoms))
-        self.compute_b_mat(Axyz, Bxyz, B_analytic)
+        self.Bmat(Axyz, Bxyz, B_analytic)
         if printInfo:
             logger.debug("\tAnalytical B matrix")
             logger.debug(print_mat_string(B_analytic))

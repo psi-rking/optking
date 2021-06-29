@@ -638,15 +638,15 @@ class Molsys(object):
         for iDI, DI in enumerate(self._dimer_intcos):
             DI.dq_discontinuity_correction(dq[self.dimerfrag_intco_slice(iDI)])
 
-    # Returns mass-weighted Bmatrix if masses are supplied.
-    def compute_b_mat(self, masses=None):
+    # Returns mass-weighted Bmatrix if use_masses is True.
+    def Bmat(self, massWeight=False):
         # Allocate memory for full system.
         Nint = self.num_intcos
         Ncart = 3 * self.natom
         B = np.zeros((Nint, Ncart))
 
         for iF, F in enumerate(self._fragments):
-            fB = F.compute_b_mat()
+            fB = F.Bmat()
             cart_offset = 3 * self.frag_1st_atom(iF)
             intco_offset = self.frag_1st_intco(iF)
 
@@ -662,13 +662,12 @@ class Molsys(object):
                 B1stAtom = self.frag_1st_atom(DI.B_idx)
                 Axyz = self.frag_geom(DI.A_idx)
                 Bxyz = self.frag_geom(DI.B_idx)
-                DI.compute_b_mat(Axyz, Bxyz, B[self.dimerfrag_intco_slice(i)], A1stAtom, 3 * B1stAtom)  # column offsets
+                DI.Bmat(Axyz, Bxyz, B[self.dimerfrag_intco_slice(i)],
+                    A1stAtom, 3 * B1stAtom)  # column offsets
 
-        if type(masses) is np.ndarray:
-            sqrtm = np.array([np.repeat(np.sqrt(masses), 3)] * Nint, float)
+        if massWeight:
+            sqrtm = np.array([np.repeat(np.sqrt(self.masses), 3)] * Nint, float)
             B[:] = np.divide(B, sqrtm)
-        # print('end of addIntcos.Bmatrix:')
-        # print(B)
         return B
 
     def q_show_forces(self, forces):
@@ -679,8 +678,7 @@ class Molsys(object):
         qaJ = c * forces
         return qaJ
 
-    # Returns mass-weighted Gmatrix if masses are supplied.
-    def compute_g_mat(self, masses=None):
+    def Gmat(self, massWeight=False):
         """Calculates BuB^T (calculates B matrix)
 
         Parameters
@@ -688,7 +686,7 @@ class Molsys(object):
         masses : List, optional
 
         """
-        B = self.compute_b_mat(masses)
+        B = self.Bmat(massWeight)
         return np.dot(B, B.T)
 
     def q_forces(self, gradient_x, B=None):
@@ -712,7 +710,7 @@ class Molsys(object):
             return np.zeros(0)
 
         if B is None:
-            B = self.compute_b_mat()
+            B = self.Bmat()
 
         fx = np.multiply(-1.0, gradient_x)  # gradient -> forces
         G = np.dot(B, B.T)
@@ -721,8 +719,11 @@ class Molsys(object):
         return fq
 
 
-    def hessian_to_internals(self, H, g_x=None):
+    def hessian_to_internals(self, H, g_x=None, massWeight=False):
         """converts the hessian from cartesian coordinates into internal coordinates
+        Hq = A^t (Hxy - Kxy) A, where K_xy = sum_q ( grad_q[I] d^2(q_I)/(dx dy)
+        and A = (BuB^t)^-1 Bu
+
 
         Parameters
         ----------
@@ -730,6 +731,10 @@ class Molsys(object):
             Hessian in cartesians
         g_x : np.ndarray
             (nat, 3) gradient in cartesians (optional)
+        massWeight : boolean
+            whether to keep arbitrary transformation matrix u=I or use 1/mass_i
+            as in spectroscopy or cases where rotations/translations matter.
+
         Returns
         -------
         Hq : np.ndarray
@@ -737,13 +742,21 @@ class Molsys(object):
         """
         logger = logging.getLogger(__name__)
         logger.info("Converting Hessian from cartesians to internals.\n")
-        # B = compute_b_mat(intcos, geom)
-        B = self.compute_b_mat()
-        G = np.dot(B, B.T)
-        geom = self.geom
 
-        Ginv = symm_mat_inv(G, redundant=True)
-        Atranspose = np.dot(Ginv, B)
+        B = self.Bmat()
+
+        if massWeight:
+            u = np.diag( np.repeat(1.0/o_molsys.masses, 3) )
+            G = np.dot(np.dot(B, u), B.T)
+            Ginv = symm_mat_inv(G, redundant=False)
+            Atranspose = np.dot( np.dot(Ginv, B), u)
+        else:
+            G = np.dot(B, B.T)
+            Ginv = symm_mat_inv(G, redundant=True)
+            Atranspose = np.dot(Ginv, B)
+
+        logger.info("B A")
+        logger.info(print_mat_string(B.dot(Atranspose.T)))
 
         Hworking = H.copy()
         if g_x is None:  # A^t Hxy A
@@ -754,6 +767,7 @@ class Molsys(object):
             g_q = np.dot(Atranspose, g_x)
             Ncart = 3 * self.natom
             dq2dx2 = np.zeros((Ncart, Ncart))  # should be cart x cart for fragment ?
+            geom = o_molsys.geom
 
             for I, q in enumerate(self.intcos):
                 dq2dx2[:] = 0
@@ -773,7 +787,7 @@ class Molsys(object):
         logger = logging.getLogger(__name__)
         Nint = self.num_intcos
         # compute projection matrix = G G^-1
-        G = self.compute_g_mat()
+        G = self.Gmat()
         G_inv = symm_mat_inv(G, redundant=True)
         Pprime = np.dot(G, G_inv)
         # logger.debug("\tProjection matrix for redundancies.\n\n" + print_mat_string(Pprime))
@@ -842,6 +856,56 @@ class Molsys(object):
                     #        H[j][location] = H[location][j] = 0.0
 
         logger.info(report)
+
+
+    def convert_hessian_to_cartesians(self, Hint, g_q=None, masses=None):
+        logger = logging.getLogger(__name__)
+        logger.info("Converting Hessian from internals to cartesians.\n")
+
+        B = self.Bmat()
+        # Hxy =  B^t Hij B
+        Hxy = np.dot(B.T, np.dot(Hint, B))
+
+        if g_q is None:  # Hxy =  B^t Hij B
+            s = "Neglecting force/B-matrix derivative term, result is only "
+            s += "strictly correct at stationary points.\n"
+            logger.info(s)
+        else:  # Hxy += dE/dq_I d2(q_I)/dxdy
+            logger.info("Including force/B-matrix derivative term.\n")
+            Ncart = 3 * len(self.natom)
+            geom = o_molsys.geom
+
+            dq2dx2 = np.zeros((Ncart, Ncart))  # should be cart x cart for fragment ?
+            for I, q in enumerate(self.intcos):
+                dq2dx2[:] = 0
+                q.Dq2Dx2(geom, dq2dx2)
+
+                for a in range(Ncart):
+                    for b in range(Ncart):
+                        Hxy[a, b] += g_q[I] * dq2dx2[a, b]
+
+        return Hxy
+
+
+    def gradient_to_cartesians(self, g_q):
+        """converts the gradient from internal into Cartesian coordinates
+
+        Parameters
+        ----------
+        g_q : ndarray
+            internal coordinate gradient
+        o_molsys : molsys.Molsys
+        Returns
+        -------
+        g_x : ndarray
+            Cartesian coordinate gradient
+        """
+        logger = logging.getLogger(__name__)
+        logger.info("Converting gradient from internals to Cartesians.\n")
+        B = self.compute_b_mat()
+        g_x = np.dot(B.T, g_q)
+        return g_x
+
 
 
 

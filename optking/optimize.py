@@ -90,7 +90,7 @@ def optimize(o_molsys, computer):
                         irc_step_number += 1
 
                         # Lowest eigenvector of mass-weighted Hessian.
-                        G = o_molsys.compute_g_mat(o_molsys.masses)
+                        G = o_molsys.Gmat(massWeight=True)
                         G_root = symm_mat_root(G)
                         H_q_m = np.dot(np.dot(G_root, H), G_root.T)
                         vM = lowest_eigenvector_symm_mat(H_q_m)
@@ -141,7 +141,7 @@ def optimize(o_molsys, computer):
                     if op.Params.test_derivative_B:
                         testB.test_derivative_b(o_molsys)
 
-                    # B = intcosMisc.compute_b_mat(o_molsys)
+                    # B = intcosMisc.Bmat(o_molsys)
                     # logger.debug(print_mat_string(B, title="B matrix"))
 
                     # Check if forces indicate we are approaching minimum.
