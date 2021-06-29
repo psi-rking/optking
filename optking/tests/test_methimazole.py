@@ -1,5 +1,6 @@
 import psi4
 import optking
+import pytest
 
 REF_E = -662.48908779
 
