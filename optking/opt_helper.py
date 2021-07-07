@@ -145,7 +145,7 @@ class OptHelper(object):
         """E and gX must be set by the user before calling this method. """
 
         self.compute()
-        self.fq = self.molsys.q_forces(self.gX)
+        self.fq = self.molsys.gradient_to_internals(self.gX, -1.0)
 
         self.molsys.apply_external_forces(self.fq, self._Hq, self.step_num)
         self.molsys.project_redundancies_and_constraints(self.fq, self._Hq)

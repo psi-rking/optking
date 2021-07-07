@@ -82,7 +82,7 @@ def optimize(o_molsys, computer):
                         # Add the transition state as the first IRC point
                         q_0 = o_molsys.q_array()
                         x_0 = o_molsys.geom
-                        f_q = o_molsys.q_forces(gX)
+                        f_q = o_molsys.gradient_to_internals(gX, -1.0)
                         f_x = np.multiply(-1, gX)
                         E = computer.energies[-1]
 
@@ -131,7 +131,7 @@ def optimize(o_molsys, computer):
                     if op.Params.print_lvl >= 4:
                         hessian.show(H, o_molsys)
 
-                    f_q = o_molsys.q_forces(gX)
+                    f_q = o_molsys.gradient_to_internals(gX, -1.0)
                     o_molsys.apply_external_forces(f_q, H, step_number)
                     o_molsys.project_redundancies_and_constraints(f_q, H)
                     o_molsys.q_show()
@@ -202,7 +202,7 @@ def optimize(o_molsys, computer):
 
                         if converged:
                             q_irc_point = o_molsys.q_array()
-                            forces_irc_point = o_molsys.q_forces(gX)
+                            forces_irc_point = o_molsys.gradient_to_internals(gX, -1.0)
                             lineDistStep = IRCfollowing.calc_line_dist_step(o_molsys)
                             arcDistStep = IRCfollowing.calc_arc_dist_step(o_molsys)
 

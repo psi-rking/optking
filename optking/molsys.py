@@ -12,6 +12,7 @@ from .exceptions import OptError
 from .linearAlgebra import symm_mat_inv
 from .printTools import print_array_string, print_mat_string
 from . import optparams as op
+from .intcosMisc import Bmat
 
 
 class Molsys(object):
@@ -689,21 +690,26 @@ class Molsys(object):
         B = self.Bmat(massWeight)
         return np.dot(B, B.T)
 
-    def q_forces(self, gradient_x, B=None):
+    def gradient_to_internals(self, g_x, coeff=1.0, B=None, useMasses=False):
         """Transform cartesian gradient to internals
         Parameters
         ----------
-        gradient_x : np.ndarray
+        g_x : np.ndarray
             (3nat, 1) cartesian gradient
+        coeff : float
+            prefactor coefficient; -1 for forces
         B : np.ndarray, optional
+            B matrix to use
+        useMasses : boolean
+            instead of identity, use u = 1/masses in transformation
 
         Returns
         -------
         ndarray
-            forces in internal coordinates (-1 * gradient)
+            gradient in internal coordinates (coeff==1)
         Notes
         -----
-        fq = (BuB^T)^(-1)*B*f_x
+        g_q = (BuB^T)^(-1)*B*g_x
 
         """
         if not self.intcos_present or self.natom == 0:
@@ -712,14 +718,20 @@ class Molsys(object):
         if B is None:
             B = self.Bmat()
 
-        fx = np.multiply(-1.0, gradient_x)  # gradient -> forces
-        G = np.dot(B, B.T)
-        Ginv = symm_mat_inv(G, redundant=True)
-        fq = np.dot(np.dot(Ginv, B), fx)
-        return fq
+        if useMasses:
+            u = np.diag(np.repeat(1.0/self.masses, 3))
+            G = np.dot(np.dot(B, u), B.T)
+            Ginv = symm_mat_inv(G, redundant=True)
+            g_q = coeff * np.dot(np.dot(np.dot(Ginv, B), u), g_x)
+        else:
+            G = np.dot(B, B.T)
+            Ginv = symm_mat_inv(G, redundant=True)
+            g_q = coeff * np.dot(np.dot(Ginv, B), g_x)
+
+        return g_q
 
 
-    def hessian_to_internals(self, H, g_x=None, massWeight=False):
+    def hessian_to_internals(self, H, g_x=None, useMasses=False):
         """converts the hessian from cartesian coordinates into internal coordinates
         Hq = A^t (Hxy - Kxy) A, where K_xy = sum_q ( grad_q[I] d^2(q_I)/(dx dy)
         and A = (BuB^t)^-1 Bu
@@ -745,18 +757,18 @@ class Molsys(object):
 
         B = self.Bmat()
 
-        if massWeight:
-            u = np.diag( np.repeat(1.0/o_molsys.masses, 3) )
+        if useMasses:
+            u = np.diag( np.repeat(1.0/self.masses, 3) )
             G = np.dot(np.dot(B, u), B.T)
-            Ginv = symm_mat_inv(G, redundant=False)
+            Ginv = symm_mat_inv(G, redundant=True)
             Atranspose = np.dot( np.dot(Ginv, B), u)
         else:
             G = np.dot(B, B.T)
             Ginv = symm_mat_inv(G, redundant=True)
             Atranspose = np.dot(Ginv, B)
 
-        logger.info("B A")
-        logger.info(print_mat_string(B.dot(Atranspose.T)))
+        #logger.info("B A")
+        #logger.info(print_mat_string(B.dot(Atranspose.T)))
 
         Hworking = H.copy()
         if g_x is None:  # A^t Hxy A
@@ -764,19 +776,38 @@ class Molsys(object):
         else:  # A^t (Hxy - Kxy) A;    K_xy = sum_q ( grad_q[I] d^2(q_I)/(dx dy) )
             logger.info("Including force/B-matrix derivative term.\n")
 
-            g_q = np.dot(Atranspose, g_x)
-            Ncart = 3 * self.natom
-            dq2dx2 = np.zeros((Ncart, Ncart))  # should be cart x cart for fragment ?
-            geom = o_molsys.geom
+            g_q = self.gradient_to_internals(g_x, useMasses=useMasses)
 
-            for I, q in enumerate(self.intcos):
-                dq2dx2[:] = 0
-                q.Dq2Dx2(geom, dq2dx2)  # d^2(q_I)/ dx_i dx_j
+            for iF, F in enumerate(self._fragments):
+                dq2dx2 = np.zeros((3*F.natom, 3*F.natom))
+                geom = F.geom
+                # Find start index for this fragment
+                cart_offset = 3 * self.frag_1st_atom(iF)
+                intco_offset = self.frag_1st_intco(iF)
 
-                for a in range(Ncart):
-                    for b in range(Ncart):
-                        # adjust indices for multiple fragments
-                        Hworking[a, b] -= g_q[I] * dq2dx2[a, b]
+                for iIntco, Intco in enumerate(F.intcos):
+                    dq2dx2[:] = 0
+                    Intco.Dq2Dx2(geom, dq2dx2)  # d^2(q_I)/ dx_i dx_j
+
+                    # Loop over Cartesian pairs in fragment
+                    for a in range(3*F.natom):
+                        for b in range(3*F.natom):
+                            Hworking[cart_offset+a, cart_offset+b] -= \
+                                g_q[intco_offset+iIntco] * dq2dx2[a, b]
+    
+            # TODO: dimer coordinates, akin to this
+            if self._dimer_intcos:
+                raise NotImplementedError('transformations with dimer gradients')
+            #if self._dimer_intcos:
+            #    # xyz = self.geom
+            #    for i, DI in enumerate(self._dimer_intcos):
+            #        # print('Aidx:' + str(DI.A_idx) )
+            #        A1stAtom = self.frag_1st_atom(DI.A_idx)
+            #        B1stAtom = self.frag_1st_atom(DI.B_idx)
+            #        Axyz = self.frag_geom(DI.A_idx)
+            #        Bxyz = self.frag_geom(DI.B_idx)
+            #        DI.Bmat(Axyz, Bxyz, B[self.dimerfrag_intco_slice(i)],
+            #            A1stAtom, 3 * B1stAtom)  # column offsets
 
         Hq = np.dot(Atranspose, np.dot(Hworking, Atranspose.T))
         return Hq
@@ -858,7 +889,7 @@ class Molsys(object):
         logger.info(report)
 
 
-    def convert_hessian_to_cartesians(self, Hint, g_q=None, masses=None):
+    def hessian_to_cartesians(self, Hint, g_q=None):
         logger = logging.getLogger(__name__)
         logger.info("Converting Hessian from internals to cartesians.\n")
 
@@ -872,17 +903,26 @@ class Molsys(object):
             logger.info(s)
         else:  # Hxy += dE/dq_I d2(q_I)/dxdy
             logger.info("Including force/B-matrix derivative term.\n")
-            Ncart = 3 * len(self.natom)
-            geom = o_molsys.geom
 
-            dq2dx2 = np.zeros((Ncart, Ncart))  # should be cart x cart for fragment ?
-            for I, q in enumerate(self.intcos):
-                dq2dx2[:] = 0
-                q.Dq2Dx2(geom, dq2dx2)
+            for iF, F in enumerate(self._fragments):
+                dq2dx2 = np.zeros((3*F.natom, 3*F.natom))
+                geom = F.geom
+                cart_offset = 3 * self.frag_1st_atom(iF)
+                intco_offset = self.frag_1st_intco(iF)
 
-                for a in range(Ncart):
-                    for b in range(Ncart):
-                        Hxy[a, b] += g_q[I] * dq2dx2[a, b]
+                for iIntco, Intco in enumerate(F.intcos):
+                    dq2dx2[:] = 0
+                    Intco.Dq2Dx2(geom, dq2dx2)  # d^2(q_I)/ dx_i dx_j
+
+                    # Loop over Cartesian pairs in fragment
+                    for a in range(3*F.natom):
+                        for b in range(3*F.natom):
+                            Hxy[cart_offset+a, cart_offset+b] += \
+                                g_q[intco_offset+iIntco] * dq2dx2[a, b]
+
+            # TODO: dimer coordinates
+            if self._dimer_intcos:
+                raise NotImplementedError('transformations with dimer gradients')
 
         return Hxy
 
@@ -894,7 +934,6 @@ class Molsys(object):
         ----------
         g_q : ndarray
             internal coordinate gradient
-        o_molsys : molsys.Molsys
         Returns
         -------
         g_x : ndarray
@@ -902,10 +941,198 @@ class Molsys(object):
         """
         logger = logging.getLogger(__name__)
         logger.info("Converting gradient from internals to Cartesians.\n")
-        B = self.compute_b_mat()
+        B = self.Bmat()
         g_x = np.dot(B.T, g_q)
         return g_x
 
 
+    def test_Bmat(self):
+        """ Test the analytic B matrix (dq/dx) via finite differences.
+        The 5-point formula should be good to DISP_SIZE^4 - a few
+        unfortunates will be slightly worse.
+
+        Returns
+        -------
+        passes : boolean
+            Returns True or False, doesn't raise exceptions
+        """
+        logger = logging.getLogger(__name__)
+        Natom = self.natom
+        Nintco = self.num_intcos
+        DISP_SIZE = 0.01
+        MAX_ERROR = 50 * DISP_SIZE * DISP_SIZE * DISP_SIZE * DISP_SIZE
+
+        logger.info("\tTesting B-matrix numerically...")
+
+        B_analytic = self.Bmat()
+
+        if op.Params.print_lvl >= 3:
+            logger.debug("Analytic B matrix in au")
+            logger.debug(print_mat_string(B_analytic))
+
+        B_fd = np.zeros((Nintco, 3 * Natom))
+
+        self.update_dihedral_orientations()
+        self.fix_bend_axes()
+
+        geom_orig = self.geom  # to restore below
+        coord = self.geom  # returns a copy
+
+        for atom in range(Natom):
+            for xyz in range(3):
+                coord[atom, xyz] -= DISP_SIZE
+                self.geom = coord
+                q_m = self.q()
+
+                coord[atom, xyz] -= DISP_SIZE
+                self.geom = coord
+                q_m2 = self.q()
+
+                coord[atom, xyz] += 3 * DISP_SIZE
+                self.geom = coord
+                q_p = self.q()
+
+                coord[atom, xyz] += DISP_SIZE
+                self.geom = coord
+                q_p2 = self.q()
+
+                coord[atom, xyz] -= 2 * DISP_SIZE  # restore to original
+                for i in range(Nintco):
+                    B_fd[i, 3 * atom + xyz] = (q_m2[i] - 8 * q_m[i] + 
+                        8 * q_p[i] - q_p2[i]) / (12.0 * DISP_SIZE)
+
+        if op.Params.print_lvl >= 3:
+            logger.debug("Numerical B matrix in au, DISP_SIZE = %lf\n" % DISP_SIZE +
+                print_mat_string(B_fd))
+
+        self.geom = geom_orig  # restore original
+        self.unfix_bend_axes()
+
+        max_error = -1.0
+        max_error_intco = -1
+        for i in range(Nintco):
+            for j in range(3 * Natom):
+                if np.fabs(B_analytic[i, j] - B_fd[i, j]) > max_error:
+                    max_error = np.fabs(B_analytic[i][j] - B_fd[i][j])
+                    max_error_intco = i
+
+        logger.info("\t\tMaximum difference is %.1e for internal coordinate %d." % 
+            (max_error, max_error_intco + 1))
+        # logger.info("\t\tThis coordinate is %s" % str(intcos[max_error_intco]))
+
+        if max_error > MAX_ERROR:
+            logger.warning(
+                "\tB-matrix could be in error. However, numerical tests may fail for\n"
+                + "\ttorsions at 180 degrees, and slightly for linear bond angles."
+                + "This is OK.\n"
+            )
+            return False
+        else:
+            logger.info("\t...Passed.")
+            return True
+
+
+    # Test the analytic derivative B matrix (d2q/dx2) via finite differences
+    # The 5-point formula should be good to DISP_SIZE^4 -
+    #  a few unfortunates will be slightly worse
+    def test_derivative_Bmat(self):
+        """ Test the analytic derivative B matrix (d2q/dx2) via finite
+        differences.  The 5-point formula should be good to DISP_SIZE^4 - a few
+        unfortunates will be slightly worse.
+
+        Returns
+        -------
+        passes : boolean
+            Returns True or False, doesn't raise exceptions
+        """
+        logger = logging.getLogger(__name__)
+        DISP_SIZE = 0.01
+        MAX_ERROR = 10 * DISP_SIZE * DISP_SIZE * DISP_SIZE * DISP_SIZE
+
+        geom_orig = self.geom  # to restore below
+
+        logger.info("\tTesting Derivative B-matrix numerically.")
+        if self._dimer_intcos:
+            logger.info("\tDerivative B-matrix for interfragment modes not yet implemented.")
+
+        warn = False
+        for iF, F in enumerate(self._fragments):
+            logger.info("\t\tTesting fragment %d." % (iF + 1))
+
+            Natom = F.natom
+            Nintco = F.num_intcos
+            coord = F.geom  # not a copy
+            dq2dx2_fd = np.zeros((3 * Natom, 3 * Natom))
+            dq2dx2_analytic = np.zeros((3 * Natom, 3 * Natom))
+
+            for i, I in enumerate(F._intcos):
+                logger.info("\t\tTesting internal coordinate %d :" % (i + 1))
+
+                dq2dx2_analytic.fill(0)
+                I.Dq2Dx2(coord, dq2dx2_analytic)
+
+                if op.Params.print_lvl >= 3:
+                    logger.info("Analytic B' (Dq2Dx2) matrix in au\n" +
+                        print_mat_string(dq2dx2_analytic))
+
+                # compute B' matrix from B matrices
+                for atom_a in range(Natom):
+                    for xyz_a in range(3):
+
+                        coord[atom_a, xyz_a] += DISP_SIZE
+                        B_p = Bmat(F.intcos, coord)
+
+                        coord[atom_a, xyz_a] += DISP_SIZE
+                        B_p2 = Bmat(F.intcos, coord)
+
+                        coord[atom_a, xyz_a] -= 3.0 * DISP_SIZE
+                        B_m = Bmat(F.intcos, coord)
+
+                        coord[atom_a, xyz_a] -= DISP_SIZE
+                        B_m2 = Bmat(F.intcos, coord)
+
+                        coord[atom_a, xyz_a] += 2 * DISP_SIZE  # restore coord to orig
+
+                        for atom_b in range(Natom):
+                            for xyz_b in range(3):
+                                dq2dx2_fd[3 * atom_a + xyz_a, 3 * atom_b + xyz_b] = (
+                                    B_m2[i, 3 * atom_b + xyz_b]
+                                    - 8 * B_m[i, 3 * atom_b + xyz_b]
+                                    + 8 * B_p[i, 3 * atom_b + xyz_b]
+                                    - B_p2[i][3 * atom_b + xyz_b]
+                                ) / (12.0 * DISP_SIZE)
+
+                if op.Params.print_lvl >= 3:
+                    logger.info("\nNumerical B' (Dq2Dx2) matrix in au, DISP_SIZE = %f\n" %
+                            DISP_SIZE + print_mat_string(dq2dx2_fd))
+
+                max_error = -1.0
+                max_error_xyz = (-1, -1)
+                for I in range(3 * Natom):
+                    for J in range(3 * Natom):
+                        if np.fabs(dq2dx2_analytic[I, J] - dq2dx2_fd[I, J]) > max_error:
+                            max_error = np.fabs(dq2dx2_analytic[I][J] - dq2dx2_fd[I][J])
+                            max_error_xyz = (I, J)
+
+                logger.info( "\t\tMax. difference is %.1e; 2nd derivative wrt %d and %d."
+                    % (max_error, max_error_xyz[0], max_error_xyz[1]))
+
+                if max_error > MAX_ERROR:
+                    warn = True
+
+        self.geom = geom_orig  # restore original
+        self.unfix_bend_axes()
+
+        if warn:
+            logger.warning("""
+            \tSome values did not agree.  However, numerical tests may fail for
+            \ttorsions at 180 degrees and linear bond angles. This is OK
+            \tIf discontinuities are interfering with a geometry optimization
+            \ttry restarting your optimization at an updated geometry, and/or
+            \tremove angular coordinates that are fixed by symmetry.""")
+            return False
+        else:
+            logger.info("\t...Passed.")
+            return True
 
 
