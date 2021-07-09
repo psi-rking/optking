@@ -667,7 +667,7 @@ class Molsys(object):
                     A1stAtom, 3 * B1stAtom)  # column offsets
 
         if massWeight:
-            sqrtm = np.array([np.repeat(np.sqrt(self.masses), 3)] * Nint, float)
+            sqrtm = np.broadcast_to(np.repeat(np.sqrt(self.masses),3), (Nint, Ncart))
             B[:] = np.divide(B, sqrtm)
         return B
 
@@ -982,24 +982,23 @@ class Molsys(object):
             for xyz in range(3):
                 coord[atom, xyz] -= DISP_SIZE
                 self.geom = coord
-                q_m = self.q()
+                q_m = np.array( self.q() )
 
                 coord[atom, xyz] -= DISP_SIZE
                 self.geom = coord
-                q_m2 = self.q()
+                q_m2 = np.array( self.q() )
 
                 coord[atom, xyz] += 3 * DISP_SIZE
                 self.geom = coord
-                q_p = self.q()
+                q_p = np.array( self.q() )
 
                 coord[atom, xyz] += DISP_SIZE
                 self.geom = coord
-                q_p2 = self.q()
+                q_p2 = np.array( self.q() )
 
                 coord[atom, xyz] -= 2 * DISP_SIZE  # restore to original
-                for i in range(Nintco):
-                    B_fd[i, 3 * atom + xyz] = (q_m2[i] - 8 * q_m[i] + 
-                        8 * q_p[i] - q_p2[i]) / (12.0 * DISP_SIZE)
+                B_fd[:, 3 * atom + xyz] = (q_m2 - 8 * q_m + 8 * q_p - q_p2) / \
+                    (12.0 * DISP_SIZE)
 
         if op.Params.print_lvl >= 3:
             logger.debug("Numerical B matrix in au, DISP_SIZE = %lf\n" % DISP_SIZE +
@@ -1008,13 +1007,17 @@ class Molsys(object):
         self.geom = geom_orig  # restore original
         self.unfix_bend_axes()
 
-        max_error = -1.0
-        max_error_intco = -1
-        for i in range(Nintco):
-            for j in range(3 * Natom):
-                if np.fabs(B_analytic[i, j] - B_fd[i, j]) > max_error:
-                    max_error = np.fabs(B_analytic[i][j] - B_fd[i][j])
-                    max_error_intco = i
+        #max_error = -1.0
+        #max_error_intco = -1
+        #for i in range(Nintco):
+        #    for j in range(3 * Natom):
+        #        if np.fabs(B_analytic[i, j] - B_fd[i, j]) > max_error:
+        #            max_error = np.fabs(B_analytic[i][j] - B_fd[i][j])
+        #            max_error_intco = i
+        B_delta = np.fabs(B_analytic -  B_fd)
+        max_index = np.unravel_index(np.argmax(B_delta), B_delta.shape)
+        max_error_intco = max_index[0]
+        max_error = B_delta[max_index]
 
         logger.info("\t\tMaximum difference is %.1e for internal coordinate %d." % 
             (max_error, max_error_intco + 1))

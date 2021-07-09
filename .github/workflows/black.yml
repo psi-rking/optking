@@ -24,4 +24,14 @@ jobs:
         python -m pip install black
     - name: Lint
       shell: bash
-      run: black optking -l 120
+      run: black optking --check -l 120
+      if: failure()
+      run: |
+        black optking -l 120
+        git config --global user.name 'autoblack'
+        git config --global user.email 'cclauss@users.noreply.github.com'
+        git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/$GITHUB_REPOSITORY
+        git checkout $GITHUB_HEAD_REF
+        git commit -am "fixup: Format Python code with Black"
+        git push
+
