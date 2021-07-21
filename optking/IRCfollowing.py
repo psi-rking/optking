@@ -41,7 +41,7 @@ def compute_pivot_and_guess_points(oMolsys, v, IRCstepSize):
     logger = logging.getLogger(__name__)
 
     # Compute and save pivot point
-    G = oMolsys.compute_g_mat(oMolsys.masses)
+    G = oMolsys.Gmat(massWeight=True)
     N = step_n_factor(G, v)
     dq_pivot = 0.5 * N * IRCstepSize * np.dot(G, v)
     logger.debug("\n Dq to Pivot Point:" + print_array_string(dq_pivot))
@@ -72,7 +72,7 @@ def dq_irc(oMolsys, E, f_q, H_q, s, dqGuess):
     logger = logging.getLogger(__name__)
     logger.debug("Starting IRC constrained optimization\n")
 
-    G_prime = oMolsys.compute_g_mat(oMolsys.masses)
+    G_prime = oMolsys.Gmat(massWeight=True)
     logger.debug("Mass-weighted Gmatrix at hypersphere point: \n" + print_mat_string(G_prime))
     G_prime_root = symm_mat_root(G_prime)
     G_prime_inv = symm_mat_inv(G_prime, redundant=True)
@@ -271,7 +271,7 @@ def calc_lagrangian_derivs(Lambda, HMEigValues, HMEigVects, g_M, p_M, s):
 
 # mass-weighted distance from previous rxnpath point to new one
 def calc_line_dist_step(oMolsys):
-    G = oMolsys.compute_g_mat(oMolsys.masses)
+    G = oMolsys.Gmat(massWeight=True)
     G_root = symm_mat_root(G)
     G_inv = symm_mat_inv(G_root, redundant=True)
     G_root_inv = symm_mat_root(G_inv)
@@ -296,7 +296,7 @@ def calc_arc_dist_step(oMolsys):
     line = np.subtract(q1, q0)  # Dq from rxnpath pt. to rxnpath pt.
 
     # mass-weight
-    G = oMolsys.compute_g_mat(oMolsys.masses)
+    G = oMolsys.Gmat(massWeight=True)
     G_root = symm_mat_root(G)
     G_inv = symm_mat_inv(G_root, redundant=True)
     G_root_inv = symm_mat_root(G_inv)

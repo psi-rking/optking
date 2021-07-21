@@ -68,7 +68,7 @@ class Tors(Simple):
         if self.has_ext_force:
             s += ">"
 
-        s += "d"
+        s += "D"
 
         s += "(%d,%d,%d,%d)" % (self.A + 1, self.B + 1, self.C + 1, self.D + 1)
         if self.ranged:

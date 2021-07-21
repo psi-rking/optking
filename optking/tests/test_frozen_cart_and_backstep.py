@@ -31,7 +31,7 @@ opt2 = {"frozen_cartesian": f2}
 opt3 = {"frozen_cartesian": f3}
 opt4 = {"frozen_cartesian": f1, "opt_coordinates": "redundant"}
 
-freeze_params = [
+optking__freeze_params = [
     (opt0, HOOH_E),
     (opt1, HOOH_E_frozen_H_xyz),
     (opt2, HOOH_E_frozen_O_xyz),
@@ -42,7 +42,8 @@ freeze_params = [
 
 @pytest.mark.parametrize(
     "options, expected",
-    freeze_params,
+    #freeze_params,
+    optking__freeze_params,
     ids=["Only backstep", "freeze H", "freeze O", "freeze individual x,y,z", "freeze then change coord"],
 )
 def test_hooh_freeze_xyz_Hs(options, expected):
@@ -59,14 +60,13 @@ def test_hooh_freeze_xyz_Hs(options, expected):
     psi4.core.clean_options()
     psi4_options = {
         "basis": "cc-pvdz",
-        "opt_coordinates": "cartesian",
-        "g_convergence": "gau_tight",
-        "geom_maxiter": 20,
-        "consecutive_backsteps": 1,
+        "optking__opt_coordinates": "cartesian",
+        "optking__g_convergence": "gau_tight",
+        "optking__geom_maxiter": 20,
+        "optking__consecutive_backsteps": 1,
     }
     psi4.set_options(psi4_options)
-
-    psi4.set_module_options("OPTKING", options)
+    psi4.set_options(options)
 
     json_output = optking.optimize_psi4("hf")
 
@@ -91,7 +91,7 @@ def test_frozen_cart_h2o():
     psi4.core.clean_options()
     psi4_options = {"basis": "cc-pvdz", "reference": "rhf", "scf_type": "df", "max_energy_g_convergence": 7}
     psi4.set_options(psi4_options)
-    psi4.set_module_options("OPTKING", {"frozen_cartesian": """1 xyz"""})
+    psi4.set_options({"optking__frozen_cartesian": """1 xyz"""})
 
     json_output = optking.optimize_psi4("hf")
 
