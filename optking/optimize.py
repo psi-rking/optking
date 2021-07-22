@@ -80,15 +80,9 @@ def optimize(o_molsys, computer):
                         logger.debug(print_mat_string(H, title="Transformed Hessian in internals."))
 
                         # Add the transition state as the first IRC point
-                        # x_0 = o_molsys.geom
-                        # q_0 = intcosMisc.q_values(o_molsys.intcos, x_0)
-                        # f_x = np.multiply(-1, gX)
-                        # B = intcosMisc.compute_b_mat(o_molsys.intcos, x_0)
-                        # f_q = intcosMisc.q_forces(q_0, x_0, gX, B)
-
                         q_0 = o_molsys.q_array()
                         x_0 = o_molsys.geom
-                        f_q = o_molsys.q_forces(gX)
+                        f_q = o_molsys.gradient_to_internals(gX, -1.0)
                         f_x = np.multiply(-1, gX)
                         E = computer.energies[-1]
 
@@ -96,7 +90,7 @@ def optimize(o_molsys, computer):
                         irc_step_number += 1
 
                         # Lowest eigenvector of mass-weighted Hessian.
-                        G = o_molsys.compute_g_mat(o_molsys.masses)
+                        G = o_molsys.Gmat(massWeight=True)
                         G_root = symm_mat_root(G)
                         H_q_m = np.dot(np.dot(G_root, H), G_root.T)
                         vM = lowest_eigenvector_symm_mat(H_q_m)
@@ -137,9 +131,9 @@ def optimize(o_molsys, computer):
                     if op.Params.print_lvl >= 4:
                         hessian.show(H, o_molsys)
 
-                    f_q = o_molsys.q_forces(gX)
-                    intcosMisc.apply_external_forces(o_molsys, f_q, H, step_number)
-                    intcosMisc.project_redundancies_and_constraints(o_molsys, f_q, H)
+                    f_q = o_molsys.gradient_to_internals(gX, -1.0)
+                    o_molsys.apply_external_forces(f_q, H, step_number)
+                    o_molsys.project_redundancies_and_constraints(f_q, H)
                     o_molsys.q_show()
 
                     if op.Params.test_B:
@@ -147,7 +141,7 @@ def optimize(o_molsys, computer):
                     if op.Params.test_derivative_B:
                         testB.test_derivative_b(o_molsys)
 
-                    # B = intcosMisc.compute_b_mat(o_molsys)
+                    # B = intcosMisc.Bmat(o_molsys)
                     # logger.debug(print_mat_string(B, title="B matrix"))
 
                     # Check if forces indicate we are approaching minimum.
@@ -208,7 +202,7 @@ def optimize(o_molsys, computer):
 
                         if converged:
                             q_irc_point = o_molsys.q_array()
-                            forces_irc_point = o_molsys.q_forces(gX)
+                            forces_irc_point = o_molsys.gradient_to_internals(gX, -1.0)
                             lineDistStep = IRCfollowing.calc_line_dist_step(o_molsys)
                             arcDistStep = IRCfollowing.calc_arc_dist_step(o_molsys)
 
@@ -487,7 +481,7 @@ def get_hess_grad(computer, o_molsys):
         g_cart = np.asarray(grad)
     # Likely not at stationary point. Include forces
     # ADDENDUM currently neglects forces term for all points - including non-stationary
-    H = intcosMisc.hessian_to_internals(h_cart, o_molsys)
+    H = o_molsys.hessian_to_internals(h_cart)
 
     return H, g_cart
 

@@ -23,7 +23,7 @@ def test_b(oMolsys):
 
     logger.info("\tTesting B-matrix numerically...")
 
-    B_analytic = oMolsys.compute_b_mat()
+    B_analytic = oMolsys.Bmat()
 
     if op.Params.print_lvl >= 3:
         logger.debug("Analytic B matrix in au")

@@ -37,7 +37,6 @@ import numpy as np
 from . import compute_wrappers, hessian, history, molsys, optparams, optwrapper
 from .convCheck import conv_check
 from .exceptions import OptError
-from .intcosMisc import apply_external_forces, hessian_to_internals, project_redundancies_and_constraints
 from .optimize import get_pes_info, make_internal_coords, prepare_opt_output
 from .stepAlgorithms import take_step
 
@@ -146,10 +145,10 @@ class OptHelper(object):
         """E and gX must be set by the user before calling this method. """
 
         self.compute()
-        self.fq = self.molsys.q_forces(self.gX)
+        self.fq = self.molsys.gradient_to_internals(self.gX, -1.0)
 
-        apply_external_forces(self.molsys, self.fq, self._Hq, self.step_num)
-        project_redundancies_and_constraints(self.molsys, self.fq, self._Hq)
+        self.molsys.apply_external_forces(self.fq, self._Hq, self.step_num)
+        self.molsys.project_redundancies_and_constraints(self.fq, self._Hq)
 
         self.history.append(self.molsys.geom, self.E, self.fq)
         self.history.nuclear_repulsion_energy = self.computer.trajectory[-1]["properties"]["nuclear_repulsion_energy"]

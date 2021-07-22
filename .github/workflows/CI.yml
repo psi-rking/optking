@@ -5,6 +5,12 @@ on: [push, pull_request]
 jobs:
   build:
 
+    # prevent actions from running on both the push to the PR and PR
+    # only run actions on PRs originating from a fork
+    if:
+      github.event_name == 'push' || github.event.pull_request.head.repo.full_name !=
+      github.repository
+
     runs-on: ubuntu-latest
     strategy:
       matrix:

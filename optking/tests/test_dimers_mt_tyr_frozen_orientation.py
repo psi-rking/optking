@@ -9,6 +9,7 @@ import pytest
 
 @pytest.mark.long
 @pytest.mark.dimers
+@pytest.mark.skip(reason="psi4 needs its d3 fixed")
 def test_dimers_mt_tyr_frozen_orientation():
     # Starting at R ~ 5 Angstroms
     init_xyz = """

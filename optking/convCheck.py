@@ -66,7 +66,7 @@ def conv_check(iterNum, oMolsys, dq, f, energies, q_pivot=None):
     DE = energy - last_energy
 
     if op.Params.opt_type == "IRC":
-        G_m = oMolsys.compute_g_mat(oMolsys.masses)
+        G_m = oMolsys.Gmat(massWeight=True)
         # G_m_inv = np.linalg.inv(G_m)
         G_m_inv = symm_mat_inv(G_m, redundant=True)
         q = oMolsys.q_array()
