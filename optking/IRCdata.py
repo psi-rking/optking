@@ -200,9 +200,11 @@ class IRCdata(object):
         index = -1 if step is None else step
         return self.irc_points[index].step_dist
 
-    # Given current forces, checks if we are at/near a minimum
-    # For now, checks if forces are opposite those are previous pivot point
     def test_for_irc_minimum(self, f_q):
+        """ Given current forces, checks if we are at/near a minimum
+        For now, checks if forces are opposite those are previous pivot point
+        """
+
         unit_f = f_q / np.linalg.norm(f_q)  # current forces
         f_rxn = self.f_q()  # forces at most recent rxnpath point
         unit_f_rxn = f_rxn / np.linalg.norm(f_rxn)
@@ -220,26 +222,6 @@ class IRCdata(object):
         #    return True
 
         return False
-
-    def final_geom_coords(self, intcos):
-        """For clarity, display geometry and internal coordinates for the final IRC step
-        IRC algorithm will display an additional IRC step and constrained optimization
-        after this step has been reached"""
-
-        s = "Final Geometry: [Ang] \n"
-        s += print_mat_string(self.x())
-        s += "\n\n\tInternal Coordinates: [Ang/Deg] \n"
-        s += "\t - Coordinate -           - BOHR/RAD -       - ANG/DEG -\n"
-
-        for itr, x in enumerate(intcos):
-            s += "\t%-18s=%17.6f%19.6f\n" % (
-                x,
-                self.q()[itr],
-                self.q()[itr] * x.q_show_factor,
-            )
-            # s += ("\t%-18s=%17.6f\n" % (x, IRCdata.history.q()[itr] * x.q_show_factor))
-
-        return s
 
     def progress_report(self):
         blocks = 4  # TODO: make dynamic

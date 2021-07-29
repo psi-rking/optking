@@ -447,6 +447,12 @@ class DimerFrag(object):
     def q_show_array(self):
         return np.asarray(self.q_show())
 
+    def show_intcos(self):
+        return self.pseudo_frag.show_intcos()
+
+    def print_intcos(self):
+        return self.pseudo_frag.print_intcos()
+
     def update_reference_geometry(self, Ageom, Bgeom):
         self.pseudo_frag.geom[:] = 0.0
         for i, rp in enumerate(self._Arefs):  # First reference atom goes in 3rd row!

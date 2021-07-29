@@ -233,18 +233,18 @@ class Molsys(object):
             geom[row : (row + F.natom), :] = F.geom
         return geom
 
-    def frag_geom(self, iF):
-        """cartesian geometry for fragment i"""
-        return self._fragments[iF].geom
-        # return copy instead?
-        # using in displace_molsys
-
     @geom.setter
     def geom(self, newgeom):
         """ setter for geometry"""
         for iF, F in enumerate(self._fragments):
             row = self.frag_1st_atom(iF)
             F.geom[:] = newgeom[row : (row + F.natom), :]
+
+    def frag_geom(self, iF):
+        """cartesian geometry for fragment i"""
+        return self._fragments[iF].geom
+        # return copy instead?
+        # using in displace_molsys
 
     @property
     def masses(self):
@@ -370,11 +370,12 @@ class Molsys(object):
         start = self.dimerfrag_1st_intco(iDI)
         return slice(start, start + self._dimer_intcos[iDI].num_intcos)
 
+    def show_intcos(self):
+        intco_string = ["\tFragment %d\n%s" % (i + 1, frag.show_intcos()) for i, frag in enumerate(self.all_fragments)]
+        return "".join(intco_string)
+
     def print_intcos(self):
-        for iF, F in enumerate(self._fragments):
-            self.logger.info("Fragment %d\n" % (iF + 1))
-            F.print_intcos()
-        return
+        logger.info("%s", self.show_intcos())
 
     # If connectivity is provided, only intrafragment connections
     # are used.  Interfragment connections are ignored here.
@@ -398,7 +399,7 @@ class Molsys(object):
         """Return a string of the geometry in [A]"""
         molsys_geometry = ""
         for iF, F in enumerate(self._fragments):
-            molsys_geometry += "\tFragment {:d} (Ang)\n".format(iF + 1)
+            molsys_geometry += "\tFragment {:d} (Ang)\n\n".format(iF + 1)
             molsys_geometry += F.show_geom()
         return molsys_geometry
 
@@ -861,14 +862,11 @@ class Molsys(object):
 
     def apply_external_forces(self, fq, H, stepNumber):
         logger = logging.getLogger(__name__)
-        report = ""
+        report = "Adding external forces\n"
+
         for iF, F in enumerate(self.fragments):
             for i, intco in enumerate(F.intcos):
                 if intco.has_ext_force:
-                    if report == "":
-                        report = "Adding external forces\n"
-                    # TODO we may need to add iF to the location to get
-                    #  unique locations for each fragment
                     val = intco.q_show(self.geom)
                     ext_force = intco.ext_force_val(self.geom)
 
@@ -886,7 +884,8 @@ class Molsys(object):
                     #    if j != location:
                     #        H[j][location] = H[location][j] = 0.0
 
-        logger.info(report)
+        if "Frag" in report:
+            logger.info(report)
 
 
     def hessian_to_cartesians(self, Hint, g_q=None):

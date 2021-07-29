@@ -374,38 +374,31 @@ def linear_bend_check(o_molsys, dq):
     """
 
     logger = logging.getLogger(__name__)
-    linearBends = []
-    linearBendsMissing = []
+    linear_bends = []
 
-    for iF, F in enumerate(o_molsys.fragments):
-        for i, intco in enumerate(F.intcos):
+    for frag_index, frag in enumerate(o_molsys.fragments):
+        for i, intco in enumerate(frag.intcos):
             if isinstance(intco, bend.Bend):
-                newVal = intco.q(F.geom) + dq[o_molsys.frag_1st_intco(iF) + i]
+                new_val = intco.q(frag.geom) + dq[o_molsys.frag_1st_intco(frag_index) + i]
                 A, B, C = intco.A, intco.B, intco.C
 
                 # <ABC < 0.  A-C-B should be linear bends.
-                if newVal < 0.0:
-                    linearBends.append(bend.Bend(A, C, B, bend_type="LINEAR"))
-                    linearBends.append(bend.Bend(A, C, B, bend_type="COMPLEMENT"))
+                if new_val < 0.0:
+                    linear_bends.append(bend.Bend(A, C, B, bend_type="LINEAR"))
+                    linear_bends.append(bend.Bend(A, C, B, bend_type="COMPLEMENT"))
 
                 # <ABC~pi. Add A-B-C linear bends.
-                elif newVal > op.Params.linear_bend_threshold:
-                    linearBends.append(bend.Bend(A, B, C, bend_type="LINEAR"))
-                    linearBends.append(bend.Bend(A, B, C, bend_type="COMPLEMENT"))
+                elif new_val > op.Params.linear_bend_threshold:
+                    linear_bends.append(bend.Bend(A, B, C, bend_type="LINEAR"))
+                    linear_bends.append(bend.Bend(A, B, C, bend_type="COMPLEMENT"))
 
-        if linearBends:
-            linear_bend_string = "\n\tThe following linear bends should be present:\n"
-            for b in linearBends:
-                linear_bend_string += "\t" + str(b)
+        missing_bends = [b for b in linear_bends if b not in frag.intcos]
+        bend_report = [f"{b}, already present.\n" if b in missing_bends else f"{b}, missing.\n" for b in linear_bends]
 
-                if b in F.intcos:
-                    linear_bend_string += ", already present.\n"
-                else:
-                    linear_bend_string += ", missing.\n"
-                    linearBendsMissing.append(b)
-            logger.warning(linearBendsMissing)
+        if missing_bends:
+            logger.warning("\n\tThe following linear bends should be present:\n %s", "\t".join(bend_report))
 
-    return linearBendsMissing
+    return missing_bends
 
 
 def frozen_stre_from_input(frozen_stre_list, o_molsys):

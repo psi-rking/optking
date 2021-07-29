@@ -2,7 +2,7 @@ import logging
 
 import numpy as np
 
-from . import IRCdata, IRCfollowing, addIntcos, convCheck, hessian, history, intcosMisc
+from . import IRCdata, IRCfollowing, addIntcos, convcheck, hessian, history, intcosMisc
 from . import optparams as op
 from . import stepAlgorithms, testB
 from .exceptions import AlgError, IRCendReached, OptError
@@ -46,7 +46,7 @@ def optimize(o_molsys, computer):
             IRCdata.history.set_atom_symbols(o_molsys.atom_symbols)
             # Why do we need to have IRCdata.history store its own copy?
             IRCdata.history.set_step_size_and_direction(op.Params.irc_step_size, op.Params.irc_direction)
-            logger.info("\tIRC data object created\n")
+            logger.debug("\tIRC data object created\n")
 
         converged = False
         # o_molsys = make_internal_coords(o_molsys)
@@ -116,10 +116,6 @@ def optimize(o_molsys, computer):
                 for step_number in range(op.Params.alg_geom_maxiter):
                     logger.info("\tBeginning algorithm loop, step number %d" % step_number)
                     total_steps_taken += 1
-                    # compute energy and gradient
-                    # xyz = o_molsys.geom.copy() unused warning in IDE
-                    # mol = o_molsys.to_dict()
-                    # o_molsys = Molsys.from_dict(mol)
 
                     H, gX = get_pes_info(H, computer, o_molsys, step_number, irc_step_number)
                     E = computer.energies[-1]
@@ -140,9 +136,6 @@ def optimize(o_molsys, computer):
                         testB.test_b(o_molsys)
                     if op.Params.test_derivative_B:
                         testB.test_derivative_b(o_molsys)
-
-                    # B = intcosMisc.Bmat(o_molsys)
-                    # logger.debug(print_mat_string(B, title="B matrix"))
 
                     # Check if forces indicate we are approaching minimum.
                     if op.Params.opt_type == "IRC" and irc_step_number > 2:
@@ -190,7 +183,7 @@ def optimize(o_molsys, computer):
                         Dq = stepAlgorithms.take_step(o_molsys, E, f_q, H, op.Params.step_type, computer)
 
                     if op.Params.opt_type == "IRC":
-                        converged = convCheck.conv_check(
+                        converged = convcheck.conv_check(
                             step_number,
                             o_molsys,
                             Dq,
@@ -219,7 +212,7 @@ def optimize(o_molsys, computer):
                             IRCdata.history.progress_report()
 
                     else:  # not IRC.
-                        converged = convCheck.conv_check(step_number, o_molsys, Dq, f_q, computer.energies)
+                        converged = convcheck.conv_check(step_number, o_molsys, Dq, f_q, computer.energies)
                         logger.info("\tConvergence check returned %s" % converged)
 
                     if converged:  # changed from elif when above if statement active
@@ -320,12 +313,12 @@ def optimize(o_molsys, computer):
 
     # Expect to hit this error. not an issue
     except IRCendReached:
-        logger.info(IRCdata.history.final_geom_coords(o_molsys.intcos))
+
+        logger.info("\t\tFinal IRC Point\n%s\n%s", o_molsys.show_geom(), o_molsys.show_intcos())
         logger.info("Tabulating rxnpath results.")
         IRCdata.history.progress_report()
         np.multiply(-1, IRCdata.history.f_x(-1))
         rxnpath = IRCdata.history.rxnpath_dict()
-        logger.debug(rxnpath)
 
         qc_output = prepare_opt_output(o_molsys, computer, rxnpath=rxnpath, error=None)
 
