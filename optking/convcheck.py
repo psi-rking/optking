@@ -4,7 +4,7 @@ from math import fabs
 import numpy as np
 
 from . import optparams as op
-from .linearAlgebra import abs_max, rms, symm_mat_inv, symm_mat_root
+from .linearAlgebra import abs_max, rms
 from .printTools import print_array_string, print_mat_string
 
 CONVERGENCE_PRESETS = {
@@ -21,12 +21,16 @@ CONVERGENCE_PRESETS = {
         "alternate": [None],
     },
     "CFOUR": {"required": ["rms_force"], "one of": [None], "alternate": [None]},
-    "NWCHEM_LOOSE": {"required": ["max_force", "rms_force", "max_disp", "rms_disp"], "one of": [None], "alternate": [None]},
+    "NWCHEM_LOOSE": {
+        "required": ["max_force", "rms_force", "max_disp", "rms_disp"],
+        "one of": [None],
+        "alternate": [None],
+    },
 }
 
 
-def conv_check(iter_num, oMolsys, dq, f, energies, q_pivot=None):
-    """Test for stionary point convergence
+def conv_check(iternum, o_molsys, dq, f, energies, irc_data=None):
+    """Wrapper method to test for stationary point convergence
 
     Computes energy, force, and displacement changes for current step. Prints main convergence report
     (printed every step).
@@ -48,12 +52,26 @@ def conv_check(iter_num, oMolsys, dq, f, energies, q_pivot=None):
     logger = logging.getLogger(__name__)
     logger.info("Performing convergence check.")
 
+    params_dict = op.Params.__dict__
+    criteria = _get_conv_criteria(o_molsys, dq, f, energies, irc_data)
+    conv_met, conv_active = _transform_criteria(criteria, params_dict)
+    _print_convergence_table(iternum, energies[-1], criteria, conv_met, conv_active, params_dict)
+
+    # flat potential cannot be activated by the user - purely an internal tool for gau_type convergence
+    conv_met.update({"flat_potential": 100 * criteria.get("rms_force") < op.Params.conv_rms_force})
+    return _test_for_convergence(conv_met, conv_active)
+
+
+def _get_conv_criteria(o_molsys, dq, f, energies, irc_data=None):
+    """ Creates a dictionary of step information for convergence test """
+
     energy = energies[-1]
     last_energy = energies[-2] if len(energies) > 1 else 0.0
-    f_vec = f
 
     if op.Params.opt_type == "IRC":
-        f_vec = _perpendicular_forces(oMolsys, f, q_pivot)
+        f_vec = irc_data._project_forces(f, o_molsys)
+    else:
+        f_vec = f
 
     criteria = {
         "max_DE": energy - last_energy,
@@ -63,46 +81,33 @@ def conv_check(iter_num, oMolsys, dq, f, energies, q_pivot=None):
         "rms_disp": rms(dq),
     }
 
-    # create dictionaries with boolean values indicating whether a criteria is active and met
-    params_dict = op.Params.__dict__
+    return criteria
+
+
+def _transform_criteria(criteria, params_dict):
+    """create dictionaries with boolean values indicating whether a criteria is active and met
+
+    Parameters
+    ----------
+    criteria : dict
+        contains keys for each convergence criteria and the current value for this step
+
+    Returns
+    -------
+    (dict, dict)
+        Two dictionaries with same keys as input containing bools for whether the criteria is met and
+        whether the criteria is active (True) or not
+
+    """
+
     conv_met = {key: fabs(val) < params_dict.get(f"conv_{key}") for key, val in criteria.items()}
     conv_active = {key: params_dict.get(f"i_{key}") for key in criteria}
-    conv_symbols = {key: _get_criteria_symbol(conv_met.get(key), conv_active.get(key)) for key in criteria}
 
-    print_vals = [iter_num + 1, energy] + list(criteria.values()) + list(conv_symbols.values())  # All columns
-    suffix = "~\n" if iter_num == 0 else "\n"
-
-    conv_str = f"""\n\t{'==> Convergence Check <==': ^92}
-    \n\tMeasures of convergence in internal coordinates in au.
-    \n\tCriteria marked as inactive (o), active & met (*), and active & unmet ( ).\n\n"""
-    conv_str += "\t" + "-" * 94 + suffix
-
-    conv_str += "\t  Step     Total Energy     Delta E     MAX Force     RMS Force      MAX Disp      RMS Disp   "
-    conv_str += suffix
-    conv_str += "\t" + "-" * 94 + suffix
-
-    # For each active criteria print the target value and the met/inactive/unmet symbol
-    active = lambda x: f"{params_dict.get('conv_' + x) :11.2e} {'*'}"
-    conv_active_str = [active(key) if conv_active.get(key) else f"{'o': >13}" for key in conv_active]
-
-    conv_str += "\t  Convergence Criteria  "
-    conv_str += " ".join(conv_active_str)
-    conv_str += suffix
-    conv_str += "\t" + "-" * 94 + suffix
-    conv_str += (
-        "\t  {0:4d} {1:16.8f} {2:11.2e} {7:1s} {3:11.2e} {8:1s} {4:11.2e} {9:1s} {5:11.2e} {10:1s} {6:11.2e} {11:1s}"
-        "  ~\n"
-    ).format(*print_vals)
-
-    conv_str += "\t" + "-" * 94 + "\n\n"
-    logger.info(conv_str)
-
-    conv_met.update({"flat_potential": 100 * criteria.get("rms_force") < op.Params.conv_rms_force})
-    return _test_for_convergence(conv_met, conv_active)
+    return conv_met, conv_active
 
 
 def _get_criteria_symbol(criteria_met, criteria_active):
-    """ Return symbol for inactive: "o" met: "*" or unmet: "" """
+    """ Return symbol for inactive: "o" met: "*" or unmet: " " """
 
     symbol = "*" if criteria_met else ""
 
@@ -112,37 +117,8 @@ def _get_criteria_symbol(criteria_met, criteria_active):
     return symbol
 
 
-def _perpendicular_forces(oMolsys, f, q_pivot):
-    """Compute forces perpendicular to the second IRC halfstep and tangent to hypersphere
-
-    Notes
-    -----
-
-    For IRC calculations the Gradient perpendicular to p and tangent to the hypersphere is:
-    g_m' = g_m - (g_m^t . p_m / (p_m^t . p_m) * p_m, in massweighted coordinates
-    or g'   = g   - (g^t . p / (p^t G^-1 p)) * G^-1 . p
-
-    """
-
-    logger = logging.getLogger(__name__)
-
-    G_m = oMolsys.Gmat(massWeight=True)
-    G_m_inv = symm_mat_inv(G_m, redundant=True)
-    q_vec = oMolsys.q_array()
-    logger.debug("Projecting out forces parallel to reaction path.")
-
-    p_vec = q_vec - q_pivot
-    logger.info("\ncurrent step from IRC pivot point (not previous point on rxnpath):\n %s", print_array_string(p_vec))
-    logger.info("\nForces at current point on hypersphere\n %s", print_array_string(f))
-
-    G_m_inv_p = np.dot(G_m_inv, p_vec)
-    orthog_f = f - np.dot(f, p_vec) / np.dot(p_vec, G_m_inv_p) * G_m_inv_p
-    logger.debug("\nForces perpendicular to hypersphere.\n %s", print_array_string(orthog_f))
-    return orthog_f
-
-
 def _test_for_convergence(conv_met, conv_active):
-    """Test whether the current point us sufficiently converged.
+    """Test whether the current point is sufficiently converged. Have all needed criteria been met.
 
     Parameters
     ----------
@@ -162,7 +138,8 @@ def _test_for_convergence(conv_met, conv_active):
     logger = logging.getLogger(__name__)
 
     if op.Params.i_untampered:
-        if "GAU_" in op.Params.g_convergence:
+        # flexible_criteria forces this route, but with an adjusted value for an individual criteria
+        if "GAU" in op.Params.g_convergence:
             conv_requirements = CONVERGENCE_PRESETS.get("GAUSSIAN")
         elif op.Params.g_convergence in ["QCHEM", "MOLPRO"]:
             conv_requirements = CONVERGENCE_PRESETS.get("QCHEM_MOLPRO")
@@ -195,6 +172,43 @@ def _test_for_convergence(conv_met, conv_active):
     return converged
 
 
+def _print_convergence_table(iternum, energy, criteria, conv_met, conv_active, params_dict):
+    """Print a nice looking table for the current step """
+
+    logger = logging.getLogger(__name__)
+
+    conv_symbols = {key: _get_criteria_symbol(conv_met.get(key), conv_active.get(key)) for key in conv_met}
+    print_vals = [iternum + 1, energy] + list(criteria.values()) + list(conv_symbols.values())  # All columns
+
+    suffix = "~\n" if iternum == 0 else "\n"
+
+    conv_str = f"""\n\t{'==> Convergence Check <==': ^92}
+    \n\tMeasures of convergence in internal coordinates in au.
+    \n\tCriteria marked as inactive (o), active & met (*), and active & unmet ( ).\n\n"""
+    conv_str += "\t" + "-" * 94 + suffix
+
+    conv_str += "\t  Step     Total Energy     Delta E     MAX Force     RMS Force      MAX Disp      RMS Disp   "
+    conv_str += suffix
+    conv_str += "\t" + "-" * 94 + suffix
+
+    # For each active criteria print the target value and the met/inactive/unmet symbol
+    # easier to just redetermine instead of adapt conv_symbols above
+    active = lambda x: f"{params_dict.get('conv_' + x) :11.2e} {'*'}"
+    conv_active_str = [active(key) if conv_active.get(key) else f"{'o': >13}" for key in conv_active]
+
+    conv_str += "\t  Convergence Criteria  "
+    conv_str += " ".join(conv_active_str)
+    conv_str += suffix
+    conv_str += "\t" + "-" * 94 + suffix
+    conv_str += (
+        "\t  {0:4d} {1:16.8f} {2:11.2e} {7:1s} {3:11.2e} {8:1s} {4:11.2e} {9:1s} {5:11.2e} {10:1s} {6:11.2e} {11:1s}"
+        "  ~\n"
+    ).format(*print_vals)
+
+    conv_str += "\t" + "-" * 94 + "\n\n"
+    logger.info(conv_str)
+
+
 def _print_active_criteria(conv_status, conv_requirements):
     """Get string describing all convergence criteria being considered for the optimization """
     conv_str = f"\n\t {'===> Final Convergence Report <===': ^76}\n"
@@ -212,7 +226,7 @@ def _print_active_criteria(conv_status, conv_requirements):
 
         for key in conv_status:
 
-            # conv_requirments[key] is an empty list if no criteria match (not guaranteed for conv_status) 
+            # conv_requirments[key] is an empty list if no criteria match (not guaranteed for conv_status)
             if conv_requirements.get(key)[0] is None or i >= len(conv_status.get(key)):
                 conv_str += f"{'': ^24}|"
             else:

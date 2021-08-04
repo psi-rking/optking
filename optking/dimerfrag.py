@@ -447,8 +447,8 @@ class DimerFrag(object):
     def q_show_array(self):
         return np.asarray(self.q_show())
 
-    def show_intcos(self):
-        return self.pseudo_frag.show_intcos()
+    def intcos_string(self):
+        return self.pseudo_frag.intcos_string()
 
     def print_intcos(self):
         return self.pseudo_frag.print_intcos()

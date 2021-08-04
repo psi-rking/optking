@@ -5,7 +5,8 @@ import os
 import numpy as np
 
 from .exceptions import OptError
-from .printTools import print_geom_string, print_mat_string
+from .printTools import print_geom_string, print_mat_string, print_array_string
+from .linearAlgebra import symm_mat_inv
 
 
 class IRCpoint(object):
@@ -321,5 +322,32 @@ class IRCdata(object):
         rp = [self.irc_points[i].dict_output() for i in range(len(self.irc_points))]
         return rp
 
+    def _project_forces(self, f_q, o_molsys):
+        """Compute forces perpendicular to the second IRC halfstep and tangent to hypersphere
+
+        Notes
+        -----
+
+        For IRC calculations the Gradient perpendicular to p and tangent to the hypersphere is:
+        g_m' = g_m - (g_m^t . p_m / (p_m^t . p_m) * p_m, in massweighted coordinates
+        or g'   = g   - (g^t . p / (p^t G^-1 p)) * G^-1 . p
+
+        """
+
+        logger = logging.getLogger(__name__)
+        logger.debug("Projecting out forces parallel to reaction path.")
+
+        G_m = o_molsys.Gmat(massWeight=True)
+        G_m_inv = symm_mat_inv(G_m, redundant=True)
+
+        q_vec = o_molsys.q_array()
+        p_vec = q_vec - history.q_pivot()
+        logger.info("\ncurrent step from IRC pivot point (not previous point on rxnpath):\n %s", print_array_string(p_vec))
+        logger.info("\nForces at current point on hypersphere\n %s", print_array_string(f_q))
+
+        G_m_inv_p = G_m_inv @ p_vec
+        orthog_f = f_q - (f_q @ p_vec) / (p_vec @ G_m_inv_p) * G_m_inv_p
+        logger.debug("\nForces perpendicular to hypersphere.\n %s", print_array_string(orthog_f))
+        return orthog_f
 
 history = 0

@@ -155,7 +155,7 @@ class Frag:
     def q_show_array(self):
         return np.asarray(self.q_show())
 
-    def show_intcos(self):
+    def intcos_string(self):
         intcos_report = "\tInternal Coordinate Values\n"
         intcos_report += "\n\t - Coordinate -           - BOHR/RAD -       - ANG/DEG -\n"
         for coord in self._intcos:
@@ -169,7 +169,7 @@ class Frag:
 
     def print_intcos(self):
         logger = logging.getLogger(__name__)
-        logger.info("%s", self.show_intcos())
+        logger.info("%s", self.intcos_string())
 
     def connectivity_from_distances(self):
         return addIntcos.connectivity_from_distances(self._geom, self._Z)

@@ -189,7 +189,7 @@ def optimize(o_molsys, computer):
                             Dq,
                             f_q,
                             computer.energies,
-                            IRCdata.history.q_pivot(),
+                            IRCdata.history,
                         )
                         logger.info("\tConvergence check returned %s." % converged)
 
@@ -314,11 +314,13 @@ def optimize(o_molsys, computer):
     # Expect to hit this error. not an issue
     except IRCendReached:
 
-        logger.info("\t\tFinal IRC Point\n%s\n%s", o_molsys.show_geom(), o_molsys.show_intcos())
+        logger.info("\t\tFinal IRC Point\n%s\n%s", o_molsys.show_geom(), o_molsys.intcos_string())
         logger.info("Tabulating rxnpath results.")
         IRCdata.history.progress_report()
         np.multiply(-1, IRCdata.history.f_x(-1))
         rxnpath = IRCdata.history.rxnpath_dict()
+
+        logger.info(rxnpath)
 
         qc_output = prepare_opt_output(o_molsys, computer, rxnpath=rxnpath, error=None)
 

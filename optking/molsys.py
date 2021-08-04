@@ -370,12 +370,14 @@ class Molsys(object):
         start = self.dimerfrag_1st_intco(iDI)
         return slice(start, start + self._dimer_intcos[iDI].num_intcos)
 
-    def show_intcos(self):
-        intco_string = ["\tFragment %d\n%s" % (i + 1, frag.show_intcos()) for i, frag in enumerate(self.all_fragments)]
+    def intcos_string(self):
+        intco_string = ["\tFragment %d\n%s" % (i + 1, frag.intcos_string()) for i, frag in enumerate(self.all_fragments)]
         return "".join(intco_string)
 
     def print_intcos(self):
-        logger.info("%s", self.show_intcos())
+        for frag_index, frag in enumerate(self.all_fragments):
+            self.logger.info("Fragment %d\n", frag_index + 1)
+            frag.print_intcos()
 
     # If connectivity is provided, only intrafragment connections
     # are used.  Interfragment connections are ignored here.
