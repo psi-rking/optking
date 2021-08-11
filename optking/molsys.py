@@ -44,15 +44,14 @@ class Molsys(object):
 
     def __str__(self):
         s = ""
-        for iF, F in enumerate(self._fragments):
-            s += "\n\tFragment %d\n" % (iF + 1)
-            s += F.__str__()
+        for i, frag in enumerate(self._fragments):
+            s += f"\n\t {'===> Fragment':>40} {i + 1} <== \n"
+            s += str(frag)
         self.update_dimer_intco_reference_points()
-        for di in self._dimer_intcos:
-            s += di.__str__()
-        # for iB, B in enumerate(self._fb_fragments):
-        #    s += "\tFixed body Fragment %d\n" % (iB + 1)
-        #    s += B.__str__()
+        if self._dimer_intcos:
+            s += f"\n\t{'==> Dimer Coordinates <==':^80}\n"
+        for dimer in self._dimer_intcos:
+            s += str(dimer)
         return s
 
     @classmethod
@@ -71,7 +70,7 @@ class Molsys(object):
             molsys cls consists of list of Frags
         """
         logger = logging.getLogger(__name__)
-        logger.info("\tGenerating molecular system for optimization from QC Schema.\n")
+        logger.debug("\tGenerating molecular system for optimization from QC Schema.\n")
 
         geom = np.asarray(qc_molecule["geometry"])
         geom = geom.reshape(-1, 3)
@@ -108,7 +107,7 @@ class Molsys(object):
         import psi4
 
         logger = logging.getLogger(__name__)
-        logger.info("\tGenerating molecular system for optimization from PSI4.")
+        logger.debug("\tConverting psi4 molecular system to schema")
 
         if not isinstance(mol, psi4.core.Molecule):
             logger.critical("from_psi4 cannot handle a non psi4 molecule")
@@ -370,10 +369,6 @@ class Molsys(object):
         start = self.dimerfrag_1st_intco(iDI)
         return slice(start, start + self._dimer_intcos[iDI].num_intcos)
 
-    def intcos_string(self):
-        intco_string = ["\tFragment %d\n%s" % (i + 1, frag.intcos_string()) for i, frag in enumerate(self.all_fragments)]
-        return "".join(intco_string)
-
     def print_intcos(self):
         for frag_index, frag in enumerate(self.all_fragments):
             self.logger.info("Fragment %d\n", frag_index + 1)
@@ -515,7 +510,7 @@ class Molsys(object):
     # Supplements a connectivity matrix to connect all fragments.  Assumes the
     # definition of the fragments has ALREADY been determined before function called.
     def augment_connectivity_to_single_fragment(self, C):
-        self.logger.info("\tAugmenting connectivity matrix to join fragments.")
+        self.logger.debug("\tAugmenting connectivity matrix to join fragments.")
         fragAtoms = []
         geom = self.geom
         for iF, F in enumerate(self._fragments):
@@ -523,7 +518,6 @@ class Molsys(object):
 
         # Which fragments are connected?
         nF = self.nfragments
-        self.logger.critical(str(self.nfragments))
         if self.nfragments == 1:
             return
 

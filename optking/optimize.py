@@ -28,7 +28,6 @@ def optimize(o_molsys, computer):
 
     """
     logger = logging.getLogger(__name__)
-    logger.info("Running optimize(o_molsys,computer)")
 
     # Take care of some initial variable declarations
     step_number = 0  # number of steps taken. Partial. IRC alg uses two step counters
@@ -114,15 +113,16 @@ def optimize(o_molsys, computer):
                 # end if 'IRC'
 
                 for step_number in range(op.Params.alg_geom_maxiter):
-                    logger.info("\tBeginning algorithm loop, step number %d" % step_number)
+                    header = f"{'----------------------------':^74}"
+                    header += f"\n{'Taking A Step: Step Number %d' % (step_number + 1):^90}"
+                    header += f"\n{'----------------------------':^90}"
+                    logger.info(header)
                     total_steps_taken += 1
 
                     H, gX = get_pes_info(H, computer, o_molsys, step_number, irc_step_number)
                     E = computer.energies[-1]
 
-                    # o_molsys.geom = xyz  # use setter function to save data in fragments
-                    print_geom_grad(o_molsys.geom, gX)
-                    logger.info(o_molsys.show_geom())
+                    logger.info("%s", print_geom_grad(o_molsys.geom, gX))
 
                     if op.Params.print_lvl >= 4:
                         hessian.show(H, o_molsys)
@@ -143,7 +143,7 @@ def optimize(o_molsys, computer):
                             logger.info("A minimum has been reached on the IRC.  Stopping here.\n")
                             raise IRCendReached()
 
-                    logger.info(print_array_string(f_q, title="Internal forces in au"))
+                    logger.info(print_array_string(f_q, title="Internal forces in au:"))
 
                     history.oHistory.append(o_molsys.geom, E, f_q)  # Save initial step info.
                     history.oHistory.nuclear_repulsion_energy = computer.trajectory[-1]["properties"][

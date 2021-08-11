@@ -50,7 +50,7 @@ def conv_check(iternum, o_molsys, dq, f, energies, irc_data=None):
     """
 
     logger = logging.getLogger(__name__)
-    logger.info("Performing convergence check.")
+    logger.debug("Performing convergence check.")
 
     params_dict = op.Params.__dict__
     criteria = _get_conv_criteria(o_molsys, dq, f, energies, irc_data)

@@ -109,7 +109,6 @@ def add_h_bonds(geom, zs: list, num_atoms):
     Check bond angle >= 90 degrees
     """
     logger = logging.getLogger(__name__)
-    logger.warning("This method should be adjusted after dimer fragments")
 
     # N, O, F, P, S, Cl as proposed by Bakken and Helgaker
     electroneg_zs = [7, 8, 9, 15, 16, 17]
