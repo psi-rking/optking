@@ -38,12 +38,12 @@ class Frag:
 
     def __str__(self):
 
-        np.set_print_options(supress=True)
-        s = f"\n\t{'Z (Atomic Numbers)':<20} {'Masses':^20} {'Geom':^40}"
+        np.set_printoptions(suppress=True, floatmode='fixed', sign=' ')
+        s = f"\n\t {'Z (Atomic Numbers)':<20} {'Masses':^20} {'Geom':^40}"
 
         strip = lambda x: str(x).replace("[", "").replace("]", "")
         print_vals = [
-            f"\n\t{self._Z[i]: ^20f} {self._masses[i]:^20f} {strip(self._geom[i]):^40}" for i in range(self.num_intcos)
+            f"\n\t {self._Z[i]: ^20f} {self._masses[i]:^20f} {strip(self._geom[i]):^40}" for i in range(self.natom)
         ]
         s += "".join(print_vals)
 
@@ -52,7 +52,7 @@ class Frag:
             s += "\n\t%-18s=%17.6f%19.6f" % (x, x.q(self._geom), x.q_show(self._geom))
         s += "\n"
 
-        np.set_print_options()
+        np.set_printoptions()
         return s
 
     def to_dict(self):

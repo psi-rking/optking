@@ -396,8 +396,8 @@ class DimerFrag(object):
             f"{' ':20}\t\tDimer point {self.n_arefs + i + 1} (Ref. pt. {i + 1}):\n" for i in range(self.n_brefs)
         ]
 
-        ref_labels_a, ref_vals_a = self._split_ref_point_string(self._Arefs)
-        ref_labels_b, ref_vals_b = self._split_ref_point_string(self._Brefs, end=True)
+        ref_labels_a, ref_vals_a = DimerFrag._split_ref_point_string(self._Arefs)
+        ref_labels_b, ref_vals_b = DimerFrag._split_ref_point_string(self._Brefs, end=True)
 
         line_by_line = itertools.chain(*zip(labels_a, labels_b, ref_labels_a, ref_labels_b, ref_vals_a, ref_vals_b))
         full_list = title + list(line_by_line)
@@ -557,10 +557,11 @@ class DimerFrag(object):
                     raise AlgError("Can't compute interfragment coord. {} at this geometry.".format(lbls[j]))
         return
 
+    @staticmethod
     def _split_ref_point_string(ref_points, end=False):
-         """Split str(ref_points) line-by-line to be printed side by side Add space and newline if dimerfrag"""
+        """Split str(ref_points) line-by-line to be printed side by side Add space and newline if dimerfrag"""
         ref_strings = [str(ref) for ref in ref_points]
-        ref_label_vals = [val.split("\n")[:-1] for val in ref_label_vals]
+        ref_label_vals = [val.split("\n")[:-1] for val in ref_strings]
 
         ref_labels = [f"{'':20}{sublist[0]}\n" if end else sublist[0] for sublist in ref_label_vals]
         ref_vals = [f"{'':16}{sublist[1]}\n" if end else sublist[1] for sublist in ref_label_vals]
