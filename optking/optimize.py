@@ -314,7 +314,7 @@ def optimize(o_molsys, computer):
     # Expect to hit this error. not an issue
     except IRCendReached:
 
-        logger.info("\t\tFinal IRC Point\n%s\n%s", o_molsys.show_geom(), o_molsys.intcos_string())
+        logger.info("\t\tFinal IRC Point\n%s", o_molsys)
         logger.info("Tabulating rxnpath results.")
         IRCdata.history.progress_report()
         np.multiply(-1, IRCdata.history.f_x(-1))

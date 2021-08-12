@@ -357,7 +357,6 @@ def back_transformation(
         logger.info(bt_final_step)
     else:
         logger.warning("\tUnable to completely converge to displaced geometry.")
-        logger.warning(bt_summary)
         logger.warning(bt_final_step)
 
     if dq_rms > best_dq_rms:
