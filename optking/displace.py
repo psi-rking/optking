@@ -70,14 +70,9 @@ def displace_molsys(oMolsys, dq_in, fq=None, ensure_convergence=False):
         logger.info("\tDetermining Cartesian step for fragment %d." % (iF + 1))
         # print('dq for frag:', dq_in[o_molsys.frag_intco_slice(iF)])
         dq_frag, conv = displace_frag(F, dq_in[oMolsys.frag_intco_slice(iF)], ensure_convergence)
-        if conv:
-            logger.info("\tStep for fragment succeeded.")
-        else:
-            logger.info("\tStep for fragment failed.")
-            logger.warning("\tStep for fragment failed.")
 
     for i, DI in enumerate(oMolsys.dimer_intcos):
-        logger.info("\tStep for dimer coordinates for fragments %d and %d." % (DI.A_idx + 1, DI.B_idx + 1))
+        logger.info("\tTaking step for dimer coordinates of fragments %d and %d." % (DI.A_idx + 1, DI.B_idx + 1))
         Axyz = oMolsys.frag_geom(DI.A_idx)
         Bxyz = oMolsys.frag_geom(DI.B_idx)
         Bxyz[:] = DI.orient_fragment(Axyz, Bxyz, q_target[oMolsys.dimerfrag_intco_slice(i)])
@@ -99,14 +94,14 @@ def displace_molsys(oMolsys, dq_in, fq=None, ensure_convergence=False):
 
     intco_lbls = oMolsys.intco_lbls
 
-    coordinate_change_report = "\n\n\t       --- Internal Coordinate Step in ANG or DEG, aJ/ANG or AJ/DEG ---\n"
-    coordinate_change_report += "\t-----------------------------------------------------------------------------\n"
+    coordinate_change_report = "\n\n\t        --- Internal Coordinate Step in ANG or DEG, aJ/ANG or AJ/DEG ---\n"
+    coordinate_change_report += "\t-------------------------------------------------------------------------------\n"
 
     if fq is None:
-        coordinate_change_report += "\t         Coordinate      Previous         Change          New \n"
-        coordinate_change_report += "\t         ----------      --------        ------        ------\n"
+        coordinate_change_report += "\t           Coordinate      Previous         Change          New \n"
+        coordinate_change_report += "\t           ----------      --------        ------        ------\n"
         for i in range(len(dq_in)):
-            coordinate_change_report += "\t%19s%14.5f%14.5f%14.5f\n" % (
+            coordinate_change_report += "\t%21s%14.5f%14.5f%14.5f\n" % (
                 intco_lbls[i],
                 qShow_orig[i],
                 dqShow[i],
@@ -114,17 +109,17 @@ def displace_molsys(oMolsys, dq_in, fq=None, ensure_convergence=False):
             )
     else:
         fq_aJ = oMolsys.q_show_forces(fq)  # print forces for step
-        coordinate_change_report += "\t         Coordinate      Previous         Force          Change          New \n"
-        coordinate_change_report += "\t         ----------      --------        ------          ------        ------\n"
+        coordinate_change_report += "\t           Coordinate      Previous         Force          Change          New \n"
+        coordinate_change_report += "\t           ----------      --------        ------          ------        ------\n"
         for i in range(len(dq_in)):
-            coordinate_change_report += "\t%19s%14.5f%14.5f%14.5f%14.5f\n" % (
+            coordinate_change_report += "\t%21s%14.5f%15.5f%15.5f%14.5f\n" % (
                 intco_lbls[i],
                 qShow_orig[i],
                 fq_aJ[i],
                 dqShow[i],
                 qShow_final[i],
             )
-    coordinate_change_report += "\t-----------------------------------------------------------------------------\n"
+    coordinate_change_report += "\t-------------------------------------------------------------------------------\n"
     logger.info(coordinate_change_report)
 
     # Return final, total displacement ACHIEVED
@@ -303,10 +298,11 @@ def back_transformation(
                 q_target[i],
                 dq[i],
             )
-        logger.info(target_step_str)
+        logger.debug(target_step_str)
 
     if print_lvl > 0:
-        step_iter_str = "\n\n\t---------------------------------------------------\n"
+        step_iter_str = "\t             Back Transformation Report            "
+        step_iter_str += "\n\t---------------------------------------------------\n"
         step_iter_str += "\t Iter        RMS(dx)        Max(dx)        RMS(dq) \n"
         step_iter_str += "\t---------------------------------------------------\n"
 
@@ -353,15 +349,18 @@ def back_transformation(
 
     if print_lvl > 0:
         step_iter_str += "\t---------------------------------------------------\n"
-        logger.info(step_iter_str)
+        logger.debug(step_iter_str)
 
+    bt_final_step = f"\tRMS(dx): {dx_rms: .3e} \tMax(dx): {dx_max: .3e} \tRMS(dq): {dq_rms: .3e}"
     if bt_converged:
         logger.info("\tSuccessfully converged to displaced geometry.")
+        logger.info(bt_final_step)
     else:
         logger.warning("\tUnable to completely converge to displaced geometry.")
+        logger.warning(bt_final_step)
 
     if dq_rms > best_dq_rms:
-        logger.warning("\tPrevious geometry is closer to target in internal coordinates," + " so using that one.\n")
+        logger.warning("\tPrevious geometry is closer to target in internal coordinates, so using that one.\n")
         logger.warning("\tBest geometry has RMS(Delta(q)) = %8.2e\n" % best_dq_rms)
         geom[:] = best_geom
 

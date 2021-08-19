@@ -44,15 +44,14 @@ class Molsys(object):
 
     def __str__(self):
         s = ""
-        for iF, F in enumerate(self._fragments):
-            s += "\n\tFragment %d\n" % (iF + 1)
-            s += F.__str__()
+        for i, frag in enumerate(self._fragments):
+            s += f"\n\t {'===> Fragment':>40} {i + 1} <== \n"
+            s += str(frag)
         self.update_dimer_intco_reference_points()
-        for di in self._dimer_intcos:
-            s += di.__str__()
-        # for iB, B in enumerate(self._fb_fragments):
-        #    s += "\tFixed body Fragment %d\n" % (iB + 1)
-        #    s += B.__str__()
+        if self._dimer_intcos:
+            s += f"\n\t{'==> Dimer Coordinates <==':^80}\n"
+        for dimer in self._dimer_intcos:
+            s += str(dimer)
         return s
 
     @classmethod
@@ -71,7 +70,7 @@ class Molsys(object):
             molsys cls consists of list of Frags
         """
         logger = logging.getLogger(__name__)
-        logger.info("\tGenerating molecular system for optimization from QC Schema.\n")
+        logger.debug("\tGenerating molecular system for optimization from QC Schema.\n")
 
         geom = np.asarray(qc_molecule["geometry"])
         geom = geom.reshape(-1, 3)
@@ -108,7 +107,7 @@ class Molsys(object):
         import psi4
 
         logger = logging.getLogger(__name__)
-        logger.info("\tGenerating molecular system for optimization from PSI4.")
+        logger.debug("\tConverting psi4 molecular system to schema")
 
         if not isinstance(mol, psi4.core.Molecule):
             logger.critical("from_psi4 cannot handle a non psi4 molecule")
@@ -233,18 +232,18 @@ class Molsys(object):
             geom[row : (row + F.natom), :] = F.geom
         return geom
 
-    def frag_geom(self, iF):
-        """cartesian geometry for fragment i"""
-        return self._fragments[iF].geom
-        # return copy instead?
-        # using in displace_molsys
-
     @geom.setter
     def geom(self, newgeom):
         """ setter for geometry"""
         for iF, F in enumerate(self._fragments):
             row = self.frag_1st_atom(iF)
             F.geom[:] = newgeom[row : (row + F.natom), :]
+
+    def frag_geom(self, iF):
+        """cartesian geometry for fragment i"""
+        return self._fragments[iF].geom
+        # return copy instead?
+        # using in displace_molsys
 
     @property
     def masses(self):
@@ -371,10 +370,9 @@ class Molsys(object):
         return slice(start, start + self._dimer_intcos[iDI].num_intcos)
 
     def print_intcos(self):
-        for iF, F in enumerate(self._fragments):
-            self.logger.info("Fragment %d\n" % (iF + 1))
-            F.print_intcos()
-        return
+        for frag_index, frag in enumerate(self.all_fragments):
+            self.logger.info("Fragment %d\n", frag_index + 1)
+            frag.print_intcos()
 
     # If connectivity is provided, only intrafragment connections
     # are used.  Interfragment connections are ignored here.
@@ -398,7 +396,7 @@ class Molsys(object):
         """Return a string of the geometry in [A]"""
         molsys_geometry = ""
         for iF, F in enumerate(self._fragments):
-            molsys_geometry += "\tFragment {:d} (Ang)\n".format(iF + 1)
+            molsys_geometry += "\tFragment {:d} (Ang)\n\n".format(iF + 1)
             molsys_geometry += F.show_geom()
         return molsys_geometry
 
@@ -512,7 +510,7 @@ class Molsys(object):
     # Supplements a connectivity matrix to connect all fragments.  Assumes the
     # definition of the fragments has ALREADY been determined before function called.
     def augment_connectivity_to_single_fragment(self, C):
-        self.logger.info("\tAugmenting connectivity matrix to join fragments.")
+        self.logger.debug("\tAugmenting connectivity matrix to join fragments.")
         fragAtoms = []
         geom = self.geom
         for iF, F in enumerate(self._fragments):
@@ -520,7 +518,6 @@ class Molsys(object):
 
         # Which fragments are connected?
         nF = self.nfragments
-        self.logger.critical(str(self.nfragments))
         if self.nfragments == 1:
             return
 
@@ -861,14 +858,11 @@ class Molsys(object):
 
     def apply_external_forces(self, fq, H, stepNumber):
         logger = logging.getLogger(__name__)
-        report = ""
+        report = "Adding external forces\n"
+
         for iF, F in enumerate(self.fragments):
             for i, intco in enumerate(F.intcos):
                 if intco.has_ext_force:
-                    if report == "":
-                        report = "Adding external forces\n"
-                    # TODO we may need to add iF to the location to get
-                    #  unique locations for each fragment
                     val = intco.q_show(self.geom)
                     ext_force = intco.ext_force_val(self.geom)
 
@@ -886,7 +880,8 @@ class Molsys(object):
                     #    if j != location:
                     #        H[j][location] = H[location][j] = 0.0
 
-        logger.info(report)
+        if "Frag" in report:
+            logger.info(report)
 
 
     def hessian_to_cartesians(self, Hint, g_q=None):

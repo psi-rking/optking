@@ -169,7 +169,7 @@ def dq_nr(fq, H):
         logger.info("\tNR_gradient: %15.10f" % nr_g)
         logger.info("\tNR_hessian: %15.10f" % nr_h)
     DEprojected = de_projected("NR", nr_dqnorm, nr_g, nr_h)
-    logger.info("\tProjected energy change by quadratic approximation: %10.10lf\n" % DEprojected)
+    logger.debug("\tProjected energy change by quadratic approximation: %10.10lf\n" % DEprojected)
 
     return DEprojected, dq, nr_u, nr_g, nr_h
 
@@ -192,16 +192,9 @@ def dq_rfo(oMolsys, fq, H):
     """
 
     logger = logging.getLogger(__name__)
-    logger.info("\tTaking RFO optimization step.")
+    logger.debug("\tTaking RFO optimization step.")
     dim = len(fq)
     dq = np.zeros(dim)  # To be determined and returned.
-    trust = op.Params.intrafrag_trust  # maximum step size
-    max_projected_rfo_iter = 25  # max. # of iterations to try to converge RS-RFO
-    rfo_follow_root = op.Params.rfo_follow_root  # whether to follow root
-    rfo_root = op.Params.rfo_root  # if following, which root to follow
-
-    # Determine the eigenvectors/eigenvalues of H.
-    Hevals, Hevects = symm_mat_eig(H)
 
     # Build the original, unscaled RFO matrix.
     RFOmat = np.zeros((dim + 1, dim + 1))
@@ -213,18 +206,53 @@ def dq_rfo(oMolsys, fq, H):
     if op.Params.print_lvl >= 4:
         logger.debug("\tOriginal, unscaled RFO matrix:\n\n" + print_mat_string(RFOmat))
 
-    # symm_rfo_step = False NOT USED
+    converged, dq = apply_alpha_step_scaling(RFOmat, H, dq, fq, dim, oMolsys)
+
+    # Crude/old way to limit step size if RS-RFO iterations
+    if not converged or op.Params.simple_step_scaling:
+        apply_intrafrag_step_scaling(dq)
+
+    if op.Params.print_lvl >= 3:
+        logger.debug("\tFinal scaled step dq:\n\n\t" + print_array_string(dq))
+
+    # Get norm |dq|, unit vector, gradient and hessian in step direction
+    # TODO double check Hevects[i] here instead of H ? as for NR
+    rfo_dqnorm = sqrt(np.dot(dq, dq))
+    logger.info("\tNorm of target step-size: %15.10f\n" % rfo_dqnorm)
+    rfo_u = dq / rfo_dqnorm
+    rfo_g = -1 * np.dot(fq, rfo_u)
+    rfo_h = np.dot(rfo_u, np.dot(H, rfo_u))
+    DEprojected = de_projected("RFO", rfo_dqnorm, rfo_g, rfo_h)
+    if op.Params.print_lvl > 1:
+        logger.info("\tRFO target step = %15.10f" % rfo_dqnorm)
+        logger.info("\tRFO gradient = %15.10f" % rfo_g)
+        logger.info("\tRFO hessian = %15.10f" % rfo_h)
+    logger.debug("\tProjected energy change by RFO approximation %15.5f\n" % DEprojected)
+
+    return DEprojected, dq, rfo_u, rfo_g, rfo_h
+
+
+def apply_alpha_step_scaling(RFOmat, H, dq, fq, dim, oMolsys):
+    """Iterative process to determine alpha step scaling parameter"""
+
+    logger = logging.getLogger(__name__)
     SRFOmat = np.zeros((dim + 1, dim + 1))  # For scaled RFO matrix.
     converged = False
-    # dqtdq = 10  # square of norm of step NOT USED
     alpha = 1.0  # scaling factor for RS-RFO, scaling matrix is sI
+    alphaIter = -1
+    max_projected_rfo_iter = 25  # max. # of iterations to try to converge RS-RFO
+    rfo_follow_root = op.Params.rfo_follow_root  # whether to follow root
+    rfo_root = op.Params.rfo_root  # if following, which root to follow
+    trust = op.Params.intrafrag_trust  # maximum step size
+
+    # Determine the eigenvectors/eigenvalues of H.
+    Hevals, Hevects = symm_mat_eig(H)
 
     last_iter_evect = np.zeros(dim)
     if rfo_follow_root and len(oHistory.steps) > 1:
         last_iter_evect[:] = oHistory.steps[-2].followedUnitVector  # RFO vector from previous geometry step
+    rfo_step_report = ''
 
-    # Iterative sequence to find alpha
-    alphaIter = -1
     while not converged and alphaIter < max_projected_rfo_iter:
         alphaIter += 1
 
@@ -284,41 +312,7 @@ def dq_rfo(oMolsys, fq, H):
             if alphaIter == 0:
                 logger.debug("\tChecking RFO solution %d." % (rfo_root + 1))
 
-                for i in range(rfo_root, dim + 1):
-                    # Check symmetry of root.
-                    dq[:] = SRFOevects[i, 0:dim]
-                    if not op.Params.accept_symmetry_breaking:
-                        symm_rfo_step = is_dq_symmetric(oMolsys, dq)
-
-                        if not symm_rfo_step:  # Root is assymmetric so reject it.
-                            logger.warning(
-                                "\tRejecting RFO root %d because it breaks \
-                                           the molecular point group."
-                                % (rfo_root + 1)
-                            )
-                            continue
-
-                    # Check normalizability of root.
-                    if fabs(SRFOevects[i][dim]) < 1.0e-10:  # don't even try to divide
-                        logger.warning(
-                            "\tRejecting RFO root %d because normalization \
-                                       gives large value."
-                            % (rfo_root + 1)
-                        )
-                        continue
-                    tval = abs_max(SRFOevects[i] / SRFOevects[i][dim])
-                    if tval > op.Params.rfo_normalization_max:  # matching test in code above
-                        logger.warning(
-                            "\tRejecting RFO root %d because normalization \
-                                       gives large value."
-                            % (rfo_root + 1)
-                        )
-                        continue
-                    rfo_root = i  # This root is acceptable.
-                    break
-                else:
-                    rfo_root = op.Params.rfo_root
-                    # no good one found, use the default
+                rfo_root = find_rfo_root(rfo_root, SRFOevects, oMolsys, dim, dq)
 
                 # Save initial root. 'Follow' during the RS-RFO iterations.
                 rfo_follow_root = True
@@ -367,25 +361,22 @@ def dq_rfo(oMolsys, fq, H):
             converged = True
 
         if alphaIter == 0 and not op.Params.simple_step_scaling:
-            logger.info("\tDetermining step-restricting scale parameter for RS-RFO.")
+            logger.debug("\tDetermining step-restricting scale parameter for RS-RFO.")
 
         if alphaIter == 0:
-            logger.info("\n\tMaximum step size allowed %10.5lf" % trust)
-            rfo_step_report = (
+            rfo_step_report += (
                 "\n\n\t Iter      |step|        alpha        rfo_root"
                 + "\n\t------------------------------------------------"
-                + "\n\t %5d%12.5lf%14.5lf%12d\n" % (alphaIter + 1, sqrt(dqtdq), alpha, rfo_root + 1)
+                + "\n\t%5d%12.5lf%14.5lf%12d\n" % (alphaIter + 1, sqrt(dqtdq), alpha, rfo_root + 1)
             )
-            logger.info(rfo_step_report)
 
         elif alphaIter > 0 and not op.Params.simple_step_scaling:
-            rfo_step_report = "\t%5d%12.5lf%14.5lf%12d\n" % (
+            rfo_step_report += "\t%5d%12.5lf%14.5lf%12d\n" % (
                 alphaIter + 1,
                 sqrt(dqtdq),
                 alpha,
                 rfo_root + 1,
             )
-            logger.info(rfo_step_report)
 
         # Find the analytical derivative, d(norm step squared) / d(alpha)
         # rfo_step_report += ("\t------------------------------------------------\n")
@@ -405,40 +396,58 @@ def dq_rfo(oMolsys, fq, H):
 
         analyticDerivative = 2 * Lambda / (1 + alpha * dqtdq) * tval
         if op.Params.print_lvl >= 2:
-            rfo_step_report = "\t  Analytic derivative d(norm)/d(alpha) = %15.10lf\n" % analyticDerivative
+            rfo_step_report += "\t  Analytic derivative d(norm)/d(alpha) = %15.10lf\n" % analyticDerivative
             # + "\n\t------------------------------------------------\n")
-            logger.info(rfo_step_report)
 
         # Calculate new scaling alpha value.
         # Equation 20, Besalu and Bofill, Theor. Chem. Acc., 1998, 100:265-274
         alpha += 2 * (trust * sqrt(dqtdq) - dqtdq) / analyticDerivative
 
     # end alpha RS-RFO iterations
+    logger.debug(rfo_step_report)
+    return converged, dq
 
-    # TODO remove if this is indeed old
-    # Crude/old way to limit step size if RS-RFO iterations
-    if not converged or op.Params.simple_step_scaling:
-        apply_intrafrag_step_scaling(dq)
+def find_rfo_root(rfo_root, SRFOevects, oMolsys, dim, dq):
 
-    if op.Params.print_lvl >= 3:
-        logger.debug("\tFinal scaled step dq:\n\n\t" + print_array_string(dq))
+    logger = logging.getLogger(__name__)
 
-    # Get norm |dq|, unit vector, gradient and hessian in step direction
-    # TODO double check Hevects[i] here instead of H ? as for NR
-    rfo_dqnorm = sqrt(np.dot(dq, dq))
-    logger.info("\tNorm of target step-size: %15.10f\n" % rfo_dqnorm)
-    rfo_u = dq / rfo_dqnorm
-    rfo_g = -1 * np.dot(fq, rfo_u)
-    rfo_h = np.dot(rfo_u, np.dot(H, rfo_u))
-    DEprojected = de_projected("RFO", rfo_dqnorm, rfo_g, rfo_h)
-    if op.Params.print_lvl > 1:
-        logger.info("\tRFO target step = %15.10f" % rfo_dqnorm)
-        logger.info("\tRFO gradient = %15.10f" % rfo_g)
-        logger.info("\tRFO hessian = %15.10f" % rfo_h)
-    logger.info("\tProjected energy change by RFO approximation %15.5f\n" % DEprojected)
+    for i in range(rfo_root, dim + 1):
+        # Check symmetry of root.
+        dq[:] = SRFOevects[i, 0:dim]
+        if not op.Params.accept_symmetry_breaking:
+            symm_rfo_step = is_dq_symmetric(oMolsys, dq)
 
-    return DEprojected, dq, rfo_u, rfo_g, rfo_h
+            if not symm_rfo_step:  # Root is assymmetric so reject it.
+                logger.warning(
+                    "\tRejecting RFO root %d because it breaks \
+                               the molecular point group."
+                    % (rfo_root + 1)
+                )
+                continue
 
+        # Check normalizability of root.
+        if fabs(SRFOevects[i][dim]) < 1.0e-10:  # don't even try to divide
+            logger.warning(
+                "\tRejecting RFO root %d because normalization \
+                           gives large value."
+                % (rfo_root + 1)
+            )
+            continue
+        tval = abs_max(SRFOevects[i] / SRFOevects[i][dim])
+        if tval > op.Params.rfo_normalization_max:  # matching test in code above
+            logger.warning(
+                "\tRejecting RFO root %d because normalization \
+                           gives large value."
+                % (rfo_root + 1)
+            )
+            continue
+        rfo_root = i  # This root is acceptable.
+        break
+    else:
+        rfo_root = op.Params.rfo_root
+        # no good root found, using the default
+
+    return rfo_root
 
 def dq_p_rfo(fq, H):
     logger = logging.getLogger(__name__)
@@ -568,7 +577,7 @@ def dq_p_rfo(fq, H):
         logger.info("\t|RFO target step|  : %15.10f" % rfo_dqnorm)
         logger.info("\tRFO gradient       : %15.10f" % rfo_g)
         logger.info("\tRFO hessian        : %15.10f" % rfo_h)
-    logger.info("\tProjected Delta(E) : %15.10f" % DEprojected)
+    logger.debug("\tProjected Delta(E) : %15.10f" % DEprojected)
 
     return DEprojected, dq, rfo_u, rfo_g, rfo_h
 
@@ -618,7 +627,7 @@ def dq_sd(fq):
     sd_g = -1.0 * sd_dqnorm
 
     DEprojected = de_projected("NR", sd_dqnorm, sd_g, sd_h)
-    logger.info("\tProjected energy change by quadratic approximation: %20.5lf" % DEprojected)
+    logger.debug("\tProjected energy change by quadratic approximation: %20.5lf" % DEprojected)
 
     return DEprojected, dq, sd_u, sd_g, sd_h
 
@@ -669,7 +678,7 @@ def dq_backstep(o_molsys):
         DEprojected = de_projected("RFO", dqNorm, oneDgradient, oneDhessian)
     else:
         DEprojected = de_projected("NR", dqNorm, oneDgradient, oneDhessian)
-    logger.info("\tProjected energy change : %20.5lf" % DEprojected)
+    logger.debug("\tProjected energy change : %20.5lf" % DEprojected)
 
     o_molsys.geom = geom  # uses setter; writes into all fragments
     dq_achieved = displace_molsys(o_molsys, dq, fq)

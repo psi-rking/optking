@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 import logging
+from itertools import chain
 
 import numpy as np
 import qcelemental as qcel
@@ -64,31 +65,32 @@ def print_array_string(M, Ncol=7, title=None, form=":10.6f"):
     # return np.array2string(M, max_line_width=100, precision=6, prefix=title, suffix="\n")
     s = "\t"
     if title != None:
-        s += title + "\n\t"
+        s += title + "\n\t\t"
     tab = 0
     formstring = "{" + form + "}"
     for i, entry in enumerate(M):
         tab += 1
         s += formstring.format(entry)
         if tab == Ncol and i != (len(M) - 1):
-            s += "\n"
+            s += "\n\t\t"
             tab = 0
     s += "\n"
     return s
 
 
 def print_geom_grad(geom, grad):
-    logger = logging.getLogger(__name__)
-    Natom = geom.shape[0]
-    geometry_str = "\tGeometry (au)\n"
-    for i in range(Natom):
-        geometry_str += "\t{:20.10f}{:20.10f}{:20.10f}\n".format(geom[i, 0], geom[i, 1], geom[i, 2])
-    logger.info(geometry_str)
 
-    gradient_str = "\tGradient (au)\n"
-    for i in range(Natom):
-        gradient_str += "\t{:20.10f}{:20.10f}{:20.10f}\n".format(grad[3 * i + 0], grad[3 * i + 1], grad[3 * i + 2])
-    logger.info(gradient_str)
+    Natom = geom.shape[0]
+    geometry = [f"{'Geometry (au)':>22}"]
+    geometry += ["{:15.10f}{:15.10f}{:15.10f}".format(geom[i, 0], geom[i, 1], geom[i, 2]) for i in range(Natom)]
+
+    gradient = [f"{' ':39}Gradient (au)\n"]
+    gradient += [
+        "\t\t{:15.10f}{:15.10f}{:15.10f}\n".format(grad[3 * i + 0], grad[3 * i + 1], grad[3 * i + 2])
+        for i in range(Natom)
+    ]
+
+    return "".join(list(chain(*zip(geometry, gradient))))
 
 
 def print_geom_string(symbols, geom, unit=None):

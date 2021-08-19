@@ -49,9 +49,7 @@ def optimize_psi4(calc_name, program="psi4", dertype=None, **xtra_opt_params):
             calc_name, program, computer_type="psi4", dertype=dertype, **xtra_opt_params
         )
         opt_output = copy.deepcopy(opt_input)
-        logger.info("psi4 has been initialized")
         opt_output = optimize(oMolsys, computer)
-        print("optimize has finished")
     except (OptError, KeyError, ValueError, AttributeError) as error:
         opt_output = {
             "success": False,
@@ -200,7 +198,7 @@ def optimize_qcengine(opt_input, computer_type="qc"):
 
 def make_computer(opt_input: dict, computer_type):
     logger = logging.getLogger(__name__)
-    logger.info("Creating a Compute Wrapper")
+    logger.debug("Creating a Compute Wrapper")
     program = op.Params.program
 
     # This gets updated so it shouldn't be a reference

@@ -35,7 +35,7 @@ import logging
 import numpy as np
 
 from . import compute_wrappers, hessian, history, molsys, optparams, optwrapper
-from .convCheck import conv_check
+from .convcheck import conv_check
 from .exceptions import OptError
 from .optimize import get_pes_info, make_internal_coords, prepare_opt_output
 from .stepAlgorithms import take_step

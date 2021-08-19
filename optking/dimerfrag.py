@@ -1,5 +1,6 @@
 import copy
 import logging
+import itertools
 from math import acos, fabs
 
 import numpy as np
@@ -389,20 +390,22 @@ class DimerFrag(object):
 
     def __str__(self):
 
-        s = "\tFragment %s\n" % self._A_lbl
-        for i, r in enumerate(reversed(self._Arefs)):
-            s += "\t\tDimer point %d (Ref. pt. %d):\n" % (
-                4 - self.n_arefs + i,
-                self.n_arefs - i,
-            )
-            s += r.__str__()
-        s += "\n\tFragment %s\n" % self._B_lbl
-        for i, r in enumerate(self._Brefs):
-            s += "\t\tDimer point %d (Ref. pt. %d):\n" % (3 + i + 1, i + 1)
-            s += r.__str__()
+        title = [f"\tFragment {self._A_lbl}", f"{' ':40}\tFragment {self._B_lbl}\n"]
+        labels_a = [f"\t\tDimer point {i + 1} (Ref. pt. {self.n_arefs - i}):" for i in range(self.n_arefs)]
+        labels_b = [
+            f"{' ':20}\t\tDimer point {self.n_arefs + i + 1} (Ref. pt. {i + 1}):\n" for i in range(self.n_brefs)
+        ]
 
-        s += self._pseudo_frag.__str__()
-        return s
+        ref_labels_a, ref_vals_a = DimerFrag._split_ref_point_string(self._Arefs)
+        ref_labels_b, ref_vals_b = DimerFrag._split_ref_point_string(self._Brefs, end=True)
+
+        line_by_line = itertools.chain(*zip(labels_a, labels_b, ref_labels_a, ref_labels_b, ref_vals_a, ref_vals_b))
+        full_list = title + list(line_by_line)
+        add_on = f"{'(dimer *connectivity* is ':>50}"
+        connectivity = add_on + "-".join([f"{i + 1}" for i in range(self.n_arefs + self.n_brefs)]) + ")"
+
+        dimer_frag_coords = str(self._pseudo_frag).replace("    Geom", "Ref Pts. Coords")
+        return connectivity + "\n\n" + "".join(full_list) + dimer_frag_coords
 
     @property
     def n_arefs(self):  # number of reference points
@@ -446,6 +449,9 @@ class DimerFrag(object):
 
     def q_show_array(self):
         return np.asarray(self.q_show())
+
+    def print_intcos(self):
+        return self.pseudo_frag.print_intcos()
 
     def update_reference_geometry(self, Ageom, Bgeom):
         self.pseudo_frag.geom[:] = 0.0
@@ -550,6 +556,17 @@ class DimerFrag(object):
                 except AlgError as error:
                     raise AlgError("Can't compute interfragment coord. {} at this geometry.".format(lbls[j]))
         return
+
+    @staticmethod
+    def _split_ref_point_string(ref_points, end=False):
+        """Split str(ref_points) line-by-line to be printed side by side Add space and newline if dimerfrag"""
+        ref_strings = [str(ref) for ref in ref_points]
+        ref_label_vals = [val.split("\n")[:-1] for val in ref_strings]
+
+        ref_labels = [f"{'':20}{sublist[0]}\n" if end else sublist[0] for sublist in ref_label_vals]
+        ref_vals = [f"{'':16}{sublist[1]}\n" if end else sublist[1] for sublist in ref_label_vals]
+
+        return ref_labels, ref_vals
 
     def orient_fragment(
         self,

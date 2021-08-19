@@ -5,7 +5,8 @@ import os
 import numpy as np
 
 from .exceptions import OptError
-from .printTools import print_geom_string, print_mat_string
+from .printTools import print_geom_string, print_mat_string, print_array_string
+from .linearAlgebra import symm_mat_inv
 
 
 class IRCpoint(object):
@@ -200,9 +201,11 @@ class IRCdata(object):
         index = -1 if step is None else step
         return self.irc_points[index].step_dist
 
-    # Given current forces, checks if we are at/near a minimum
-    # For now, checks if forces are opposite those are previous pivot point
     def test_for_irc_minimum(self, f_q):
+        """ Given current forces, checks if we are at/near a minimum
+        For now, checks if forces are opposite those are previous pivot point
+        """
+
         unit_f = f_q / np.linalg.norm(f_q)  # current forces
         f_rxn = self.f_q()  # forces at most recent rxnpath point
         unit_f_rxn = f_rxn / np.linalg.norm(f_rxn)
@@ -220,26 +223,6 @@ class IRCdata(object):
         #    return True
 
         return False
-
-    def final_geom_coords(self, intcos):
-        """For clarity, display geometry and internal coordinates for the final IRC step
-        IRC algorithm will display an additional IRC step and constrained optimization
-        after this step has been reached"""
-
-        s = "Final Geometry: [Ang] \n"
-        s += print_mat_string(self.x())
-        s += "\n\n\tInternal Coordinates: [Ang/Deg] \n"
-        s += "\t - Coordinate -           - BOHR/RAD -       - ANG/DEG -\n"
-
-        for itr, x in enumerate(intcos):
-            s += "\t%-18s=%17.6f%19.6f\n" % (
-                x,
-                self.q()[itr],
-                self.q()[itr] * x.q_show_factor,
-            )
-            # s += ("\t%-18s=%17.6f\n" % (x, IRCdata.history.q()[itr] * x.q_show_factor))
-
-        return s
 
     def progress_report(self):
         blocks = 4  # TODO: make dynamic
@@ -339,5 +322,32 @@ class IRCdata(object):
         rp = [self.irc_points[i].dict_output() for i in range(len(self.irc_points))]
         return rp
 
+    def _project_forces(self, f_q, o_molsys):
+        """Compute forces perpendicular to the second IRC halfstep and tangent to hypersphere
+
+        Notes
+        -----
+
+        For IRC calculations the Gradient perpendicular to p and tangent to the hypersphere is:
+        g_m' = g_m - (g_m^t . p_m / (p_m^t . p_m) * p_m, in massweighted coordinates
+        or g'   = g   - (g^t . p / (p^t G^-1 p)) * G^-1 . p
+
+        """
+
+        logger = logging.getLogger(__name__)
+        logger.debug("Projecting out forces parallel to reaction path.")
+
+        G_m = o_molsys.Gmat(massWeight=True)
+        G_m_inv = symm_mat_inv(G_m, redundant=True)
+
+        q_vec = o_molsys.q_array()
+        p_vec = q_vec - history.q_pivot()
+        logger.info("\ncurrent step from IRC pivot point (not previous point on rxnpath):\n %s", print_array_string(p_vec))
+        logger.info("\nForces at current point on hypersphere\n %s", print_array_string(f_q))
+
+        G_m_inv_p = G_m_inv @ p_vec
+        orthog_f = f_q - (f_q @ p_vec) / (p_vec @ G_m_inv_p) * G_m_inv_p
+        logger.debug("\nForces perpendicular to hypersphere.\n %s", print_array_string(orthog_f))
+        return orthog_f
 
 history = 0

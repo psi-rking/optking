@@ -37,17 +37,22 @@ class Frag:
             self._intcos = intcos
 
     def __str__(self):
-        # s = "\n\tZ (Atomic Numbers)\n\t"
-        # print('num of self._intcos: %d' % len(self._intcos))
-        s = print_array_string(self._Z, title="Z (Atomic Numbers)")
-        # s += "\tGeom\n"
-        s += print_mat_string(self._geom, title="Geom")
-        # s += "\tMasses\n\t"
-        s += print_array_string(self._masses, title="Masses")
-        s += "\t - Coordinate -           - BOHR/RAD -       - ANG/DEG -\n"
+
+        np.set_printoptions(suppress=True, floatmode='fixed', sign=' ')
+        s = f"\n\t {'Z (Atomic Numbers)':<20} {'Masses':^20} {'Geom':^40}"
+
+        strip = lambda x: str(x).replace("[", "").replace("]", "")
+        print_vals = [
+            f"\n\t {self._Z[i]: ^20f} {self._masses[i]:^20f} {strip(self._geom[i]):^40}" for i in range(self.natom)
+        ]
+        s += "".join(print_vals)
+
+        s += "\n\n\t - Coordinate -           - BOHR/RAD -       - ANG/DEG -"
         for x in self._intcos:
-            s += "\t%-18s=%17.6f%19.6f\n" % (x, x.q(self._geom), x.q_show(self._geom))
+            s += "\n\t%-18s=%17.6f%19.6f" % (x, x.q(self._geom), x.q_show(self._geom))
         s += "\n"
+
+        np.set_printoptions()
         return s
 
     def to_dict(self):
@@ -76,44 +81,6 @@ class Frag:
         else:
             intcos = None
         return cls(Z, geom, masses, intcos, frozen)
-
-    #    @classmethod
-    #    def fromPsi4Molecule(cls, mol):
-    #        mol.update_geometry()
-    #        geom = np.array(mol.geometry(),float)
-    #        natom = mol.natom()
-    #
-    #        #Z = np.zeros( natom, int)
-    #        Z = []
-    #        for i in range(natom):
-    #            Z.append(int(mol.Z(i)))
-    #
-    #        masses = np.zeros(natom)
-    #        for i in range(natom):
-    #            masses[i] = mol.mass(i)
-    #
-    #        return cls(Z, geom, masses)
-    #
-    #
-    #    #todo
-    #    @classmethod
-    #    def from_schema(cls, pmol):
-    #        #taking in psi4.core.molecule and converting to schema
-    #        jmol = pmol.to_schema()
-    #        print(jmol)
-    #        natom = len(jmol['symbols'])
-    #        geom = np.asarray(molecule['geometry']).reshape(-1,3) #?need to reshape in some way todo
-    #        print(geom)
-    #        Z = []
-    #        for i in range(natom):
-    #            Z.append(qcel.periodictable.to_Z(jmol['symbols'][i]))
-    #
-    #        print(Z)
-    #
-    #        masses = jmol['masses']
-    #        print(masses)
-    #
-    #        return cls(Z, geom, masses)
 
     @property
     def natom(self):
@@ -167,7 +134,6 @@ class Frag:
             )
         intcos_report += "\n"
         logger.info(intcos_report)
-        return
 
     def connectivity_from_distances(self):
         return addIntcos.connectivity_from_distances(self._geom, self._Z)
@@ -180,13 +146,6 @@ class Frag:
 
     def add_cartesian_intcos(self):
         addIntcos.add_cartesian_intcos(self._intcos, self._geom)
-
-    #    def print_geom(self):
-    #        for i in range(self._geom.shape[0]):
-    #            print_opt("\t%5s%15.10f%15.10f%15.10f\n" % \
-    #               (qcel.periodictable.to_E(self._Z[i]), self._geom[i,0], self._geom[i,1],
-    #                  self._geom[i,2]))
-    #        print_opt("\n")
 
     def add_h_bonds(self):
         """ Prepend h_bonds because that's where optking 2 places them """
