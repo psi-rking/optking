@@ -354,7 +354,6 @@ class DimerFrag(object):
                 if str(coord).isnumeric():
                     coord -= 1
 
-        print(frozen)
         return cls(A_idx, A_atoms, B_idx, B_atoms, A_weights, B_weights, A_lbl, B_lbl, frozen)
 
     def to_dict(self):
@@ -506,10 +505,10 @@ class DimerFrag(object):
             if isinstance(coords_to_freeze, list):
                 for coords in coords_to_freeze:
                     if str(coords).isnumeric():
-                        self._pseudo_frag._intcos[coords].frozen = True
+                        self._pseudo_frag._intcos[coords].freeze()
                     else:
                         I = self.label2index(coords)
-                        self._pseudo_frag._intcos[I].frozen = True
+                        self._pseudo_frag._intcos[I].freeze()
         except:
             raise OptError("did not understand coord to freeze %s" % str(coords))
 
