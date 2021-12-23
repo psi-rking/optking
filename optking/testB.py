@@ -13,7 +13,6 @@ from . import optparams as op
 from .printTools import print_mat_string
 
 
-# def test_b(intcos, geom):
 def test_b(oMolsys):
     logger = logging.getLogger(__name__)
     Natom = oMolsys.natom

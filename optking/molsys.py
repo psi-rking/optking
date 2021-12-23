@@ -12,7 +12,7 @@ from .exceptions import OptError
 from .linearAlgebra import symm_mat_inv
 from .printTools import print_array_string, print_mat_string
 from . import optparams as op
-from .intcosMisc import Bmat
+#from .intcosMisc import Bmat
 
 
 class Molsys(object):
@@ -661,7 +661,7 @@ class Molsys(object):
                 Axyz = self.frag_geom(DI.A_idx)
                 Bxyz = self.frag_geom(DI.B_idx)
                 DI.Bmat(Axyz, Bxyz, B[self.dimerfrag_intco_slice(i)],
-                    A1stAtom, 3 * B1stAtom)  # column offsets
+                    3 * A1stAtom, 3 * B1stAtom)  # column offsets
 
         if massWeight:
             sqrtm = np.broadcast_to(np.repeat(np.sqrt(self.masses),3), (Nint, Ncart))
