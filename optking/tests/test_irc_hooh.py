@@ -25,7 +25,7 @@ def test_hooh_irc():
         "scf_type": "pk",
         "g_convergence": "gau_verytight",
         "opt_type": "irc",
-        "geom_maxiter": 20,
+        "geom_maxiter": 60,
     }
 
     psi4.set_options(psi4_options)

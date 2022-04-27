@@ -5,9 +5,11 @@
 #  3. Have not yet restarted from json or disk, but should be close to working.
 import psi4
 import optking
+import pytest
 
 
 def test_step_by_step():
+
     h2o = psi4.geometry(
         """
          O
@@ -26,16 +28,25 @@ def test_step_by_step():
     }
     psi4.set_options(psi4_options)
 
-    opt = optking.OptHelper("hf", comp_type="psi4")
-    opt.build_coordinates()
+    opt = optking.CustomHelper(h2o)
 
     for step in range(30):
-        opt.energy_gradient_hessian()
+
+        grad, wfn = psi4.gradient("hf", return_wfn=True)
+        opt.gX = grad.np.reshape(-1)
+        opt.E = wfn.energy()
+
+        opt.compute()
         opt.step()
         conv = opt.test_convergence()
         if conv is True:
             print("Optimization SUCCESS:")
             break
+
+        geom = psi4.core.Matrix.from_array(opt.molsys.geom)
+        h2o.set_geometry(geom)
+        h2o.update_geometry()
+
     else:
         print("Optimization FAILURE:\n")
 
@@ -63,12 +74,12 @@ def test_lj_external_gradient():
     psi4.core.clean_options()
     psi4_options = {
         "basis": "sto-3g",
-        "g_convergence": "gau_verytight",
     }
+    optking_options = {"g_convergence": "gau_verytight", "intrafrag_hess": "SIMPLE"}
+
     psi4.set_options(psi4_options)
 
-    opt = optking.OptHelper("hf", comp_type="user")
-    opt.build_coordinates()
+    opt = optking.CustomHelper(h2o, optking_options)
 
     for step in range(30):
         # Compute one's own energy and gradient
@@ -77,7 +88,7 @@ def test_lj_external_gradient():
         opt.E = E
         opt.gX = gX
 
-        opt.energy_gradient_hessian()
+        opt.compute()
         opt.step()
         conv = opt.test_convergence()
         if conv is True:
@@ -115,8 +126,7 @@ def test_stepwise_export():
     }
     psi4.set_options(psi4_options)
 
-    opt = optking.OptHelper("hf", init_mode="setup")
-    opt.build_coordinates()
+    opt = optking.CustomHelper(h2o)
     optSaved = opt.to_dict()
 
     import pprint
@@ -127,14 +137,24 @@ def test_stepwise_export():
     print(opt.molsys.show_geom())
 
     for _ in range(10):
-        opt = optking.OptHelper.from_dict(optSaved)
-        opt.energy_gradient_hessian()
+        opt = optking.CustomHelper.from_dict(optSaved)
+
+        grad, wfn = psi4.gradient("hf", return_wfn=True)
+        opt.gX = grad.np.reshape(-1)
+        opt.E = wfn.energy()
+        opt.compute()
         opt.step()
         conv = opt.test_convergence()
-        optSaved = opt.to_dict()
         if conv is True:
             print("Optimization SUCCESS:")
             break
+        else:
+            optSaved = opt.to_dict()
+
+        geom = psi4.core.Matrix.from_array(opt.molsys.geom)
+        h2o.set_geometry(geom)
+        h2o.update_geometry()
+
     else:
         print("Optimization FAILURE:\n")
 

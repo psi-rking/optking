@@ -13,11 +13,12 @@ f1 = {"frozen_distance": "1 2 3 4"}
 f2 = {"frozen_bend": "1 2 3 2 3 4"}
 f3 = {"frozen_dihedral": "1 2 3 4"}
 
-optking__frozen_coords = [(f1, OH_frozen_stre_rhf), (f2, OOH_frozen_bend_rhf),
-                          (f3, HOOH_frozen_dihedral_rhf)]
+optking__frozen_coords = [(f1, OH_frozen_stre_rhf), (f2, OOH_frozen_bend_rhf), (f3, HOOH_frozen_dihedral_rhf)]
 
-@pytest.mark.parametrize("option, expected", optking__frozen_coords, ids=["frozen stretch",
- "frozen bend", "frozen dihedral"])
+
+@pytest.mark.parametrize(
+    "option, expected", optking__frozen_coords, ids=["frozen stretch", "frozen bend", "frozen dihedral"]
+)
 def test_frozen_coords(option, expected):
     # Constrained minimization with frozen bond, bend, and torsion
     hooh = psi4.geometry(

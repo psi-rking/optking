@@ -17,12 +17,18 @@ def test_linesearch():
     )
 
     psi4.core.clean_options()
-    psi4_options = {"basis": "cc-pvdz", "d_convergence": 10, "geom_maxiter": 20, "g_convergence": "gau_tight"}
+    psi4_options = {
+        "basis": "cc-pvdz",
+        "d_convergence": 10,
+        "geom_maxiter": 60,
+        "g_convergence": "gau_tight",
+        "step_type": "SD",
+    }
 
     psi4.set_options(psi4_options)
 
     # "linesearch" is not currrently recognized by psi4 read_options.
-    json_output = optking.optimize_psi4("mp2", **{"step_type": "linesearch"})
+    json_output = optking.optimize_psi4("mp2", **{"linesearch": True})
     print(json_output)
     E = json_output["energies"][-1]
     nucenergy = json_output["trajectory"][-1]["properties"]["nuclear_repulsion_energy"]

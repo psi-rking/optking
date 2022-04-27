@@ -42,7 +42,7 @@ optking__freeze_params = [
 
 @pytest.mark.parametrize(
     "options, expected",
-    #freeze_params,
+    # freeze_params,
     optking__freeze_params,
     ids=["Only backstep", "freeze H", "freeze O", "freeze individual x,y,z", "freeze then change coord"],
 )

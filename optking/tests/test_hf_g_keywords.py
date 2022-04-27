@@ -82,6 +82,7 @@ def test_maxiter_geom():
     psi4.set_options(psi4options)
 
     result = optking.optimize_psi4("hf")
+    print(result)
 
     nextStepSchema = result["final_molecule"]  # TEST
     nextStepMolecule = psi4.core.Molecule.from_schema(nextStepSchema)  # TEST
