@@ -1,4 +1,4 @@
-### Class to store points on the IRC
+""" Class to store points on the IRC """
 import logging
 import os
 
@@ -7,6 +7,7 @@ import numpy as np
 from .exceptions import OptError
 from .printTools import print_geom_string, print_mat_string, print_array_string
 from .linearAlgebra import symm_mat_inv
+from .history import History, Step
 
 
 class IRCpoint(object):
@@ -35,18 +36,7 @@ class IRCpoint(object):
     """
 
     def __init__(
-        self,
-        step_number,
-        q,
-        x,
-        f_q,
-        f_x,
-        energy,
-        q_pivot,
-        x_pivot,
-        step_dist,
-        arc_dist,
-        line_dist,
+        self, step_number, q, x, f_q, f_x, energy, q_pivot, x_pivot, step_dist, arc_dist, line_dist,
     ):
         self.step_number = step_number
         self.q = q
@@ -81,7 +71,7 @@ class IRCpoint(object):
         return s
 
 
-class IRCdata(object):
+class IRCHistory(object):
     """Stores obtained points along the IRC as well as information about
     the status of the IRC computation"""
 
@@ -138,7 +128,7 @@ class IRCdata(object):
 
         logger = logging.getLogger(__name__)
         pindex = len(self.irc_points) - 1
-        outstr = "\nAdding IRC point %d\n" % pindex
+        outstr = "\tAdding IRC point %d\n" % pindex
         outstr += print_geom_string(self.atom_symbols, x_in, "Angstroms")
         logger.info(outstr)
 
@@ -341,13 +331,13 @@ class IRCdata(object):
         G_m_inv = symm_mat_inv(G_m, redundant=True)
 
         q_vec = o_molsys.q_array()
-        p_vec = q_vec - history.q_pivot()
-        logger.info("\ncurrent step from IRC pivot point (not previous point on rxnpath):\n %s", print_array_string(p_vec))
+        p_vec = q_vec - self.q_pivot()
+        logger.info(
+            "\ncurrent step from IRC pivot point (not previous point on rxnpath):\n %s", print_array_string(p_vec)
+        )
         logger.info("\nForces at current point on hypersphere\n %s", print_array_string(f_q))
 
         G_m_inv_p = G_m_inv @ p_vec
         orthog_f = f_q - (f_q @ p_vec) / (p_vec @ G_m_inv_p) * G_m_inv_p
         logger.debug("\nForces perpendicular to hypersphere.\n %s", print_array_string(orthog_f))
         return orthog_f
-
-history = 0

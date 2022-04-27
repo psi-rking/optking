@@ -28,14 +28,7 @@ def string_option(storage_name):
 allowedStringOptions = {
     "opt_type": ("MIN", "TS", "IRC"),
     "step_type": ("RFO", "P_RFO", "NR", "SD", "LINESEARCH"),
-    "opt_coordinates": (
-        "REDUNDANT",
-        "INTERNAL",
-        "DELOCALIZED",
-        "NATURAL",
-        "CARTESIAN",
-        "BOTH",
-    ),
+    "opt_coordinates": ("REDUNDANT", "INTERNAL", "DELOCALIZED", "NATURAL", "CARTESIAN", "BOTH",),
     "irc_direction": ("FORWARD", "BACKWARD"),
     "g_convergence": (
         "QCHEM",
@@ -49,14 +42,7 @@ allowedStringOptions = {
         "NWCHEM_LOOSE",
     ),
     "hess_update": ("NONE", "BFGS", "MS", "POWELL", "BOFILL"),
-    "intrafrag_hess": (
-        "SCHLEGEL",
-        "FISCHER",
-        "SCHLEGEL",
-        "SIMPLE",
-        "LINDH",
-        "LINDH_SIMPLE",
-    ),
+    "intrafrag_hess": ("SCHLEGEL", "FISCHER", "SCHLEGEL", "SIMPLE", "LINDH", "LINDH_SIMPLE",),
     "frag_mode": ("SINGLE", "MULTI"),
     "interfrag_mode": ("FIXED", "PRINCIPAL_AXES"),
     "interfrag_hess": ("DEFAULT", "FISCHER_LIKE"),
@@ -113,6 +99,8 @@ class OptParams(object):
         self.opt_type = uod.get("OPT_TYPE", "MIN")
         # Geometry optimization step type, e.g., Newton-Raphson or Rational Function Optimization
         self.step_type = uod.get("STEP_TYPE", "RFO")
+        # variation of steepest descent step size
+        self.steepest_descent_type = uod.get("STEEPEST_DESCENT_TYPE", "OVERLAP")
         # Geometry optimization coordinates to use.
         # REDUNDANT and INTERNAL are synonyms and the default.
         # DELOCALIZED are the coordinates of Baker.
@@ -153,7 +141,7 @@ class OptParams(object):
         # Do simple, linear scaling of internal coordinates to step limit (not RS-RFO)
         self.simple_step_scaling = uod.get("SIMPLE_STEP_SCALING", False)
         # Set number of consecutive backward steps allowed in optimization
-        self.consecutiveBackstepsAllowed = uod.get("CONSECUTIVE_BACKSTEPS", 0)
+        self.consecutive_backsteps_allowed = uod.get("CONSECUTIVE_BACKSTEPS", 0)
         self.working_consecutive_backsteps = 0
         # Eigenvectors of RFO matrix whose final column is smaller than this are ignored.
         self.rfo_normalization_max = uod.get("RFO_NORMALIZATION_MAX", 100)
@@ -335,6 +323,7 @@ class OptParams(object):
         # Keep internal coordinate definition file.
         self.keep_intcos = uod.get("KEEP_INTCOS", False)
         self.linesearch_step = uod.get("LINESEARCH_STEP", 0.100)
+        self.linesearch = uod.get("LINESEARCH", False)
         # Guess at Hessian in steepest-descent direction.
         self.sd_hessian = uod.get("SD_HESSIAN", 1.0)
         #
@@ -564,37 +553,22 @@ class OptParams(object):
             self.i_untampered = True
         # end __init__ finally !
 
+    @classmethod
+    def from_internal_dict(cls, params):
+        """Assumes that params does not use the input key and syntax, but uses the internal names and
+        internal syntax. Meant to be used for recreating options object after dump to dict
+        """
+        options = cls({})  # basic default options
+        opt_dict = options.__dict__
+
+        for key, val in opt_dict.items():
+            options.__dict__[key] = params.get(key, val)
+
+        return options
+
     # for specialists
     def __setitem__(self, key, value):
         return setattr(self, key, value)
-
-    def increaseTrustRadius(P):
-        logger = logging.getLogger(__name__)
-        maximum = P.intrafrag_trust_max
-        if P.intrafrag_trust != maximum:
-            new_val = P.intrafrag_trust * 3
-
-            if new_val > maximum:
-                P.intrafrag_trust = maximum
-            else:
-                P.intrafrag_trust = new_val
-
-            logger.info("\tEnergy ratio indicates good step: Trust radius increased to %6.3e.\n" % P.intrafrag_trust)
-        return
-
-    def decreaseTrustRadius(P):
-        logger = logging.getLogger(__name__)
-        minimum = P.intrafrag_trust_min
-        if P.intrafrag_trust != minimum:
-            new_val = P.intrafrag_trust / 4
-
-            if new_val < minimum:
-                P.intrafrag_trust = minimum
-            else:
-                P.intrafrag_trust = new_val
-
-            logger.warning("\tEnergy ratio indicates iffy step: Trust radius decreased to %6.3e.\n" % P.intrafrag_trust)
-        return
 
     def updateDynamicLevelParameters(P, run_level):
         logger = logging.getLogger(__name__)

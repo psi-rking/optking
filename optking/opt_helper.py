@@ -32,7 +32,8 @@ For an example please see tests/test_opthelper
 
 import logging
 import json
-from collections import ABC
+from abc import ABC, abstractmethod
+from typing import Union
 
 import numpy as np
 import qcelemental as qcel
@@ -40,31 +41,69 @@ import qcelemental as qcel
 from . import compute_wrappers, hessian, history, molsys, optwrapper
 from .convcheck import conv_check
 from .exceptions import OptError
-from .optimize import get_pes_info, make_internal_coords, prepare_opt_output, get_hessian_protocol
-from .stepAlgorithms import take_step
+from .optimize import get_pes_info, make_internal_coords, prepare_opt_output, OptimizationManager
 from .misc import import_psi4
 from . import optparams as op
 
 
 class Helper(ABC):
-    def __init__(self, params={}):
+    def __init__(self, params={}, **kwargs):
         """Initialize options. Still need a molecule to create molsys and computer """
 
-        optwrapper.initialize_options(params)
-        self.params = op.params
+        optwrapper.initialize_options(params, silent=kwargs.get("silent", False))
+        self.params = op.Params
 
         self.computer: compute_wrappers.ComputeWrapper
         self.step_num = 0
         self.irc_step_num = 0  # IRC not supported by OptHelper for now.
         # The following are not used before being computed:
 
-        self._Hq = None
-        self.HX = None
-        self.gX = None
-        self.E = None
+        self._Hq: Union[np.ndarray, None] = None
+        self.HX: Union[np.ndarray, None] = None
+        self.gX: Union[np.ndarray, None] = None
+        self.fq: Union[np.ndarray, None] = None
+        self.dq: Union[np.ndarray, None] = None
+        self.new_geom: Union[np.ndarray, None] = None
+        self.E: Union[float, None] = None
 
-        self.molsys: molsys.Molsys
-        self.history = history.History()
+        self.opt_input: Union[dict, None] = None
+        self.molsys: Union[molsys.Molsys, None] = None
+        self.history = history.History(self.params)
+        self.opt_manager: OptimizationManager
+
+    def to_dict(self):
+        d = {
+            "step_num": self.step_num,
+            "irc_step_num": self.irc_step_num,
+            "params": self.params.__dict__,
+            "molsys": self.molsys.to_dict(),
+            "history": self.history.to_dict(),
+            "computer": self.computer.__dict__,
+            "hessian": self._Hq,
+            "opt_input": self.opt_input,
+        }
+
+        return d
+
+    @classmethod
+    def from_dict(cls, d):
+        """Construct as far as possible the helper. Child class will need to update computer """
+        # creates the initial configuration of the OptHelper. Some options might
+        # have changed over the course of the optimization (eg trust radius)
+        logger = logging.getLogger(__name__)
+        logger.info(d)
+
+        helper = cls(d.get("opt_input"), params={}, silent=True)
+
+        helper.params = op.OptParams.from_internal_dict(d.get("params"))
+        op.Params = helper.params
+        # update with current information
+        helper.molsys = molsys.Molsys.from_dict(d.get("molsys"))
+        helper.history = history.History.from_dict(d.get("history"))
+        helper.step_num = d.get("step_num")
+        helper.irc_step_num = d.get("irc_step_num")
+        helper._Hq = d.get("hessian")
+        return helper
 
     def build_coordinates(self):
         make_internal_coords(self.molsys, self.params)
@@ -74,44 +113,44 @@ class Helper(ABC):
         logger.info("Molsys:\n" + str(self.molsys))
         return
 
-    def energy_gradient_hessian(self):
-        """E and gX must be set by the user before calling this method. """
+    @abstractmethod
+    def _compute(self):
+        """get energy gradient and hessian """
 
-        self.compute()
+    def compute(self):
+        """Get the energy, gradient, and hessian. Project redundancies and apply constraints / forces """
+
+        logger = logging.getLogger(__name__)
+
+        if not self.molsys.intcos_present:
+            # opt_manager.molsys is the same object as this molsys
+            make_internal_coords(self.molsys)
+            logger.debug("Molecular system after make_internal_coords:")
+            logger.info(str(self.molsys))
+
+        self._compute()
         self.fq = self.molsys.gradient_to_internals(self.gX, -1.0)
 
         self.molsys.apply_external_forces(self.fq, self._Hq, self.step_num)
         self.molsys.project_redundancies_and_constraints(self.fq, self._Hq)
-
-        self.history.append(self.molsys.geom, self.E, self.fq)
-        self.history.nuclear_repulsion_energy = self.computer.trajectory[-1]["properties"][
-                "nuclear_repulsion_energy"]
-        self.history.current_step_report()
+        logger.info(self.fq)
 
     def step(self):
-        self.Dq = take_step(
-            self.molsys,
-            self.E,
-            self.fq,
-            self._Hq,
-            self.params.step_type,
-            self.computer,
-            self.history,
-        )
+        """Must call compute before calling this method. Takes the next step. """
+        self.dq = self.opt_manager.take_step(self.fq, self._Hq, self.E)
         self.new_geom = self.molsys.geom
         self.step_num += 1
 
+        logger = logging.getLogger(__name__)
+        logger.info(str(self.molsys))
+
     def test_convergence(self):
-        converged = conv_check(self.step_num, self.molsys, self.Dq, self.fq, self.computer.energies)
-        return converged
+        return self.opt_manager.converged(self.E, self.fq, self.dq, self.step_num)
 
     def close(self):
         del self._Hq
-        del self.history
         del self.params
-        qcschema_output = prepare_opt_output(self.molsys, self.computer)
-        self.molsys.clear()
-        return qcschema_output
+        return self.opt_manager.finish()
 
     @property
     def gX(self):
@@ -185,7 +224,7 @@ class CustomHelper(Helper):
     -----
     Overrides. gX, Hessian, and Energy to allow for user input. """
 
-    def __init__(self, mol_src, params={}):
+    def __init__(self, mol_src, params={}, **kwargs):
         """
         Parameters
         ----------
@@ -193,34 +232,55 @@ class CustomHelper(Helper):
             psi4 or qcelemental molecule to construct optking molecular system from
         """
 
-        super().__init__(params)
+        opt_input = {
+            "initial_molecule": {"symbols": [], "geometry": []},
+            "input_specification": {"keywords": {}, "model": {}},
+        }
+        self.computer = optwrapper.make_computer(opt_input, "user")
+        super().__init__(params, **kwargs)
 
         if isinstance(mol_src, qcel.models.Molecule):
-            molecule_input = mol_src.dict()
-            self.molsys = molsys.Molsys.from_schema(mol_src)
+            self.opt_input = mol_src.dict()
+            self.molsys = molsys.Molsys.from_schema(self.opt_input)
         elif isinstance(mol_src, dict):
             tmp = qcel.models.Molecule(**mol_src).dict()
-            molecule_input = json.loads(qcel.util.serialization.json_dumps(tmp))
-            self.molsys = molsys.Molsys.from_schema(molecule_input)
+            self.opt_input = json.loads(qcel.util.serialization.json_dumps(tmp))
+            self.molsys = molsys.Molsys.from_schema(self.opt_input)
         else:
             import_psi4("Attempting to create molsys from psi4 molecule")
+            import psi4
+
             if isinstance(mol_src, psi4.qcdb.Molecule):
-                self.molsys = molsys.Molsys.from_psi4(mol_src)
+                self.molsys, self.opt_input = molsys.Molsys.from_psi4(mol_src)
             else:
                 try:
-                    self.molsys = molsys.Molsys.from_psi4(psi4.core.get_active_molecule())
+                    self.molsys, self.opt_input = molsys.Molsys.from_psi4(psi4.core.get_active_molecule())
                 except Exception as error:
                     raise OptError("Failed to grab psi4 molecule as last resort") from error
-        opt_input = {'initial_molecule': {}, 'input_specification': {'keywords': {}, 'model': {}}}
-        self.computer = optwrapper.make_computer(opt_input)  # create dummy computer.
 
-    def compute(self):
+        self.computer.molecule = self.opt_input
+        self.build_coordinates()
+        self.opt_manager = OptimizationManager(self.molsys, self.history, self.params, self.computer)
+
+    @classmethod
+    def from_dict(cls, d):
+        helper = super().from_dict(d)
+        helper.computer = compute_wrappers.make_computer_from_dict("user", d.get("computer"))
+        helper.opt_manager = OptimizationManager(helper.molsys, helper.history, helper.params, helper.computer)
+        return helper
+
+    def _compute(self):
         """The call to computer in this class is essentially a lookup for the value provided by
         the User. """
+        logger = logging.getLogger(__name__)
+
         if not self.HX:
+            logger.info(self.step_num)
             if self.step_num == 0:
-                self._Hq = hessian.guess(self.molsys)
+                logger.info("Guessing hessian")
+                self._Hq = hessian.guess(self.molsys, guessType=self.params.intrafrag_hess)
             else:
+                logger.info("Updating hessian")
                 self._Hq = self.history.hessian_update(self._Hq, self.molsys)
             self.gX = self.computer.compute(self.geom, driver="gradient", return_full=False)
         else:
@@ -232,36 +292,52 @@ class CustomHelper(Helper):
 
     def calculations_needed(self):
         """Assume gradient is always needed. Provide tuple with keys for required properties """
-        hessian_protocol = get_hessian_protocol(self.step_number, self.irc_step_number)
+        hessian_protocol = self.opt_manager.get_hessian_protocol()
 
-        if hessian_protocol == 'compute':
-            return ('energy', 'gradient', 'hessian')
+        if hessian_protocol == "compute":
+            return "energy", "gradient", "hessian"
         else:
-            return ('energy', 'gradient')
+            return "energy", "gradient"
+
+    @property
+    def E(self):
+        return super().E
+
+    @property
+    def HX(self):
+        return super().HX
+
+    @property
+    def gX(self):
+        return super().gX
 
     @E.setter
     def E(self, val):
         """Set energy in self and computer """
-        super().E = val
+        # call parent classes setter. Weird python syntax. Class will always be CustomHelper
+        # self.__class__ could be a child class type. (No child class currently)
+        # super() and super(__class__, self.__class__) should be equivalent but the latter is required?
+        super(__class__, self.__class__).E.__set__(self, val)
         self.computer.external_energy = val
 
     @HX.setter
     def HX(self, val):
         """Set hessian in self and computer """
-        super().HX = val
+        super(__class__, self.__class__).HX.__set__(self, val)
         self.computer.external_hessian = val
 
     @gX.setter
     def gX(self, val):
         """Set gradient in self and computer """
-        super().gX = val
+        super(__class__, self.__class__).gX.__set__(self, val)
         self.computer.external_gradient = val
 
 
 class EngineHelper(Helper):
-    """Setup an optimization using qcarchive to setup a molecular system and get gradients, energies
-    etc... """
-    def __init__(self, optimization_input, params={}):
+    """Perform an optimization using qcengine to compute properties. Use OptimizationInput to setup
+    a molecular system"""
+
+    def __init__(self, optimization_input, **kwargs):
 
         if isinstance(optimization_input, qcel.models.OptimizationInput):
             self.opt_input = optimization_input.dict()
@@ -270,16 +346,25 @@ class EngineHelper(Helper):
             self.opt_input = json.loads(qcel.util.serialization.json_dumps(tmp))
         # self.calc_name = self.opt_input['input_specification']['model']['method']
 
-        super(self, params)
-        self.molsys = molsys.Molsys.from_schema(self.opt_input['initial_molecule'])
-        self.computer = optwrapper.make_computer(self.opt_input, 'qc')
+        super().__init__(optimization_input["keywords"], **kwargs)
+        self.molsys = molsys.Molsys.from_schema(self.opt_input["initial_molecule"])
+        self.computer = optwrapper.make_computer(self.opt_input, "qc")
+        self.computer_type = "qc"
+        self.build_coordinates()
+        self.opt_manager = OptimizationManager(self.molsys, self.history, self.params, self.computer)
 
-    def compute(self):
-        self._Hq, self.gX = get_pes_info(self._Hq,
-                                         self.computer,
-                                         self.molsys,
-                                         self.step_num,
-                                         self.irc_step_num)
+    @classmethod
+    def from_dict(cls, d):
+        helper = super().from_dict(d)
+        helper.computer = compute_wrappers.make_computer_from_dict("qc", d.get("computer"))
+        return helper
+
+    def _compute(self):
+
+        protocol = self.opt_manager.get_hessian_protocol()
+        requires = self.opt_manager.opt_method.requires()
+
+        self._Hq, self.gX = get_pes_info(self._Hq, self.computer, self.molsys, self.history, protocol, requires)
         self.E = self.computer.energies[-1]
 
     def optimize(self):

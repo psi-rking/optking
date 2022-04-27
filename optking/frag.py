@@ -38,7 +38,7 @@ class Frag:
 
     def __str__(self):
 
-        np.set_printoptions(suppress=True, floatmode='fixed', sign=' ')
+        np.set_printoptions(suppress=True, floatmode="fixed", sign=" ")
         s = f"\n\t {'Z (Atomic Numbers)':<20} {'Masses':^20} {'Geom':^40}"
 
         strip = lambda x: str(x).replace("[", "").replace("]", "")
@@ -127,11 +127,7 @@ class Frag:
         intcos_report = "\tInternal Coordinate Values\n"
         intcos_report += "\n\t - Coordinate -           - BOHR/RAD -       - ANG/DEG -\n"
         for coord in self._intcos:
-            intcos_report += "\t%-18s=%17.6f%19.6f\n" % (
-                coord,
-                coord.q(self._geom),
-                coord.q_show(self._geom),
-            )
+            intcos_report += "\t%-18s=%17.6f%19.6f\n" % (coord, coord.q(self._geom), coord.q_show(self._geom),)
         intcos_report += "\n"
         logger.info(intcos_report)
 

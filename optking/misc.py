@@ -7,6 +7,15 @@ import qcelemental as qcel
 from .exceptions import AlgError, OptError
 
 
+def import_psi4(mesg=""):
+    """Attempt psi4 import. Print mesg as indicator for why psi4 is requried to user """
+    try:
+        import psi4
+    except ImportError as error:
+        mesg = "Cannot import psi4"
+        raise OptError(mesg + "conda install psi4 psi4-rt -c psi4") from error
+
+
 def delta(i, j):
     if i == j:
         return 1

@@ -29,7 +29,7 @@ CONVERGENCE_PRESETS = {
 }
 
 
-def conv_check(iternum, o_molsys, dq, f, energies, irc_data=None):
+def conv_check(iternum, dq, f, energies, required=None):
     """Wrapper method to test for stationary point convergence
 
     Computes energy, force, and displacement changes for current step. Prints main convergence report
@@ -50,10 +50,10 @@ def conv_check(iternum, o_molsys, dq, f, energies, irc_data=None):
     """
 
     logger = logging.getLogger(__name__)
-    logger.debug("Performing convergence check.")
+    logger.info("Performing convergence check.")
 
     params_dict = op.Params.__dict__
-    criteria = _get_conv_criteria(o_molsys, dq, f, energies, irc_data)
+    criteria = _get_conv_criteria(dq, f, energies, required)
     conv_met, conv_active = _transform_criteria(criteria, params_dict)
     _print_convergence_table(iternum, energies[-1], criteria, conv_met, conv_active, params_dict)
 
@@ -62,16 +62,14 @@ def conv_check(iternum, o_molsys, dq, f, energies, irc_data=None):
     return _test_for_convergence(conv_met, conv_active)
 
 
-def _get_conv_criteria(o_molsys, dq, f, energies, irc_data=None):
+def _get_conv_criteria(dq, f_vec, energies, required=None):
     """ Creates a dictionary of step information for convergence test """
 
     energy = energies[-1]
     last_energy = energies[-2] if len(energies) > 1 else 0.0
 
-    if op.Params.opt_type == "IRC":
-        f_vec = irc_data._project_forces(f, o_molsys)
-    else:
-        f_vec = f
+    logger = logging.getLogger(__name__)
+    logger.info("Forces in get_criteria %s", print_array_string(f_vec))
 
     criteria = {
         "max_DE": energy - last_energy,
@@ -80,6 +78,11 @@ def _get_conv_criteria(o_molsys, dq, f, energies, irc_data=None):
         "max_disp": abs_max(dq),
         "rms_disp": rms(dq),
     }
+
+    if required:
+        if "gradient" not in required:
+            criteria.pop("rms_force")
+            criteria.pop("max_force")
 
     return criteria
 
@@ -178,7 +181,7 @@ def _print_convergence_table(iternum, energy, criteria, conv_met, conv_active, p
     logger = logging.getLogger(__name__)
 
     conv_symbols = {key: _get_criteria_symbol(conv_met.get(key), conv_active.get(key)) for key in conv_met}
-    print_vals = [iternum + 1, energy] + list(criteria.values()) + list(conv_symbols.values())  # All columns
+    print_vals = [iternum, energy] + list(criteria.values()) + list(conv_symbols.values())  # All columns
 
     suffix = "~\n" if iternum == 0 else "\n"
 

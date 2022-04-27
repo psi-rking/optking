@@ -12,6 +12,7 @@ from .printTools import print_array_string, print_mat_string
 # Some of these functions act on an arbitrary list of simple internals,
 # geometry etc. that may or may not be in a molecular system.
 
+
 def q_values(intcos, geom):
     # available for simple intco lists
     vals = [intco.q(geom) for intco in intcos]

@@ -1,13 +1,11 @@
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 
 from .exceptions import AlgError, OptError
 
 supported_constraint_types = ("free", "frozen", "ranged")
 
 
-class Simple(object):
-    __metaclass__ = ABCMeta
-
+class Simple(ABC):
     def __init__(self, atoms, constraint, range_min, range_max, ext_force):
         # these lines use the property's and setters below
         self.atoms = atoms  # atom indices for internal definition

@@ -101,10 +101,10 @@ def add_h_bonds(geom, zs: list, num_atoms):
     Returns
     -------
     list[stre.HBond]
-    Notes
     -----
     Look for electronegative atoms.
-    Find hydrogen atoms between covalent radii test and 2.3 Angstroms
+    Find hydrogen atoms between covalent radii test and 2.3 Angstrom
+    Notess
     Check these hydrogen atoms are already bonded to an electronegative atom
     Check bond angle >= 90 degrees
     """
@@ -269,12 +269,7 @@ def add_tors_from_connectivity(C, intcos, geom):
                                             else:  # Have found I-J-K-L.
                                                 L = l
                                                 try:
-                                                    val = v3d.tors(
-                                                        geom[I],
-                                                        geom[J],
-                                                        geom[K],
-                                                        geom[L],
-                                                    )
+                                                    val = v3d.tors(geom[I], geom[J], geom[K], geom[L],)
                                                 except AlgError:
                                                     pass
                                                 else:
@@ -374,6 +369,7 @@ def linear_bend_check(o_molsys, dq):
 
     logger = logging.getLogger(__name__)
     linear_bends = []
+    missing_bends = []
 
     for frag_index, frag in enumerate(o_molsys.fragments):
         for i, intco in enumerate(frag.intcos):
@@ -865,7 +861,7 @@ def add_dimer_frag_intcos(o_molsys):
     # 3. Auto-generate reference atoms.
     # TODO: move into a molsys class function?
 
-    if op.Params.interfrag_coords != None:
+    if op.Params.interfrag_coords is not None:
         if type(op.Params.interfrag_coords) in [list, tuple]:
             for coord in op.Params.interfrag_coords:
                 c = eval(coord)

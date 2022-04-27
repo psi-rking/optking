@@ -1,825 +1,803 @@
-# Functions for step algorithms: Newton-Raphson, Rational Function Optimization,
-# Steepest Descent.
-# from .OptParams import Params # this will not cause changes in trust to persist
+""" Defines classes for minimization and transition state optimizations
+
+See Also
+---------
+opt_helper.OptHelper for easy setup and control over optimization procedures.
+
+* User interfaces
+    * optimization_factory()
+    * OptimizationManager
+* optimiziation Classes
+    * NewtonRaphson
+    * SteepestDescent
+        * overlap
+        * borzali_borwein
+    * RestricedStepRFO
+    * ParitionedRFO
+* Linesearch
+    * ThreePointEnergy
+* Abstract Classes
+    * OptimizationInterface
+    * OptimizationAlgorithm
+    * RFO
+    * QuasiNewtonOptimization
+
+The optimization classes above may be created using the factory pattern through optimization_factory(). If
+linesearching or more advanced management of the optimization process is desired an OptimizationManager
+should be created.
+(More features are coming to the OptimizationManager)
+
+"""
+
 import logging
 from math import fabs, sqrt
+from abc import ABC, abstractmethod
+from typing import Union
 
 import numpy as np
 
-from . import optimize
 from . import optparams as op
-from . import v3d
+from . import convcheck
 from .addIntcos import linear_bend_check
 from .displace import displace_molsys
 from .exceptions import AlgError, OptError
-from .history import oHistory
-from .linearAlgebra import abs_max, asymm_mat_eig, norm, symm_mat_eig, symm_mat_inv
+from .linearAlgebra import asymm_mat_eig, symm_mat_eig
 from .misc import is_dq_symmetric
 from .printTools import print_array_string, print_mat_string
 
 
-def take_step(o_molsys, E, q_forces, H, stepType=None, computer=None, hist=None, params=None):
-    """This method computes the step, calls displaces the geometry and updates history with
-     the results.
+class OptimizationInterface(ABC):
+    """Declares that ALL OptKing optimization methods/algorithms will have
+    a self.take_step() method. All methods must be able to determine what the next step
+    to take should be given a history. See take_step() docstring for details."""
 
-    Parameters
-    ----------
-    o_molsys : molsys.Molsys
-        optking's molecular system
-    E : double
-        energy [aO]
-    q_forces : ndarray
-        forces in internal coordinates [aO]
-    H : ndarray
-        hessian in internal coordinates
-    stepType : string, optional
-        defaults to stepType in options
-    computer : computeWrapper, optional
-    hist : history.History object
+    def __init__(self, molsys, history, params):
+        """set history and molsys. Create a default params object if required.
+        Individual params will be set as instance attributes by the child classes as needed
 
-    Returns
-    -------
-    np.ndarray
-        dispalcement in internals
+        Parameters
+        ----------
+        molsys: molsys.Molsys
+        history: history.History
+        params: op.OptParams"""
 
-    Notes
-    -----
-    step_grad and step_hess are the gradient and hessian in the direction of the step.
+        self.molsys = molsys
+        self.history = history
+        self.logger = logging.getLogger(__name__)
 
-    """
-    if hist is None:
-        hist = oHistory
-    if params is None:
-        params = op.Params
-    logger = logging.getLogger(__name__)
+        if not params:
+            params = op.OptParams({})
+        self.print_lvl = params.print_lvl
 
-    if len(H) == 0 or len(q_forces) == 0:
-        logger.warning("Missing Hessian or Forces. Step is 0")
-        return np.zeros(0)
+    @abstractmethod
+    def take_step(self, fq=None, H=None, energy=None, **kwargs):
+        """Method skeleton (for example see OptimizationAlgorithm)
+        1. Choose what kind of step should take place next
+        2. take step
+        3. displace molsys
+        4. update history (trim history as applicable)
+        5. return step taken
+        """
+        pass
 
-    if not stepType:
-        stepType = params.step_type
+    def step_metrics(self, dq, fq, H):
 
-    if stepType == "NR":
-        delta_E_projected, dq, unit_step, step_grad, step_hess = dq_nr(q_forces, H)
-    elif stepType == "RFO":
-        delta_E_projected, dq, unit_step, step_grad, step_hess = dq_rfo(o_molsys, q_forces, H)
-    elif stepType == "SD":
-        delta_E_projected, dq, unit_step, step_grad, step_hess = dq_sd(q_forces)
-    elif stepType == "BACKSTEP":
-        return dq_backstep(o_molsys)  # Do an early quit Back step takes care of history and displacing
-    elif stepType == "P_RFO":
-        delta_E_projected, dq, unit_step, step_grad, step_hess = dq_p_rfo(q_forces, H)
-    elif stepType == "LINESEARCH":
-        # achieved_dq already back
-        delta_E_projected, achieved_dq, unit_step, step_grad, step_hess = dq_linesearch(
-            o_molsys, E, q_forces, H, computer
-        )
-    else:
-        raise OptError("Dq: step type not yet implemented")
+        # get norm |q| and unit vector in the step direction
+        dq_norm = sqrt(np.dot(dq, dq))
+        unit_dq = dq / dq_norm
 
-    if stepType != "LINESEARCH":
-        # linesearch performs multiple displacements in order to calculate energies
-        o_molsys.interfrag_dq_discontinuity_correction(dq)
-        achieved_dq = displace_molsys(o_molsys, dq, q_forces)
+        # get gradient and hessian in step direction
+        grad = -1 * np.dot(fq, unit_dq)  # gradient, not force
+        hess = np.dot(unit_dq, np.dot(H, unit_dq))
 
-    dq_norm = np.linalg.norm(achieved_dq)
-    logger.info("\tNorm of achieved step-size %15.10f" % dq_norm)
+        self.logger.info("\t|target step| : %15.10f" % dq_norm)
+        self.logger.info("\tgradient     : %15.10f" % grad)
+        self.logger.info("\thessian      : %15.10f" % hess)
 
-    hist.append_record(delta_E_projected, achieved_dq, unit_step, step_grad, step_hess)
-
-    linearList = linear_bend_check(o_molsys, achieved_dq)
-    if linearList:
-        raise AlgError("New linear angles", newLinearBends=linearList)
-
-    # Before quitting, make sure step is reasonable.  It should only be
-    # screwball if we are using the "First Guess" after the back-transformation failed.
-    dq_norm = np.linalg.norm(achieved_dq[0 : o_molsys.num_intrafrag_intcos])
-    if dq_norm > 5 * params.intrafrag_trust:
-        raise AlgError("opt.py: Step is far too large.")
-
-    return achieved_dq
+        return dq_norm, unit_dq, grad, hess
 
 
-# TODO this method was described as crude do we need to revisit?
-def apply_intrafrag_step_scaling(dq):
-    """ Apply maximum step limit by scaling."""
-    logger = logging.getLogger(__name__)
-    trust = op.Params.intrafrag_trust
-    if sqrt(np.dot(dq, dq)) > trust:
-        scale = trust / sqrt(np.dot(dq, dq))
-        logger.info("\tStep length exceeds trust radius of %10.5f." % trust)
-        logger.info("\tScaling displacements by %10.5f" % scale)
-        dq *= scale
-    return
+class OptimizationAlgorithm(OptimizationInterface):
+    """The standard minimization and transition state algorithms inherit from here. Defines
+    the take_step for those algorithms. Backstep and trust radius management are performed here.
+
+    All child classes implement a step() method using the forces and Hessian to compute
+    a step direction and possibly a step_length. trust_radius_on = False allows a child class
+    to override a basic trust radius enforcement."""
+
+    def __init__(self, molsys, history, params):
+        super().__init__(molsys, history, params)
+        self.trust_radius_on = True
+        self.intrafrag_trust = params.intrafrag_trust
+        self.intrafrag_trust_max = params.intrafrag_trust_max
+        self.intrafrag_trust_min = params.intrafrag_trust_min
+        self.consecutive_backsteps_allowed = params.consecutive_backsteps_allowed
+        self.dynamic_level = params.dynamic_level
+        self.opt_type = params.opt_type
+        self.linesearch = params.linesearch
+
+    @abstractmethod
+    def requires(self, **kwargs):
+        """Returns tuple with strings ('energy', 'gradient', 'hessian') for what the algorithm
+        needs to compute a new point"""
+        pass
+
+    def expected_energy(self, step, grad, hess):
+        """Compute the expected energy given the model for the step
+
+        Parameters
+        ----------
+        step: float
+            normalized step (unit length)
+        grad: np.ndarray
+            projection of gradient onto step
+        hess: np.ndarray
+            projection of hessian onto step
+        """
+        pass
+
+    @abstractmethod
+    def step(self, fq: np.ndarray, H: np.ndarray, *args, **kwargs) -> np.ndarray:
+        """Basic form of the algorithm"""
+        pass
+
+    def take_step(self, fq=None, H=None, energy=None, **kwargs):
+        """Compute step and take step"""
+
+        if len(fq) == 0:
+            self.logger.warning("Forces are missing. Step is 0")
+            return np.zeros(0)
+
+        self.history.append(self.molsys.geom, energy, fq)
+
+        if self.backstep_needed():
+            dq = self.backstep()
+        else:
+            dq = self.step(fq, H)
+
+        if self.trust_radius_on:
+            self.apply_intrafrag_step_scaling(dq)
+
+        self.molsys.interfrag_dq_discontinuity_correction(dq)
+        achieved_dq = displace_molsys(self.molsys, dq, fq)
+        dq_norm, unit_dq, projected_fq, projected_hess = self.step_metrics(dq, fq, H)
+        delta_energy = self.expected_energy(dq_norm, projected_fq, projected_hess)
+        self.logger.debug("\tProjected energy change: %10.10lf\n" % delta_energy)
+        self.update_history(delta_energy, achieved_dq, unit_dq, projected_fq, projected_hess)
+
+        dq_norm = np.linalg.norm(achieved_dq)
+        self.logger.info("\tNorm of achieved step-size %15.10f" % dq_norm)
+
+        # Before quitting, make sure step is reasonable.  It should only be
+        # screwball if we are using the "First Guess" after the back-transformation failed.
+        dq_norm = np.linalg.norm(achieved_dq[0 : self.molsys.num_intrafrag_intcos])
+        if dq_norm > 5 * self.intrafrag_trust:
+            raise AlgError("opt.py: Step is far too large.")
+
+        return achieved_dq
+
+    def apply_intrafrag_step_scaling(self, dq):
+        """Apply maximum step limit by scaling."""
+        trust = self.intrafrag_trust
+        if sqrt(np.dot(dq, dq)) > trust:
+            scale = trust / sqrt(np.dot(dq, dq))
+            self.logger.info("\tStep length exceeds trust radius of %10.5f." % trust)
+            self.logger.info("\tScaling displacements by %10.5f" % scale)
+            dq *= scale
+        return dq
+
+    def backstep(self):
+        """takes a partial step backwards. fq and H should correspond to the previous not current point
+
+        Notes
+        -----
+        Take partial backward step.  Update current step in history.
+        Divide the last step size by 1/2 and displace from old geometry.
+        History contains:
+            consecutiveBacksteps : increase by 1
+        Step contains:
+            forces, geom, E, followedUnitVector, oneDgradient, oneDhessian, Dq, and projectedDE
+        update:
+            Dq - cut in half
+            projectedDE - recompute
+        leave remaining
+
+        """
+
+        self.logger.warning("\tRe-doing last optimization step - smaller this time.\n")
+        self.history.consecutive_backsteps += 1
+
+        # Calling function shouldn't let this happen; this is a check for developer
+        if len(self.history.steps) < 2:
+            raise OptError("Backstep called, but no history is available.")
+
+        # Erase last, partial step data for current step.
+        del self.history.steps[-1]
+
+        # Get data from previous step.
+        dq = self.history.steps[-1].Dq
+
+        # Copy old geometry so displace doesn't change history
+        geom = self.history.steps[-1].geom.copy()
+        self.molsys.geom = geom
+
+        # Compute new Dq and energy step projection.
+        dq /= 2
+        return dq
+
+    def converged(self, dq, fq, step_number):
+        energies = [step.E for step in self.history.steps]
+        converged = convcheck.conv_check(step_number, dq, fq, energies)
+        self.logger.info("\tConvergence check returned %s" % converged)
+
+        return converged
+
+    def backstep_needed(self):
+        """Simple logic for whether a backstep is advisable (or too many have been taken).
+
+        Returns
+        -------
+        bool : True if a backstep should be taken
+        """
+
+        previous_is_decent = self.assess_previous_step()
+
+        if previous_is_decent:
+            self.history.consecutive_backsteps = 0
+            return False
+
+        if len(self.history.steps) < 5:
+            # ignore early issues.
+            self.logger.info("\tNear start of optimization, so ignoring bad step.\n")
+            return False
+
+        if self.history.consecutive_backsteps < self.consecutive_backsteps_allowed:
+            self.history.consecutive_backsteps += 1
+            self.logger.info("\tThis is consecutive backstep %d.\n", self.history.consecutive_backsteps)
+            return True  # Assumes that the client follows instructions
+
+        if self.dynamic_level == 0:
+            self.logger.info("Continuing despite bad step. dynamic level is 0")
+            return False
+        raise AlgError("Bad Step. Maximum number of backsteps taken")
+
+    def assess_previous_step(self):
+        """Determine whether the last step was acceptable, prints summary and change trust radius"""
+
+        decent = True
+        self.logger.info(len(self.history.steps))
+        if len(self.history.steps) < 2:
+            self.history.steps[-1].decent = decent
+            return decent
+
+        energy_change = self.history.steps[-1].E - self.history.steps[-2].E
+        projected_change = self.history.steps[-2].projectedDE
+
+        opt_step_report = "\n\tCurrent energy: %20.10lf\n" % self.history.steps[-1].E
+        opt_step_report += "\tEnergy change for the previous step:\n"
+        opt_step_report += "\t\tActual       : %20.10lf\n" % energy_change
+        opt_step_report += "\t\tProjected    : %20.10lf\n" % projected_change
+
+        self.logger.info("\tCurrent Step Report \n %s" % opt_step_report)
+
+        energy_ratio = energy_change / projected_change
+        self.logger.info("\tEnergy ratio = %10.5lf" % energy_ratio)
+
+        if self.opt_type == "MIN" and not self.linesearch:
+            # Predicted up. Actual down.  OK.  Do nothing.
+            if projected_change > 0 and energy_ratio < 0.0:
+                decent = True
+            # Actual step is  up.
+            elif energy_change > 0:
+                self.logger.warning("\tEnergy has increased in a minimization.")
+                self.decrease_trust_radius()
+                decent = False
+            # Predicted down.  Actual down.
+            elif energy_ratio < 0.25:
+                self.decrease_trust_radius()
+                decent = True
+            elif energy_ratio > 0.75:
+                self.increase_trust_radius()
+                decent = True
+
+        self.history.steps[-2].decent = decent
+        return decent
+
+    def increase_trust_radius(self):
+        """ Increase trust radius by factor of 3 """
+        maximum = self.intrafrag_trust_max
+        if self.intrafrag_trust != maximum:
+            new_val = self.intrafrag_trust * 3
+            new_val = maximum if new_val > self.intrafrag_trust_max else new_val
+            self.logger.info("\tEnergy ratio indicates good step: Trust radius increased to %6.3e.\n", new_val)
+            self.intrafrag_trust = new_val
+
+    def decrease_trust_radius(self):
+        """Scale trust radius by 0.25 """
+        minimum = self.intrafrag_trust_min
+        if self.intrafrag_trust != minimum:
+            new_val = self.intrafrag_trust / 4
+            new_val = minimum if new_val < minimum else new_val
+            self.logger.warning("\tEnergy ratio indicates iffy step: Trust radius decreased to %6.3e.\n", new_val)
+            self.intrafrag_trust = new_val
+
+    def update_history(self, delta_e, achieved_dq, unit_dq, projected_f, projected_hess):
+        """Basic history update method. This should be expanded here and in child classes in
+        future"""
+
+        self.history.append_record(delta_e, achieved_dq, unit_dq, projected_f, projected_hess)
+
+        linear_list = linear_bend_check(self.molsys, achieved_dq)
+        if linear_list:
+            raise AlgError("New linear angles", newLinearBends=linear_list)
+
+    # def converged(self, step_number, dq, fq):
+    #     energies = (self.history.steps[-1].E, self.history.steps[-2].E)  # grab last two energies
+    #     converged = convcheck.conv_check(step_number, self.molsys, dq, energies)
+    #     self.logger.info("\tConvergence check returned %s" % converged)
+    #     return converged
 
 
-def de_projected(model, step, grad, hess):
-    """ Compute anticpated energy change along one dimension """
-    if model == "NR":
+class QuasiNewtonOptimization(OptimizationAlgorithm, ABC):
+    def requires(self):
+        return "energy", "gradient", "hessian"
+
+    def expected_energy(self, step, grad, hess):
+        """Quadratic energy model"""
         return step * grad + 0.5 * step * step * hess
-    elif model == "RFO":
-        return (step * grad + 0.5 * step * step * hess) / (1 + step * step)
-    else:
-        raise OptError("de_projected does not recognize model.")
+
+    def take_step(self, fq=None, H=None, energy=None, **kwargs):
+        if len(H) == 0:
+            self.logger.warning("Missing Hessian. Step is 0")
+            return np.zeros(0)
+        return super().take_step(fq, H, energy)
 
 
-def dq_nr(fq, H):
-    """Takes a step according to Newton Raphson algorithm
-
-    Parameters
-    ----------
-    o_molsys : molsys.Molsys
-        optking molecular system
-    E : double
-        energy
-    fq : ndarray
-        forces in internal coordiantes
-    H : ndarray
-        hessian in internal coordinates
+class SteepestDescent(OptimizationAlgorithm):
+    """Steepest descent with step size adjustment
 
     Notes
     -----
-    Presently, the attempted dq is stored in history not the
-    actual dq from the backtransformation
-
+    dq = c * fq
     """
 
-    logger = logging.getLogger(__name__)
-    logger.info("\tTaking NR optimization step.")
+    def __init__(self, molsys, history, params):
+        super().__init__(molsys, history, params)
+        self.method = params.steepest_descent_type
 
-    # Hinv fq = dq
-    Hinv = symm_mat_inv(H, redundant=True)
-    dq = np.dot(Hinv, fq)
+    def requires(self):
+        return "energy", "gradient"
 
-    # applies maximum internal coordinate change
-    apply_intrafrag_step_scaling(dq)
+    def step_size_scalar(self, fq):
+        """Perform two point calculation of steepest descent step_size"""
 
-    # get norm |q| and unit vector in the step direction
-    nr_dqnorm = sqrt(np.dot(dq, dq))
-    nr_u = dq / nr_dqnorm
-    logger.info("\tNorm of target step-size %15.10lf" % nr_dqnorm)
+        methods = {"OVERLAP": self._force_overlap, "BARZILAI_BORWEIN": self._barzilai_borwein}
 
-    # get gradient and hessian in step direction
-    nr_g = -1 * np.dot(fq, nr_u)  # gradient, not force
-    nr_h = np.dot(nr_u, np.dot(H, nr_u))
+        if len(self.history.steps) < 2:
+            return 1
+        return methods.get(self.method, self._force_overlap)(fq)
 
-    if op.Params.print_lvl > 1:
-        logger.info("\tNR target step|: %15.10f" % nr_dqnorm)
-        logger.info("\tNR_gradient: %15.10f" % nr_g)
-        logger.info("\tNR_hessian: %15.10f" % nr_h)
-    DEprojected = de_projected("NR", nr_dqnorm, nr_g, nr_h)
-    logger.debug("\tProjected energy change by quadratic approximation: %10.10lf\n" % DEprojected)
+    def _force_overlap(self, fq):
+        """
+        Notes
+        -----
+        c = ((fq_k-1.fq)/||fq|| - ||fq||) / ||x_k - x_k-1||
+        """
 
-    return DEprojected, dq, nr_u, nr_g, nr_h
+        sd_h = 1
 
+        if len(self.history.steps) < 2:
+            return sd_h
 
-# Take Rational Function Optimization step
-def dq_rfo(oMolsys, fq, H):
-    """Takes a step using Rational Function Optimization
+        old_fq = self.history.steps[-2].forces
+        old_dq = self.history.steps[-2].Dq
 
-    Parameters
-    ----------
-    oMolsys : molsys.Molsys
-        optking molecular system
-    E : double
-        energy
-    fq : ndarray
-        forces in internal coordinates
-    H : ndarray
-        hessian in internal coordinates
+        fq_norm = np.linalg.norm(fq)
 
-    """
+        # Compute overlap of previous forces with current forces.
+        old_unit_fq = old_fq / np.linalg.norm(old_fq)
+        unit_fq = fq / fq_norm
+        overlap = np.dot(old_unit_fq, unit_fq)
+        self.logger.debug("\tOverlap of current forces with previous forces %8.4lf" % overlap)
 
-    logger = logging.getLogger(__name__)
-    logger.debug("\tTaking RFO optimization step.")
-    dim = len(fq)
-    dq = np.zeros(dim)  # To be determined and returned.
+        if overlap > 0.50:
+            old_dq_norm = np.linalg.norm(old_dq)
+            # Magnitude of previous force in step direction
+            old_fq_norm = np.dot(old_fq, fq) / fq_norm
+            sd_h = abs(old_fq_norm - fq_norm) / old_dq_norm
 
-    # Build the original, unscaled RFO matrix.
-    RFOmat = np.zeros((dim + 1, dim + 1))
-    for i in range(dim):
-        for j in range(dim):
-            RFOmat[i, j] = H[i, j]
-        RFOmat[i, dim] = RFOmat[dim, i] = -fq[i]
+        return 1 / sd_h
 
-    if op.Params.print_lvl >= 4:
-        logger.debug("\tOriginal, unscaled RFO matrix:\n\n" + print_mat_string(RFOmat))
+    def _barzilai_borwein(self, fq):
+        """Alternative step size choice for steepest descent
+        Notes
+        -----
+        https://doi.org/10.1093/imanum/8.1.141"""
+        old_fq = self.history.steps[-2].forces
+        old_dq = self.history.steps[-2].Dq
+        # delta gradient is negative delta forces. gk - gk-1 = fk-1 - fk
+        delta_fq = old_fq - fq
+        c = np.dot(old_dq, old_dq) / np.dot(old_dq, delta_fq)
+        return c
 
-    converged, dq = apply_alpha_step_scaling(RFOmat, H, dq, fq, dim, oMolsys)
+    def step(self, fq, *args, **kwargs):
+        self.logger.info("Taking Steepest Descent Step")
+        sd_h = self.step_size_scalar(fq)
+        dq = fq * sd_h
+        return dq
 
-    # Crude/old way to limit step size if RS-RFO iterations
-    if not converged or op.Params.simple_step_scaling:
-        apply_intrafrag_step_scaling(dq)
-
-    if op.Params.print_lvl >= 3:
-        logger.debug("\tFinal scaled step dq:\n\n\t" + print_array_string(dq))
-
-    # Get norm |dq|, unit vector, gradient and hessian in step direction
-    # TODO double check Hevects[i] here instead of H ? as for NR
-    rfo_dqnorm = sqrt(np.dot(dq, dq))
-    logger.info("\tNorm of target step-size: %15.10f\n" % rfo_dqnorm)
-    rfo_u = dq / rfo_dqnorm
-    rfo_g = -1 * np.dot(fq, rfo_u)
-    rfo_h = np.dot(rfo_u, np.dot(H, rfo_u))
-    DEprojected = de_projected("RFO", rfo_dqnorm, rfo_g, rfo_h)
-    if op.Params.print_lvl > 1:
-        logger.info("\tRFO target step = %15.10f" % rfo_dqnorm)
-        logger.info("\tRFO gradient = %15.10f" % rfo_g)
-        logger.info("\tRFO hessian = %15.10f" % rfo_h)
-    logger.debug("\tProjected energy change by RFO approximation %15.5f\n" % DEprojected)
-
-    return DEprojected, dq, rfo_u, rfo_g, rfo_h
+    def expected_energy(self, step, grad, hess):
+        """Quadratic energy model"""
+        return step * grad + 0.5 * step * step * hess
 
 
-def apply_alpha_step_scaling(RFOmat, H, dq, fq, dim, oMolsys):
-    """Iterative process to determine alpha step scaling parameter"""
+class QuasiNewtonRaphson(QuasiNewtonOptimization):
+    def step(self, fq=None, H=None, *args, **kwargs):
+        """Basic NR step. Hinv fq = dq
+        Parameters
+        ----------
+        fq: np.ndarray
+        H: np.ndarray"""
+        Hinv = np.linalg.pinv(H, hermitian=True)
+        dq = np.dot(Hinv, fq)
+        return dq
 
-    logger = logging.getLogger(__name__)
-    SRFOmat = np.zeros((dim + 1, dim + 1))  # For scaled RFO matrix.
-    converged = False
-    alpha = 1.0  # scaling factor for RS-RFO, scaling matrix is sI
-    alphaIter = -1
-    max_projected_rfo_iter = 25  # max. # of iterations to try to converge RS-RFO
-    rfo_follow_root = op.Params.rfo_follow_root  # whether to follow root
-    rfo_root = op.Params.rfo_root  # if following, which root to follow
-    trust = op.Params.intrafrag_trust  # maximum step size
 
-    # Determine the eigenvectors/eigenvalues of H.
-    Hevals, Hevects = symm_mat_eig(H)
+class RFO(QuasiNewtonOptimization, ABC):
+    """Standard RFO and base class for RS_RFO, P_RFO, RS_PRFO #TODO"""
 
-    last_iter_evect = np.zeros(dim)
-    if rfo_follow_root and len(oHistory.steps) > 1:
-        last_iter_evect[:] = oHistory.steps[-2].followedUnitVector  # RFO vector from previous geometry step
-    rfo_step_report = ''
+    def __init__(self, molsys, history, params):
+        super().__init__(molsys, history, params)
+        self.simple_step_scaling = params.simple_step_scaling
+        self.rfo_follow_root = params.rfo_follow_root
+        self.rfo_root = params.rfo_root
+        self.rfo_normalization_max = params.rfo_normalization_max
+        self.old_root = self.rfo_root
 
-    while not converged and alphaIter < max_projected_rfo_iter:
-        alphaIter += 1
+    def expected_energy(self, step, grad, hess):
+        """RFO model - 2x2 Pade Approximation"""
+        return (step * grad + 0.5 * step * step * hess) / (1 + step * step)
 
-        # If we exhaust iterations without convergence, then bail on the
-        #  restricted-step algorithm.  Set alpha=1 and apply crude scaling instead.
-        if alphaIter == max_projected_rfo_iter:
-            logger.warning("\tFailed to converge alpha. Doing simple step-scaling instead.")
-            alpha = 1.0
-        elif op.Params.simple_step_scaling:
-            # Simple_step_scaling is on, not an iterative method.
-            # Proceed through loop with alpha == 1, and then continue
-            alphaIter = max_projected_rfo_iter
+    @staticmethod
+    def build_rfo_matrix(lower, upper, fq, H):
+        dim = upper - lower
+        matrix = np.zeros((dim + 1, dim + 1))  # extra row and column for augmenting with gradient
+        matrix[:dim, :dim] = H[lower:upper, lower:upper]
+        matrix[:dim, -1] = matrix[-1, :dim] = -fq[lower:upper]
+        return matrix
 
-        # Scale the RFO matrix.
-        for i in range(dim + 1):
-            for j in range(dim):
-                SRFOmat[j, i] = RFOmat[j, i] / alpha
-            SRFOmat[dim, i] = RFOmat[dim, i]
+    def _intermediate_normalize(self, eigenvectors):
+        """Intermediate normalize the eigenvectors to have a final element of 1.
+        One of these eigenvectors will be the step direction.
+        Any eigenvector that cannot be normalized (due to small divisors) is left untouched but
+        should not be used to take a step.
+        """
 
-        if op.Params.print_lvl >= 4:
-            logger.debug("\tScaled RFO matrix.\n\n" + print_mat_string(SRFOmat))
+        # normalization constants and max values are reshaped to column vectors so that they can be applied
+        # element wise across the eigenvectors (rows)
+        i_norm = np.where(np.abs(eigenvectors[:, -1]) > 1.0e-10, eigenvectors[:, -1], 1)  # last element or 1
+        i_norm = i_norm.reshape(-1, 1)
+        tmp = eigenvectors / i_norm
+        max_values = (np.amax(np.abs(tmp), axis=1)).reshape(-1, 1)
+        eigenvectors = np.where(max_values < self.rfo_normalization_max, tmp, eigenvectors)
+        return eigenvectors
 
-        # Find the eigenvectors and eigenvalues of RFO matrix.
-        SRFOevals, SRFOevects = asymm_mat_eig(SRFOmat)
 
-        if op.Params.print_lvl >= 4:
-            logger.debug("\tEigenvectors of scaled RFO matrix.\n\n" + print_mat_string(SRFOevects))
+class RestrictedStepRFO(RFO):
+    """Rational Function approximation (or 2x2 Pade approximation) for step.
+    Uses Scaling Parameter to adjust step size analagous to the NR hessian shift parameter."""
 
-        if op.Params.print_lvl >= 4:
-            logger.debug("\tEigenvalues of scaled RFO matrix.\n\n\t" + print_array_string(SRFOevals))
-            logger.debug(
-                "\tFirst eigenvector (unnormalized) of scaled RFO matrix.\n\n\t" + print_array_string(SRFOevects[0])
+    def __init__(self, molsys, history, params):
+        super().__init__(molsys, history, params)
+        self.rsrfo_alpha_max = params.rsrfo_alpha_max
+        self.accept_symmetry_breaking = params.accept_symmetry_breaking
+
+    def step(self, fq, H, *args, **kawrgs):
+        """The step is an eigenvector of the gradient augmented Hessian. Looks for the
+        lowest eigenvalue / eigenvector that is normalizable. If rfo_follow_root the previous root/step
+        is considered first"""
+
+        self.logger.debug("\tTaking RFO optimization step.")
+
+        # Build the original, unscaled RFO matrix.
+        RFOmat = RFO.build_rfo_matrix(0, len(H), fq, H)  # use entire hessian for RFO matrix
+        self.logger.debug("\tOriginal, unscaled RFO matrix:\n\n" + print_mat_string(RFOmat))
+
+        if self.simple_step_scaling:
+            e_vectors, e_values = self._intermediate_normalize(RFOmat)
+            rfo_root = self._select_rfo_root(
+                self.history.steps[-2].followedUnitVector, e_vectors, e_values, alpha_iter=0
             )
-
-        # Do intermediate normalization.  RFO paper says to scale eigenvector
-        # to make the last element equal to 1. Bogus evect leads can be avoided
-        # using root following.
-        for i in range(dim + 1):
-            # How big is dividing going to make the largest element?
-            # Same check occurs below for acceptability.
-            if fabs(SRFOevects[i][dim]) > 1.0e-10:
-                tval = abs_max(SRFOevects[i] / SRFOevects[i][dim])
-                if tval < op.Params.rfo_normalization_max:
-                    for j in range(dim + 1):
-                        SRFOevects[i, j] /= SRFOevects[i, dim]
-
-        if op.Params.print_lvl >= 4:
-            logger.debug("\tAll scaled RFO eigenvectors (rows).\n\n" + print_mat_string(SRFOevects))
-
-        # Use input rfo_root
-        # If root-following is turned off, then take the eigenvector with the
-        # rfo_root'th lowest eigvenvalue. If its the first iteration, then do the same.
-        # In subsequent steps, overlaps will be checked.
-        if not rfo_follow_root or len(oHistory.steps) < 2:
-
-            # Determine root only once at beginning ?
-            if alphaIter == 0:
-                logger.debug("\tChecking RFO solution %d." % (rfo_root + 1))
-
-                rfo_root = find_rfo_root(rfo_root, SRFOevects, oMolsys, dim, dq)
-
-                # Save initial root. 'Follow' during the RS-RFO iterations.
-                rfo_follow_root = True
-
-        else:  # Do root following.
-            # Find maximum overlap. Dot only within H block.
-            dots = np.array(
-                [v3d.dot(SRFOevects[i], last_iter_evect, dim) for i in range(dim)],
-                float,
-            )
-            bestfit = np.argmax(dots)
-            if bestfit != rfo_root:
-                logger.info("\tRoot-following has changed rfo_root value to %d." % (bestfit + 1))
-                rfo_root = bestfit
-
-        if alphaIter == 0:
-            logger.info("\tUsing RFO solution %d." % (rfo_root + 1))
-        last_iter_evect[:] = SRFOevects[rfo_root][0:dim]  # omit last column on right
-
-        # Print only the lowest eigenvalues/eigenvectors
-        if op.Params.print_lvl >= 2:
-            logger.info("\trfo_root is %d" % (rfo_root + 1))
-            for i in range(dim + 1):
-                if SRFOevals[i] < -1e-6 or i < rfo_root:
-                    eigen_val_vec = "\n\tScaled RFO eigenvalue %d:\n\t%15.10lf (or 2*%-15.10lf)\n" % (
-                        i + 1,
-                        SRFOevals[i],
-                        SRFOevals[i] / 2,
-                    )
-                    eigen_val_vec += "\n\teigenvector:\n\t"
-                    eigen_val_vec += print_array_string(SRFOevects[i])
-                    logger.info(eigen_val_vec)
-        dq[:] = SRFOevects[rfo_root][0:dim]  # omit last column
-
-        # Project out redundancies in steps.
-        # Added this projection in 2014; but doesn't seem to help, as f,H are already projected.
-        # project_dq(dq);
-        # zero steps for frozen coordinates?
-
-        dqtdq = np.dot(dq, dq)
-        # If alpha explodes, give up on iterative scheme
-        if fabs(alpha) > op.Params.rsrfo_alpha_max:
+            dq = e_vectors[rfo_root, :-1]  # remove normalization constant
             converged = False
-            alphaIter = max_projected_rfo_iter - 1
-        elif sqrt(dqtdq) < (trust + 1e-5):
-            converged = True
+        else:
+            # converge alpha to select step length. Same procedure as above.
+            converged, dq = self._solve_rs_rfo(RFOmat, H, fq)
 
-        if alphaIter == 0 and not op.Params.simple_step_scaling:
-            logger.debug("\tDetermining step-restricting scale parameter for RS-RFO.")
+        # if converged, trust radius has already been applied through alpha
+        self.trust_radius_on = not converged
+        self.logger.debug("\tFinal scaled step dq:\n\n\t" + print_array_string(dq))
+        return dq
 
-        if alphaIter == 0:
+    def _solve_rs_rfo(self, RFOmat, H, fq):
+        """Performs an iterative process to determine alpha step scaling parameter and"""
+
+        converged = False
+        alpha = 1.0  # scaling factor for RS-RFO, scaling matrix is sI
+        alpha_iter = -1
+        max_rfo_iter = 25  # max. # of iterations to try to converge RS-RFO
+        Hevals, Hevects = symm_mat_eig(H)  # Need for computing alpha at end of loop
+        follow_root = self.rfo_follow_root
+
+        last_evect = np.zeros(len(fq))
+        if self.rfo_follow_root and len(self.history.steps) > 1:
+            last_evect[:] = self.history.steps[-2].followedUnitVector  # RFO vector from previous geometry step
+        rfo_step_report = ""
+
+        while not converged and alpha_iter < max_rfo_iter:
+            alpha_iter += 1
+
+            # If we exhaust iterations without convergence, then bail on the
+            #  restricted-step algorithm.  Set alpha=1 and apply crude scaling instead.
+            if alpha_iter == max_rfo_iter:
+                self.logger.warning("\tFailed to converge alpha. Doing simple step-scaling instead.")
+                alpha = 1.0
+
+            SRFOevals, SRFOevects = self._scale_and_normalize(RFOmat, alpha)
+
+            # Determine best (lowest eigenvalue), acceptable root and take as step
+            rfo_root = self._select_rfo_root(last_evect, SRFOevects, SRFOevals, alpha_iter)
+            dq = SRFOevects[rfo_root][:-1]  # omit last column
+            last_evect = dq / np.linalg.norm(dq)
+
+            dqtdq = np.dot(dq, dq)
+            # If alpha explodes, give up on iterative scheme
+            if fabs(alpha) > self.rsrfo_alpha_max:
+                converged = False
+                alpha_iter = max_rfo_iter - 1
+            elif sqrt(dqtdq) < (self.intrafrag_trust + 1e-5):
+                converged = True
+
+            alpha, print_out = self._update_alpha(alpha, dqtdq, alpha_iter, dq, fq, Hevects, Hevals)
+            rfo_step_report += print_out
+
+        # end alpha RS-RFO iterations
+        self.logger.debug(rfo_step_report)
+        self.rfo_follow_root = follow_root
+        return converged, dq
+
+    def _update_alpha(self, alpha, dqtdq, alpha_iter, dq, fq, Hevects, Hevals):
+
+        rfo_step_report = ""
+
+        if alpha_iter == 0 and not self.simple_step_scaling:
+            self.logger.debug("\tDetermining step-restricting scale parameter for RS-RFO.")
+
+        if alpha_iter == 0:
             rfo_step_report += (
                 "\n\n\t Iter      |step|        alpha        rfo_root"
                 + "\n\t------------------------------------------------"
-                + "\n\t%5d%12.5lf%14.5lf%12d\n" % (alphaIter + 1, sqrt(dqtdq), alpha, rfo_root + 1)
+                + "\n\t%5d%12.5lf%14.5lf%12d\n" % (alpha_iter + 1, sqrt(dqtdq), alpha, self.rfo_root + 1)
             )
 
-        elif alphaIter > 0 and not op.Params.simple_step_scaling:
-            rfo_step_report += "\t%5d%12.5lf%14.5lf%12d\n" % (
-                alphaIter + 1,
-                sqrt(dqtdq),
-                alpha,
-                rfo_root + 1,
-            )
+        elif alpha_iter > 0 and not op.Params.simple_step_scaling:
+            rfo_step_report += "\t%5d%12.5lf%14.5lf%12d\n" % (alpha_iter + 1, sqrt(dqtdq), alpha, self.rfo_root + 1,)
 
-        # Find the analytical derivative, d(norm step squared) / d(alpha)
-        # rfo_step_report += ("\t------------------------------------------------\n")
-
-        Lambda = -1 * v3d.dot(fq, dq, dim)
-        if op.Params.print_lvl >= 2:
-            disp_forces = "\tDisplacement and Forces\n\n"
-            disp_forces += "\tDq:" + print_array_string(dq, dim)
-            disp_forces += "\tFq:" + print_array_string(fq, dim)
-            logger.info(disp_forces)
-            logger.info("\tLambda calculated by (dq^t).(-f) = %15.10lf\n" % Lambda)
+        Lambda = -1 * fq @ dq
 
         # Calculate derivative of step size wrt alpha.
-        tval = 0
-        for i in range(dim):
-            tval += (pow(v3d.dot(Hevects[i], fq, dim), 2)) / (pow((Hevals[i] - Lambda * alpha), 3))
-
+        tval = np.einsum("ij, j -> i", Hevects, fq) ** 2 / (Hevals - Lambda * alpha) ** 3
+        tval = np.sum(tval)
         analyticDerivative = 2 * Lambda / (1 + alpha * dqtdq) * tval
-        if op.Params.print_lvl >= 2:
+
+        if self.print_lvl >= 2:
+            self.logger.debug("\tLambda calculated by (dq^t).(-f) = %15.10lf\n" % Lambda)
             rfo_step_report += "\t  Analytic derivative d(norm)/d(alpha) = %15.10lf\n" % analyticDerivative
-            # + "\n\t------------------------------------------------\n")
 
         # Calculate new scaling alpha value.
         # Equation 20, Besalu and Bofill, Theor. Chem. Acc., 1998, 100:265-274
-        alpha += 2 * (trust * sqrt(dqtdq) - dqtdq) / analyticDerivative
+        alpha += 2 * (self.intrafrag_trust * sqrt(dqtdq) - dqtdq) / analyticDerivative
 
-    # end alpha RS-RFO iterations
-    logger.debug(rfo_step_report)
-    return converged, dq
+        return alpha, rfo_step_report
 
-def find_rfo_root(rfo_root, SRFOevects, oMolsys, dim, dq):
+    def _scale_and_normalize(self, RFOmat, alpha=1):
+        """Scale the RFO matrix given alpha. Compute eigenvectors and eigenvalaues. Peform normalization
+        and report values
 
-    logger = logging.getLogger(__name__)
+        Parameters
+        ----------
+        RFOmat : np.ndarray
+        alpha: float
+        """
 
-    for i in range(rfo_root, dim + 1):
-        # Check symmetry of root.
-        dq[:] = SRFOevects[i, 0:dim]
-        if not op.Params.accept_symmetry_breaking:
-            symm_rfo_step = is_dq_symmetric(oMolsys, dq)
+        dim1, dim2 = RFOmat.shape
+        SRFOmat = np.zeros((dim1, dim2))  # For scaled RFO matrix.
 
-            if not symm_rfo_step:  # Root is assymmetric so reject it.
-                logger.warning(
-                    "\tRejecting RFO root %d because it breaks \
-                               the molecular point group."
-                    % (rfo_root + 1)
-                )
-                continue
+        # scale RFO matrix leaving the last row unchanged, compute eigenvectors
+        SRFOmat[:-1, :] = RFOmat[:-1, :] / alpha
+        SRFOmat[-1, :] = RFOmat[-1, :]
+        SRFOevals, SRFOevects = asymm_mat_eig(SRFOmat)
 
-        # Check normalizability of root.
-        if fabs(SRFOevects[i][dim]) < 1.0e-10:  # don't even try to divide
-            logger.warning(
-                "\tRejecting RFO root %d because normalization \
-                           gives large value."
-                % (rfo_root + 1)
+        SRFOevects = self._intermediate_normalize(SRFOevects)
+
+        if self.print_lvl >= 4:
+            self.logger.debug("\tScaled RFO matrix.\n\n" + print_mat_string(SRFOmat))
+            self.logger.debug("\tEigenvectors of scaled RFO matrix.\n\n" + print_mat_string(SRFOevects))
+            self.logger.debug("\tEigenvalues of scaled RFO matrix.\n\n\t" + print_array_string(SRFOevals))
+            self.logger.debug(
+                "\tFirst eigenvector (unnormalized) of scaled RFO matrix.\n\n\t" + print_array_string(SRFOevects[0])
             )
-            continue
-        tval = abs_max(SRFOevects[i] / SRFOevects[i][dim])
-        if tval > op.Params.rfo_normalization_max:  # matching test in code above
-            logger.warning(
-                "\tRejecting RFO root %d because normalization \
-                           gives large value."
-                % (rfo_root + 1)
-            )
-            continue
-        rfo_root = i  # This root is acceptable.
-        break
-    else:
-        rfo_root = op.Params.rfo_root
-        # no good root found, using the default
-
-    return rfo_root
-
-def dq_p_rfo(fq, H):
-    logger = logging.getLogger(__name__)
-    hdim = len(fq)  # size of Hessian
-    trust = op.Params.intrafrag_trust  # maximum step size
-    # rfo_follow_root = op.Params.rfo_follow_root  # whether to follow root
-    # rfo follow root is not currently implemented
-    print_lvl = op.Params.print_lvl
-
-    if print_lvl > 2:
-        logger.info("\tHessian matrix\n" + print_mat_string(H))
-
-    # Diagonalize H (technically only have to semi-diagonalize)
-    h_eig_values, h_eig_vectors = symm_mat_eig(H)
-
-    if print_lvl > 2:
-        logger.info("\tEigenvalues of Hessian\n\n\t" + print_array_string(h_eig_values))
-        logger.info("\tEigenvectors of Hessian (rows)\n" + print_mat_string(h_eig_vectors))
-
-    # Construct diagonalized Hessian with evals on diagonal
-
-    hess_diag = np.diag(h_eig_values)
-
-    if print_lvl > 2:
-        logger.info("\tH diagonal\n" + print_mat_string(hess_diag))
-
-    logger.debug("\tFor P-RFO, assuming rfo_root=1, maximizing along lowest eigenvalue of Hessian.")
-    logger.debug("\tLarger values of rfo_root are not yet supported.")
-
-    rfo_root = 0
-    """  TODO: use rfo_root to decide which eigenvectors are moved into the max/mu space.
-    if not rfo_follow_root or len(oHistory.steps) < 2:
-        rfo_root = op.Params.rfo_root
-        printxopt("\tMaximizing along %d lowest eigenvalue of Hessian.\n" % (rfo_root+1) )
-    else:
-        last_iter_evect = history[-1].Dq
-        dots = np.array([v3d.dot(h_eig_vectors[i],last_iter_evect,hdim) for i in range(hdim)], float)
-        rfo_root = np.argmax(dots)
-        printxopt("\tOverlaps with previous step checked for root-following.\n")
-        printxopt("\tMaximizing along %d lowest eigenvalue of Hessian.\n" % (rfo_root+1) )
-    """
-
-    # number of degrees along which to maximize; assume 1 for now
-    mu = 1
-
-    logger.info("\tInternal forces in au:\n\n\t" + print_array_string(fq))
-
-    fqTransformed = np.dot(h_eig_vectors, fq)  # gradient transformation
-    logger.info("\tInternal forces in au, in Hevect basis:\n\n\t" + print_array_string(fqTransformed))
-    # Build RFO max
-    # Lowest eigenvalue of hessian augmented with corresponding gradient components
-
-    maximize_rfo = np.zeros((mu + 1, mu + 1))
-    maximize_rfo[:mu, :mu] = hess_diag[:mu, :mu]
-    maximize_rfo[:mu, -1] = maximize_rfo[-1, :mu] = -fqTransformed[:mu]
-
-    if print_lvl > 2:
-        logger.info("\tRFO max\n" + print_mat_string(maximize_rfo))
-
-    # Build RFO min
-    # All remaining hessian eigenvalues augmented with gradient
-
-    minimize_rfo = np.zeros((hdim - mu + 1, hdim - mu + 1))
-    minimize_rfo[: hdim - mu, : hdim - mu] = hess_diag[mu:, mu:]
-    minimize_rfo[: hdim - mu, -1] = minimize_rfo[-1, : hdim - mu] = -fqTransformed[mu:hdim]
-
-    if print_lvl > 2:
-        logger.info("\tRFO min\n" + print_mat_string(minimize_rfo))
-
-    RFOMaxEValues, RFOMaxEVectors = symm_mat_eig(maximize_rfo)
-    RFOMinEValues, RFOMinEVectors = symm_mat_eig(minimize_rfo)
-
-    logger.info("\tRFO min eigenvalues:\n\n\t" + print_array_string(RFOMinEValues))
-    logger.info("\tRFO max eigenvalues:\n\n\t" + print_array_string(RFOMaxEValues))
-
-    if print_lvl > 2:
-        logger.info("\tRFO min eigenvectors (rows) before normalization:\n" + print_mat_string(RFOMinEVectors))
-        logger.info("\tRFO max eigenvectors (rows) before normalization:\n" + print_mat_string(RFOMaxEVectors))
-
-    # Normalize max and min eigenvectors
-    for i in range(mu + 1):
-        if abs(RFOMaxEVectors[i, mu]) > 1.0e-10:
-            tval = abs(abs_max(RFOMaxEVectors[i, 0:mu]) / RFOMaxEVectors[i, mu])
-            if fabs(tval) < op.Params.rfo_normalization_max:
-                RFOMaxEVectors[i] /= RFOMaxEVectors[i, mu]
-    if print_lvl > 2:
-        logger.info("\tRFO max eigenvectors (rows):\n" + print_mat_string(RFOMaxEVectors))
-
-    for i in range(hdim - mu + 1):
-        if abs(RFOMinEVectors[i][hdim - mu]) > 1.0e-10:
-            tval = abs(abs_max(RFOMinEVectors[i, 0 : hdim - mu]) / RFOMinEVectors[i, hdim - mu])
-            if fabs(tval) < op.Params.rfo_normalization_max:
-                RFOMinEVectors[i] /= RFOMinEVectors[i, hdim - mu]
-    if print_lvl > 2:
-        logger.info("\tRFO min eigenvectors (rows):\n" + print_mat_string(RFOMinEVectors))
-
-    VectorP = RFOMaxEVectors[mu, 0:mu]
-    VectorN = RFOMinEVectors[rfo_root, 0 : hdim - mu]
-    logger.debug("\tVector P\n\n\t" + print_array_string(VectorP))
-    logger.debug("\tVector N\n\n\t" + print_array_string(VectorN))
-
-    # Combines the eignvectors from RFO max and min
-    prfoe_vector = np.zeros(hdim)
-    prfoe_vector[0 : len(VectorP)] = VectorP
-    prfoe_vector[len(VectorP) :] = VectorN
-
-    prfo_step = np.dot(h_eig_vectors.transpose(), prfoe_vector)
-
-    if print_lvl > 1:
-        logger.info("\tRFO step in Hessian Eigenvector Basis\n\n\t" + print_array_string(prfoe_vector))
-        logger.info("\tRFO step in original Basis\n\n\t" + print_array_string(prfo_step))
-
-    dq = prfo_step
-
-    # if not converged or op.Params.simple_step_scaling:
-    apply_intrafrag_step_scaling(dq)
-
-    # Get norm |dq|, unit vector, gradient and hessian in step direction
-    # TODO double check Hevects[i] here instead of H ? as for NR
-    rfo_dqnorm = sqrt(np.dot(dq, dq))
-    logger.info("\tNorm of target step-size %15.10f" % rfo_dqnorm)
-    rfo_u = dq / rfo_dqnorm
-    rfo_g = -1 * np.dot(fq, rfo_u)
-    rfo_h = np.dot(rfo_u, np.dot(H, rfo_u))
-    DEprojected = de_projected("RFO", rfo_dqnorm, rfo_g, rfo_h)
-    if op.Params.print_lvl > 1:
-        logger.info("\t|RFO target step|  : %15.10f" % rfo_dqnorm)
-        logger.info("\tRFO gradient       : %15.10f" % rfo_g)
-        logger.info("\tRFO hessian        : %15.10f" % rfo_h)
-    logger.debug("\tProjected Delta(E) : %15.10f" % DEprojected)
-
-    return DEprojected, dq, rfo_u, rfo_g, rfo_h
-
-
-def dq_sd(fq):
-    """Take a step using steepest descent method
-
-    Parameters
-    ----------
-    fq : ndarray
-        forces in internal coordinates
-    """
-
-    logger = logging.getLogger(__name__)
-    logger.info("\tTaking SD optimization step.")
-    dim = len(fq)
-    sd_h = op.Params.sd_hessian  # default value
-
-    if len(oHistory.steps) > 1:
-        previous_forces = oHistory.steps[-2].forces
-        previous_dq = oHistory.steps[-2].Dq
-
-        # Compute overlap of previous forces with current forces.
-        previous_forces_u = previous_forces / np.linalg.norm(previous_forces)
-        forces_u = fq / np.linalg.norm(fq)
-        overlap = np.dot(previous_forces_u, forces_u)
-        logger.debug("\tOverlap of current forces with previous forces %8.4lf" % overlap)
-        previous_dq_norm = np.linalg.norm(previous_dq)
-
-        if overlap > 0.50:
-            # Magnitude of current force
-            fq_norm = np.linalg.norm(fq)
-            # Magnitude of previous force in step direction
-            previous_forces_norm = v3d.dot(previous_forces, fq, dim) / fq_norm
-            sd_h = (previous_forces_norm - fq_norm) / previous_dq_norm
-
-    logger.info("\tEstimate of Hessian along step: %10.5e" % sd_h)
-    dq = fq / sd_h
-
-    apply_intrafrag_step_scaling(dq)
-
-    sd_dqnorm = np.linalg.norm(dq)
-    logger.info("\tNorm of target step-size %10.5f" % sd_dqnorm)
-
-    # unit vector in step direction
-    sd_u = dq / np.linalg.norm(dq)
-    sd_g = -1.0 * sd_dqnorm
-
-    DEprojected = de_projected("NR", sd_dqnorm, sd_g, sd_h)
-    logger.debug("\tProjected energy change by quadratic approximation: %20.5lf" % DEprojected)
-
-    return DEprojected, dq, sd_u, sd_g, sd_h
-
-
-def dq_backstep(o_molsys):
-    """takes a partial step backwards
-
-    Notes
-    -----
-    Take partial backward step.  Update current step in history.
-    Divide the last step size by 1/2 and displace from old geometry.
-    HISTORY contains:
-        consecutiveBacksteps : increase by 1
-    HISTORY.STEP contains:
-    No change to these:
-        forces, geom, E, followedUnitVector, oneDgradient, oneDhessian
-    Update these:
-        Dq - cut in half
-        projectedDE - recompute
-
-    """
-
-    logger = logging.getLogger(__name__)
-    logger.warning("\tRe-doing last optimization step - smaller this time.\n")
-
-    # Calling function shouldn't let this happen; this is a check for developer
-    if len(oHistory.steps) < 2:
-        raise OptError("Backstep called, but no history is available.")
-
-    # Erase last, partial step data for current step.
-    del oHistory.steps[-1]
-
-    # Get data from previous step.
-    fq = oHistory.steps[-1].forces
-    dq = oHistory.steps[-1].Dq
-    oneDgradient = oHistory.steps[-1].oneDgradient
-    oneDhessian = oHistory.steps[-1].oneDhessian
-    # Copy old geometry so displace doesn't change history
-    geom = oHistory.steps[-1].geom.copy()
-
-    # Compute new Dq and energy step projection.
-    dq /= 2
-    dqNorm = np.linalg.norm(dq)
-    logger.info("\tNorm of target step-size %10.5f" % dqNorm)
-
-    # Compute new Delta(E) projection.
-    if op.Params.step_type == "RFO":
-        DEprojected = de_projected("RFO", dqNorm, oneDgradient, oneDhessian)
-    else:
-        DEprojected = de_projected("NR", dqNorm, oneDgradient, oneDhessian)
-    logger.debug("\tProjected energy change : %20.5lf" % DEprojected)
-
-    o_molsys.geom = geom  # uses setter; writes into all fragments
-    dq_achieved = displace_molsys(o_molsys, dq, fq)
-
-    dqNormActual = np.linalg.norm(dq_achieved)
-    logger.info("\tNorm of achieved step-size %15.10f" % dqNormActual)
-
-    oHistory.steps[-1].projectedDE = DEprojected
-    oHistory.steps[-1].Dq[:] = dq_achieved
-
-    return dq_achieved
-
-
-def dq_linesearch(o_molsys, E, fq, H, computer):
-    """performs linesearch in direction of gradient
-
-    Parameters
-    ----------
-    o_molsys : object
-        optking molecular system
-    E : double
-        energy
-    fq : ndarray
-        forces in internal coordinates
-    H : ndarray
-        hessian in internal coordinates
-    computer : computeWrapper
-    """
-
-    logger = logging.getLogger(__name__)
-    s = op.Params.linesearch_step
-
-    if len(oHistory.steps) > 1:
-        s = norm(oHistory.steps[-2].Dq) / 2
-        logger.info("\tModifying linesearch s to %10.6f" % s)
-
-    logger.info("\n\tTaking LINESEARCH optimization step.")
-    fq_unit = fq / sqrt(np.dot(fq, fq))
-    logger.info("\tUnit vector in gradient direction.\n\n\t" + print_array_string(fq_unit) + "\n")
-    Ea = E
-    geomA = o_molsys.geom  # get copy of original geometry
-    Eb = Ec = 0
-    bounded = False
-    ls_iter = 0
-    stepScale = 2
-
-    # Iterate until we find 3 points bounding minimum.
-    while ls_iter < 10 and not bounded:
-        ls_iter += 1
-
-        if Eb == 0:
-            logger.debug("\n\tStepping along forces distance %10.5f" % s)
-            dq = s * fq_unit
-            dq_achieved = displace_molsys(o_molsys, dq, fq)
-            xyz = o_molsys.geom
-            logger.debug("\tComputing energy at this point now.")
-            Eb = computer.compute(xyz, driver="energy", return_full=False)
-
-            o_molsys.geom = geomA  # reset geometry to point A
-
-        if Ec == 0:
-            logger.debug("\n\tStepping along forces distance %10.5f" % (stepScale * s))
-            dq = (stepScale * s) * fq_unit
-            dq_achieved = displace_molsys(o_molsys, dq, fq)
-            xyz = o_molsys.geom
-            logger.debug("\tComputing energy at this point now.")
-            Ec = computer.compute(xyz, driver="energy", return_full=False)
-            o_molsys.geom = geomA  # reset geometry to point A
-
-        logger.info("\n\tCurrent linesearch bounds.\n")
-        logger.info("\t s=%7.5f, Ea=%17.12f" % (0, Ea))
-        logger.info("\t s=%7.5f, Eb=%17.12f" % (s, Eb))
-        logger.info("\t s=%7.5f, Ec=%17.12f\n" % (stepScale * s, Ec))
-
-        if Eb < Ea and Eb < Ec:
-            # second point is lowest do projection
-            logger.debug("\tMiddle point is lowest energy. Good. Projecting minimum.")
-            Sa = 0.0
-            Sb = s
-            Sc = stepScale * s
-
-            A = np.zeros((2, 2))
-            A[0, 0] = Sc * Sc - Sb * Sb
-            A[0, 1] = Sc - Sb
-            A[1, 0] = Sb * Sb - Sa * Sa
-            A[1, 1] = Sb - Sa
-            B = np.zeros(2)
-            B[0] = Ec - Eb
-            B[1] = Eb - Ea
-            x = np.linalg.solve(A, B)
-            Xmin = -x[1] / (2 * x[0])
-
-            logger.debug("\tParabolic fit ax^2 + bx + c along gradient.")
-            logger.debug("\t *a = %15.10f" % x[0])
-            logger.debug("\t *b = %15.10f" % x[1])
-            logger.debug("\t *c = %15.10f" % Ea)
-            Emin_projected = x[0] * Xmin * Xmin + x[1] * Xmin + Ea
-            dq = Xmin * fq_unit
-            logger.info("\tProjected step size to minimum is %12.6f" % Xmin)
-            dq_achieved = displace_molsys(o_molsys, dq, fq)
-            xyz = o_molsys.geom
-            logger.debug("\tComputing energy at projected point.")
-            Emin = computer.compute(xyz, driver="energy", return_full=False)
-            logger.info("\tProjected energy along line: %15.10f" % Emin_projected)
-            logger.info("\t   Actual energy along line: %15.10f" % Emin)
-
-            bounded = True
-
-        elif Ec < Eb and Ec < Ea:
-            # unbounded.  increase step size
-            logger.debug("\tSearching with larger step beyond 3rd point.")
-            s *= stepScale
-            Eb = Ec
-            Ec = 0
+            self.logger.debug("\tAll intermediate normalized eigenvectors (rows).\n\n" + print_mat_string(SRFOevects))
+
+        return SRFOevals, SRFOevects
 
+    def _select_rfo_root(self, last_evect, SRFOevects, SRFOevals, alpha_iter=0):
+        """If root-following is turned off (default for first alpha iteration), then take the eigenvector with the
+        lowest eigenvalue beginning at self.rfo_root.
+        If it is the first iteration, then do the same (lowest eigenvalue).
+        In subsequent steps (alpha iterations), overlaps will be checked.
+
+        Sets self.rfo_follow_root = True the first time _select_rfo_root is called
+        rfo_follow_root is reset to the original value at the end of a RFO step.
+
+        Parameters
+        ----------
+        last_evect: np.ndarray
+        SRFOevects: np.ndarray
+        SRFOevals: np.ndarray
+        alpha_iter: int
+        """
+
+        rfo_root = self.old_root
+        if not self.rfo_follow_root or np.array_equal(last_evect, np.zeros(len(last_evect))):
+
+            # Determine root only once at beginning. This root will be followed in subsequent alpha iterations
+            if alpha_iter == 0:
+                self.logger.debug("\tChecking RFO solution %d." % 1)
+
+                for i in range(self.rfo_root, len(SRFOevals)):
+
+                    acceptable = self._check_rfo_eigenvector(SRFOevects[i], i)
+                    if acceptable is False:
+                        continue
+
+                    rfo_root = i
+                    break
+
+                else:
+                    # no good root found, using the default
+                    rfo_root = self.rfo_root
+            # Save initial root. 'Follow' during the RS-RFO iterations.
+            self.rfo_follow_root = True
+
+        else:  # Do root following.
+            # Find maximum overlap. Dot only within H block.
+            overlaps = np.einsum("ij, j -> i", SRFOevects[:-1, :-1], last_evect)
+            bestfit = np.argmax(overlaps)
+
+            if bestfit != self.old_root:
+                self.logger.info("\tRoot-following has changed rfo_root value to %d." % (bestfit + 1))
+                rfo_root = bestfit
+
+        if alpha_iter == 0:
+            self.logger.info("\tUsing RFO solution %d." % (rfo_root + 1))
+
+        # Print only the lowest eigenvalues/eigenvectors
+        if self.print_lvl >= 2:
+
+            for i, eigval in enumerate(SRFOevals):
+                if i >= self.rfo_root and eigval > -1e-6:
+                    break
+
+                template = "\n\tScaled RFO eigenvalue %d:\n\t%15.10lf (or 2*%-15.10lf)\n"
+                print_out = template.format(*(i + 1, eigval, eigval / 2))
+                print_out += "\n\teigenvector:\n\t"
+                print_out += print_array_string(SRFOevects[i])
+                self.logger.info(print_out)
+
+        self.old_root = rfo_root
+        return rfo_root
+
+    def _check_rfo_eigenvector(self, vector, index):
+        """Check whether eigenvector of RFO matrix is numerically acceptable for following and of
+        proper symmetry. Double checks max values #TODO add real symmetry check
+
+        Parameters
+        ----------
+        vector: np.ndarray
+            an eigenvector of the rfo matrix
+        index: int
+            sorted index for the vector (eigenvector)
+        """
+
+        def reject_root(mesg):
+            self.logger = logging.getLogger(__name__)
+            self.logger.warning("\tRejecting RFO root %d because %s", index + 1, mesg)
+            return False
+
+        self.logger.info(print_array_string(vector))
+        # Check symmetry of root. Leave True if unessecary. Not currently functioning
+        symmetric = True if not self.accept_symmetry_breaking else is_dq_symmetric(self.molsys, vector[:-1])
+
+        if not symmetric:
+            return reject_root("it breaks the molecular point group")
+
+        if vector[-1] < 1e-10:
+            return reject_root("Normalization gives large value")
+
+        if np.amax(np.abs(vector)) > self.rfo_normalization_max:
+            return reject_root("Normalization gives large value")
+
+        return True
+
+
+class PartitionedRFO(RFO):
+    """Partitions the gradient augmented Hessian into eigenvectors to maximize along (direction of the TS)
+    and minimize along all other directions. Rational Function or (2x2 Pade approximation)"""
+
+    def step(self, fq, H, *args, **kwargs):
+
+        hdim = len(fq)  # size of Hessian
+
+        # Diagonalize H (technically only have to semi-diagonalize)
+        h_eig_values, h_eig_vectors = symm_mat_eig(H)
+        hess_diag = np.diag(h_eig_values)
+
+        if self.print_lvl > 2:
+            self.logger.info("\tEigenvalues of Hessian\n\n\t%s", print_array_string(h_eig_values))
+            self.logger.info("\tEigenvectors of Hessian (rows)\n%s", print_mat_string(h_eig_vectors))
+            self.logger.debug("\tFor P-RFO, assuming rfo_root=1, maximizing along lowest eigenvalue of Hessian.")
+            self.logger.debug("\tLarger values of rfo_root are not yet supported.")
+
+        rfo_root = 0
+        # self._select_rfo_root() TODO
+
+        # number of degrees along which to maximize; assume 1 for now
+        mu = 1
+        fq_prime = np.dot(h_eig_vectors, fq)  # gradient transformation
+        self.logger.info("\tInternal forces in au, in Hevect basis:\n\n\t" + print_array_string(fq_prime))
+
+        # Build RFO max and Min. Augments each partition of Hessian with corresponding gradient values
+        # The lowest mu eigenvalues / vectors will be maximized along. All others will be minimized
+        maximize_rfo = RFO.build_rfo_matrix(rfo_root, mu, fq_prime, hess_diag)
+        minimize_rfo = RFO.build_rfo_matrix(mu, hdim, fq_prime, hess_diag)
+        self.logger.info("\tRFO max\n%s", print_mat_string(maximize_rfo))
+        self.logger.info("\tRFO min\n%s", print_mat_string(minimize_rfo))
+
+        rfo_max_evals, rfo_max_evects = symm_mat_eig(maximize_rfo)
+        rfo_min_evals, rfo_min_evects = symm_mat_eig(minimize_rfo)
+        rfo_max_evects = self._intermediate_normalize(rfo_max_evects)
+        rfo_min_evects = self._intermediate_normalize(rfo_min_evects)
+        self.logger.info("\tRFO min eigenvalues:\n\n\t%s" + print_array_string(rfo_min_evals))
+        self.logger.info("\tRFO max eigenvalues:\n\n\t%s" + print_array_string(rfo_max_evals))
+        self.logger.debug("\tRFO max eigenvectors (rows):\n%s", print_mat_string(rfo_max_evects))
+        self.logger.debug("\tRFO min eigenvectors (rows):\n%s", print_mat_string(rfo_min_evects))
+
+        p_vec = rfo_max_evects[mu, :mu]
+        n_vec = rfo_min_evects[rfo_root, : hdim - mu]
+
+        # Combines the eignvectors from RFO max and min
+        prfo_evect = np.zeros(hdim)
+        prfo_evect[: len(p_vec)] = p_vec
+        prfo_evect[len(p_vec) :] = n_vec
+
+        prfo_step = np.dot(h_eig_vectors.transpose(), prfo_evect)
+
+        self.logger.info("\tRFO step in Hessian Eigenvector Basis\n\n\t" + print_array_string(prfo_evect))
+        self.logger.info("\tRFO step in original Basis\n\n\t" + print_array_string(prfo_step))
+
+        return prfo_step
+
+    def _select_rfo_root(self):
+        """TODO: use rfo_root to decide which eigenvectors are moved into the max/mu space.
+        if not rfo_follow_root or len(oHistory.steps) < 2:
+            rfo_root = op.Params.rfo_root
+            printxopt("\tMaximizing along %d lowest eigenvalue of Hessian.\n" % (rfo_root+1) )
         else:
-            logger.debug("\tSearching with smaller step between first 2 points.")
-            s *= 0.5
-            Ec = Eb
-            Eb = 0
-
-    # get norm |q| and unit vector in the step direction
-    ls_dqnorm = np.linalg.norm(dq_achieved)
-    ls_u = dq_achieved / ls_dqnorm
-
-    # get gradient and hessian in step direction
-    ls_g = -1 * np.dot(fq, ls_u)  # should be unchanged
-    ls_h = np.dot(ls_u, np.dot(H, ls_u))
-
-    if op.Params.print_lvl > 1:
-        logger.info("\n\\t|target step|: %15.10f" % ls_dqnorm)
-        logger.info("\tLS_gradient     : %15.10f" % ls_g)
-        logger.info("\tLS_hessian      : %15.10f" % ls_h)
-
-    DEprojected = de_projected("NR", ls_dqnorm, ls_g, ls_h)
-    logger.debug("\tProjected quadratic energy change using full Hessian: %15.10f\n" % DEprojected)
-
-    oHistory.nuclear_repulsion_energy = computer.trajectory[-1]["properties"]["nuclear_repulsion_energy"]
-
-    return DEprojected, dq_achieved, ls_u, ls_g, ls_h
-
-    # Scale fq into aJ for printing
-    # fq_aJ = o_molsys.q_show_forces(fq)
-    # displace_molsys(o_molsys, dq, fq_aJ)
+            last_iter_evect = history[-1].Dq
+            dots = np.array([v3d.dot(h_eig_vectors[i],last_iter_evect,hdim) for i in range(hdim)], float)
+            rfo_root = np.argmax(dots)
+            printxopt("\tOverlaps with previous step checked for root-following.\n")
+            printxopt("\tMaximizing along %d lowest eigenvalue of Hessian.\n" % (rfo_root+1) )
+        """
+        raise NotImplementedError("Partitioned RFO only follows the lowest eigenvalue / vector currently")

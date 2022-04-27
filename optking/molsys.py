@@ -12,7 +12,6 @@ from .exceptions import OptError
 from .linearAlgebra import symm_mat_inv
 from .printTools import print_array_string, print_mat_string
 from . import optparams as op
-#from .intcosMisc import Bmat
 
 
 class Molsys(object):
@@ -660,11 +659,10 @@ class Molsys(object):
                 B1stAtom = self.frag_1st_atom(DI.B_idx)
                 Axyz = self.frag_geom(DI.A_idx)
                 Bxyz = self.frag_geom(DI.B_idx)
-                DI.Bmat(Axyz, Bxyz, B[self.dimerfrag_intco_slice(i)],
-                    3 * A1stAtom, 3 * B1stAtom)  # column offsets
+                DI.Bmat(Axyz, Bxyz, B[self.dimerfrag_intco_slice(i)], 3 * A1stAtom, 3 * B1stAtom)  # column offsets
 
         if massWeight:
-            sqrtm = np.broadcast_to(np.repeat(np.sqrt(self.masses),3), (Nint, Ncart))
+            sqrtm = np.broadcast_to(np.repeat(np.sqrt(self.masses), 3), (Nint, Ncart))
             B[:] = np.divide(B, sqrtm)
         return B
 
@@ -716,7 +714,7 @@ class Molsys(object):
             B = self.Bmat()
 
         if useMasses:
-            u = np.diag(np.repeat(1.0/self.masses, 3))
+            u = np.diag(np.repeat(1.0 / self.masses, 3))
             G = np.dot(np.dot(B, u), B.T)
             Ginv = symm_mat_inv(G, redundant=True)
             g_q = coeff * np.dot(np.dot(np.dot(Ginv, B), u), g_x)
@@ -726,7 +724,6 @@ class Molsys(object):
             g_q = coeff * np.dot(np.dot(Ginv, B), g_x)
 
         return g_q
-
 
     def hessian_to_internals(self, H, g_x=None, useMasses=False):
         """converts the hessian from cartesian coordinates into internal coordinates
@@ -755,17 +752,14 @@ class Molsys(object):
         B = self.Bmat()
 
         if useMasses:
-            u = np.diag( np.repeat(1.0/self.masses, 3) )
+            u = np.diag(np.repeat(1.0 / self.masses, 3))
             G = np.dot(np.dot(B, u), B.T)
             Ginv = symm_mat_inv(G, redundant=True)
-            Atranspose = np.dot( np.dot(Ginv, B), u)
+            Atranspose = np.dot(np.dot(Ginv, B), u)
         else:
             G = np.dot(B, B.T)
             Ginv = symm_mat_inv(G, redundant=True)
             Atranspose = np.dot(Ginv, B)
-
-        #logger.info("B A")
-        #logger.info(print_mat_string(B.dot(Atranspose.T)))
 
         Hworking = H.copy()
         if g_x is None:  # A^t Hxy A
@@ -776,7 +770,7 @@ class Molsys(object):
             g_q = self.gradient_to_internals(g_x, useMasses=useMasses)
 
             for iF, F in enumerate(self._fragments):
-                dq2dx2 = np.zeros((3*F.natom, 3*F.natom))
+                dq2dx2 = np.zeros((3 * F.natom, 3 * F.natom))
                 geom = F.geom
                 # Find start index for this fragment
                 cart_offset = 3 * self.frag_1st_atom(iF)
@@ -787,15 +781,14 @@ class Molsys(object):
                     Intco.Dq2Dx2(geom, dq2dx2)  # d^2(q_I)/ dx_i dx_j
 
                     # Loop over Cartesian pairs in fragment
-                    for a in range(3*F.natom):
-                        for b in range(3*F.natom):
-                            Hworking[cart_offset+a, cart_offset+b] -= \
-                                g_q[intco_offset+iIntco] * dq2dx2[a, b]
-    
+                    for a in range(3 * F.natom):
+                        for b in range(3 * F.natom):
+                            Hworking[cart_offset + a, cart_offset + b] -= g_q[intco_offset + iIntco] * dq2dx2[a, b]
+
             # TODO: dimer coordinates, akin to this
             if self._dimer_intcos:
-                raise NotImplementedError('transformations with dimer gradients')
-            #if self._dimer_intcos:
+                raise NotImplementedError("transformations with dimer gradients")
+            # if self._dimer_intcos:
             #    # xyz = self.geom
             #    for i, DI in enumerate(self._dimer_intcos):
             #        # print('Aidx:' + str(DI.A_idx) )
@@ -808,7 +801,6 @@ class Molsys(object):
 
         Hq = np.dot(Atranspose, np.dot(Hworking, Atranspose.T))
         return Hq
-
 
     def project_redundancies_and_constraints(self, fq, H):
         """Project redundancies and constraints out of forces and Hessian"""
@@ -839,8 +831,9 @@ class Molsys(object):
 
         # if op.Params.print_lvl >= 3:
         logger.debug(
-            "\n\tInternal forces in au, after projection of redundancies" +
-            " and constraints.\n" + print_array_string(fq)
+            "\n\tInternal forces in au, after projection of redundancies"
+            + " and constraints.\n"
+            + print_array_string(fq)
         )
         # Project redundancies out of Hessian matrix.
         # Peng, Ayala, Schlegel, JCC 1996 give H -> PHP + 1000(1-P)
@@ -852,9 +845,7 @@ class Molsys(object):
         # for i in range(dim)
         #    for j in range(i):
         #        H[j,i] = H[i,j] = H[i,j] + 1000 * (1.0 - P[i,j])
-        if op.Params.print_lvl >= 3:
-            logger.debug("Projected (PHP) Hessian matrix\n" + print_mat_string(H))
-
+        logger.debug("Projected (PHP) Hessian matrix\n" + print_mat_string(H))
 
     def apply_external_forces(self, fq, H, stepNumber):
         logger = logging.getLogger(__name__)
@@ -883,7 +874,6 @@ class Molsys(object):
         if "Frag" in report:
             logger.info(report)
 
-
     def hessian_to_cartesians(self, Hint, g_q=None):
         logger = logging.getLogger(__name__)
         logger.info("Converting Hessian from internals to cartesians.\n")
@@ -900,7 +890,7 @@ class Molsys(object):
             logger.info("Including force/B-matrix derivative term.\n")
 
             for iF, F in enumerate(self._fragments):
-                dq2dx2 = np.zeros((3*F.natom, 3*F.natom))
+                dq2dx2 = np.zeros((3 * F.natom, 3 * F.natom))
                 geom = F.geom
                 cart_offset = 3 * self.frag_1st_atom(iF)
                 intco_offset = self.frag_1st_intco(iF)
@@ -910,17 +900,15 @@ class Molsys(object):
                     Intco.Dq2Dx2(geom, dq2dx2)  # d^2(q_I)/ dx_i dx_j
 
                     # Loop over Cartesian pairs in fragment
-                    for a in range(3*F.natom):
-                        for b in range(3*F.natom):
-                            Hxy[cart_offset+a, cart_offset+b] += \
-                                g_q[intco_offset+iIntco] * dq2dx2[a, b]
+                    for a in range(3 * F.natom):
+                        for b in range(3 * F.natom):
+                            Hxy[cart_offset + a, cart_offset + b] += g_q[intco_offset + iIntco] * dq2dx2[a, b]
 
             # TODO: dimer coordinates
             if self._dimer_intcos:
-                raise NotImplementedError('transformations with dimer gradients')
+                raise NotImplementedError("transformations with dimer gradients")
 
         return Hxy
-
 
     def gradient_to_cartesians(self, g_q):
         """converts the gradient from internal into Cartesian coordinates
@@ -939,7 +927,6 @@ class Molsys(object):
         B = self.Bmat()
         g_x = np.dot(B.T, g_q)
         return g_x
-
 
     def test_Bmat(self):
         """ Test the analytic B matrix (dq/dx) via finite differences.
@@ -977,45 +964,42 @@ class Molsys(object):
             for xyz in range(3):
                 coord[atom, xyz] -= DISP_SIZE
                 self.geom = coord
-                q_m = np.array( self.q() )
+                q_m = np.array(self.q())
 
                 coord[atom, xyz] -= DISP_SIZE
                 self.geom = coord
-                q_m2 = np.array( self.q() )
+                q_m2 = np.array(self.q())
 
                 coord[atom, xyz] += 3 * DISP_SIZE
                 self.geom = coord
-                q_p = np.array( self.q() )
+                q_p = np.array(self.q())
 
                 coord[atom, xyz] += DISP_SIZE
                 self.geom = coord
-                q_p2 = np.array( self.q() )
+                q_p2 = np.array(self.q())
 
                 coord[atom, xyz] -= 2 * DISP_SIZE  # restore to original
-                B_fd[:, 3 * atom + xyz] = (q_m2 - 8 * q_m + 8 * q_p - q_p2) / \
-                    (12.0 * DISP_SIZE)
+                B_fd[:, 3 * atom + xyz] = (q_m2 - 8 * q_m + 8 * q_p - q_p2) / (12.0 * DISP_SIZE)
 
         if op.Params.print_lvl >= 3:
-            logger.debug("Numerical B matrix in au, DISP_SIZE = %lf\n" % DISP_SIZE +
-                print_mat_string(B_fd))
+            logger.debug("Numerical B matrix in au, DISP_SIZE = %lf\n" % DISP_SIZE + print_mat_string(B_fd))
 
         self.geom = geom_orig  # restore original
         self.unfix_bend_axes()
 
-        #max_error = -1.0
-        #max_error_intco = -1
-        #for i in range(Nintco):
+        # max_error = -1.0
+        # max_error_intco = -1
+        # for i in range(Nintco):
         #    for j in range(3 * Natom):
         #        if np.fabs(B_analytic[i, j] - B_fd[i, j]) > max_error:
         #            max_error = np.fabs(B_analytic[i][j] - B_fd[i][j])
         #            max_error_intco = i
-        B_delta = np.fabs(B_analytic -  B_fd)
+        B_delta = np.fabs(B_analytic - B_fd)
         max_index = np.unravel_index(np.argmax(B_delta), B_delta.shape)
         max_error_intco = max_index[0]
         max_error = B_delta[max_index]
 
-        logger.info("\t\tMaximum difference is %.1e for internal coordinate %d." % 
-            (max_error, max_error_intco + 1))
+        logger.info("\t\tMaximum difference is %.1e for internal coordinate %d." % (max_error, max_error_intco + 1))
         # logger.info("\t\tThis coordinate is %s" % str(intcos[max_error_intco]))
 
         if max_error > MAX_ERROR:
@@ -1028,7 +1012,6 @@ class Molsys(object):
         else:
             logger.info("\t...Passed.")
             return True
-
 
     # Test the analytic derivative B matrix (d2q/dx2) via finite differences
     # The 5-point formula should be good to DISP_SIZE^4 -
@@ -1070,8 +1053,7 @@ class Molsys(object):
                 I.Dq2Dx2(coord, dq2dx2_analytic)
 
                 if op.Params.print_lvl >= 3:
-                    logger.info("Analytic B' (Dq2Dx2) matrix in au\n" +
-                        print_mat_string(dq2dx2_analytic))
+                    logger.info("Analytic B' (Dq2Dx2) matrix in au\n" + print_mat_string(dq2dx2_analytic))
 
                 # compute B' matrix from B matrices
                 for atom_a in range(Natom):
@@ -1101,8 +1083,10 @@ class Molsys(object):
                                 ) / (12.0 * DISP_SIZE)
 
                 if op.Params.print_lvl >= 3:
-                    logger.info("\nNumerical B' (Dq2Dx2) matrix in au, DISP_SIZE = %f\n" %
-                            DISP_SIZE + print_mat_string(dq2dx2_fd))
+                    logger.info(
+                        "\nNumerical B' (Dq2Dx2) matrix in au, DISP_SIZE = %f\n" % DISP_SIZE
+                        + print_mat_string(dq2dx2_fd)
+                    )
 
                 max_error = -1.0
                 max_error_xyz = (-1, -1)
@@ -1112,8 +1096,10 @@ class Molsys(object):
                             max_error = np.fabs(dq2dx2_analytic[I][J] - dq2dx2_fd[I][J])
                             max_error_xyz = (I, J)
 
-                logger.info( "\t\tMax. difference is %.1e; 2nd derivative wrt %d and %d."
-                    % (max_error, max_error_xyz[0], max_error_xyz[1]))
+                logger.info(
+                    "\t\tMax. difference is %.1e; 2nd derivative wrt %d and %d."
+                    % (max_error, max_error_xyz[0], max_error_xyz[1])
+                )
 
                 if max_error > MAX_ERROR:
                     warn = True
@@ -1122,15 +1108,15 @@ class Molsys(object):
         self.unfix_bend_axes()
 
         if warn:
-            logger.warning("""
+            logger.warning(
+                """
             \tSome values did not agree.  However, numerical tests may fail for
             \ttorsions at 180 degrees and linear bond angles. This is OK
             \tIf discontinuities are interfering with a geometry optimization
             \ttry restarting your optimization at an updated geometry, and/or
-            \tremove angular coordinates that are fixed by symmetry.""")
+            \tremove angular coordinates that are fixed by symmetry."""
+            )
             return False
         else:
             logger.info("\t...Passed.")
             return True
-
-

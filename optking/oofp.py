@@ -37,16 +37,7 @@ class Oofp(Simple):
     """
 
     def __init__(
-        self,
-        a,
-        b,
-        c,
-        d,
-        constraint="free",
-        near180=0,
-        range_min=None,
-        range_max=None,
-        ext_force=None,
+        self, a, b, c, d, constraint="free", near180=0, range_min=None, range_max=None, ext_force=None,
     ):
 
         atoms = (a, b, c, d)

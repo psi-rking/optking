@@ -4,7 +4,7 @@ import os
 from . import lj_functions, loggingconfig
 from . import optparams as op
 from ._version import get_versions
-from .opt_helper import OptHelper
+from .opt_helper import EngineHelper, CustomHelper
 from .optimize import make_internal_coords, optimize
 from .optwrapper import optimize_psi4, optimize_qcengine
 

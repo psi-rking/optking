@@ -219,9 +219,10 @@ def make_computer(opt_input: dict, computer_type):
         raise OptError("computer_type is unknown")
 
 
-def initialize_options(opt_keys):
+def initialize_options(opt_keys, silent=False):
     logger = logging.getLogger(__name__)
-    logger.info(welcome())
+    if not silent:
+        logger.info(welcome())
     userOptions = caseInsensitiveDict.CaseInsensitiveDict(opt_keys)
     # Save copy of original user options. Commented out until it is used
     # origOptions = copy.deepcopy(userOptions)
@@ -235,5 +236,5 @@ def initialize_options(opt_keys):
 
     # TODO we should make this just be a normal object
     #  we should return it to the optimize method
-    # logger.debug(str(op.Params))
-    logger.info(str(op.Params))
+    if not silent:
+        logger.info(str(op.Params))
