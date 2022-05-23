@@ -11,7 +11,7 @@ opt_helper.OptHelper for easy setup and control over optimization procedures.
     * NewtonRaphson
     * SteepestDescent
         * overlap
-        * borzali_borwein
+        * barzilai_borwein
     * RestricedStepRFO
     * ParitionedRFO
 * Linesearch
@@ -44,6 +44,9 @@ from .exceptions import AlgError, OptError
 from .linearAlgebra import asymm_mat_eig, symm_mat_eig
 from .misc import is_dq_symmetric
 from .printTools import print_array_string, print_mat_string
+from . import log_name
+
+logger = logging.getLogger(f"{log_name}{__name__}")
 
 
 class OptimizationInterface(ABC):
@@ -63,7 +66,6 @@ class OptimizationInterface(ABC):
 
         self.molsys = molsys
         self.history = history
-        self.logger = logging.getLogger(__name__)
 
         if not params:
             params = op.OptParams({})
@@ -90,9 +92,9 @@ class OptimizationInterface(ABC):
         grad = -1 * np.dot(fq, unit_dq)  # gradient, not force
         hess = np.dot(unit_dq, np.dot(H, unit_dq))
 
-        self.logger.info("\t|target step| : %15.10f" % dq_norm)
-        self.logger.info("\tgradient     : %15.10f" % grad)
-        self.logger.info("\thessian      : %15.10f" % hess)
+        logger.info("\t|target step| : %15.10f" % dq_norm)
+        logger.info("\tgradient     : %15.10f" % grad)
+        logger.info("\thessian      : %15.10f" % hess)
 
         return dq_norm, unit_dq, grad, hess
 
@@ -112,6 +114,7 @@ class OptimizationAlgorithm(OptimizationInterface):
         self.intrafrag_trust_max = params.intrafrag_trust_max
         self.intrafrag_trust_min = params.intrafrag_trust_min
         self.consecutive_backsteps_allowed = params.consecutive_backsteps_allowed
+        self.ensure_bt_convergence = params.ensure_bt_convergence
         self.dynamic_level = params.dynamic_level
         self.opt_type = params.opt_type
         self.linesearch = params.linesearch
@@ -141,14 +144,14 @@ class OptimizationAlgorithm(OptimizationInterface):
         """Basic form of the algorithm"""
         pass
 
-    def take_step(self, fq=None, H=None, energy=None, **kwargs):
+    def take_step(self, fq=None, H=None, energy=None, return_str=False, **kwargs):
         """Compute step and take step"""
 
         if len(fq) == 0:
-            self.logger.warning("Forces are missing. Step is 0")
+            logger.warning("Forces are missing. Step is 0")
             return np.zeros(0)
 
-        self.history.append(self.molsys.geom, energy, fq)
+        self.history.append(self.molsys.geom, energy, fq, self.molsys.gradient_to_cartesians(-1 * fq))
 
         if self.backstep_needed():
             dq = self.backstep()
@@ -159,14 +162,15 @@ class OptimizationAlgorithm(OptimizationInterface):
             self.apply_intrafrag_step_scaling(dq)
 
         self.molsys.interfrag_dq_discontinuity_correction(dq)
-        achieved_dq = displace_molsys(self.molsys, dq, fq)
-        dq_norm, unit_dq, projected_fq, projected_hess = self.step_metrics(dq, fq, H)
+        achieved_dq, return_str = displace_molsys(self.molsys, dq, fq, ensure_convergence=self.ensure_bt_convergence,
+                                                  return_str=return_str)
+        dq_norm, unit_dq, projected_fq, projected_hess = self.step_metrics(achieved_dq, fq, H)
         delta_energy = self.expected_energy(dq_norm, projected_fq, projected_hess)
-        self.logger.debug("\tProjected energy change: %10.10lf\n" % delta_energy)
+        logger.debug("\tProjected energy change: %10.10lf\n" % delta_energy)
         self.update_history(delta_energy, achieved_dq, unit_dq, projected_fq, projected_hess)
 
         dq_norm = np.linalg.norm(achieved_dq)
-        self.logger.info("\tNorm of achieved step-size %15.10f" % dq_norm)
+        logger.info("\tNorm of achieved step-size %15.10f" % dq_norm)
 
         # Before quitting, make sure step is reasonable.  It should only be
         # screwball if we are using the "First Guess" after the back-transformation failed.
@@ -174,6 +178,8 @@ class OptimizationAlgorithm(OptimizationInterface):
         if dq_norm > 5 * self.intrafrag_trust:
             raise AlgError("opt.py: Step is far too large.")
 
+        if return_str:
+            return achieved_dq, return_str
         return achieved_dq
 
     def apply_intrafrag_step_scaling(self, dq):
@@ -181,8 +187,8 @@ class OptimizationAlgorithm(OptimizationInterface):
         trust = self.intrafrag_trust
         if sqrt(np.dot(dq, dq)) > trust:
             scale = trust / sqrt(np.dot(dq, dq))
-            self.logger.info("\tStep length exceeds trust radius of %10.5f." % trust)
-            self.logger.info("\tScaling displacements by %10.5f" % scale)
+            logger.info("\tStep length exceeds trust radius of %10.5f." % trust)
+            logger.info("\tScaling displacements by %10.5f" % scale)
             dq *= scale
         return dq
 
@@ -204,7 +210,7 @@ class OptimizationAlgorithm(OptimizationInterface):
 
         """
 
-        self.logger.warning("\tRe-doing last optimization step - smaller this time.\n")
+        logger.warning("\tRe-doing last optimization step - smaller this time.\n")
         self.history.consecutive_backsteps += 1
 
         # Calling function shouldn't let this happen; this is a check for developer
@@ -225,10 +231,12 @@ class OptimizationAlgorithm(OptimizationInterface):
         dq /= 2
         return dq
 
-    def converged(self, dq, fq, step_number):
+    def converged(self, dq, fq, step_number, str_mode=None):
         energies = [step.E for step in self.history.steps]
-        converged = convcheck.conv_check(step_number, dq, fq, energies)
-        self.logger.info("\tConvergence check returned %s" % converged)
+        converged = convcheck.conv_check(step_number, dq, fq, energies, str_mode=str_mode)
+        if str_mode:
+            return converged
+        logger.info("\tConvergence check returned %s" % converged)
 
         return converged
 
@@ -248,16 +256,16 @@ class OptimizationAlgorithm(OptimizationInterface):
 
         if len(self.history.steps) < 5:
             # ignore early issues.
-            self.logger.info("\tNear start of optimization, so ignoring bad step.\n")
+            logger.info("\tNear start of optimization, so ignoring bad step.\n")
             return False
 
         if self.history.consecutive_backsteps < self.consecutive_backsteps_allowed:
             self.history.consecutive_backsteps += 1
-            self.logger.info("\tThis is consecutive backstep %d.\n", self.history.consecutive_backsteps)
+            logger.info("\tThis is consecutive backstep %d.\n", self.history.consecutive_backsteps)
             return True  # Assumes that the client follows instructions
 
         if self.dynamic_level == 0:
-            self.logger.info("Continuing despite bad step. dynamic level is 0")
+            logger.info("Continuing despite bad step. dynamic level is 0")
             return False
         raise AlgError("Bad Step. Maximum number of backsteps taken")
 
@@ -265,7 +273,6 @@ class OptimizationAlgorithm(OptimizationInterface):
         """Determine whether the last step was acceptable, prints summary and change trust radius"""
 
         decent = True
-        self.logger.info(len(self.history.steps))
         if len(self.history.steps) < 2:
             self.history.steps[-1].decent = decent
             return decent
@@ -278,10 +285,10 @@ class OptimizationAlgorithm(OptimizationInterface):
         opt_step_report += "\t\tActual       : %20.10lf\n" % energy_change
         opt_step_report += "\t\tProjected    : %20.10lf\n" % projected_change
 
-        self.logger.info("\tCurrent Step Report \n %s" % opt_step_report)
+        logger.info("\tCurrent Step Report \n %s" % opt_step_report)
 
         energy_ratio = energy_change / projected_change
-        self.logger.info("\tEnergy ratio = %10.5lf" % energy_ratio)
+        logger.info("\tEnergy ratio = %10.5lf" % energy_ratio)
 
         if self.opt_type == "MIN" and not self.linesearch:
             # Predicted up. Actual down.  OK.  Do nothing.
@@ -289,7 +296,7 @@ class OptimizationAlgorithm(OptimizationInterface):
                 decent = True
             # Actual step is  up.
             elif energy_change > 0:
-                self.logger.warning("\tEnergy has increased in a minimization.")
+                logger.warning("\tEnergy has increased in a minimization.")
                 self.decrease_trust_radius()
                 decent = False
             # Predicted down.  Actual down.
@@ -309,7 +316,7 @@ class OptimizationAlgorithm(OptimizationInterface):
         if self.intrafrag_trust != maximum:
             new_val = self.intrafrag_trust * 3
             new_val = maximum if new_val > self.intrafrag_trust_max else new_val
-            self.logger.info("\tEnergy ratio indicates good step: Trust radius increased to %6.3e.\n", new_val)
+            logger.info("\tEnergy ratio indicates good step: Trust radius increased to %6.3e.\n", new_val)
             self.intrafrag_trust = new_val
 
     def decrease_trust_radius(self):
@@ -318,7 +325,7 @@ class OptimizationAlgorithm(OptimizationInterface):
         if self.intrafrag_trust != minimum:
             new_val = self.intrafrag_trust / 4
             new_val = minimum if new_val < minimum else new_val
-            self.logger.warning("\tEnergy ratio indicates iffy step: Trust radius decreased to %6.3e.\n", new_val)
+            logger.warning("\tEnergy ratio indicates iffy step: Trust radius decreased to %6.3e.\n", new_val)
             self.intrafrag_trust = new_val
 
     def update_history(self, delta_e, achieved_dq, unit_dq, projected_f, projected_hess):
@@ -334,7 +341,7 @@ class OptimizationAlgorithm(OptimizationInterface):
     # def converged(self, step_number, dq, fq):
     #     energies = (self.history.steps[-1].E, self.history.steps[-2].E)  # grab last two energies
     #     converged = convcheck.conv_check(step_number, self.molsys, dq, energies)
-    #     self.logger.info("\tConvergence check returned %s" % converged)
+    #     logger.info("\tConvergence check returned %s" % converged)
     #     return converged
 
 
@@ -346,11 +353,11 @@ class QuasiNewtonOptimization(OptimizationAlgorithm, ABC):
         """Quadratic energy model"""
         return step * grad + 0.5 * step * step * hess
 
-    def take_step(self, fq=None, H=None, energy=None, **kwargs):
+    def take_step(self, fq=None, H=None, energy=None, return_str=False, **kwargs):
         if len(H) == 0:
-            self.logger.warning("Missing Hessian. Step is 0")
+            logger.warning("Missing Hessian. Step is 0")
             return np.zeros(0)
-        return super().take_step(fq, H, energy)
+        return super().take_step(fq, H, energy, return_str)
 
 
 class SteepestDescent(OptimizationAlgorithm):
@@ -398,7 +405,7 @@ class SteepestDescent(OptimizationAlgorithm):
         old_unit_fq = old_fq / np.linalg.norm(old_fq)
         unit_fq = fq / fq_norm
         overlap = np.dot(old_unit_fq, unit_fq)
-        self.logger.debug("\tOverlap of current forces with previous forces %8.4lf" % overlap)
+        logger.debug("\tOverlap of current forces with previous forces %8.4lf" % overlap)
 
         if overlap > 0.50:
             old_dq_norm = np.linalg.norm(old_dq)
@@ -421,7 +428,7 @@ class SteepestDescent(OptimizationAlgorithm):
         return c
 
     def step(self, fq, *args, **kwargs):
-        self.logger.info("Taking Steepest Descent Step")
+        logger.info("Taking Steepest Descent Step")
         sd_h = self.step_size_scalar(fq)
         dq = fq * sd_h
         return dq
@@ -497,11 +504,11 @@ class RestrictedStepRFO(RFO):
         lowest eigenvalue / eigenvector that is normalizable. If rfo_follow_root the previous root/step
         is considered first"""
 
-        self.logger.debug("\tTaking RFO optimization step.")
+        logger.debug("\tTaking RFO optimization step.")
 
         # Build the original, unscaled RFO matrix.
         RFOmat = RFO.build_rfo_matrix(0, len(H), fq, H)  # use entire hessian for RFO matrix
-        self.logger.debug("\tOriginal, unscaled RFO matrix:\n\n" + print_mat_string(RFOmat))
+        logger.debug("\tOriginal, unscaled RFO matrix:\n\n" + print_mat_string(RFOmat))
 
         if self.simple_step_scaling:
             e_vectors, e_values = self._intermediate_normalize(RFOmat)
@@ -516,7 +523,7 @@ class RestrictedStepRFO(RFO):
 
         # if converged, trust radius has already been applied through alpha
         self.trust_radius_on = not converged
-        self.logger.debug("\tFinal scaled step dq:\n\n\t" + print_array_string(dq))
+        logger.debug("\tFinal scaled step dq:\n\n\t" + print_array_string(dq))
         return dq
 
     def _solve_rs_rfo(self, RFOmat, H, fq):
@@ -540,7 +547,7 @@ class RestrictedStepRFO(RFO):
             # If we exhaust iterations without convergence, then bail on the
             #  restricted-step algorithm.  Set alpha=1 and apply crude scaling instead.
             if alpha_iter == max_rfo_iter:
-                self.logger.warning("\tFailed to converge alpha. Doing simple step-scaling instead.")
+                logger.warning("\tFailed to converge alpha. Doing simple step-scaling instead.")
                 alpha = 1.0
 
             SRFOevals, SRFOevects = self._scale_and_normalize(RFOmat, alpha)
@@ -562,7 +569,7 @@ class RestrictedStepRFO(RFO):
             rfo_step_report += print_out
 
         # end alpha RS-RFO iterations
-        self.logger.debug(rfo_step_report)
+        logger.debug(rfo_step_report)
         self.rfo_follow_root = follow_root
         return converged, dq
 
@@ -571,7 +578,7 @@ class RestrictedStepRFO(RFO):
         rfo_step_report = ""
 
         if alpha_iter == 0 and not self.simple_step_scaling:
-            self.logger.debug("\tDetermining step-restricting scale parameter for RS-RFO.")
+            logger.debug("\tDetermining step-restricting scale parameter for RS-RFO.")
 
         if alpha_iter == 0:
             rfo_step_report += (
@@ -591,7 +598,7 @@ class RestrictedStepRFO(RFO):
         analyticDerivative = 2 * Lambda / (1 + alpha * dqtdq) * tval
 
         if self.print_lvl >= 2:
-            self.logger.debug("\tLambda calculated by (dq^t).(-f) = %15.10lf\n" % Lambda)
+            logger.debug("\tLambda calculated by (dq^t).(-f) = %15.10lf\n" % Lambda)
             rfo_step_report += "\t  Analytic derivative d(norm)/d(alpha) = %15.10lf\n" % analyticDerivative
 
         # Calculate new scaling alpha value.
@@ -621,13 +628,13 @@ class RestrictedStepRFO(RFO):
         SRFOevects = self._intermediate_normalize(SRFOevects)
 
         if self.print_lvl >= 4:
-            self.logger.debug("\tScaled RFO matrix.\n\n" + print_mat_string(SRFOmat))
-            self.logger.debug("\tEigenvectors of scaled RFO matrix.\n\n" + print_mat_string(SRFOevects))
-            self.logger.debug("\tEigenvalues of scaled RFO matrix.\n\n\t" + print_array_string(SRFOevals))
-            self.logger.debug(
+            logger.debug("\tScaled RFO matrix.\n\n" + print_mat_string(SRFOmat))
+            logger.debug("\tEigenvectors of scaled RFO matrix.\n\n" + print_mat_string(SRFOevects))
+            logger.debug("\tEigenvalues of scaled RFO matrix.\n\n\t" + print_array_string(SRFOevals))
+            logger.debug(
                 "\tFirst eigenvector (unnormalized) of scaled RFO matrix.\n\n\t" + print_array_string(SRFOevects[0])
             )
-            self.logger.debug("\tAll intermediate normalized eigenvectors (rows).\n\n" + print_mat_string(SRFOevects))
+            logger.debug("\tAll intermediate normalized eigenvectors (rows).\n\n" + print_mat_string(SRFOevects))
 
         return SRFOevals, SRFOevects
 
@@ -653,7 +660,7 @@ class RestrictedStepRFO(RFO):
 
             # Determine root only once at beginning. This root will be followed in subsequent alpha iterations
             if alpha_iter == 0:
-                self.logger.debug("\tChecking RFO solution %d." % 1)
+                logger.debug("\tChecking RFO solution %d." % 1)
 
                 for i in range(self.rfo_root, len(SRFOevals)):
 
@@ -676,11 +683,11 @@ class RestrictedStepRFO(RFO):
             bestfit = np.argmax(overlaps)
 
             if bestfit != self.old_root:
-                self.logger.info("\tRoot-following has changed rfo_root value to %d." % (bestfit + 1))
+                logger.info("\tRoot-following has changed rfo_root value to %d." % (bestfit + 1))
                 rfo_root = bestfit
 
         if alpha_iter == 0:
-            self.logger.info("\tUsing RFO solution %d." % (rfo_root + 1))
+            logger.info("\tUsing RFO solution %d." % (rfo_root + 1))
 
         # Print only the lowest eigenvalues/eigenvectors
         if self.print_lvl >= 2:
@@ -693,7 +700,7 @@ class RestrictedStepRFO(RFO):
                 print_out = template.format(*(i + 1, eigval, eigval / 2))
                 print_out += "\n\teigenvector:\n\t"
                 print_out += print_array_string(SRFOevects[i])
-                self.logger.info(print_out)
+                logger.info(print_out)
 
         self.old_root = rfo_root
         return rfo_root
@@ -711,11 +718,10 @@ class RestrictedStepRFO(RFO):
         """
 
         def reject_root(mesg):
-            self.logger = logging.getLogger(__name__)
-            self.logger.warning("\tRejecting RFO root %d because %s", index + 1, mesg)
+            logger = logging.getLogger(__name__)
+            logger.warning("\tRejecting RFO root %d because %s", index + 1, mesg)
             return False
 
-        self.logger.info(print_array_string(vector))
         # Check symmetry of root. Leave True if unessecary. Not currently functioning
         symmetric = True if not self.accept_symmetry_breaking else is_dq_symmetric(self.molsys, vector[:-1])
 
@@ -744,10 +750,10 @@ class PartitionedRFO(RFO):
         hess_diag = np.diag(h_eig_values)
 
         if self.print_lvl > 2:
-            self.logger.info("\tEigenvalues of Hessian\n\n\t%s", print_array_string(h_eig_values))
-            self.logger.info("\tEigenvectors of Hessian (rows)\n%s", print_mat_string(h_eig_vectors))
-            self.logger.debug("\tFor P-RFO, assuming rfo_root=1, maximizing along lowest eigenvalue of Hessian.")
-            self.logger.debug("\tLarger values of rfo_root are not yet supported.")
+            logger.info("\tEigenvalues of Hessian\n\n\t%s", print_array_string(h_eig_values))
+            logger.info("\tEigenvectors of Hessian (rows)\n%s", print_mat_string(h_eig_vectors))
+            logger.debug("\tFor P-RFO, assuming rfo_root=1, maximizing along lowest eigenvalue of Hessian.")
+            logger.debug("\tLarger values of rfo_root are not yet supported.")
 
         rfo_root = 0
         # self._select_rfo_root() TODO
@@ -755,23 +761,23 @@ class PartitionedRFO(RFO):
         # number of degrees along which to maximize; assume 1 for now
         mu = 1
         fq_prime = np.dot(h_eig_vectors, fq)  # gradient transformation
-        self.logger.info("\tInternal forces in au, in Hevect basis:\n\n\t" + print_array_string(fq_prime))
+        logger.info("\tInternal forces in au, in Hevect basis:\n\n\t" + print_array_string(fq_prime))
 
         # Build RFO max and Min. Augments each partition of Hessian with corresponding gradient values
         # The lowest mu eigenvalues / vectors will be maximized along. All others will be minimized
         maximize_rfo = RFO.build_rfo_matrix(rfo_root, mu, fq_prime, hess_diag)
         minimize_rfo = RFO.build_rfo_matrix(mu, hdim, fq_prime, hess_diag)
-        self.logger.info("\tRFO max\n%s", print_mat_string(maximize_rfo))
-        self.logger.info("\tRFO min\n%s", print_mat_string(minimize_rfo))
+        logger.info("\tRFO max\n%s", print_mat_string(maximize_rfo))
+        logger.info("\tRFO min\n%s", print_mat_string(minimize_rfo))
 
         rfo_max_evals, rfo_max_evects = symm_mat_eig(maximize_rfo)
         rfo_min_evals, rfo_min_evects = symm_mat_eig(minimize_rfo)
         rfo_max_evects = self._intermediate_normalize(rfo_max_evects)
         rfo_min_evects = self._intermediate_normalize(rfo_min_evects)
-        self.logger.info("\tRFO min eigenvalues:\n\n\t%s" + print_array_string(rfo_min_evals))
-        self.logger.info("\tRFO max eigenvalues:\n\n\t%s" + print_array_string(rfo_max_evals))
-        self.logger.debug("\tRFO max eigenvectors (rows):\n%s", print_mat_string(rfo_max_evects))
-        self.logger.debug("\tRFO min eigenvectors (rows):\n%s", print_mat_string(rfo_min_evects))
+        logger.info("\tRFO min eigenvalues:\n\n\t%s" + print_array_string(rfo_min_evals))
+        logger.info("\tRFO max eigenvalues:\n\n\t%s" + print_array_string(rfo_max_evals))
+        logger.debug("\tRFO max eigenvectors (rows):\n%s", print_mat_string(rfo_max_evects))
+        logger.debug("\tRFO min eigenvectors (rows):\n%s", print_mat_string(rfo_min_evects))
 
         p_vec = rfo_max_evects[mu, :mu]
         n_vec = rfo_min_evects[rfo_root, : hdim - mu]
@@ -783,8 +789,8 @@ class PartitionedRFO(RFO):
 
         prfo_step = np.dot(h_eig_vectors.transpose(), prfo_evect)
 
-        self.logger.info("\tRFO step in Hessian Eigenvector Basis\n\n\t" + print_array_string(prfo_evect))
-        self.logger.info("\tRFO step in original Basis\n\n\t" + print_array_string(prfo_step))
+        logger.info("\tRFO step in Hessian Eigenvector Basis\n\n\t" + print_array_string(prfo_evect))
+        logger.info("\tRFO step in original Basis\n\n\t" + print_array_string(prfo_step))
 
         return prfo_step
 

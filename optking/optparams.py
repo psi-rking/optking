@@ -125,7 +125,7 @@ class OptParams(object):
         # IRC mapping direction
         self.irc_direction = uod.get("IRC_DIRECTION", "FORWARD")
         # Decide when to stop IRC calculations
-        self.irc_points = uod.get("IRC_POINTS", "10")
+        self.irc_points = uod.get("IRC_POINTS", 10)
         #
         # Initial maximum step size in bohr or radian along an internal coordinate
         self.intrafrag_trust = uod.get("INTRAFRAG_STEP_LIMIT", 0.5)
@@ -137,8 +137,11 @@ class OptParams(object):
         # P.interfrag_trust = uod.get('INTERFRAG_TRUST', 0.5)
         # Reduce step size as necessary to ensure convergence of back-transformation of
         # internal coordinate step to cartesian coordinates.
-        # P.ensure_bt_convergence = uod.get('ENSURE_BT_CONVERGENCE', False)
+        self.ensure_bt_convergence = uod.get('ENSURE_BT_CONVERGENCE', False)
         # Do simple, linear scaling of internal coordinates to step limit (not RS-RFO)
+        if self.intrafrag_trust_max < self.intrafrag_trust:
+            self.intrafrag_trust = self.intrafrag_trust_max
+
         self.simple_step_scaling = uod.get("SIMPLE_STEP_SCALING", False)
         # Set number of consecutive backward steps allowed in optimization
         self.consecutive_backsteps_allowed = uod.get("CONSECUTIVE_BACKSTEPS", 0)
@@ -247,6 +250,7 @@ class OptParams(object):
         # Do read Cartesian Hessian?  Only for experts - use
         # |optking__full_hess_every| instead.
         self.cart_hess_read = uod.get("CART_HESS_READ", False)
+        self.hessian_file = uod.get("HESSIAN_FILE", None)
         # Frequency with which to compute the full Hessian in the course
         # of a geometry optimization. 0 means to compute the initial Hessian only,
         # 1 means recompute every step, and N means recompute every N steps. The
@@ -255,7 +259,7 @@ class OptParams(object):
         # Model Hessian to guess intrafragment force constants
         self.intrafrag_hess = uod.get("INTRAFRAG_HESS", "SCHLEGEL")
         # Re-estimate the Hessian at every step, i.e., ignore the currently stored Hessian.
-        self.h_guess_every = uod.get("H_GUESS_EVERY", False)
+        # self.h_guess_every = uod.get("H_GUESS_EVERY", False)
 
         self.working_steps_since_last_H = 0
         #
@@ -290,7 +294,7 @@ class OptParams(object):
 
         # Let the user submit a dictionary (or array of dictionaries) for
         # the interfrag coordinates.
-        self.interfrag_coords = uod.get("interfrag_coords", None)
+        self.interfrag_coords = uod.get("INTERFRAG_COORDS", None)
 
         # Model Hessian to guess interfragment force constants
         # P.interfrag_hess = uod.get('INTERFRAG_HESS', 'DEFAULT')
@@ -389,7 +393,7 @@ class OptParams(object):
         # Set full_hess_every to 0 if -1
         if self.opt_type == "IRC" and self.full_hess_every < 0:
             self.full_hess_every = 0
-            self.cart_hess_read = True  # not sure about this one - test
+            # self.cart_hess_read = True  # not sure about this one - test
 
         # if steepest-descent, then make much larger default
         if self.step_type == "SD" and "CONSECUTIVE_BACKSTEPS" not in uod:

@@ -1,6 +1,7 @@
 #  IRC for HOOH from cis confirmation.
 import psi4
 import optking
+import json
 
 psi4.set_memory("2 GB")
 
@@ -26,11 +27,12 @@ def test_hooh_irc():
         "g_convergence": "gau_verytight",
         "opt_type": "irc",
         "geom_maxiter": 60,
+        "full_hess_every": 0
     }
 
     psi4.set_options(psi4_options)
     json_output = optking.optimize_psi4("hf")
-    print(json_output)
+    print(json.dumps(json_output, indent=2))
     IRC = json_output["extras"]["irc_rxn_path"]
 
     print("%15s%15s%20s%15s" % ("Step Number", "Arc Distance", "Energy", "HOOH dihedral"))

@@ -1,4 +1,5 @@
 import logging
+import json
 
 import numpy as np
 import qcelemental as qcel
@@ -7,11 +8,13 @@ from .bend import Bend
 from .printTools import print_mat_string
 from .stre import Stre
 from .tors import Tors
+from . import log_name
+
+logger = logging.getLogger(f"{log_name}{__name__}")
 
 
 def show(H, oMolsys):
     """Print the Hessian in common spectroscopic units of [aJ/Ang^2], [aJ/deg^2] or [aJ/(Ang deg)]"""
-    logger = logging.getLogger(__name__)
 
     factors = np.zeros(oMolsys.num_intcos)
     cnt = -1
@@ -77,3 +80,24 @@ def guess(oMolsys, connectivity=None, guessType="SIMPLE"):
 
     H = np.diagflat(np.asarray(diag))
     return H
+
+
+def from_file(filename):
+    """Read user provided hessian from disk """
+
+    with open(filename) as f:
+        if '.json' == filename[:-5]:
+            result = json.load(f)
+            hess = result['return_result']
+        else:
+            # 2D split. Cast everything to floats and convert back to 2D list from map.
+            lines = f.readlines()
+            hess = [list(map(float, line.split())) for line in lines]
+
+    try:
+        H = np.fromiter(hess, dtype=float)
+    except (IndexError, ValueError, TypeError) as error:
+        logger.error("Hessian should be 3Nx3N cartesian force constant matrix or provided by MolSSI Schema")
+        raise ValueError("Could not load hessian from disk") from error
+    else:
+        return H

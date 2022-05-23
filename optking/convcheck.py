@@ -6,6 +6,9 @@ import numpy as np
 from . import optparams as op
 from .linearAlgebra import abs_max, rms
 from .printTools import print_array_string, print_mat_string
+from . import log_name
+
+logger = logging.getLogger(f"{log_name}{__name__}")
 
 CONVERGENCE_PRESETS = {
     "QCHEM_MOLPRO": {"required": ["max_force"], "one of": ["max_DE", "max_disp"], "alternate": [None]},
@@ -29,7 +32,7 @@ CONVERGENCE_PRESETS = {
 }
 
 
-def conv_check(iternum, dq, f, energies, required=None):
+def conv_check(iternum, dq, f, energies, required=None, str_mode=None):
     """Wrapper method to test for stationary point convergence
 
     Computes energy, force, and displacement changes for current step. Prints main convergence report
@@ -49,17 +52,28 @@ def conv_check(iternum, dq, f, energies, required=None):
 
     """
 
-    logger = logging.getLogger(__name__)
-    logger.info("Performing convergence check.")
+    if len(energies) == 0:
+        return False
+
+    return_str = True if str_mode in ['both', 'table'] else False
+    if not return_str:
+        logger.info("Performing convergence check.")
 
     params_dict = op.Params.__dict__
     criteria = _get_conv_criteria(dq, f, energies, required)
     conv_met, conv_active = _transform_criteria(criteria, params_dict)
-    _print_convergence_table(iternum, energies[-1], criteria, conv_met, conv_active, params_dict)
+    conv_str = _print_convergence_table(iternum, energies[-1], criteria, conv_met, conv_active, params_dict,
+                                        return_str)
 
     # flat potential cannot be activated by the user - purely an internal tool for gau_type convergence
     conv_met.update({"flat_potential": 100 * criteria.get("rms_force") < op.Params.conv_rms_force})
-    return _test_for_convergence(conv_met, conv_active)
+
+    if str_mode == 'table':
+        return conv_str
+    elif str_mode == 'both':
+        return conv_str, _test_for_convergence(conv_met, conv_active, return_str)
+    else:
+        return _test_for_convergence(conv_met, conv_active)
 
 
 def _get_conv_criteria(dq, f_vec, energies, required=None):
@@ -67,9 +81,6 @@ def _get_conv_criteria(dq, f_vec, energies, required=None):
 
     energy = energies[-1]
     last_energy = energies[-2] if len(energies) > 1 else 0.0
-
-    logger = logging.getLogger(__name__)
-    logger.info("Forces in get_criteria %s", print_array_string(f_vec))
 
     criteria = {
         "max_DE": energy - last_energy,
@@ -120,7 +131,7 @@ def _get_criteria_symbol(criteria_met, criteria_active):
     return symbol
 
 
-def _test_for_convergence(conv_met, conv_active):
+def _test_for_convergence(conv_met, conv_active, return_str=False):
     """Test whether the current point is sufficiently converged. Have all needed criteria been met.
 
     Parameters
@@ -137,8 +148,6 @@ def _test_for_convergence(conv_met, conv_active):
     used to check for convergence.
 
     """
-
-    logger = logging.getLogger(__name__)
 
     if op.Params.i_untampered:
         # flexible_criteria forces this route, but with an adjusted value for an individual criteria
@@ -169,16 +178,16 @@ def _test_for_convergence(conv_met, conv_active):
     if all(conv_status.get("alternate")):
         converged = True
 
+    if return_str:
+        return _print_active_criteria(conv_status, conv_requirements)
     if converged and op.Params.opt_type != "IRC":
         logger.info("%s", _print_active_criteria(conv_status, conv_requirements))
 
     return converged
 
 
-def _print_convergence_table(iternum, energy, criteria, conv_met, conv_active, params_dict):
+def _print_convergence_table(iternum, energy, criteria, conv_met, conv_active, params_dict, return_str=False):
     """Print a nice looking table for the current step """
-
-    logger = logging.getLogger(__name__)
 
     conv_symbols = {key: _get_criteria_symbol(conv_met.get(key), conv_active.get(key)) for key in conv_met}
     print_vals = [iternum, energy] + list(criteria.values()) + list(conv_symbols.values())  # All columns
@@ -209,6 +218,8 @@ def _print_convergence_table(iternum, energy, criteria, conv_met, conv_active, p
     ).format(*print_vals)
 
     conv_str += "\t" + "-" * 94 + "\n\n"
+    if return_str:
+        return conv_str
     logger.info(conv_str)
 
 

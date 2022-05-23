@@ -9,7 +9,7 @@ import pytest
 
 @pytest.mark.long
 @pytest.mark.dimers
-@pytest.mark.skip(reason="psi4 needs its d3 fixed")
+# @pytest.mark.skip(reason="psi4 needs its d3 fixed")
 def test_dimers_mt_tyr_frozen_orientation():
     # Starting at R ~ 5 Angstroms
     init_xyz = """
@@ -86,13 +86,14 @@ def test_dimers_mt_tyr_frozen_orientation():
         "basis": "6-31G(d)",
         "d_convergence": 9,
         "frag_mode": "multi",
+        "interfrag_coords": str(MTdimer)
     }
     psi4.set_options(psi4_options)
 
     # For the moment, 'interfrag_coords' is a non-standard keyword and so
     # must be passed like this.
     # Optimize fragments and R but not interfragment angular coordinates.
-    result = optking.optimize_psi4("b3lyp-d3mbj", **{"interfrag_coords": str(MTdimer)})
+    result = optking.optimize_psi4("b3lyp-d3mbj")
 
     E = result["energies"][-1]
 

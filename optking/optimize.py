@@ -9,6 +9,9 @@ from . import stepAlgorithms
 from . import testB, linesearch
 from .exceptions import AlgError, OptError
 from .printTools import print_array_string, print_geom_grad, print_mat_string
+from . import log_name
+
+logger = logging.getLogger(f"{log_name}{__name__}")
 
 
 def optimize(o_molsys, computer):
@@ -38,17 +41,18 @@ def optimize(o_molsys, computer):
     try:
         converged = False
         if not o_molsys.intcos_present:
-            make_internal_coords(o_molsys)
+            make_internal_coords(o_molsys, op.Params)
             logger.debug("Molecular systems after make_internal_coords:")
             logger.debug(str(o_molsys))
 
         opt_object = OptimizationManager(o_molsys, opt_history, op.Params, computer)
         # following loop may repeat over multiple algorithms OR over IRC points
         logger.info("\tStarting optimization algorithm.\n")
-        while not converged:
+        while converged is not True:
             try:
                 H, fq, energy = opt_object.start_step(H)
-                dq = opt_object.take_step(fq, H, energy)
+                dq = opt_object.take_step(fq, H, energy, return_str=False)
+                logger.info(dq)
                 logger.info("Current Forces %s", print_array_string(fq))
                 converged = opt_object.converged(energy, fq, dq)
                 opt_object.check_maxiter()  # raise error otherwise continue
@@ -59,9 +63,11 @@ def optimize(o_molsys, computer):
         return qc_output
 
     except OptError as error:
+        logger.error(error)
         return opt_object.opt_error_handler(error)
 
     except Exception as error:
+        logger.error(error)
         return opt_object.unknown_error_handler(error)
 
 
@@ -96,26 +102,27 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         self.params = params
         self.erase_hessian = False
         self.check_linesearch = True
+        self.error = None
 
     def start_step(self, H):
 
         # if optimization coordinates are absent, choose them. Could be erased after AlgError
         if not self.molsys.intcos_present:
             make_internal_coords(self.molsys)
-            self.logger.debug("Molecular system after make_internal_coords:")
-            self.logger.info(str(self.molsys))
+            logger.debug("Molecular system after make_internal_coords:")
+            logger.info(str(self.molsys))
 
         self.step_number += 1
         header = f"{'----------------------------':^74}"
         header += f"\n{'Taking A Step: Step Number %d' % self.step_number:^90}"
         header += f"\n{'----------------------------':^90}"
-        self.logger.info(header)
+        logger.info(header)
 
         requirements = self.opt_method.requires()
         protocol = self.get_hessian_protocol()
         H, gX, E = get_pes_info(H, self.computer, self.molsys, self.history, protocol, requirements)
 
-        self.logger.info("%s", print_geom_grad(self.molsys.geom, gX))
+        logger.info("%s", print_geom_grad(self.molsys.geom, gX))
 
         f_q = self.molsys.gradient_to_internals(gX, -1.0)
         self.molsys.apply_external_forces(f_q, H, self.step_number)
@@ -127,15 +134,15 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         if op.Params.test_derivative_B:
             testB.test_derivative_b(self.molsys)
 
-        self.logger.info(print_array_string(f_q, title="Internal forces in au:"))
+        logger.info(print_array_string(f_q, title="Internal forces in au:"))
         return H, f_q, E
 
-    def take_step(self, fq=None, H=None, energy=None, **kwargs):
+    def take_step(self, fq=None, H=None, energy=None, return_str=False, **kwargs):
 
         self.current_requirements = self.update_requirements()
 
         if not self.params.linesearch:
-            achieved_dq = self.opt_method.take_step(fq, H, energy)
+            achieved_dq, returned_str = self.opt_method.take_step(fq, H, energy, return_str=True)
         else:
             if self.direction is None:
                 self.direction = self.opt_method.step(fq, H, energy)
@@ -143,7 +150,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
                 self.linesearch_method.start(self.direction)
 
                 if self.check_linesearch:
-                    self.history.append(self.molsys.geom, energy, fq)
+                    self.history.append(self.molsys.geom, energy, fq, self.molsys.gradient_to_cartesians(-1 * fq))
                     ls_energy = self.linesearch_method.expected_energy
                     dq_norm, unit_dq, grad, hess = self.opt_method.step_metrics(self.direction, fq, H)
                     self.history.append_record(ls_energy, self.direction, unit_dq, grad, hess)
@@ -151,16 +158,19 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
                 self.stashed_hessian = H
                 self.check_linesearch = False
 
-            achieved_dq = self.linesearch_method.take_step(fq, H, energy)
+            achieved_dq, returned_str = self.linesearch_method.take_step(fq, H, energy, return_str=True)
 
             if self.linesearch_method.minimized:
-                self.logger.info("Linesearch complete. Next step will compute a new direction")
+                logger.info("Linesearch complete. Next step will compute a new direction")
                 # cleanup
                 self.linesearch_method.reset()
                 self.direction = None
                 self.check_linesearch = True
 
         self.requires = self.update_requirements()
+        logger.info(achieved_dq)
+        if return_str:
+            return achieved_dq, returned_str
         return achieved_dq
 
     def update_requirements(self):
@@ -169,16 +179,18 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         else:
             return self.linesearch_method.requires()
 
-    def converged(self, E, fq, dq, step_number=None):
+    def converged(self, E, fq, dq, step_number=None, str_mode=None):
         if step_number is None:
             step_number = self.step_number
         converged = False
         if not self.linesearch_method or self.check_linesearch:
-            converged = self.opt_method.converged(dq, fq, step_number)
-            if converged:
-                self.logger.info("\tConverged in %d steps!" % self.step_number)
-                self.logger.info("\tFinal energy is %20.13f" % E)
-                self.logger.info("\tFinal structure (Angstroms): \n" + self.molsys.show_geom())
+            converged = self.opt_method.converged(dq, fq, step_number, str_mode=str_mode)
+            if str_mode:
+                return converged
+            if converged is True:
+                logger.info("\tConverged in %d steps!" % self.step_number)
+                logger.info("\tFinal energy is %20.13f" % E)
+                logger.info("\tFinal structure (Angstroms): \n" + self.molsys.show_geom())
         return converged
 
     def check_maxiter(self):
@@ -190,7 +202,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
 
         # Hard quit if too many total steps taken (inc. all IRC points and algorithms).
         if iterations == op.Params.geom_maxiter:
-            self.logger.error(
+            logger.error(
                 "\tTotal number of steps (%d) exceeds maximum allowed (%d).\n" % (iterations, self.params.geom_maxiter)
             )
             raise OptError(
@@ -229,7 +241,6 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
             else:
                 protocol = "update"
 
-        self.logger.info(protocol)
         return protocol
 
     def clear(self):
@@ -241,7 +252,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
 
     def alg_error_handler(self, error):
 
-        self.logger.error("\n\tCaught AlgError exception\n")
+        logger.error(" Caught AlgError exception\n")
         eraseIntcos = False
 
         if error.linearBends:
@@ -255,49 +266,52 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
                     F.add_intcos_from_connectivity()
             eraseHistory = True
         elif op.Params.dynamic_level == op.Params.dynamic_level_max:
-            self.logger.critical("\n\t Current algorithm/dynamic_level is %d.\n" % op.Params.dynamic_level)
-            self.logger.critical("\n\t Alternative approaches are not available or turned on.\n")
+            logger.critical("\n\t Current algorithm/dynamic_level is %d.\n" % op.Params.dynamic_level)
+            logger.critical("\n\t Alternative approaches are not available or turned on.\n")
             raise OptError("Maximum dynamic_level reached.")
         else:
             op.Params.dynamic_level += 1
-            self.logger.warning("\n\t Increasing dynamic_level algorithm to %d.\n" % op.Params.dynamic_level)
-            self.logger.warning("\n\t Erasing old history, hessian, intcos.\n")
+            logger.warning("\n\t Increasing dynamic_level algorithm to %d.\n" % op.Params.dynamic_level)
+            logger.warning("\n\t Erasing old history, hessian, intcos.\n")
             eraseIntcos = True
             eraseHistory = True
             op.Params.updateDynamicLevelParameters(op.Params.dynamic_level)
 
         if eraseIntcos:
-            self.logger.warning("\n\t Erasing coordinates.\n")
+            logger.warning(" Erasing coordinates.\n")
             for f in self.molsys.fragments:
                 del f.intcos[:]
 
         if eraseHistory:
-            self.logger.warning("\n\t Erasing history.\n")
+            logger.warning(" Erasing history.\n")
             self.clear()
             self.erase_hessian = True
 
+        self.error = "AlgError"
+
     def opt_error_handler(self, error):
-        self.logger.critical("\tA critical optimization-specific error has occured.")
-        self.logger.critical("\tResetting all optimization options for potential queued jobs.\n")
-        self.logger.exception("Error caught:" + str(error))
+        logger.critical("\tA critical optimization-specific error has occured.")
+        logger.critical("\tResetting all optimization options for potential queued jobs.\n")
+        logger.exception("Error caught:" + str(error))
         # Dump histories if possible
 
         return self._exception_cleanup(error)
 
     def unknown_error_handler(self, error):
-        self.logger.critical("\tA non-optimization-specific error has occurred.\n")
-        self.logger.critical("\tResetting all optimization options for potential queued jobs.\n")
-        self.logger.exception("Error Type:  " + str(type(error)))
-        self.logger.exception("Error caught:" + str(error))
+        logger.critical("\tA non-optimization-specific error has occurred.\n")
+        logger.critical("\tResetting all optimization options for potential queued jobs.\n")
+        logger.exception("Error Type:  " + str(type(error)))
+        logger.exception("Error caught:" + str(error))
 
         return self._exception_cleanup(error)
 
     def _exception_cleanup(self, error):
-        self.logger.info("\tDumping history: Warning last point not converged.\n" + self.history.summary_string())
+        logger.info("\tDumping history: Warning last point not converged.\n" + self.history.summary_string())
 
         if self.params.opt_type == "IRC":
             logging.debug("\tDumping IRC points completed")
             self.opt_method.irc_history.progress_report()
+        self.error = "OptError"
 
         return self.finish(error)
 
@@ -308,7 +322,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
             self.opt_method.irc_history.progress_report()
             rxnpath = self.opt_method.irc_history.rxnpath_dict()
         else:
-            self.logger.info("\tOptimization Finished\n" + self.history.summary_string())
+            logger.info("\tOptimization Finished\n" + self.history.summary_string())
 
         qc_output = prepare_opt_output(self.molsys, self.computer, rxnpath=rxnpath, error=error)
         self.clear()
@@ -333,7 +347,14 @@ def optimization_factory(method, molsys, history_object, params=None):
     return ALGORITHMS.get(method, stepAlgorithms.RestrictedStepRFO)(molsys, history_object, params)
 
 
-def get_pes_info(H, computer, o_molsys, opt_history, hessian_protocol="update", requires=("energy", "gradient")):
+def get_pes_info(H,
+                 computer,
+                 o_molsys,
+                 opt_history,
+                 hessian_protocol="update",
+                 requires=("energy", "gradient"),
+                 hessian_file=None
+                 ):
     """Calculate, update, or guess hessian as appropriate. Calculate gradient, pulling
     gradient from hessian output if possible.
     Parameters
@@ -353,18 +374,12 @@ def get_pes_info(H, computer, o_molsys, opt_history, hessian_protocol="update", 
     np.ndarray,
     """
 
-    logger = logging.getLogger(__name__)
-
-    logger.info("hessian_protocol %s", hessian_protocol)
-    logger.info("requires %s", requires)
-
     if "gradient" in requires:
         driver = "gradient"
     else:
         driver = "energy"
-    logger.info("Current driver %s", driver)
 
-    if hessian_protocol == "compute":
+    if hessian_protocol == "compute" and hessian_file is None:
         H, g_X = get_hess_grad(computer, o_molsys)
     elif hessian_protocol == "update":
         logger.info(f"Updating Hessian with {str(op.Params.hess_update)}")
@@ -379,6 +394,9 @@ def get_pes_info(H, computer, o_molsys, opt_history, hessian_protocol="update", 
     elif hessian_protocol == "unneeded":
         result = computer.compute(o_molsys.geom, driver=driver, return_full=False)
         g_X = np.asarray(result) if driver == "gradient" else None
+    elif hessian_file:
+        H = hessian.from_file(hessian_file)
+
     else:
         raise OptError("Encountered unknown value from get_hessian_protocol()")
 
@@ -401,7 +419,6 @@ def get_hess_grad(computer, o_molsys):
     Hessian is in internals gradient is in cartesian
     """
     # Not sure why we need a copy here
-    logger = logging.getLogger(__name__)
     logger.debug("Computing an analytical hessian")
     xyz = o_molsys.geom.copy()
     # Always return_true so we don't have to compute the gradient as well
@@ -438,14 +455,13 @@ def make_internal_coords(o_molsys, params=None):
     o_molsys: Molsys
         The molecular system updated with internal coordinates.
     """
-    if params is None:
-        params = op.Params
-    optimize_log = logging.getLogger(__name__)
-    optimize_log.debug("\t Adding internal coordinates to molecular system")
+    # if params is None:
+    #     params = op.Params
+    logger.debug("\t Adding internal coordinates to molecular system")
 
     # Use covalent radii to determine bond connectivity.
     connectivity = addIntcos.connectivity_from_distances(o_molsys.geom, o_molsys.Z)
-    optimize_log.debug("Connectivity Matrix\n" + print_mat_string(connectivity))
+    logger.debug("Connectivity Matrix\n" + print_mat_string(connectivity))
 
     if params.frag_mode == "SINGLE":
         # Make a single, supermolecule.
@@ -455,7 +471,7 @@ def make_internal_coords(o_molsys, params=None):
         o_molsys.augment_connectivity_to_single_fragment(connectivity)
         o_molsys.consolidate_fragments()  # collapse into one frag
 
-        if params.opt_coordinates in ["REDUNDANT", "BOTH"]:
+        if params.opt_coordinates in ["INTERNAL", "REDUNDANT", "BOTH"]:
             o_molsys.fragments[0].add_intcos_from_connectivity(connectivity)
 
         if params.opt_coordinates in ["CARTESIAN", "BOTH"]:
@@ -473,7 +489,7 @@ def make_internal_coords(o_molsys, params=None):
             # between fragments
             o_molsys.purge_interfragment_connectivity(connectivity)
 
-        if params.opt_coordinates in ["REDUNDANT", "BOTH"]:
+        if params.opt_coordinates in ["INTERNAL", "REDUNDANT", "BOTH"]:
             for iF, F in enumerate(o_molsys.fragments):
                 C = np.ndarray((F.natom, F.natom))
                 C[:] = connectivity[o_molsys.frag_atom_slice(iF), o_molsys.frag_atom_slice(iF)]
@@ -482,13 +498,11 @@ def make_internal_coords(o_molsys, params=None):
         if params.opt_coordinates in ["CARTESIAN", "BOTH"]:
             for F in o_molsys.fragments:
                 F.add_cartesian_intcos()
-
     addIntcos.add_constrained_intcos(o_molsys)  # make sure these are in the set
     return
 
 
 def prepare_opt_output(o_molsys, computer, rxnpath=False, error=None):
-    logger = logging.getLogger(__name__)
     logger.info("Preparing OptimizationResult")
     # Get molecule from most recent step. Add provenance and fill in non-required fills.
     # Turn back to dict
@@ -509,5 +523,7 @@ def prepare_opt_output(o_molsys, computer, rxnpath=False, error=None):
 
     if rxnpath:
         qc_output["extras"]["irc_rxn_path"] = rxnpath
+        qc_output["final_geometry"] = rxnpath[-2]["Energy"]
+        qc_output["extras"]["final_irc_energy"] = rxnpath[-2]["Geometry"]
 
     return qc_output

@@ -11,7 +11,9 @@ from . import optparams as op
 from . import orient, stre, tors, v3d
 from .exceptions import AlgError, OptError
 from .printTools import print_mat_string
+from . import log_name
 
+logger = logging.getLogger(f"{log_name}{__name__}")
 
 class Weight(object):
     def __init__(self, a, w):
@@ -487,20 +489,22 @@ class DimerFrag(object):
         return lbls
 
     def label2index(self, label_in):
-        lbls = self.active_labels()
+        lbls = list(map(str.lower, self.active_labels()))
         return lbls.index(label_in)
 
     # Accept a variety of input formats
     def freeze(self, coords_to_freeze=None):  # input starts at 0!
         try:
             if isinstance(coords_to_freeze, list):
-                for coords in coords_to_freeze:
+                for coords in map(str.lower, coords_to_freeze):
                     if str(coords).isnumeric():
                         self._pseudo_frag._intcos[coords].freeze()
                     else:
                         I = self.label2index(coords)
+                        logger.info("Trying to freeze %s", I)
                         self._pseudo_frag._intcos[I].freeze()
-        except:
+        except Exception as e:
+            logger.error(str(e))
             raise OptError("did not understand coord to freeze %s" % str(coords))
 
     # Generate list of dimer coordinates that are frozen, e.g. [0,3,5]
@@ -519,7 +523,6 @@ class DimerFrag(object):
     # Given cartesian geometries determine if interfragment coordinates avoid
     # geometry-dependent discontinuties
     def validate_intcos(self, Ageom_in, Bgeom_in):
-        logger = logging.getLogger(__name__)
         self.update_reference_geometry(Ageom_in, Bgeom_in)
         geom = self.pseudo_frag.geom
         lbls = self.active_labels()
@@ -601,7 +604,6 @@ class DimerFrag(object):
         else:
             raise RuntimeError("unit_angle value {} is unknown".format(unit_angle))
 
-        logger = logging.getLogger(__name__)
         nArefs = self.n_arefs  # of ref pts on A to worry about
         nBrefs = self.n_brefs  # of ref pts on B to worry about
 
@@ -790,7 +792,6 @@ class DimerFrag(object):
             Column of B matrix at which the cartesian coordinates of atoms in fragment B begin.
         If A_off and B_off are not given, then the minimal (dimer-only) B-matrix is returned.
         """
-        logger = logging.getLogger(__name__)
         logger.debug("dimerfrag.Bmat...")
 
         NatomA = len(A_geom)
@@ -888,7 +889,6 @@ class DimerFrag(object):
             cnt += 1
 
     def test_B(self, Axyz, Bxyz, printInfo=False):
-        logger = logging.getLogger(__name__)
         logger.info("\tTesting B matrix")
         DISP_SIZE = 0.005
         NA = len(Axyz)
@@ -950,7 +950,6 @@ class DimerFrag(object):
 
     # Perhaps gradually add more sophisticated fixes for discontinuities in steps
     def dq_discontinuity_correction(self, dq):
-        logger = logging.getLogger(__name__)
         q_target = self.q_array() + dq
         if self.d_on(0):
             if q_target[0] < 0.0:
@@ -980,7 +979,6 @@ def test_orient(NA, NB, printInfo=False, randomSeed=None):
     """
     from random import choice, random, sample, seed, uniform
 
-    logger = logging.getLogger(__name__)
     if randomSeed is not None:
         seed(randomSeed)
 

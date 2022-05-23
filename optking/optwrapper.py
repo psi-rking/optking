@@ -15,6 +15,9 @@ from .compute_wrappers import ComputeWrapper, Psi4Computer, QCEngineComputer, Us
 from .exceptions import OptError
 from .optimize import optimize
 from .printTools import welcome
+from . import log_name
+
+logger = logging.getLogger(f"{log_name}{__name__}")
 
 
 def optimize_psi4(calc_name, program="psi4", dertype=None, **xtra_opt_params):
@@ -38,8 +41,6 @@ def optimize_psi4(calc_name, program="psi4", dertype=None, **xtra_opt_params):
         dictionary serialized MOLSSI OptimizationResult.
         see https://github.com/MolSSI/QCElemental/blob/master/qcelemental/models/procedures.py
     """
-
-    logger = logging.getLogger(__name__)
 
     opt_input = {}
     opt_output = {}
@@ -94,7 +95,6 @@ def initialize_from_psi4(calc_name, program, computer_type, dertype=None, **xtra
     """
     import psi4
 
-    logger = logging.getLogger(__name__)
     mol = psi4.core.get_active_molecule()
     o_molsys, qc_mol = molsys.Molsys.from_psi4(mol)
 
@@ -161,7 +161,6 @@ def optimize_qcengine(opt_input, computer_type="qc"):
         -------
         dict
     """
-    logger = logging.getLogger(__name__)
 
     if isinstance(opt_input, OptimizationInput):
         opt_input = json.loads(json_dumps(opt_input))  # Remove numpy elements turn into dictionary
@@ -197,7 +196,6 @@ def optimize_qcengine(opt_input, computer_type="qc"):
 
 
 def make_computer(opt_input: dict, computer_type):
-    logger = logging.getLogger(__name__)
     logger.debug("Creating a Compute Wrapper")
     program = op.Params.program
 
@@ -220,9 +218,9 @@ def make_computer(opt_input: dict, computer_type):
 
 
 def initialize_options(opt_keys, silent=False):
-    logger = logging.getLogger(__name__)
     if not silent:
         logger.info(welcome())
+
     userOptions = caseInsensitiveDict.CaseInsensitiveDict(opt_keys)
     # Save copy of original user options. Commented out until it is used
     # origOptions = copy.deepcopy(userOptions)
@@ -231,7 +229,7 @@ def initialize_options(opt_keys, silent=False):
     try:
         op.Params = op.OptParams(userOptions)
     except (KeyError, ValueError, AttributeError) as e:
-        logger.debug(str(e))
+        logger.error(str(e))
         raise OptError("unable to parse params from userOptions")
 
     # TODO we should make this just be a normal object

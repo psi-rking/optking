@@ -37,7 +37,7 @@ def test_step_by_step():
         opt.E = wfn.energy()
 
         opt.compute()
-        opt.step()
+        opt.take_step()
         conv = opt.test_convergence()
         if conv is True:
             print("Optimization SUCCESS:")
@@ -89,7 +89,7 @@ def test_lj_external_gradient():
         opt.gX = gX
 
         opt.compute()
-        opt.step()
+        opt.take_step()
         conv = opt.test_convergence()
         if conv is True:
             print("Optimization SUCCESS:")
@@ -143,7 +143,7 @@ def test_stepwise_export():
         opt.gX = grad.np.reshape(-1)
         opt.E = wfn.energy()
         opt.compute()
-        opt.step()
+        opt.take_step()
         conv = opt.test_convergence()
         if conv is True:
             print("Optimization SUCCESS:")

@@ -1,4 +1,3 @@
-import json
 import logging
 from itertools import combinations, permutations
 from typing import List
@@ -12,6 +11,9 @@ from .exceptions import OptError
 from .linearAlgebra import symm_mat_inv
 from .printTools import print_array_string, print_mat_string
 from . import optparams as op
+from . import log_name
+
+logger = logging.getLogger(f"{log_name}{__name__}")
 
 
 class Molsys(object):
@@ -24,7 +26,6 @@ class Molsys(object):
         """
         # def __init__(self, fragments, fb_fragments=None, intcos=None, multiplicity=1):
         # ordinary fragments with internal structure
-        self.logger = logging.getLogger(__name__)
 
         if fragments:
             self._fragments = fragments
@@ -68,7 +69,6 @@ class Molsys(object):
         cls:
             molsys cls consists of list of Frags
         """
-        logger = logging.getLogger(__name__)
         logger.debug("\tGenerating molecular system for optimization from QC Schema.\n")
 
         geom = np.asarray(qc_molecule["geometry"])
@@ -105,7 +105,6 @@ class Molsys(object):
 
         import psi4
 
-        logger = logging.getLogger(__name__)
         logger.debug("\tConverting psi4 molecular system to schema")
 
         if not isinstance(mol, psi4.core.Molecule):
@@ -172,7 +171,6 @@ class Molsys(object):
     #    Returns
     #    -------
     #    """
-    #    logger = logging.getLogger(__name__)
     #    logger.warning("""This method is currently implemented as a last resort used as a last
     #                   resort. Should be safe assuming no dimer coordinates, otherwise unknown.""")
     #    coords = [coord for f in self._fragments for coord in f.intcos]
@@ -281,7 +279,6 @@ class Molsys(object):
 
     @property
     def intcos_present(self):
-
         for fragment in self.all_fragments:
             if fragment.intcos:
                 return True
@@ -370,7 +367,7 @@ class Molsys(object):
 
     def print_intcos(self):
         for frag_index, frag in enumerate(self.all_fragments):
-            self.logger.info("Fragment %d\n", frag_index + 1)
+            logger.info("Fragment %d\n", frag_index + 1)
             frag.print_intcos()
 
     # If connectivity is provided, only intrafragment connections
@@ -388,7 +385,7 @@ class Molsys(object):
     def print_geom(self):
         """Returns a string of the geometry for logging in [a0]"""
         for iF, F in enumerate(self._fragments):
-            self.logger.info("\tFragment %d\n" % (iF + 1))
+            logger.info("\tFragment %d\n" % (iF + 1))
             F.print_geom()
 
     def show_geom(self):
@@ -445,7 +442,7 @@ class Molsys(object):
     def consolidate_fragments(self):
         if self.nfragments == 1:
             return
-        self.logger.info("\tConsolidating multiple fragments into one for optimization.")
+        logger.info("\tConsolidating multiple fragments into one for optimization.")
         Z = self._fragments[0].Z
         g = self._fragments[0].geom
         m = self._fragments[0].masses
@@ -509,7 +506,7 @@ class Molsys(object):
     # Supplements a connectivity matrix to connect all fragments.  Assumes the
     # definition of the fragments has ALREADY been determined before function called.
     def augment_connectivity_to_single_fragment(self, C):
-        self.logger.debug("\tAugmenting connectivity matrix to join fragments.")
+        logger.debug("\tAugmenting connectivity matrix to join fragments.")
         fragAtoms = []
         geom = self.geom
         for iF, F in enumerate(self._fragments):
@@ -551,7 +548,7 @@ class Molsys(object):
                         # ignore this as too far - for starters.  may have A-B-C situation.
                         continue
 
-                    self.logger.info("\tConnecting fragments with atoms %d and %d" % (i + 1, j + 1))
+                    logger.info("\tConnecting fragments with atoms %d and %d" % (i + 1, j + 1))
                     C[i][j] = C[j][i] = True
                     frag_connectivity[f1][f2] = frag_connectivity[f2][f1] = True
 
@@ -565,16 +562,16 @@ class Molsys(object):
                             if np.fabs(tval - minVal) < 1.0e-10:
                                 i = f1_atom
                                 j = f2_atom
-                                self.logger.info("\tAlso, with atoms %d and %d\n" % (i + 1, j + 1))
+                                logger.info("\tAlso, with atoms %d and %d\n" % (i + 1, j + 1))
                                 C[i][j] = C[j][i] = True
 
             # Test whether all frags are connected using current distance threshold
             if np.sum(frag_connectivity[0]) == nF:
-                self.logger.info("\tAll fragments are connected in connectivity matrix.")
+                logger.info("\tAll fragments are connected in connectivity matrix.")
                 all_connected = True
             else:
                 scale_dist += 0.2
-                self.logger.info("\tIncreasing scaling to %6.3f to connect fragments." % scale_dist)
+                logger.info("\tIncreasing scaling to %6.3f to connect fragments." % scale_dist)
         return
 
     def distance_matrix(self):
@@ -723,6 +720,7 @@ class Molsys(object):
             Ginv = symm_mat_inv(G, redundant=True)
             g_q = coeff * np.dot(np.dot(Ginv, B), g_x)
 
+        logger.info("B matrix \n\t%s", B)
         return g_q
 
     def hessian_to_internals(self, H, g_x=None, useMasses=False):
@@ -746,7 +744,6 @@ class Molsys(object):
         Hq : np.ndarray
             hessian in internal coordinates
         """
-        logger = logging.getLogger(__name__)
         logger.info("Converting Hessian from cartesians to internals.\n")
 
         B = self.Bmat()
@@ -804,7 +801,6 @@ class Molsys(object):
 
     def project_redundancies_and_constraints(self, fq, H):
         """Project redundancies and constraints out of forces and Hessian"""
-        logger = logging.getLogger(__name__)
         Nint = self.num_intcos
         # compute projection matrix = G G^-1
         G = self.Gmat()
@@ -848,7 +844,6 @@ class Molsys(object):
         logger.debug("Projected (PHP) Hessian matrix\n" + print_mat_string(H))
 
     def apply_external_forces(self, fq, H, stepNumber):
-        logger = logging.getLogger(__name__)
         report = "Adding external forces\n"
 
         for iF, F in enumerate(self.fragments):
@@ -875,7 +870,6 @@ class Molsys(object):
             logger.info(report)
 
     def hessian_to_cartesians(self, Hint, g_q=None):
-        logger = logging.getLogger(__name__)
         logger.info("Converting Hessian from internals to cartesians.\n")
 
         B = self.Bmat()
@@ -922,7 +916,6 @@ class Molsys(object):
         g_x : ndarray
             Cartesian coordinate gradient
         """
-        logger = logging.getLogger(__name__)
         logger.info("Converting gradient from internals to Cartesians.\n")
         B = self.Bmat()
         g_x = np.dot(B.T, g_q)
@@ -938,7 +931,6 @@ class Molsys(object):
         passes : boolean
             Returns True or False, doesn't raise exceptions
         """
-        logger = logging.getLogger(__name__)
         Natom = self.natom
         Nintco = self.num_intcos
         DISP_SIZE = 0.01
@@ -1026,7 +1018,7 @@ class Molsys(object):
         passes : boolean
             Returns True or False, doesn't raise exceptions
         """
-        logger = logging.getLogger(__name__)
+        from . import intcosMisc
         DISP_SIZE = 0.01
         MAX_ERROR = 10 * DISP_SIZE * DISP_SIZE * DISP_SIZE * DISP_SIZE
 
@@ -1060,16 +1052,16 @@ class Molsys(object):
                     for xyz_a in range(3):
 
                         coord[atom_a, xyz_a] += DISP_SIZE
-                        B_p = Bmat(F.intcos, coord)
+                        B_p = intcosMisc.Bmat(F.intcos, coord)
 
                         coord[atom_a, xyz_a] += DISP_SIZE
-                        B_p2 = Bmat(F.intcos, coord)
+                        B_p2 =intcosMisc.Bmat(F.intcos, coord)
 
                         coord[atom_a, xyz_a] -= 3.0 * DISP_SIZE
-                        B_m = Bmat(F.intcos, coord)
+                        B_m = intcosMisc.Bmat(F.intcos, coord)
 
                         coord[atom_a, xyz_a] -= DISP_SIZE
-                        B_m2 = Bmat(F.intcos, coord)
+                        B_m2 = intcosMisc.Bmat(F.intcos, coord)
 
                         coord[atom_a, xyz_a] += 2 * DISP_SIZE  # restore coord to orig
 

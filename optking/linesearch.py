@@ -10,13 +10,16 @@ from .displace import displace_molsys
 from .exceptions import AlgError, OptError
 from .history import Step, History
 from .stepAlgorithms import OptimizationInterface
+from . import log_name
+
+logger = logging.getLogger(f"{log_name}{__name__}")
 
 
 class LineSearchStep(Step):
     """Extension of history.Step """
 
     def __init__(self, geom, energy, forces, distance, next_pt_dist):
-        super().__init__(geom, energy, forces)
+        super().__init__(geom, energy, forces, np.zeros(geom.shape))
         self.distance = distance
         self.next_pt_dist = next_pt_dist
 
@@ -31,7 +34,6 @@ class LineSearch(OptimizationInterface):
 
     def __init__(self, molsys, history, params):
         super().__init__(molsys, history, params)
-        self.logger = logging.getLogger(__name__)
 
         self.linesearch_max_iter = 10
         self.linesearch_start = len(self.history.steps)
@@ -77,7 +79,7 @@ class LineSearch(OptimizationInterface):
     @abstractmethod
     def step(self, fq=None, energy=None, **kwargs):
         """Either take a step with the size dictated by the fit method. or take another step
-        of the defualt size"""
+        of the default size"""
         pass
 
     @abstractmethod
@@ -86,7 +88,7 @@ class LineSearch(OptimizationInterface):
         on the Points."""
         pass
 
-    def take_step(self, fq=None, H=None, energy=None, **kwargs):
+    def take_step(self, fq=None, H=None, energy=None, return_str=False, **kwargs):
 
         if self.linesearch_steps < 10:
             dq, self.step_size = self.step(fq, energy, **kwargs)
@@ -96,14 +98,14 @@ class LineSearch(OptimizationInterface):
 
         if len(self.linesearch_history.steps) > 1:
             delta_energy = self.linesearch_history.steps[-1].E - self.linesearch_history.steps[0].E
-            self.logger.debug("\tProjected energy change: %10.10lf\n" % delta_energy)
+            logger.debug("\tProjected energy change: %10.10lf\n" % delta_energy)
         else:
             delta_energy = 0
 
         self.molsys.interfrag_dq_discontinuity_correction(dq)
-        achieved_dq = displace_molsys(self.molsys, dq, fq)
+        achieved_dq, return_str = displace_molsys(self.molsys, dq, fq, return_str=True)
         achieved_dq_norm = np.linalg.norm(achieved_dq)
-        self.logger.info("\tNorm of achieved step-size %15.10f" % achieved_dq_norm)
+        logger.info("\tNorm of achieved step-size %15.10f" % achieved_dq_norm)
 
         self.linesearch_history.append_record(delta_energy, achieved_dq, self.direction, None, None)
 
@@ -116,6 +118,8 @@ class LineSearch(OptimizationInterface):
             # TODO create a check in displace for backtransformation failure
             raise OptError("Back transformation has failed spectacularly. Smaller step needed")
 
+        if return_str:
+            return achieved_dq, return_str
         return achieved_dq
 
     def reset(self):
@@ -128,7 +132,7 @@ class LineSearch(OptimizationInterface):
         self.points = []
 
     def start(self, dq):
-        self.logger.info("Starting linesearch in direction %s", dq)
+        logger.info("Starting linesearch in direction %s", dq)
         self.direction = dq / np.linalg.norm(dq)
         self.linesearch_start = len(self.history.steps)
         self.linesearch_history = History()
@@ -165,22 +169,22 @@ class ThreePointEnergy(LineSearch):
         np.ndarray: new step
 
         """
-        self.logger.info("\n\tTaking LINESEARCH optimization step.")
+        logger.info("\n\tTaking LINESEARCH optimization step.")
 
         distance = self.compute_distance()
-        self.logger.debug("Adding new step at distance %s", distance)
+        logger.debug("Adding new step at distance %s", distance)
         new_step = LineSearchStep(self.molsys.geom, energy, fq, distance, next_pt_dist=self.step_size)
         self.linesearch_history.steps.append(new_step)
 
         if self.linesearch_steps < self.points_needed:
-            self.logger.debug("Taking one of initial set of steps")
+            logger.debug("Taking one of initial set of steps")
             self.points.append(new_step)
 
         if len(self.points) == self.points_needed:
             if None in self.points:
                 self.points[self.points.index(None)] = new_step
             self.step_size, self.minimized = self.fit()
-            self.logger.info("Taking a step of length: %f along\n %s", self.step_size, self.direction)
+            logger.info("Taking a step of length: %f along\n %s", self.step_size, self.direction)
 
         return self.step_size * self.direction, self.step_size
 
@@ -206,13 +210,13 @@ class ThreePointEnergy(LineSearch):
         sa = 0.0
         sb = self.points[1].distance
         sc = self.points[2].distance
-        self.logger.info("\n\tCurrent linesearch bounds.\n")
-        self.logger.info("\t s=%7.5f, Ea=%17.12f", 0, energy_a)
-        self.logger.info("\t s=%7.5f, Eb=%17.12f", sb, energy_b)
-        self.logger.info("\t s=%7.5f, Ec=%17.12f\n", sc, energy_c)
+        logger.info("\n\tCurrent linesearch bounds.\n")
+        logger.info("\t s=%7.5f, Ea=%17.12f", 0, energy_a)
+        logger.info("\t s=%7.5f, Eb=%17.12f", sb, energy_b)
+        logger.info("\t s=%7.5f, Ec=%17.12f\n", sc, energy_c)
 
         if energy_b < energy_a and energy_b < energy_c:
-            self.logger.debug("\tMiddle point is lowest energy. Good. Projecting minimum.")
+            logger.debug("\tMiddle point is lowest energy. Good. Projecting minimum.")
 
             A = np.zeros((2, 2))
             A[0, 0] = sc * sc - sb * sb
@@ -228,9 +232,9 @@ class ThreePointEnergy(LineSearch):
             x_min = -x[1] / (2 * x[0])
             min_energy = x[0] * x_min ** 2 + x[1] * x_min + energy_a
 
-            self.logger.info("Desired point %s", x_min)
-            self.logger.info("Desired point %s", sb)
-            self.logger.info("Desired point %s", sc)
+            logger.info("Desired point %s", x_min)
+            logger.info("Desired point %s", sb)
+            logger.info("Desired point %s", sc)
 
             # active point corresponds to the old point (we just created a new one)
             if self.points.index(self.active_point) == 1:
@@ -247,7 +251,7 @@ class ThreePointEnergy(LineSearch):
         elif energy_c < energy_b and energy_c < energy_a:
             # unbounded.  increase step size
             # need to compute new Point 3 displacing from Point 2
-            self.logger.debug("\tSearching with larger step beyond 3rd point.")
+            logger.debug("\tSearching with larger step beyond 3rd point.")
             step_size = sc
             self.points[1] = self.points[2]
             self.points[2] = None

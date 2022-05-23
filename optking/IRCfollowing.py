@@ -10,6 +10,9 @@ from .exceptions import AlgError
 from .linearAlgebra import symm_mat_eig, symm_mat_inv, symm_mat_root, lowest_eigenvector_symm_mat
 from .printTools import print_array_string, print_mat_string
 from .stepAlgorithms import OptimizationInterface
+from . import log_name
+
+logger = logging.getLogger(f"{log_name}{__name__}")
 
 
 class IntrinsicReactionCoordinate(OptimizationInterface):
@@ -29,17 +32,15 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
 
     def requires(self):
 
-        if self.irc_step_number != 0 and self.sub_step_number == 0:
-            return "energy", "gradient", "hessian"
         return "energy", "gradient", "hessian"
 
-    def take_step(self, fq=None, H=None, energy=None, **kwargs):
+    def take_step(self, fq=None, H=None, energy=None, return_str=False, **kwargs):
 
         if self.sub_step_number == 0:
             if self.irc_step_number == 0:
-                self.logger.info("\tBeginning IRC from the transition state.\n")
-                self.logger.info("\tStepping along lowest Hessian eigenvector.\n")
-                self.logger.debug(print_mat_string(H, title="Transformed Hessian in internals."))
+                logger.info("\tBeginning IRC from the transition state.\n")
+                logger.info("\tStepping along lowest Hessian eigenvector.\n")
+                logger.debug(print_mat_string(H, title="Transformed Hessian in internals."))
 
                 # Add the transition state as the first IRC point
                 q_0 = self.molsys.q_array()
@@ -53,9 +54,9 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
                 G = self.molsys.Gmat(massWeight=True)
                 G_root = symm_mat_root(G)
                 H_q_m = G_root @ H @ G_root
-                self.logger.info(print_mat_string(H_q_m, title="Mass Weighted Hessian in Internals"))
+                logger.info(print_mat_string(H_q_m, title="Mass Weighted Hessian in Internals"))
                 vM = lowest_eigenvector_symm_mat(H_q_m)
-                self.logger.info(print_array_string(vM, title="Lowest eigenvector of Mass Weighted, Internal Hessian"))
+                logger.info(print_array_string(vM, title="Lowest eigenvector of Mass Weighted, Internal Hessian"))
 
                 # Un mass-weight vector.
                 G_root_inv = symm_mat_inv(G_root, redundant=True)
@@ -64,62 +65,69 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
                 if op.Params.irc_direction == "BACKWARD":
                     v *= -1
             else:
-                self.logger.info("\tBeginning search for next IRC point.\n")
-                self.logger.info("\tStepping along gradient.\n")
+                logger.info("\tBeginning search for next IRC point.\n")
+                logger.info("\tStepping along gradient.\n")
                 v = self.irc_history.f_q()
                 self.irc_step_number += 1
 
-            dq = self.compute_pivot_and_guess_points(v)
+            dq, return_str = self.compute_pivot_and_guess_points(v, fq, return_str=True)
         else:
             # We don't add the initial guess steps to the history.
-            self.history.append(self.molsys.geom, energy, fq)
+            self.history.append(self.molsys.geom, energy, fq, self.molsys.gradient_to_cartesians(-1 * fq))
+            logger.info("Current forces %s", fq)
             dq = self.dq_irc(fq, H)
-            displace_molsys(self.molsys, dq)
+            dq, return_str = displace_molsys(self.molsys, dq, fq, ensure_convergence=True, return_str=True)
+            logger.info("IRC Constrained step calculation finished.")
 
             # Complete history entry of step.
             # Compute gradient and hessian in step direction
             dq_norm, dq_unit, grad, hess = self.step_metrics(dq, fq, H)
             DE = irc_de_projected(dq_norm, grad, hess)
-
             self.history.append_record(DE, dq, dq_unit, grad, hess)
 
-        self.logger.info("IRC Constrained step calculation finished.")
         self.sub_step_number += 1
         self.total_steps_taken += 1
+
+        if return_str:
+            return dq, return_str
         return dq
 
-    def converged(self, dq, fq, step_number, **kwargs):
+    def converged(self, dq, fq, step_number, str_mode=None, **kwargs):
 
-        self.logger.info("Checking convergence in IRCFollowing")
+        logger.info("Checking convergence in IRCFollowing")
 
         if self.sub_step_number < 2:
-            self.logger.info("Too few steps. continue optimization")
+            logger.info("Too few steps. continue optimization")
             return False
 
         if self.irc_history.test_for_irc_minimum(fq):
-            self.logger.info("A minimum has been reached on the IRC.  Stopping here.\n")
+            logger.info("A minimum has been reached on the IRC.  Stopping here.\n")
             return True
 
-        if self.irc_step_number == op.Params.irc_points:
-            self.logger.info(f"\tThe requested {op.Params.irc_points} IRC points have been obtained.")
+        if self.irc_step_number >= self.irc_points:
+            logger.info(f"\tThe requested {self.irc_points} IRC points have been obtained.")
             return True
 
         energies = [step.E for step in self.history.steps]
 
         fq_new = self.irc_history._project_forces(fq, self.molsys)
-        substep_convergence = convcheck.conv_check(self.total_steps_taken, dq, fq_new, energies, self.requires())
-        self.logger.info("\tConvergence check returned %s for constrained optimization." % substep_convergence)
+        substep_convergence = convcheck.conv_check(self.total_steps_taken, dq, fq_new, energies, self.requires(),
+                                                   str_mode=str_mode)
+        if not str_mode:
+            logger.info("\tConvergence check returned %s for constrained optimization." % substep_convergence)
 
-        if substep_convergence:
+        if substep_convergence is True:
             self.add_converged_point(fq, self.history.steps[-1].E)
             self.sub_step_number = 0
-            self.logger.info("\tStarting search for next IRC point.")
-            self.logger.info("\tClearing old constrained optimization history.")
+            logger.info("\tStarting search for next IRC point.")
+            logger.info("\tClearing old constrained optimization history.")
             self.history.reset_to_most_recent()  # delete old steps
 
+        if str_mode:
+            return substep_convergence
         return False  # return True means we're finished
 
-    def compute_pivot_and_guess_points(self, v):
+    def compute_pivot_and_guess_points(self, v, fq, return_str=False):
         """Takes a half step along v to the 'pivot point', then
         an additional half step as first guess in constrained opt.
 
@@ -134,24 +142,26 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
         G = self.molsys.Gmat(massWeight=True)
         N = step_n_factor(G, v)
         dq_pivot = 0.5 * N * self.irc_step_size * np.dot(G, v)
-        self.logger.debug("\n Dq to Pivot Point:" + print_array_string(dq_pivot))
+        logger.debug("\n Dq to Pivot Point:" + print_array_string(dq_pivot))
 
         # x_pivot = o_molsys.geom # starting geom but becomes pivot point on next line
         # displace(o_molsys.intcos, x_pivot, dq_pivot, ensure_convergence=True)
 
         # revisit
-        dq1 = displace_molsys(self.molsys, dq_pivot, ensure_convergence=True)
+        dq1, return_str1 = displace_molsys(self.molsys, dq_pivot, fq, ensure_convergence=True, return_str=return_str)
         x_pivot = self.molsys.geom
         q_pivot = self.molsys.q_array()
         self.irc_history.add_pivot_point(q_pivot, x_pivot)
 
         # Step again to get initial guess for next step.  Leave geometry in o_molsys.
-        self.logger.info("Computing Dq to First Guess Point")
-        self.logger.debug(print_array_string(dq_pivot))
+        logger.info("Computing Dq to First Guess Point")
+        logger.debug(print_array_string(dq_pivot))
         x_guess = x_pivot.copy()
         # displace(o_molsys.intcos, x_guess, dq_pivot, ensure_convergence=True)
-        dq2 = displace_molsys(self.molsys, dq_pivot, ensure_convergence=True)
-        self.molsys.geom = x_guess
+        dq2, return_str2 = displace_molsys(self.molsys, dq_pivot, fq, ensure_convergence=True, return_str=return_str)
+        # self.molsys.geom = x_guess
+        if return_str:
+            return dq1 + dq2, return_str1 + return_str2
         return dq1 + dq2
 
     def dq_irc(self, f_q, H_q):
@@ -160,22 +170,22 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
         TODO: What is dqGuess for?  Remove it?
         """
 
-        self.logger.debug("Starting IRC constrained optimization\n")
+        logger.debug("Starting IRC constrained optimization\n")
 
         G_prime = self.molsys.Gmat(massWeight=True)
-        self.logger.debug("Mass-weighted Gmatrix at hypersphere point: \n" + print_mat_string(G_prime))
+        logger.debug("Mass-weighted Gmatrix at hypersphere point: \n" + print_mat_string(G_prime))
         G_prime_root = symm_mat_root(G_prime)
         G_prime_inv = symm_mat_inv(G_prime, redundant=True)
         G_prime_root_inv = symm_mat_root(G_prime_inv)
 
-        self.logger.debug("G prime root matrix: \n" + print_mat_string(G_prime_root))
+        logger.debug("G prime root matrix: \n" + print_mat_string(G_prime_root))
 
         deltaQM = 0
         g_M = np.dot(G_prime_root, -f_q)
-        self.logger.debug("g_M: \n" + print_array_string(g_M))
+        logger.debug("g_M: \n" + print_array_string(g_M))
 
         H_M = np.dot(np.dot(G_prime_root, H_q), G_prime_root.T)
-        self.logger.debug("H_M: \n" + print_mat_string(H_M))
+        logger.debug("H_M: \n" + print_mat_string(H_M))
 
         # Compute p_prime, difference from pivot point
         orig_geom = self.molsys.geom
@@ -187,11 +197,11 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
         # p_prime = intcosMisc.q_values(o_molsys.intcos, o_molsys.geom) -  \
         #          intcosMisc.q_values(o_molsys.intcos, IRCdata.history.x_pivot())
         p_M = np.dot(G_prime_root_inv, p_prime)
-        self.logger.debug("p_M: \n" + print_array_string(p_M))
+        logger.debug("p_M: \n" + print_array_string(p_M))
 
         HMEigValues, HMEigVects = symm_mat_eig(H_M)
-        self.logger.debug("HMEigValues: \n" + print_array_string(HMEigValues))
-        self.logger.debug("HMEigVects: \n" + print_mat_string(HMEigVects))
+        logger.debug("HMEigValues: \n" + print_array_string(HMEigValues))
+        logger.debug("HMEigVects: \n" + print_mat_string(HMEigVects))
 
         # Variables for solving lagrangian function
         lb_lagrangian = -100
@@ -213,14 +223,14 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
         lagrangian = self.calc_lagrangian(Lambda, HMEigValues, HMEigVects, g_M, p_M)
         prev_lagrangian = lagrangian
 
-        self.logger.debug("Starting coarse-grain multiplier search.")
-        self.logger.debug("lambda        Lagrangian value:\n")
+        logger.debug("Starting coarse-grain multiplier search.")
+        logger.debug("lambda        Lagrangian value:\n")
         # print("lambda        Lagrangian value:")
 
         lagIter = 0
         while lagIter < 1000:
             lagrangian = self.calc_lagrangian(Lambda, HMEigValues, HMEigVects, g_M, p_M)
-            self.logger.debug("%15.10e  %8.3e" % (Lambda, lagrangian))
+            logger.debug("%15.10e  %8.3e" % (Lambda, lagrangian))
             # print("%15.10e  %8.3e" % (Lambda, lagrangian) )
 
             if lagrangian < 0 and abs(lagrangian) < abs(lb_lagrangian):
@@ -237,9 +247,9 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
             lagIter += 1
             Lambda -= 0.001
 
-        self.logger.debug("Coarse graining results:")
-        self.logger.debug("Lambda between %10.5f and %10.5f" % (lb_lambda, up_lambda))
-        self.logger.debug("for Lagrangian %10.5f to  %10.5f" % (lb_lagrangian, up_lagrangian))
+        logger.debug("Coarse graining results:")
+        logger.debug("Lambda between %10.5f and %10.5f" % (lb_lambda, up_lambda))
+        logger.debug("for Lagrangian %10.5f to  %10.5f" % (lb_lagrangian, up_lagrangian))
 
         # Calulate lambda using Householder method
         # prev_lambda = -999
@@ -247,12 +257,12 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
         lagIter = 0
         Lambda = (lb_lambda + up_lambda) / 2  # start in middle of coarse range
 
-        self.logger.debug("lambda        Lagrangian:")
+        logger.debug("lambda        Lagrangian:")
         while abs(Lambda - prev_lambda) > 10 ** -15:
             prev_lagrangian = lagrangian
             L_derivs = self.calc_lagrangian_derivs(Lambda, HMEigValues, HMEigVects, g_M, p_M)
             lagrangian = L_derivs[0]
-            self.logger.debug("%15.5e%15.5e" % (Lambda, lagrangian))
+            logger.debug("%15.5e%15.5e" % (Lambda, lagrangian))
 
             h_f = -1 * L_derivs[0] / L_derivs[1]
 
@@ -290,10 +300,10 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
 
             if lagIter > 200:
                 err_msg = "Could not converge Lagrangian multiplier for constrained rxnpath search."
-                self.logger.warning(err_msg)
+                logger.warning(err_msg)
                 raise AlgError(err_msg)
 
-        self.logger.info("Lambda converged at %15.5e" % Lambda)
+        logger.info("Lambda converged at %15.5e" % Lambda)
 
         # Find dq_M from Eqn. 24 in Gonzalez & Schlegel (1990).
         # dq_M = (H_M - lambda I)^(-1) [lambda * p_M - g_M]
@@ -301,11 +311,14 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
         LambdaI = np.multiply(Lambda, LambdaI)
         deltaQM = symm_mat_inv(np.subtract(H_M, LambdaI), redundant=True)
         deltaQM = np.dot(deltaQM, np.subtract(np.multiply(Lambda, p_M), g_M))
-        self.logger.debug("dq_M to next geometry\n" + print_array_string(deltaQM))
+        logger.debug("dq_M to next geometry\n" + print_array_string(deltaQM))
 
         # Find dq = G^(1/2) dq_M and do displacements.
         dq = np.dot(G_prime_root, deltaQM)
-        self.logger.info("dq to next geometry\n" + print_array_string(dq))
+        logger.info("dq to next geometry\n" + print_array_string(dq))
+
+        logger.info("Checking G_root inverse %s", G_prime_root @ G_prime_root_inv)
+
         return dq
 
         # TODO write geometry for multiple fragments

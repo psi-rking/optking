@@ -40,10 +40,14 @@ import qcelemental as qcel
 
 from . import compute_wrappers, hessian, history, molsys, optwrapper
 from .convcheck import conv_check
-from .exceptions import OptError
+from .exceptions import OptError, AlgError
 from .optimize import get_pes_info, make_internal_coords, prepare_opt_output, OptimizationManager
 from .misc import import_psi4
+from .printTools import print_geom_grad, welcome
 from . import optparams as op
+from . import log_name
+
+logger = logging.getLogger(f"{log_name}{__name__}")
 
 
 class Helper(ABC):
@@ -65,11 +69,38 @@ class Helper(ABC):
         self.dq: Union[np.ndarray, None] = None
         self.new_geom: Union[np.ndarray, None] = None
         self.E: Union[float, None] = None
+        self.step_str = None
 
         self.opt_input: Union[dict, None] = None
         self.molsys: Union[molsys.Molsys, None] = None
         self.history = history.History(self.params)
         self.opt_manager: OptimizationManager
+
+    def pre_step_str(self):
+        string = ""
+        string += welcome()
+        string += str(self.molsys)
+        return string
+
+    def post_step_str(self):
+        string = ""
+        string += self.step_str if self.step_str is not None else ""
+        energies = [step.E for step in self.history.steps]
+        status = self.status(str_mode='both')
+        if status == "CONVERGED" and len(energies) > 0:
+            if self.params.opt_type != 'IRC':
+                conv_table, criteria_table = conv_check(self.step_num, self.dq, self.fq, energies, str_mode="both")
+                string += conv_table
+                string += criteria_table
+                string += self.history.summary_string()
+            else:
+                string += self.opt_manager.opt_method.irc_history.progress_report(return_str=True)
+        elif "FAILED" not in status and len(energies) > 0:
+            string += conv_check(self.step_num, self.dq, self.fq, energies, str_mode="table")
+
+        string += "Next Geometry in Ang \n"
+        string += self.molsys.show_geom()
+        return string
 
     def to_dict(self):
         d = {
@@ -90,8 +121,6 @@ class Helper(ABC):
         """Construct as far as possible the helper. Child class will need to update computer """
         # creates the initial configuration of the OptHelper. Some options might
         # have changed over the course of the optimization (eg trust radius)
-        logger = logging.getLogger(__name__)
-        logger.info(d)
 
         helper = cls(d.get("opt_input"), params={}, silent=True)
 
@@ -107,9 +136,9 @@ class Helper(ABC):
 
     def build_coordinates(self):
         make_internal_coords(self.molsys, self.params)
+        self.show()
 
     def show(self):
-        logger = logging.getLogger(__name__)
         logger.info("Molsys:\n" + str(self.molsys))
         return
 
@@ -120,8 +149,6 @@ class Helper(ABC):
     def compute(self):
         """Get the energy, gradient, and hessian. Project redundancies and apply constraints / forces """
 
-        logger = logging.getLogger(__name__)
-
         if not self.molsys.intcos_present:
             # opt_manager.molsys is the same object as this molsys
             make_internal_coords(self.molsys)
@@ -129,23 +156,29 @@ class Helper(ABC):
             logger.info(str(self.molsys))
 
         self._compute()
+        logger.info("%s", print_geom_grad(self.geom, self.gX))
         self.fq = self.molsys.gradient_to_internals(self.gX, -1.0)
 
         self.molsys.apply_external_forces(self.fq, self._Hq, self.step_num)
         self.molsys.project_redundancies_and_constraints(self.fq, self._Hq)
-        logger.info(self.fq)
 
-    def step(self):
+    def take_step(self):
         """Must call compute before calling this method. Takes the next step. """
-        self.dq = self.opt_manager.take_step(self.fq, self._Hq, self.E)
+        self.opt_manager.error = None
+        try:
+            self.dq, self.step_str = self.opt_manager.take_step(self.fq, self._Hq, self.E, return_str=True)
+        except AlgError as e:
+            self.opt_manager.alg_error_handler(e)
+
         self.new_geom = self.molsys.geom
         self.step_num += 1
+        self.opt_manager.step_number += 1
 
-        logger = logging.getLogger(__name__)
-        logger.info(str(self.molsys))
+        self.show()
+        return self.dq
 
-    def test_convergence(self):
-        return self.opt_manager.converged(self.E, self.fq, self.dq, self.step_num)
+    def test_convergence(self, str_mode=None):
+        return self.opt_manager.converged(self.E, self.fq, self.dq, self.step_num, str_mode=str_mode)
 
     def close(self):
         del self._Hq
@@ -164,11 +197,16 @@ class Helper(ABC):
             self._gX = val
         else:
             val = self.attempt_fromiter(val)
-
-            if val.ndim == 1 and val.size == self.molsys.natom * 3:
+            ncart = self.molsys.natom * 3
+            if val.ndim == 1 and val.size == ncart:
                 self._gX = val
             else:
-                raise TypeError(f"Gradient must be a 1D iterable with length " f"{self.molsys.natom * 3}")
+                if val.shape == (self.molsys.natom, 3):
+                    self._gX = val.reshape(1, ncart)
+                else:
+                    raise TypeError(
+                        f"Gradient must an iterable with shape (3, {self.molsys.natom}) or (1, {ncart})"
+                    )
 
     @property
     def HX(self):
@@ -182,9 +220,12 @@ class Helper(ABC):
             self._HX = val
         else:
             val = self.attempt_fromiter(val)
+            dim = self.molsys.natom * 3
 
-            if val.shape == (self.molsys.natom * 3, self.molsys.natom * 3):
+            if val.shape == (dim, dim):
                 self._HX = val
+            elif val.ndim == 1 and len(val) == dim **2:
+                self._HX = val.reshape(dim, dim)
             else:
                 raise TypeError(f"Hessian must be a nxn iterable with n={self.molsys.natom * 3}")
 
@@ -214,6 +255,26 @@ class Helper(ABC):
             except (IndexError, ValueError, TypeError) as error:
                 raise ValueError("Could not convert input to numpy array") from error
         return array
+
+    def summarize_result(self):
+        """ Return final energy and geometry """
+        last_step = self.history.steps[-1]
+        return last_step.E, last_step.geom
+
+    def status(self, str_mode=None):
+        if self.opt_manager.error == "OptError":
+            return "FAILED"
+
+        if self.opt_manager.error == "AlgError":
+            self.HX = None
+            self._Hq = None
+            self.step_num = 0
+            return "UNFINISHED-FAILED"
+
+        if self.test_convergence(str_mode) is True:
+            return "CONVERGED"
+
+        return "UNFINISHED"
 
 
 class CustomHelper(Helper):
@@ -261,6 +322,7 @@ class CustomHelper(Helper):
         self.computer.molecule = self.opt_input
         self.build_coordinates()
         self.opt_manager = OptimizationManager(self.molsys, self.history, self.params, self.computer)
+        self.opt_manager.step_number = 1
 
     @classmethod
     def from_dict(cls, d):
@@ -272,10 +334,18 @@ class CustomHelper(Helper):
     def _compute(self):
         """The call to computer in this class is essentially a lookup for the value provided by
         the User. """
-        logger = logging.getLogger(__name__)
 
-        if not self.HX:
-            logger.info(self.step_num)
+        if self.HX is None:
+            if "hessian" in self.calculations_needed():
+                if self.params.cart_hess_read:
+                    self.HX = hessian.from_file(self.params.hessian_file)  # set ourselves if file
+                    result = self.computer.compute(self.geom, driver="hessian")
+                    self.gX = result["extras"]["qcvars"]["CURRENT GRADIENT"]
+                    self._Hq = self.molsys.hessian_to_internals(self.HX)
+                    self.HX = None
+                else:
+                    raise RuntimeError("Optking requested a hessian but was not provided one. "
+                                       "This could be a driver issue")
             if self.step_num == 0:
                 logger.info("Guessing hessian")
                 self._Hq = hessian.guess(self.molsys, guessType=self.params.intrafrag_hess)
@@ -284,9 +354,9 @@ class CustomHelper(Helper):
                 self._Hq = self.history.hessian_update(self._Hq, self.molsys)
             self.gX = self.computer.compute(self.geom, driver="gradient", return_full=False)
         else:
-            result = self.computer.compute(self.gX, driver="hessian")
+            result = self.computer.compute(self.geom, driver="hessian")
             self.HX = result["return_result"]
-            self.gX = result["extras"]["qcvars"]["gradient"]
+            self.gX = result["extras"]["qcvars"]["CURRENT GRADIENT"]
             self._Hq = self.molsys.hessian_to_internals(self.HX)
             self.HX = None  # set back to None
 

@@ -8,7 +8,9 @@ from . import addIntcos, bend, oofp, stre, tors
 from .exceptions import OptError
 from .printTools import print_array_string, print_mat_string
 from .v3d import are_collinear
+from . import log_name
 
+logger = logging.getLogger(f"{log_name}{__name__}")
 
 class Frag:
     def __init__(self, Z, geom, masses, intcos=None, frozen=False):
@@ -123,7 +125,6 @@ class Frag:
         return np.asarray(self.q_show())
 
     def print_intcos(self):
-        logger = logging.getLogger(__name__)
         intcos_report = "\tInternal Coordinate Values\n"
         intcos_report += "\n\t - Coordinate -           - BOHR/RAD -       - ANG/DEG -\n"
         for coord in self._intcos:

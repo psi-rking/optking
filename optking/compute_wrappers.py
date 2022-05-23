@@ -7,7 +7,9 @@ from qcelemental.models import AtomicInput, AtomicResult, Molecule
 from qcelemental.util.serialization import json_dumps
 
 from .exceptions import OptError
+from . import log_name
 
+logger = logging.getLogger(f"{log_name}{__name__}")
 
 class ComputeWrapper:
     """An implementation of MolSSI's qc schema
@@ -76,7 +78,6 @@ class ComputeWrapper:
         dict
         """
 
-        logger = logging.getLogger(__name__)
 
         self.update_geometry(geom)
         ret = self._compute(driver)

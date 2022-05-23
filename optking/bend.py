@@ -8,7 +8,9 @@ from . import v3d
 from .exceptions import AlgError, OptError
 from .misc import delta, hguess_lindh_rho, string_math_fx
 from .simple import Simple
+from . import log_name
 
+logger = logging.getLogger(f"{log_name}{__name__}")
 
 class Bend(Simple):
     """bend coordinate between three atoms a-b-c
@@ -154,7 +156,6 @@ class Bend(Simple):
         return
 
     def q(self, geom):
-        logger = logging.getLogger(__name__)
         # check, phi = v3d.angle(geom[self.A], geom[self.B], geom[self.C])
         # printxopt('Traditional Angle = %15.10f\n', phi)
 

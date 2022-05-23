@@ -7,7 +7,9 @@ from . import optparams as op
 from .exceptions import AlgError, OptError
 from .linearAlgebra import abs_max, rms, symm_mat_inv
 from .printTools import print_mat_string
+from . import log_name
 
+logger = logging.getLogger(f"{log_name}{__name__}")
 # Functions in this file displace.py
 #
 #  displace_molsys: Displace each fragment.  Displace dimer coordinates.
@@ -21,7 +23,7 @@ from .printTools import print_mat_string
 
 
 # Displace molecular system
-def displace_molsys(oMolsys, dq_in, fq=None, ensure_convergence=False):
+def displace_molsys(oMolsys, dq_in, fq=None, ensure_convergence=False, return_str=False):
     """Manage internal coordinate step for a molecular system
     Parameters
     ----------
@@ -36,7 +38,6 @@ def displace_molsys(oMolsys, dq_in, fq=None, ensure_convergence=False):
     -------
     np.ndarray
     """
-    logger = logging.getLogger(__name__)
     # Modify dq_in to account for frozen coordinates and ranged coordinates
     # These do not represent desired Delta(q)
     q_in = oMolsys.q_array()
@@ -128,7 +129,10 @@ def displace_molsys(oMolsys, dq_in, fq=None, ensure_convergence=False):
 
     # Return final, total displacement ACHIEVED
     dq = q_final - q_orig
-    return dq
+    if return_str:
+        return dq, coordinate_change_report
+    else:
+        return dq
 
 
 def displace_frag(F, dq_in, ensure_convergence=False):
@@ -146,7 +150,6 @@ def displace_frag(F, dq_in, ensure_convergence=False):
     -------
     tuple(np.ndarray, bool) : dq achieved, conv and frozen_conv
     """
-    logger = logging.getLogger(__name__)
     geom = F.geom
     dq = dq_in.copy()
     if not F.num_intcos or not len(geom) or not len(dq_in):
@@ -186,7 +189,7 @@ def displace_frag(F, dq_in, ensure_convergence=False):
             logger.info("\tAble to take a small step; trying another partial back-transformations.\n")
 
             for j in range(1, 2 * cnt):
-                logger.info("\tMini-step %d of %d.\n", (j + 1, 2 * cnt))
+                logger.info("\tMini-step %d of %d.\n", j + 1, 2 * cnt)
                 dq[:] = dq_in / (2 * cnt)
 
                 best_geom[:] = geom
@@ -270,7 +273,6 @@ def back_transformation(
     intcos, geom, dq, print_lvl, bt_dx_conv=None, bt_dx_rms_change_conv=None, bt_max_iter=None,
 ):
 
-    logger = logging.getLogger(__name__)
     dx_rms_last = -1
     if bt_dx_conv is None:
         bt_dx_conv = op.Params.bt_dx_conv
@@ -374,7 +376,6 @@ def dq_to_dx(intcos, geom, dq, printDetails=False):
     float :
         absolute maximum of cartesian displacement
     """
-    logger = logging.getLogger(__name__)
     B = intcosMisc.Bmat(intcos, geom)
     G = np.dot(B, B.T)
     Ginv = symm_mat_inv(G, redundant=True)  # redundant_eval_tol = 1.0e-7)
