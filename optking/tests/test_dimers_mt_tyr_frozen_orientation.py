@@ -2,14 +2,14 @@
 # The relative orientation of the two monomers is fixed.  The monomers
 # themselves and the distance between them are optimized.
 import psi4
-import optking
-import numpy as np
+# import optking
+# import numpy as np
 import pytest
-
+import qcelemental as qcel
+import qcengine as qcng
 
 @pytest.mark.long
 @pytest.mark.dimers
-# @pytest.mark.skip(reason="psi4 needs its d3 fixed")
 def test_dimers_mt_tyr_frozen_orientation():
     # Starting at R ~ 5 Angstroms
     init_xyz = """
@@ -68,8 +68,9 @@ def test_dimers_mt_tyr_frozen_orientation():
     #  phi_A     : Dihedral angle, A3-A2-A1-B1
     #  phi_B     : Dihedral angle, A1-B1-B2-B3
 
+    mTmol = qcel.models.Molecule.from_data(init_xyz)
     # Build the psi4 molecule.
-    MTmol = psi4.geometry(init_xyz)
+    # MTmol = psi4.geometry(init_xyz)
 
     # To see the values of the interfragment coordinates, do this:
     # MTdimerCoord = optking.dimerfrag.DimerFrag.fromUserDict(MTdimer)
@@ -79,24 +80,28 @@ def test_dimers_mt_tyr_frozen_orientation():
     # print( MTdimerCoord )
     # quit()
 
-    # Choose a theory
-    psi4.set_memory("4000.0 MB")
-    psi4.core.clean_options()
-    psi4_options = {
-        "basis": "6-31G(d)",
-        "d_convergence": 9,
-        "frag_mode": "multi",
-        "interfrag_coords": str(MTdimer)
-    }
-    psi4.set_options(psi4_options)
+    input_data = {"input_specification": {
+                      "model": {
+                          "method": "B3LYP-d3mbj",
+                          "basis": "6-31G(d)"},
+                      "keywords": {"d_convergence": 9}
+                      },
+                  "keywords": {
+                     "frag_mode": "multi",
+                     "interfrag_coords": str(MTdimer)},
+                  "initial_molecule": mTmol
+                 }
+
+    opt_input = qcel.models.OptimizationInput(**input_data)
+    result = qcng.compute_procedure(opt_input, "optking")
 
     # For the moment, 'interfrag_coords' is a non-standard keyword and so
     # must be passed like this.
     # Optimize fragments and R but not interfragment angular coordinates.
-    result = optking.optimize_psi4("b3lyp-d3mbj")
+    # result = optking.optimize_psi4("b3lyp-d3mbj")
 
     E = result["energies"][-1]
 
     REF_631Gd_Energy = -939.169521
-    REF_321G_Energy = -934.237170
+    # REF_321G_Energy = -934.237170
     assert psi4.compare_values(REF_631Gd_Energy, E, 4, "B3LYP-D3MBJ energy")  # TEST

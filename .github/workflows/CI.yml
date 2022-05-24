@@ -16,15 +16,12 @@ jobs:
       matrix:
         cfg:
           - conda-env: base
-            python-version: 3.6
-          - conda-env: base
-            python-version: 3.7
-          - conda-env: base
             python-version: 3.8
+          - conda-env: base
+            python-version: 3.9
     env:
       PYVER: ${{ matrix.cfg.python-version }}
       CONDA_ENV: ${{ matrix.cfg.conda-env }}
-
 
     steps:
     - uses: actions/checkout@v1
@@ -35,6 +32,8 @@ jobs:
         uname -a
         df -h
         ulimit -a
+        echo $CONDA
+        echo $(which conda)
         conda --version
     - name: Create Environment
       shell: bash
@@ -55,6 +54,6 @@ jobs:
       shell: bash
       run: |
         eval "$(conda shell.bash hook)" && conda activate test
-        pytest -rws -v --cov=optking --color=yes --cov-report=xml optking/
+        pytest -rws -v -m "not long" --cov=optking --color=yes --cov-report=xml optking/
     - name: CodeCov  
       uses: codecov/codecov-action@v1
