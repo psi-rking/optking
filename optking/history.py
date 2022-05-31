@@ -242,7 +242,6 @@ class History(object):
     # Use History to update Hessian
     def hessian_update(self, H, oMolsys):
 
-        logger.info("steps %s", len(self.steps))
         if self.hess_update == "NONE" or len(self.steps) < 2:
             return H
 

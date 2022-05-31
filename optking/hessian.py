@@ -89,15 +89,18 @@ def from_file(filename):
         if '.json' == filename[:-5]:
             result = json.load(f)
             hess = result['return_result']
+            natom = len(result['molecule']['symbols'])
         else:
             # 2D split. Cast everything to floats and convert back to 2D list from map.
             lines = f.readlines()
-            hess = [list(map(float, line.split())) for line in lines]
-
+            hess = [list(map(float, line.split())) for line in lines[1:]]
+            natom = int(lines[0].split()[1])
     try:
-        H = np.fromiter(hess, dtype=float)
+        H = np.array(hess, dtype=float)
+        H = H.reshape(natom, natom)
     except (IndexError, ValueError, TypeError) as error:
         logger.error("Hessian should be 3Nx3N cartesian force constant matrix or provided by MolSSI Schema")
+        logger.error(error)
         raise ValueError("Could not load hessian from disk") from error
     else:
         return H

@@ -156,7 +156,7 @@ class Helper(ABC):
             logger.info(str(self.molsys))
 
         self._compute()
-        logger.info("%s", print_geom_grad(self.geom, self.gX))
+        logger.info("\n\t%s", print_geom_grad(self.geom, self.gX))
         self.fq = self.molsys.gradient_to_internals(self.gX, -1.0)
 
         self.molsys.apply_external_forces(self.fq, self._Hq, self.step_num)
@@ -202,7 +202,7 @@ class Helper(ABC):
                 self._gX = val
             else:
                 if val.shape == (self.molsys.natom, 3):
-                    self._gX = val.reshape(1, ncart)
+                    self._gX = np.ravel(val)
                 else:
                     raise TypeError(
                         f"Gradient must an iterable with shape (3, {self.molsys.natom}) or (1, {ncart})"
@@ -338,21 +338,23 @@ class CustomHelper(Helper):
         if self.HX is None:
             if "hessian" in self.calculations_needed():
                 if self.params.cart_hess_read:
-                    self.HX = hessian.from_file(self.params.hessian_file)  # set ourselves if file
-                    result = self.computer.compute(self.geom, driver="hessian")
-                    self.gX = result["extras"]["qcvars"]["CURRENT GRADIENT"]
+                    self.HX = hessian.from_file(self.params.hessian_file)  # set ourselves if file\
+                    _ = self.computer.compute(self.geom, driver="hessian")
                     self._Hq = self.molsys.hessian_to_internals(self.HX)
                     self.HX = None
+                    self.params.cart_hess_read = False
+                    self.params.hessian_file = None
                 else:
                     raise RuntimeError("Optking requested a hessian but was not provided one. "
                                        "This could be a driver issue")
-            if self.step_num == 0:
-                logger.info("Guessing hessian")
+            elif self.step_num == 0:
+                logger.debug("Guessing hessian")
                 self._Hq = hessian.guess(self.molsys, guessType=self.params.intrafrag_hess)
+                self.gX = self.computer.compute(self.geom, driver="gradient", return_full=False)
             else:
-                logger.info("Updating hessian")
+                logger.debug("Updating hessian")
                 self._Hq = self.history.hessian_update(self._Hq, self.molsys)
-            self.gX = self.computer.compute(self.geom, driver="gradient", return_full=False)
+                self.gX = self.computer.compute(self.geom, driver="gradient", return_full=False)
         else:
             result = self.computer.compute(self.geom, driver="hessian")
             self.HX = result["return_result"]

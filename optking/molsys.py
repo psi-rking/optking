@@ -720,7 +720,6 @@ class Molsys(object):
             Ginv = symm_mat_inv(G, redundant=True)
             g_q = coeff * np.dot(np.dot(Ginv, B), g_x)
 
-        logger.info("B matrix \n\t%s", B)
         return g_q
 
     def hessian_to_internals(self, H, g_x=None, useMasses=False):
@@ -744,7 +743,7 @@ class Molsys(object):
         Hq : np.ndarray
             hessian in internal coordinates
         """
-        logger.info("Converting Hessian from cartesians to internals.\n")
+        logger.info("Converting Hessian from cartesians to internals.")
 
         B = self.Bmat()
 
@@ -760,7 +759,7 @@ class Molsys(object):
 
         Hworking = H.copy()
         if g_x is None:  # A^t Hxy A
-            logger.info("Neglecting force/B-matrix derivative term, only correct at" + "stationary points.\n")
+            logger.info("Neglecting force/B-matrix derivative term, only correct at" + "stationary points.")
         else:  # A^t (Hxy - Kxy) A;    K_xy = sum_q ( grad_q[I] d^2(q_I)/(dx dy) )
             logger.info("Including force/B-matrix derivative term.\n")
 

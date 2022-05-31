@@ -120,7 +120,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
 
         requirements = self.opt_method.requires()
         protocol = self.get_hessian_protocol()
-        H, gX, E = get_pes_info(H, self.computer, self.molsys, self.history, protocol, requirements)
+        H, gX, E = get_pes_info(H, self.computer, self.molsys, self.history, self.params, protocol, requirements)
 
         logger.info("%s", print_geom_grad(self.molsys.geom, gX))
 
@@ -168,7 +168,6 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
                 self.check_linesearch = True
 
         self.requires = self.update_requirements()
-        logger.info(achieved_dq)
         if return_str:
             return achieved_dq, returned_str
         return achieved_dq
@@ -188,7 +187,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
             if str_mode:
                 return converged
             if converged is True:
-                logger.info("\tConverged in %d steps!" % self.step_number)
+                logger.info("\tConverged in %d steps!" % step_number)
                 logger.info("\tFinal energy is %20.13f" % E)
                 logger.info("\tFinal structure (Angstroms): \n" + self.molsys.show_geom())
         return converged
@@ -225,6 +224,9 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
             self.erase_hessian = False
             return "guess"
 
+        if self.params.cart_hess_read:
+            return "compute"
+
         if self.step_number <= 1:
             if self.params.opt_type != "IRC":
                 if self.params.full_hess_every > -1:  # compute hessian at least once.
@@ -237,7 +239,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
             if self.params.full_hess_every < 1:
                 protocol = "update"
             elif self.step_number % self.params.full_hess_every == 0:
-                protocol = "update"
+                protocol = "compute"
             else:
                 protocol = "update"
 
@@ -351,9 +353,9 @@ def get_pes_info(H,
                  computer,
                  o_molsys,
                  opt_history,
+                 params,
                  hessian_protocol="update",
                  requires=("energy", "gradient"),
-                 hessian_file=None
                  ):
     """Calculate, update, or guess hessian as appropriate. Calculate gradient, pulling
     gradient from hessian output if possible.
@@ -379,7 +381,10 @@ def get_pes_info(H,
     else:
         driver = "energy"
 
-    if hessian_protocol == "compute" and hessian_file is None:
+    self.logger.info(f"hessian protocol {hessian_protocol}")
+    self.logger.info(f"hessian file {hessian_file}")
+
+    if hessian_protocol == "compute" and not params.cart_hess_read:
         H, g_X = get_hess_grad(computer, o_molsys)
     elif hessian_protocol == "update":
         logger.info(f"Updating Hessian with {str(op.Params.hess_update)}")
@@ -394,8 +399,10 @@ def get_pes_info(H,
     elif hessian_protocol == "unneeded":
         result = computer.compute(o_molsys.geom, driver=driver, return_full=False)
         g_X = np.asarray(result) if driver == "gradient" else None
-    elif hessian_file:
+    elif params.cart_hess_read:
         H = hessian.from_file(hessian_file)
+        params.cart_hess_read = False
+        params.hessian_file = None
 
     else:
         raise OptError("Encountered unknown value from get_hessian_protocol()")
