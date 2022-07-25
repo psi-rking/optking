@@ -110,14 +110,15 @@ class OptimizationAlgorithm(OptimizationInterface):
     def __init__(self, molsys, history, params):
         super().__init__(molsys, history, params)
         self.trust_radius_on = True
-        self.intrafrag_trust = params.intrafrag_trust
-        self.intrafrag_trust_max = params.intrafrag_trust_max
-        self.intrafrag_trust_min = params.intrafrag_trust_min
-        self.consecutive_backsteps_allowed = params.consecutive_backsteps_allowed
-        self.ensure_bt_convergence = params.ensure_bt_convergence
-        self.dynamic_level = params.dynamic_level
-        self.opt_type = params.opt_type
-        self.linesearch = params.linesearch
+        self.params = params
+        # self.intrafrag_trust = params.intrafrag_trust
+        # self.intrafrag_trust_max = params.intrafrag_trust_max
+        # self.intrafrag_trust_min = params.intrafrag_trust_min
+        # self.consecutive_backsteps_allowed = params.consecutive_backsteps_allowed
+        # self.ensure_bt_convergence = params.ensure_bt_convergence
+        # self.dynamic_level = params.dynamic_level
+        # self.opt_type = params.opt_type
+        # self.linesearch = params.linesearch
 
     @abstractmethod
     def requires(self, **kwargs):
@@ -162,7 +163,10 @@ class OptimizationAlgorithm(OptimizationInterface):
             self.apply_intrafrag_step_scaling(dq)
 
         self.molsys.interfrag_dq_discontinuity_correction(dq)
-        achieved_dq, return_str = displace_molsys(self.molsys, dq, fq, ensure_convergence=self.ensure_bt_convergence,
+        achieved_dq, return_str = displace_molsys(self.molsys,
+                                                  dq,
+                                                  fq,
+                                                  ensure_convergence=self.params.ensure_bt_convergence,
                                                   return_str=return_str)
         dq_norm, unit_dq, projected_fq, projected_hess = self.step_metrics(achieved_dq, fq, H)
         delta_energy = self.expected_energy(dq_norm, projected_fq, projected_hess)
@@ -175,7 +179,7 @@ class OptimizationAlgorithm(OptimizationInterface):
         # Before quitting, make sure step is reasonable.  It should only be
         # screwball if we are using the "First Guess" after the back-transformation failed.
         dq_norm = np.linalg.norm(achieved_dq[0 : self.molsys.num_intrafrag_intcos])
-        if dq_norm > 5 * self.intrafrag_trust:
+        if dq_norm > 5 * self.params.intrafrag_trust:
             raise AlgError("opt.py: Step is far too large.")
 
         if return_str:
@@ -184,7 +188,7 @@ class OptimizationAlgorithm(OptimizationInterface):
 
     def apply_intrafrag_step_scaling(self, dq):
         """Apply maximum step limit by scaling."""
-        trust = self.intrafrag_trust
+        trust = self.params.intrafrag_trust
         if sqrt(np.dot(dq, dq)) > trust:
             scale = trust / sqrt(np.dot(dq, dq))
             logger.info("\tStep length exceeds trust radius of %10.5f." % trust)
@@ -233,7 +237,12 @@ class OptimizationAlgorithm(OptimizationInterface):
 
     def converged(self, dq, fq, step_number, str_mode=None):
         energies = [step.E for step in self.history.steps]
-        converged = convcheck.conv_check(step_number, dq, fq, energies, str_mode=str_mode)
+        conv_info = {'step_type': 'standard',
+                     'energies': energies,
+                     'dq': dq,
+                     'fq': fq,
+                     'iternum': step_number}
+        converged = convcheck.conv_check(conv_info, self.params.__dict__, str_mode=str_mode)
         if str_mode:
             return converged
         logger.info("\tConvergence check returned %s" % converged)
@@ -259,12 +268,12 @@ class OptimizationAlgorithm(OptimizationInterface):
             logger.info("\tNear start of optimization, so ignoring bad step.\n")
             return False
 
-        if self.history.consecutive_backsteps < self.consecutive_backsteps_allowed:
+        if self.history.consecutive_backsteps < self.params.consecutive_backsteps_allowed:
             self.history.consecutive_backsteps += 1
             logger.info("\tThis is consecutive backstep %d.\n", self.history.consecutive_backsteps)
             return True  # Assumes that the client follows instructions
 
-        if self.dynamic_level == 0:
+        if self.params.dynamic_level == 0:
             logger.info("Continuing despite bad step. dynamic level is 0")
             return False
         raise AlgError("Bad Step. Maximum number of backsteps taken")
@@ -290,7 +299,7 @@ class OptimizationAlgorithm(OptimizationInterface):
         energy_ratio = energy_change / projected_change
         logger.info("\tEnergy ratio = %10.5lf" % energy_ratio)
 
-        if self.opt_type == "MIN" and not self.linesearch:
+        if self.params.opt_type == "MIN" and not self.params.linesearch:
             # Predicted up. Actual down.  OK.  Do nothing.
             if projected_change > 0 and energy_ratio < 0.0:
                 decent = True
@@ -312,21 +321,21 @@ class OptimizationAlgorithm(OptimizationInterface):
 
     def increase_trust_radius(self):
         """ Increase trust radius by factor of 3 """
-        maximum = self.intrafrag_trust_max
-        if self.intrafrag_trust != maximum:
-            new_val = self.intrafrag_trust * 3
-            new_val = maximum if new_val > self.intrafrag_trust_max else new_val
+        maximum = self.params.intrafrag_trust_max
+        if self.params.intrafrag_trust != maximum:
+            new_val = self.params.intrafrag_trust * 3
+            new_val = maximum if new_val > self.params.intrafrag_trust_max else new_val
             logger.info("\tEnergy ratio indicates good step: Trust radius increased to %6.3e.\n", new_val)
-            self.intrafrag_trust = new_val
+            self.params.intrafrag_trust = new_val
 
     def decrease_trust_radius(self):
         """Scale trust radius by 0.25 """
-        minimum = self.intrafrag_trust_min
-        if self.intrafrag_trust != minimum:
-            new_val = self.intrafrag_trust / 4
+        minimum = self.params.intrafrag_trust_min
+        if self.params.intrafrag_trust != minimum:
+            new_val = self.params.intrafrag_trust / 4
             new_val = minimum if new_val < minimum else new_val
             logger.warning("\tEnergy ratio indicates iffy step: Trust radius decreased to %6.3e.\n", new_val)
-            self.intrafrag_trust = new_val
+            self.params.intrafrag_trust = new_val
 
     def update_history(self, delta_e, achieved_dq, unit_dq, projected_f, projected_hess):
         """Basic history update method. This should be expanded here and in child classes in
@@ -455,11 +464,11 @@ class RFO(QuasiNewtonOptimization, ABC):
 
     def __init__(self, molsys, history, params):
         super().__init__(molsys, history, params)
-        self.simple_step_scaling = params.simple_step_scaling
-        self.rfo_follow_root = params.rfo_follow_root
-        self.rfo_root = params.rfo_root
-        self.rfo_normalization_max = params.rfo_normalization_max
+        # self.simple_step_scaling = params.simple_step_scaling
+        # self.rfo_follow_root = params.rfo_follow_root
+        self.rfo_root = self.params.rfo_root
         self.old_root = self.rfo_root
+        # self.rfo_normalization_max = params.rfo_normalization_max
 
     def expected_energy(self, step, grad, hess):
         """RFO model - 2x2 Pade Approximation"""
@@ -486,7 +495,7 @@ class RFO(QuasiNewtonOptimization, ABC):
         i_norm = i_norm.reshape(-1, 1)
         tmp = eigenvectors / i_norm
         max_values = (np.amax(np.abs(tmp), axis=1)).reshape(-1, 1)
-        eigenvectors = np.where(max_values < self.rfo_normalization_max, tmp, eigenvectors)
+        eigenvectors = np.where(max_values < self.params.rfo_normalization_max, tmp, eigenvectors)
         return eigenvectors
 
 
@@ -496,8 +505,8 @@ class RestrictedStepRFO(RFO):
 
     def __init__(self, molsys, history, params):
         super().__init__(molsys, history, params)
-        self.rsrfo_alpha_max = params.rsrfo_alpha_max
-        self.accept_symmetry_breaking = params.accept_symmetry_breaking
+        # self.rsrfo_alpha_max = params.rsrfo_alpha_max
+        # self.accept_symmetry_breaking = params.accept_symmetry_breaking
 
     def step(self, fq, H, *args, **kawrgs):
         """The step is an eigenvector of the gradient augmented Hessian. Looks for the
@@ -510,7 +519,7 @@ class RestrictedStepRFO(RFO):
         RFOmat = RFO.build_rfo_matrix(0, len(H), fq, H)  # use entire hessian for RFO matrix
         logger.debug("\tOriginal, unscaled RFO matrix:\n\n" + print_mat_string(RFOmat))
 
-        if self.simple_step_scaling:
+        if self.params.simple_step_scaling:
             e_vectors, e_values = self._intermediate_normalize(RFOmat)
             rfo_root = self._select_rfo_root(
                 self.history.steps[-2].followedUnitVector, e_vectors, e_values, alpha_iter=0
@@ -534,10 +543,10 @@ class RestrictedStepRFO(RFO):
         alpha_iter = -1
         max_rfo_iter = 25  # max. # of iterations to try to converge RS-RFO
         Hevals, Hevects = symm_mat_eig(H)  # Need for computing alpha at end of loop
-        follow_root = self.rfo_follow_root
+        follow_root = self.params.rfo_follow_root
 
         last_evect = np.zeros(len(fq))
-        if self.rfo_follow_root and len(self.history.steps) > 1:
+        if self.params.rfo_follow_root and len(self.history.steps) > 1:
             last_evect[:] = self.history.steps[-2].followedUnitVector  # RFO vector from previous geometry step
         rfo_step_report = ""
 
@@ -555,14 +564,14 @@ class RestrictedStepRFO(RFO):
             # Determine best (lowest eigenvalue), acceptable root and take as step
             rfo_root = self._select_rfo_root(last_evect, SRFOevects, SRFOevals, alpha_iter)
             dq = SRFOevects[rfo_root][:-1]  # omit last column
-            last_evect = dq / np.linalg.norm(dq)
+            # last_evect = dq / np.linalg.norm(dq)
 
             dqtdq = np.dot(dq, dq)
             # If alpha explodes, give up on iterative scheme
-            if fabs(alpha) > self.rsrfo_alpha_max:
+            if fabs(alpha) > self.params.rsrfo_alpha_max:
                 converged = False
                 alpha_iter = max_rfo_iter - 1
-            elif sqrt(dqtdq) < (self.intrafrag_trust + 1e-5):
+            elif sqrt(dqtdq) < (self.params.intrafrag_trust + 1e-5):
                 converged = True
 
             alpha, print_out = self._update_alpha(alpha, dqtdq, alpha_iter, dq, fq, Hevects, Hevals)
@@ -570,14 +579,14 @@ class RestrictedStepRFO(RFO):
 
         # end alpha RS-RFO iterations
         logger.debug(rfo_step_report)
-        self.rfo_follow_root = follow_root
+        self.params.rfo_follow_root = follow_root
         return converged, dq
 
     def _update_alpha(self, alpha, dqtdq, alpha_iter, dq, fq, Hevects, Hevals):
 
         rfo_step_report = ""
 
-        if alpha_iter == 0 and not self.simple_step_scaling:
+        if alpha_iter == 0 and not self.params.simple_step_scaling:
             logger.debug("\tDetermining step-restricting scale parameter for RS-RFO.")
 
         if alpha_iter == 0:
@@ -603,7 +612,7 @@ class RestrictedStepRFO(RFO):
 
         # Calculate new scaling alpha value.
         # Equation 20, Besalu and Bofill, Theor. Chem. Acc., 1998, 100:265-274
-        alpha += 2 * (self.intrafrag_trust * sqrt(dqtdq) - dqtdq) / analyticDerivative
+        alpha += 2 * (self.params.intrafrag_trust * sqrt(dqtdq) - dqtdq) / analyticDerivative
 
         return alpha, rfo_step_report
 
@@ -621,11 +630,18 @@ class RestrictedStepRFO(RFO):
         SRFOmat = np.zeros((dim1, dim2))  # For scaled RFO matrix.
 
         # scale RFO matrix leaving the last row unchanged, compute eigenvectors
-        SRFOmat[:-1, :] = RFOmat[:-1, :] / alpha
-        SRFOmat[-1, :] = RFOmat[-1, :]
-        SRFOevals, SRFOevects = asymm_mat_eig(SRFOmat)
+        SRFOmat[:-1, :-1] = RFOmat[:-1, :-1] / alpha
+        SRFOmat[-1, :-1] = RFOmat[-1, :-1] / alpha**0.5
+        SRFOmat[:-1, -1] = RFOmat[:-1, -1] / alpha**0.5
+        SRFOevals, SRFOevects = symm_mat_eig(SRFOmat)
 
         SRFOevects = self._intermediate_normalize(SRFOevects)
+
+        # transform step back.
+        scale_mat = np.diag(np.repeat(1 / alpha ** 0.5, dim1))
+        scale_mat[-1, -1] = 1
+        # SRFOevects = np.einsum("ij, jk -> ik", scale_mat, SRFOevects)
+        SRFOevects = np.transpose(scale_mat @ np.transpose(SRFOevects))
 
         if self.print_lvl >= 4:
             logger.debug("\tScaled RFO matrix.\n\n" + print_mat_string(SRFOmat))
@@ -656,7 +672,7 @@ class RestrictedStepRFO(RFO):
         """
 
         rfo_root = self.old_root
-        if not self.rfo_follow_root or np.array_equal(last_evect, np.zeros(len(last_evect))):
+        if not self.params.rfo_follow_root or np.array_equal(last_evect, np.zeros(len(last_evect))):
 
             # Determine root only once at beginning. This root will be followed in subsequent alpha iterations
             if alpha_iter == 0:
@@ -675,11 +691,12 @@ class RestrictedStepRFO(RFO):
                     # no good root found, using the default
                     rfo_root = self.rfo_root
             # Save initial root. 'Follow' during the RS-RFO iterations.
-            self.rfo_follow_root = True
+            self.params.rfo_follow_root = True
 
         else:  # Do root following.
             # Find maximum overlap. Dot only within H block.
             overlaps = np.einsum("ij, j -> i", SRFOevects[:-1, :-1], last_evect)
+            logger.info("Best Fits for overlap:\n%s", overlaps)
             bestfit = np.argmax(overlaps)
 
             if bestfit != self.old_root:
@@ -690,7 +707,7 @@ class RestrictedStepRFO(RFO):
             logger.info("\tUsing RFO solution %d." % (rfo_root + 1))
 
         # Print only the lowest eigenvalues/eigenvectors
-        if self.print_lvl >= 2:
+        if self.params.print_lvl >= 2:
 
             for i, eigval in enumerate(SRFOevals):
                 if i >= self.rfo_root and eigval > -1e-6:
@@ -718,12 +735,11 @@ class RestrictedStepRFO(RFO):
         """
 
         def reject_root(mesg):
-            logger = logging.getLogger(__name__)
             logger.warning("\tRejecting RFO root %d because %s", index + 1, mesg)
             return False
 
         # Check symmetry of root. Leave True if unessecary. Not currently functioning
-        symmetric = True if not self.accept_symmetry_breaking else is_dq_symmetric(self.molsys, vector[:-1])
+        symmetric = True if not self.params.accept_symmetry_breaking else is_dq_symmetric(self.molsys, vector[:-1])
 
         if not symmetric:
             return reject_root("it breaks the molecular point group")
@@ -731,7 +747,7 @@ class RestrictedStepRFO(RFO):
         if vector[-1] < 1e-10:
             return reject_root("Normalization gives large value")
 
-        if np.amax(np.abs(vector)) > self.rfo_normalization_max:
+        if np.amax(np.abs(vector)) > self.params.rfo_normalization_max:
             return reject_root("Normalization gives large value")
 
         return True

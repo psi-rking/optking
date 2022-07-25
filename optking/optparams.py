@@ -125,7 +125,7 @@ class OptParams(object):
         # IRC mapping direction
         self.irc_direction = uod.get("IRC_DIRECTION", "FORWARD")
         # Decide when to stop IRC calculations
-        self.irc_points = uod.get("IRC_POINTS", 10)
+        self.irc_points = uod.get("IRC_POINTS", 20)
         #
         # Initial maximum step size in bohr or radian along an internal coordinate
         self.intrafrag_trust = uod.get("INTRAFRAG_STEP_LIMIT", 0.5)
@@ -295,6 +295,10 @@ class OptParams(object):
         # Let the user submit a dictionary (or array of dictionaries) for
         # the interfrag coordinates.
         self.interfrag_coords = uod.get("INTERFRAG_COORDS", None)
+
+        # Finish multifragment option setup by forcing frag_mode: MULTI if DimerCoords are provided
+        if self.interfrag_coords is not None:
+            self.frag_mode = 'MULTI'
 
         # Model Hessian to guess interfragment force constants
         # P.interfrag_hess = uod.get('INTERFRAG_HESS', 'DEFAULT')

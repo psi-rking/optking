@@ -15,9 +15,9 @@ b3lyp_ext_force_oop_30_energy = -114.4032891
 
 import psi4
 import optking
+from .utils import utils
 
-
-def test_oofp_formaldehyde():
+def test_oofp_formaldehyde(check_iter):
     form = psi4.geometry(
         """
        O      0.6   -0.00007   0.0
@@ -39,9 +39,9 @@ def test_oofp_formaldehyde():
     E = result["energies"][-1]  # TEST
 
     assert psi4.compare_values(b3lyp_opt_energy, E, 8, "B3LYP energy")
+    utils.compare_iterations(result, 8, check_iter)
 
-
-def test_ranged_oofp():
+def test_ranged_oofp(check_iter):
     form = psi4.geometry(
         """
       O   0.08  0.60  -0.0
@@ -61,9 +61,9 @@ def test_ranged_oofp():
     E = result["energies"][-1]
 
     assert psi4.compare_values(b3lyp_ranged_oop_30_energy, E, 5, "B3LYP energy")
+    utils.compare_iterations(result, 15, check_iter)
 
-
-def test_ext_force_oofp():
+def test_ext_force_oofp(check_iter):
     form = psi4.geometry(
         """
       O   0.08  0.60  -0.0
@@ -83,3 +83,4 @@ def test_ext_force_oofp():
     E = result["energies"][-1]
 
     assert psi4.compare_values(b3lyp_ext_force_oop_30_energy, E, 5, "B3LYP energy")
+    utils.compare_iterations(result, 12, check_iter)

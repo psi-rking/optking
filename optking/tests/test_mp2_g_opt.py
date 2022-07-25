@@ -1,8 +1,8 @@
 import psi4
 import optking
+from .utils import utils
 
-
-def test_mp2_h2o():
+def test_mp2_h2o(check_iter):
 
     h2o = psi4.geometry(
         """
@@ -31,3 +31,4 @@ def test_mp2_h2o():
     REF_mp2 = -76.2224486598878  # TEST
     assert psi4.compare_values(REF_nucenergy, this_nucenergy, 3, "Nuclear repulsion energy")  # TEST
     assert psi4.compare_values(REF_mp2, this_mp2, 6, "CONV MP2 energy")  # TEST
+    utils.compare_iterations(result, 5, check_iter)

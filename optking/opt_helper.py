@@ -87,16 +87,19 @@ class Helper(ABC):
         string += self.step_str if self.step_str is not None else ""
         energies = [step.E for step in self.history.steps]
         status = self.status(str_mode='both')
+        step_type = 'irc' if self.params.opt_type == 'IRC' else 'standard'
+        conv_info = {'step_type': step_type, 'energies': energies, 'dq': self.dq, 'fq': self.fq, 'iternum': self.step_num}
+
         if status == "CONVERGED" and len(energies) > 0:
             if self.params.opt_type != 'IRC':
-                conv_table, criteria_table = conv_check(self.step_num, self.dq, self.fq, energies, str_mode="both")
+                conv_table, criteria_table = conv_check(conv_info, self.params.__dict__, str_mode="both")
                 string += conv_table
                 string += criteria_table
                 string += self.history.summary_string()
             else:
                 string += self.opt_manager.opt_method.irc_history.progress_report(return_str=True)
         elif "FAILED" not in status and len(energies) > 0:
-            string += conv_check(self.step_num, self.dq, self.fq, energies, str_mode="table")
+            string += conv_check(conv_info, self.params.__dict__, str_mode="table")
 
         string += "Next Geometry in Ang \n"
         string += self.molsys.show_geom()

@@ -98,6 +98,14 @@ def tokenize_input_string(inString):
     return outString.split()
 
 
+def check_provided_dict(input_dict: dict, dict_format: list[tuple]):
+    """Assert input_dict matches the format and keys specified by format """
+
+    for param, param_type, default in dict_format:
+        if not isinstance(input_dict.get(param, default), param_type):
+            raise ValueError(f"Convergence check does not recognize the type of {param}")
+
+
 # Organize a single input list into a new list, each entry
 # of which is Nint integers.
 def int_list(inList, Nint=1):

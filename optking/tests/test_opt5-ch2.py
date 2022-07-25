@@ -3,11 +3,13 @@
 import psi4
 import optking
 
+from .utils import utils
+
 nucrefenergy = 6.197322440574482  # TEST
 refenergy = -38.925486977153  # TEST
 
 
-def test_ch2_with_dummy_atoms():
+def test_ch2_with_dummy_atoms(check_iter):
     ch2 = psi4.geometry(
         """
     0 3
@@ -15,7 +17,7 @@ def test_ch2_with_dummy_atoms():
     x 1 1.0
     h 1 b1 2 a1
     h 1 b1 2 a1 3 180.0
-    
+
     b1 = 1.0
     a1 = 60.0
     """
@@ -39,3 +41,5 @@ def test_ch2_with_dummy_atoms():
 
     assert psi4.compare_values(nucrefenergy, nucenergy, 3, "Nuclear repulsion energy")  # TEST
     assert psi4.compare_values(refenergy, thisenergy, 6, "Reference energy")  # TEST
+
+    utils.compare_iterations(json_output, 5, check_iter)

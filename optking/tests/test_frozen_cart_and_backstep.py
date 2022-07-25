@@ -1,7 +1,7 @@
 import psi4
 import optking
 import pytest
-
+from .utils import utils
 #! Various constrained energy minimizations of HOOH with cc-pvdz RHF.
 #! Cartesian-coordinate constrained optimizations of HOOH in Cartesians.
 #! 1. Cartesian optimization.
@@ -32,21 +32,21 @@ opt3 = {"frozen_cartesian": f3}
 opt4 = {"frozen_cartesian": f1, "opt_coordinates": "redundant"}
 
 optking__freeze_params = [
-    (opt0, HOOH_E),
-    (opt1, HOOH_E_frozen_H_xyz),
-    (opt2, HOOH_E_frozen_O_xyz),
-    (opt3, HOOH_E_frozen_H_xyz),
-    (opt4, HOOH_E_frozen_H_xyz),
+    (opt0, HOOH_E, 16),
+    (opt1, HOOH_E_frozen_H_xyz, 15),
+    (opt2, HOOH_E_frozen_O_xyz, 16),
+    (opt3, HOOH_E_frozen_H_xyz, 15),
+    (opt4, HOOH_E_frozen_H_xyz, 15),
 ]
 
 
 @pytest.mark.parametrize(
-    "options, expected",
+    "options, expected, num_steps",
     # freeze_params,
     optking__freeze_params,
     ids=["Only backstep", "freeze H", "freeze O", "freeze individual x,y,z", "freeze then change coord"],
 )
-def test_hooh_freeze_xyz_Hs(options, expected):
+def test_hooh_freeze_xyz_Hs(check_iter, options, expected, num_steps):
 
     hooh = psi4.geometry(
         """
@@ -73,9 +73,10 @@ def test_hooh_freeze_xyz_Hs(options, expected):
     thisenergy = json_output["energies"][-1]  # TEST
     assert psi4.compare_values(expected, thisenergy, 6)  # TEST
 
+    utils.compare_iterations(json_output, num_steps, check_iter)
 
 #! test if we can keep oxygen atom from moving off of the point (1,1,1)
-def test_frozen_cart_h2o():
+def test_frozen_cart_h2o(check_iter):
 
     h2o = psi4.geometry(
         """
@@ -100,3 +101,6 @@ def test_frozen_cart_h2o():
     assert psi4.compare_values(h2o.x(0), 1.88972613289, 6, "X Frozen coordinate")
     assert psi4.compare_values(h2o.y(0), 1.88972613289, 6, "Y Frozen coordinate")
     assert psi4.compare_values(h2o.z(0), 1.88972613289, 6, "Z Frozen coordinate")
+
+    utils.compare_iterations(json_output, 6, check_iter)
+

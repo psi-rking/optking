@@ -1,9 +1,10 @@
 import psi4
 import optking
 import pytest
+from .utils import utils
 
 #! RHF-CCSD 6-31G** all-electron opt of H2O, default convergence
-def test_ccsd_h2o():
+def test_ccsd_h2o(check_iter):
 
     h2o = psi4.geometry(
         """
@@ -30,9 +31,10 @@ def test_ccsd_h2o():
     assert psi4.compare_values(REF_ccsd, this_ccsd, 4, "CCSD contribution")  # TEST
     assert psi4.compare_values(REF_total, this_total, 4, "Total energy")  # TEST
 
+    utils.compare_iterations(result, 3, check_iter)
 
 #! ROHF-CCSD/cc-pVDZ $^{3}B@@1$ CH2 geometry opt, analytic gradients, tight
-def test_ccsd_ch2():
+def test_ccsd_ch2(check_iter):
 
     ch2 = psi4.geometry(
         """
@@ -68,9 +70,10 @@ def test_ccsd_ch2():
     assert psi4.compare_values(REF_cor, this_ccsd, 6, "ROHF CCSD contribution")  # TEST
     assert psi4.compare_values(REF_tot, this_total, 6, "ROHF CCSD Total energy")  # TEST
 
+    utils.compare_iterations(result, 10, check_iter)
 
 #! UHF-CCSD/cc-pVDZ $^{3}B@@1$ CH2 geometry opt via analytic gradients, tight
-def test_uccsd_ch2():
+def test_uccsd_ch2(check_iter):
 
     ch2 = psi4.geometry(
         """
@@ -106,10 +109,11 @@ def test_uccsd_ch2():
     assert psi4.compare_values(REF_ccsd, this_ccsd, 6, "UHF CCSD contribution")  # TEST
     assert psi4.compare_values(REF_total, this_total, 6, "UCCSD Total energy")  # TEST
 
+    utils.compare_iterations(result, 10, check_iter)
 
 #! UHF-CCSD(T)/cc-pVDZ $^{3}B@@1$ CH2 geometry optimization via analytic gradients
 @pytest.mark.long
-def test_uccsdpt_ch2():
+def test_uccsdpt_ch2(check_iter):
 
     ch2 = psi4.geometry(
         """
@@ -149,3 +153,5 @@ def test_uccsdpt_ch2():
     assert psi4.compare_values(REF_ccsd_t, this_ccsd_t, 6, "CCSD(T) contribution")  # TEST
     assert psi4.compare_values(REF_total, this_total, 6, "Total CCSD(T) energy")  # TEST
     assert psi4.compare_values(REF_total, this_return, 6, "Total CCSD(T) return energy")  # TEST
+
+    utils.compare_iterations(result, 10, check_iter)

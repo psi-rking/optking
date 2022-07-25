@@ -2,7 +2,7 @@
 # The relative orientation of the two monomers is fixed.  The monomers
 # themselves and the distance between them are optimized.
 import psi4
-# import optking
+import optking
 # import numpy as np
 import pytest
 import qcelemental as qcel
@@ -68,9 +68,9 @@ def test_dimers_mt_tyr_frozen_orientation():
     #  phi_A     : Dihedral angle, A3-A2-A1-B1
     #  phi_B     : Dihedral angle, A1-B1-B2-B3
 
-    mTmol = qcel.models.Molecule.from_data(init_xyz)
+    # mTmol = qcel.models.Molecule.from_data(init_xyz)
     # Build the psi4 molecule.
-    # MTmol = psi4.geometry(init_xyz)
+    MTmol = psi4.geometry(init_xyz)
 
     # To see the values of the interfragment coordinates, do this:
     # MTdimerCoord = optking.dimerfrag.DimerFrag.fromUserDict(MTdimer)
@@ -80,25 +80,26 @@ def test_dimers_mt_tyr_frozen_orientation():
     # print( MTdimerCoord )
     # quit()
 
-    input_data = {"input_specification": {
-                      "model": {
-                          "method": "B3LYP-d3mbj",
-                          "basis": "6-31G(d)"},
-                      "keywords": {"d_convergence": 9}
-                      },
-                  "keywords": {
-                     "frag_mode": "multi",
-                     "interfrag_coords": str(MTdimer)},
-                  "initial_molecule": mTmol
-                 }
+    # input_data = {"input_specification": {
+    #                   "model": {
+    #                       "method": "B3LYP-d3mbj",
+    #                       "basis": "6-31G(d)"},
+    #                   "keywords": {"d_convergence": 9}
+    #                   },
+    #               "keywords": {
+    #                  "frag_mode": "multi",
+    #                  "interfrag_coords": str(MTdimer)},
+    #               "initial_molecule": mTmol
+    #              }
 
-    opt_input = qcel.models.OptimizationInput(**input_data)
-    result = qcng.compute_procedure(opt_input, "optking")
+    # opt_input = qcel.models.OptimizationInput(**input_data)
+    # result = qcng.compute_procedure(opt_input, "optking")
 
     # For the moment, 'interfrag_coords' is a non-standard keyword and so
     # must be passed like this.
     # Optimize fragments and R but not interfragment angular coordinates.
-    # result = optking.optimize_psi4("b3lyp-d3mbj")
+    psi4.set_options({"d_convergence": 9, "basis": "6-31G(d)", "interfrag_coords": str(MTdimer)})
+    result = optking.optimize_psi4("b3lyp-d3mbj")
 
     E = result["energies"][-1]
 

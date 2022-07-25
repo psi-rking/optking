@@ -2,11 +2,11 @@
 import psi4
 import optking
 import json
-
+from .utils import utils
 psi4.set_memory("2 GB")
 
 
-def test_hooh_irc():
+def test_hooh_irc(check_iter):
     energy_5th_IRC_pt = -150.812913276783  # TEST
     h2o2 = psi4.geometry(
         """
@@ -43,3 +43,4 @@ def test_hooh_irc():
         )
 
     assert psi4.compare_values(energy_5th_IRC_pt, IRC[5]["Energy"], 6, "Energy of 5th IRC point.")  # TEST
+    utils.compare_iterations(json_output, 45, check_iter)

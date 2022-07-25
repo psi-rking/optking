@@ -89,15 +89,15 @@ def from_file(filename):
         if '.json' == filename[:-5]:
             result = json.load(f)
             hess = result['return_result']
-            natom = len(result['molecule']['symbols'])
+            ncart = len(result['molecule']['symbols'])
         else:
             # 2D split. Cast everything to floats and convert back to 2D list from map.
             lines = f.readlines()
             hess = [list(map(float, line.split())) for line in lines[1:]]
-            natom = int(lines[0].split()[1])
+            ncart = int(lines[0].split()[1])  # assumes FCMFINAL / CFOUR format
     try:
         H = np.array(hess, dtype=float)
-        H = H.reshape(natom, natom)
+        H = H.reshape(ncart, ncart)
     except (IndexError, ValueError, TypeError) as error:
         logger.error("Hessian should be 3Nx3N cartesian force constant matrix or provided by MolSSI Schema")
         logger.error(error)

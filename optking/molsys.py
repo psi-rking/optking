@@ -759,7 +759,7 @@ class Molsys(object):
 
         Hworking = H.copy()
         if g_x is None:  # A^t Hxy A
-            logger.info("Neglecting force/B-matrix derivative term, only correct at" + "stationary points.")
+            logger.info("Neglecting force/B-matrix derivative term, only correct at stationary points.")
         else:  # A^t (Hxy - Kxy) A;    K_xy = sum_q ( grad_q[I] d^2(q_I)/(dx dy) )
             logger.info("Including force/B-matrix derivative term.\n")
 
@@ -915,7 +915,7 @@ class Molsys(object):
         g_x : ndarray
             Cartesian coordinate gradient
         """
-        logger.info("Converting gradient from internals to Cartesians.\n")
+        logger.debug("Converting gradient from internals to Cartesians.\n")
         B = self.Bmat()
         g_x = np.dot(B.T, g_q)
         return g_x

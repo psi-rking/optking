@@ -19,16 +19,17 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
     def __init__(self, molsys, history, params):
         super().__init__(molsys, history, params)
 
+        self.params = params
         # grab irc specific information
-        self.irc_direction = params.irc_direction
-        self.irc_step_size = params.irc_step_size
-        self.irc_points = params.irc_points
+        # self.irc_direction = params.irc_direction
+        # self.irc_step_size = params.irc_step_size
+        # self.irc_points = params.irc_points
         self.irc_step_number = 0
-        self.sub_step_number = 0
+        self.sub_step_number = -1
         self.total_steps_taken = 0
         self.irc_history = IRCdata.IRCHistory()
         self.irc_history.set_atom_symbols(self.molsys.atom_symbols)
-        self.irc_history.set_step_size_and_direction(self.irc_step_size, self.irc_direction)
+        self.irc_history.set_step_size_and_direction(self.params.irc_step_size, self.params.irc_direction)
 
     def requires(self):
 
@@ -36,10 +37,10 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
 
     def take_step(self, fq=None, H=None, energy=None, return_str=False, **kwargs):
 
-        if self.sub_step_number == 0:
+        if self.sub_step_number == -1:
             if self.irc_step_number == 0:
-                logger.info("\tBeginning IRC from the transition state.\n")
-                logger.info("\tStepping along lowest Hessian eigenvector.\n")
+                logger.info("\tBeginning IRC from the transition state.")
+                logger.info("\tStepping along lowest Hessian eigenvector.")
                 logger.debug(print_mat_string(H, title="Transformed Hessian in internals."))
 
                 # Add the transition state as the first IRC point
@@ -62,7 +63,7 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
                 G_root_inv = symm_mat_inv(G_root, redundant=True)
                 v = np.dot(G_root_inv, vM)
 
-                if op.Params.irc_direction == "BACKWARD":
+                if self.params.irc_direction == "BACKWARD":
                     v *= -1
             else:
                 logger.info("\tBeginning search for next IRC point.\n")
@@ -74,7 +75,6 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
         else:
             # We don't add the initial guess steps to the history.
             self.history.append(self.molsys.geom, energy, fq, self.molsys.gradient_to_cartesians(-1 * fq))
-            logger.info("Current forces %s", fq)
             dq = self.dq_irc(fq, H)
             dq, return_str = displace_molsys(self.molsys, dq, fq, ensure_convergence=True, return_str=True)
             logger.info("IRC Constrained step calculation finished.")
@@ -92,33 +92,40 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
             return dq, return_str
         return dq
 
-    def converged(self, dq, fq, step_number, str_mode=None, **kwargs):
+    def converged(self, dq, fq, step_number, str_mode='', **kwargs):
 
-        logger.info("Checking convergence in IRCFollowing")
-
-        if self.sub_step_number < 2:
-            logger.info("Too few steps. continue optimization")
+        if self.sub_step_number < 1:
+            logger.debug("Too few steps. continue optimization")
             return False
 
         if self.irc_history.test_for_irc_minimum(fq):
             logger.info("A minimum has been reached on the IRC.  Stopping here.\n")
             return True
 
-        if self.irc_step_number >= self.irc_points:
-            logger.info(f"\tThe requested {self.irc_points} IRC points have been obtained.")
+        if self.irc_step_number >= self.params.irc_points:
+            logger.info(f"\tThe requested {self.params.irc_points} IRC points have been obtained.")
             return True
 
         energies = [step.E for step in self.history.steps]
 
         fq_new = self.irc_history._project_forces(fq, self.molsys)
-        substep_convergence = convcheck.conv_check(self.total_steps_taken, dq, fq_new, energies, self.requires(),
-                                                   str_mode=str_mode)
+
+        # Need to communicate that we want to print an IRC report
+        # Need not total_steps_taken but the irc_step_number and sub_step_number
+        conv_data = {'step_type': 'irc',
+                     'iternum': self.irc_step_number,
+                     'sub_step_num': self.sub_step_number,
+                     'energies': energies,
+                     'dq': dq,
+                     'fq': fq_new}
+
+        substep_convergence = convcheck.conv_check(conv_data, self.params.__dict__, self.requires(), str_mode=str_mode)
         if not str_mode:
             logger.info("\tConvergence check returned %s for constrained optimization." % substep_convergence)
 
         if substep_convergence is True:
             self.add_converged_point(fq, self.history.steps[-1].E)
-            self.sub_step_number = 0
+            self.sub_step_number = -1
             logger.info("\tStarting search for next IRC point.")
             logger.info("\tClearing old constrained optimization history.")
             self.history.reset_to_most_recent()  # delete old steps
@@ -141,7 +148,7 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
         # Compute and save pivot point
         G = self.molsys.Gmat(massWeight=True)
         N = step_n_factor(G, v)
-        dq_pivot = 0.5 * N * self.irc_step_size * np.dot(G, v)
+        dq_pivot = 0.5 * N * self.params.irc_step_size * np.dot(G, v)
         logger.debug("\n Dq to Pivot Point:" + print_array_string(dq_pivot))
 
         # x_pivot = o_molsys.geom # starting geom but becomes pivot point on next line
@@ -317,8 +324,6 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
         dq = np.dot(G_prime_root, deltaQM)
         logger.info("dq to next geometry\n" + print_array_string(dq))
 
-        logger.info("Checking G_root inverse %s", G_prime_root @ G_prime_root_inv)
-
         return dq
 
         # TODO write geometry for multiple fragments
@@ -376,7 +381,7 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
             denom = HMEigValues[i] - Lambda
             lagrangian += (numerator / denom) ** 2
 
-        lagrangian -= (0.5 * self.irc_step_size) ** 2
+        lagrangian -= (0.5 * self.params.irc_step_size) ** 2
         return lagrangian
 
     def calc_lagrangian_derivs(self, Lambda, HMEigValues, HMEigVects, g_M, p_M):
@@ -391,7 +396,7 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
             deriv[3] += 24 * (numerator / D) ** 2 / (D * D * D)
             deriv[4] += 120 * (numerator / D) ** 2 / (D * D * D * D)
 
-        deriv[0] -= (0.5 * self.irc_step_size) ** 2
+        deriv[0] -= (0.5 * self.params.irc_step_size) ** 2
 
         return deriv
 

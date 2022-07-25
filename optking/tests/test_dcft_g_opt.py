@@ -1,10 +1,11 @@
 import psi4
 import optking
+from .utils import utils
 
 #! DC-06 calculation for the O2 molecule (triplet ground state). This performs
 #! geometry optimization using two-step and simultaneous solution of the
 #! response equations for the analytic gradient.
-def test_dcft_O2():
+def test_dcft_O2(check_iter):
     o2 = psi4.geometry(
         """
       0 3
@@ -40,6 +41,7 @@ def test_dcft_O2():
     assert psi4.compare_values(REF_mp2, this_mp2, 6, "MP2 Energy")  # TEST
     assert psi4.compare_values(REF_dct, this_dct, 6, "DC-06 Energy (two-step response)")  # TEST
 
+    utils.compare_iterations(result, 5, check_iter)
     # Psi4 should test this; so optking shouldn't need to.
     # Now try alternative response
     # psi4.set_options( {'response_algorithm': 'simultaneous'} )

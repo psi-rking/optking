@@ -1,12 +1,13 @@
 import psi4
 import optking
 import pytest
+from .utils import utils
 
 REF_E = -662.48908779
 
 
 @pytest.mark.long
-def test_methimazole():
+def test_methimazole(check_iter):
     psi4.geometry(
         """
       0 1
@@ -30,3 +31,4 @@ def test_methimazole():
     result = optking.optimize_psi4("wb97x-d")
     E = result["energies"][-1]
     assert psi4.compare_values(E, REF_E, 5, "WB97X-D Min Energy")
+    utils.compare_iterations(result, 12, check_iter)

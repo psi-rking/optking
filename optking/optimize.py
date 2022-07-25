@@ -52,8 +52,6 @@ def optimize(o_molsys, computer):
             try:
                 H, fq, energy = opt_object.start_step(H)
                 dq = opt_object.take_step(fq, H, energy, return_str=False)
-                logger.info(dq)
-                logger.info("Current Forces %s", print_array_string(fq))
                 converged = opt_object.converged(energy, fq, dq)
                 opt_object.check_maxiter()  # raise error otherwise continue
 
@@ -238,7 +236,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         else:
             if self.params.full_hess_every < 1:
                 protocol = "update"
-            elif self.step_number % self.params.full_hess_every == 0:
+            elif (self.step_number - 1) % self.params.full_hess_every == 0:
                 protocol = "compute"
             else:
                 protocol = "update"
@@ -381,9 +379,6 @@ def get_pes_info(H,
     else:
         driver = "energy"
 
-    self.logger.info(f"hessian protocol {hessian_protocol}")
-    self.logger.info(f"hessian file {hessian_file}")
-
     if hessian_protocol == "compute" and not params.cart_hess_read:
         H, g_X = get_hess_grad(computer, o_molsys)
     elif hessian_protocol == "update":
@@ -400,7 +395,7 @@ def get_pes_info(H,
         result = computer.compute(o_molsys.geom, driver=driver, return_full=False)
         g_X = np.asarray(result) if driver == "gradient" else None
     elif params.cart_hess_read:
-        H = hessian.from_file(hessian_file)
+        H = hessian.from_file(params.hessian_file)
         params.cart_hess_read = False
         params.hessian_file = None
 

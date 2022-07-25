@@ -3,6 +3,7 @@
 import pytest
 import psi4
 import optking
+from .utils import utils
 
 # Minimized energy with OH bonds pushed toward 0.950 Angstroms.
 OH_950_stre = -150.786669
@@ -23,7 +24,7 @@ f5 = (
     {
         "ext_force_distance": "1 2 '-8.0 * (x-0.950) * exp(-20*abs(x-0.950) )' 3 4 '-8.0*(x-0.950) * exp(-20*abs(x-0.950))'"
     },
-    OH_950_stre,
+    OH_950_stre
 )
 
 
@@ -33,7 +34,7 @@ def test_hooh_fixed_OH_stre(option, expected):
         """
       H
       O 1 0.90
-      O 2 1.40 1 100.0 
+      O 2 1.40 1 100.0
       H 3 0.90 2 100.0 1 115.0
     """
     )
