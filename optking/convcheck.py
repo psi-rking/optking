@@ -15,9 +15,7 @@ import numpy as np
 
 from . import optparams as op
 from .linearAlgebra import abs_max, rms
-from .printTools import print_array_string, print_mat_string
 from . import log_name
-from .misc import check_provided_dict
 
 logger = logging.getLogger(f"{log_name}{__name__}")
 
@@ -41,14 +39,6 @@ CONVERGENCE_PRESETS = {
         "alternate": [None],
     },
 }
-
-# keyword, type, default (if exists)
-CONV_FORMAT = [('step_type', str, 'standard'),
-               ('energies', list, []),
-               ('dq', np.ndarray, np.array([])),
-               ('fq', np.ndarray, np.array([])),
-               ('iternum', int, 0),
-               ('sub_step_num', int, 0)]
 
 
 def conv_check(conv_info: dict, params: dict, required=None, str_mode=''):
@@ -74,10 +64,8 @@ def conv_check(conv_info: dict, params: dict, required=None, str_mode=''):
 
     Returns
     -------
-    return_str: if requsted
+    return_str: if requested
     """
-
-    check_provided_dict(conv_info, CONV_FORMAT)  # quick user input check
 
     return_str = True if str_mode in ['both', 'table'] else False
     if not return_str:
