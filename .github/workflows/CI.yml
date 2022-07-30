@@ -19,6 +19,8 @@ jobs:
             python-version: 3.8
           - conda-env: base
             python-version: 3.9
+          - conda-env: base
+            python-version: "3.10"
     env:
       PYVER: ${{ matrix.cfg.python-version }}
       CONDA_ENV: ${{ matrix.cfg.conda-env }}
@@ -55,5 +57,5 @@ jobs:
       run: |
         eval "$(conda shell.bash hook)" && conda activate test
         pytest -rws -v -m "not long" --cov=optking --color=yes --cov-report=xml optking/
-    - name: CodeCov  
+    - name: CodeCov
       uses: codecov/codecov-action@v1
