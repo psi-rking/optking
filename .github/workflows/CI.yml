@@ -19,15 +19,26 @@ jobs:
             python-version: 3.8
           - conda-env: base
             python-version: 3.9
+          - conda-env: base
+            python-version: "3.10"
     env:
       PYVER: ${{ matrix.cfg.python-version }}
       CONDA_ENV: ${{ matrix.cfg.conda-env }}
 
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
+
+    - name: Create Environment
+      uses: conda-incubator/setup-miniconda@v2
+      with:
+        installer-url: https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+        activate-environment: test
+        environment-file: devtools/conda-envs/${{ matrix.cfg.conda-env }}.yaml
+        python-version: ${{ matrix.cfg.python-version }}
+        auto-activate-base: false
 
     - name: Setup Information
-      shell: bash
+      shell: bash -l {0}
       run: |
         uname -a
         df -h
@@ -35,25 +46,18 @@ jobs:
         echo $CONDA
         echo $(which conda)
         conda --version
-    - name: Create Environment
-      shell: bash
-      run: |
-        eval "$(conda shell.bash hook)" && conda activate
-        python devtools/scripts/conda_env.py -n=test -p=$PYVER devtools/conda-envs/$CONDA_ENV.yaml
+
     - name: Install
-      shell: bash
+      shell: bash -l {0}
       run: |
-        eval "$(conda shell.bash hook)" && conda activate test
         python -m pip install . --no-deps
     - name: Environment Information
-      shell: bash
+      shell: bash -l {0}
       run: |
-        eval "$(conda shell.bash hook)" && conda activate test
         conda list --show-channel-urls
     - name: PyTest
-      shell: bash
+      shell: bash -l {0}
       run: |
-        eval "$(conda shell.bash hook)" && conda activate test
         pytest -rws -v -m "not long" --cov=optking --color=yes --cov-report=xml optking/
-    - name: CodeCov  
+    - name: CodeCov
       uses: codecov/codecov-action@v1

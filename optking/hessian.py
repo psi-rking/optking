@@ -89,7 +89,7 @@ def from_file(filename):
         if '.json' == filename[:-5]:
             result = json.load(f)
             hess = result['return_result']
-            ncart = len(result['molecule']['symbols'])
+            ncart = 3 * len(result['molecule']['symbols'])
         else:
             # 2D split. Cast everything to floats and convert back to 2D list from map.
             lines = f.readlines()
