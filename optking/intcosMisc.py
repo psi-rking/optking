@@ -3,14 +3,15 @@ from math import sqrt
 
 import numpy as np
 
-from . import bend, oofp
-from . import optparams as op
+from . import bend
 from . import tors
-from .linearAlgebra import symm_mat_inv, symm_mat_root
-from .printTools import print_array_string, print_mat_string
+from . import log_name
 
 # Some of these functions act on an arbitrary list of simple internals,
 # geometry etc. that may or may not be in a molecular system.
+
+logger = logging.getLogger(f"{log_name}{__name__}")
+
 
 def q_values(intcos, geom):
     # available for simple intco lists
@@ -48,7 +49,6 @@ def remove_old_now_linear_bend(atoms, intcos):
     """For given bend [A,B,C], remove any regular bends as well as any torsions
     which contain it
     """
-    logger = logging.getLogger(__name__)
     b = bend.Bend(atoms[0], atoms[1], atoms[2])
     logger.info("Removing Old Linear Bend")
     logger.info(str(b) + "\n")

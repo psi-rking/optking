@@ -10,10 +10,12 @@ from . import optparams as op
 from . import stre, tors, v3d
 from .exceptions import AlgError, OptError
 from .v3d import are_collinear
+from . import log_name
 
 # Functions related to freezing, fixing, determining, and
 #    adding coordinates.
 
+logger = logging.getLogger(f"{log_name}{__name__}")
 
 def connectivity_from_distances(geom, Z):
     """
@@ -34,7 +36,6 @@ def connectivity_from_distances(geom, Z):
     """
     nat = geom.shape[0]
     C = np.zeros((len(geom), len(geom)), bool)
-    # logger = logging.getLogger(__name__)
     for i, j in combinations(range(nat), 2):
         R = v3d.dist(geom[i], geom[j])
         Rcov = qcel.covalentradii.get(Z[i], missing=4.0) + qcel.covalentradii.get(Z[j], missing=4.0)
@@ -101,14 +102,13 @@ def add_h_bonds(geom, zs: list, num_atoms):
     Returns
     -------
     list[stre.HBond]
-    Notes
     -----
     Look for electronegative atoms.
-    Find hydrogen atoms between covalent radii test and 2.3 Angstroms
+    Find hydrogen atoms between covalent radii test and 2.3 Angstrom
+    Notess
     Check these hydrogen atoms are already bonded to an electronegative atom
     Check bond angle >= 90 degrees
     """
-    logger = logging.getLogger(__name__)
 
     # N, O, F, P, S, Cl as proposed by Bakken and Helgaker
     electroneg_zs = [7, 8, 9, 15, 16, 17]
@@ -269,12 +269,7 @@ def add_tors_from_connectivity(C, intcos, geom):
                                             else:  # Have found I-J-K-L.
                                                 L = l
                                                 try:
-                                                    val = v3d.tors(
-                                                        geom[I],
-                                                        geom[J],
-                                                        geom[K],
-                                                        geom[L],
-                                                    )
+                                                    val = v3d.tors(geom[I], geom[J], geom[K], geom[L],)
                                                 except AlgError:
                                                     pass
                                                 else:
@@ -288,7 +283,6 @@ def add_tors_from_connectivity(C, intcos, geom):
 
 # For now, let's just check for a single central atom bonded to all others
 def check_if_oofp_needed(C, intcos, geom):
-    logger = logging.getLogger(__name__)
     Natom = len(C)
     maxNneighbors = max([sum(C[i]) for i in range(Natom)])
     if maxNneighbors == Natom - 1:
@@ -320,15 +314,23 @@ def add_oofp_from_connectivity(C, intcos, geom):
                 side.append(N)
 
         if len(side) >= 2:
-            try:
-                val = v3d.oofp(geom[T], geom[V], geom[side[0]], geom[side[1]])
-            except AlgError:
-                raise OptError("Tried to add out-of-plane angle but couldn't evaluate it.")
-                pass
-            else:
-                oneOofp = oofp.Oofp(T, V, side[0], side[1])
-                if oneOofp not in intcos:
-                    intcos.append(oneOofp)
+            n_oofp = 0
+            errored = False
+            for side1, side2 in combinations(side, 2):
+                try:
+                    val = v3d.oofp(geom[T], geom[V], geom[side1], geom[side2])
+                except AlgError:
+                    logger.warning("Skipping OOFP (%d, %d, %d, %d)", T, V, side1, side2)
+                    errored = True
+                    continue
+                else:
+                    n_oofp += 1
+                    oneOofp = oofp.Oofp(T, V, side1, side2)
+                    if oneOofp not in intcos:
+                        intcos.append(oneOofp)
+
+            if n_oofp == 0 and errored:
+                raise OptError("Tried to add out-of-plane angles but couldn't evaluate any.")
 
     return
 
@@ -372,8 +374,8 @@ def linear_bend_check(o_molsys, dq):
         missing linear bends
     """
 
-    logger = logging.getLogger(__name__)
     linear_bends = []
+    missing_bends = []
 
     for frag_index, frag in enumerate(o_molsys.fragments):
         for i, intco in enumerate(frag.intcos):
@@ -410,7 +412,6 @@ def frozen_stre_from_input(frozen_stre_list, o_molsys):
     o_molsys : molsys.Molsys
         optking molecular system
     """
-    logger = logging.getLogger(__name__)
     for S in frozen_stre_list:
         if len(S) != 2:
             raise OptError("Num. of atoms in frozen stretch should be 2.")
@@ -448,7 +449,6 @@ def ranged_stre_from_input(ranged_stre_list, o_molsys):
             I = o_molsys.fragments[f].intcos.index(stretch)
             o_molsys.fragments[f].intcos[I].set_range(qmin, qmax)
         except ValueError:
-            logger = logging.getLogger(__name__)
             logger.info("Stretch to be ranged not present, so adding it.\n")
             stretch.set_range(qmin, qmax)
             o_molsys.fragments[f].intcos.append(stretch)
@@ -464,7 +464,6 @@ def ext_force_stre_from_input(ext_force_stre_list, o_molsys):
     o_molsys : molsys.Molsys
         optking molecular system
     """
-    logger = logging.getLogger(__name__)
     for S in ext_force_stre_list:
         if len(S) != 3:
             raise OptError("Num. of entries in ext. force stretch should be 3.")
@@ -489,7 +488,6 @@ def frozen_bend_from_input(frozen_bend_list, o_molsys):
     o_molsys : molsys.Molsys
         optking molecular system
     """
-    logger = logging.getLogger(__name__)
     for B in frozen_bend_list:
         if len(B) != 3:
             raise OptError("Num. of atoms in frozen bend should be 3.")
@@ -514,7 +512,6 @@ def ranged_bend_from_input(ranged_bend_list, o_molsys):
     o_molsys : molsys.Molsys
         optking molecular system
     """
-    logger = logging.getLogger(__name__)
     for B in ranged_bend_list:
         if len(B) != 5:
             raise OptError("Num. of entries in ranged bend should be 5.")
@@ -542,7 +539,6 @@ def ext_force_bend_from_input(ext_force_bend_list, o_molsys):
     o_molsys : molsys.Molsys
         optking molecular system
     """
-    logger = logging.getLogger(__name__)
     for B in ext_force_bend_list:
         if len(B) != 4:
             raise OptError("Num. of entries in ext. force bend should be 4.")
@@ -577,7 +573,7 @@ def frozen_tors_from_input(frozen_tors_list, o_molsys):
             I = o_molsys.fragments[f].intcos.index(torsAngle)
             o_molsys.fragments[f].intcos[I].freeze()
         except ValueError:
-            logging.info("Frozen dihedral not present, so adding it.\n")
+            logger.info("Frozen dihedral not present, so adding it.\n")
             o_molsys.fragments[f].intcos.append(torsAngle)
 
 
@@ -603,7 +599,7 @@ def ranged_tors_from_input(ranged_tors_list, o_molsys):
             I = o_molsys.fragments[f].intcos.index(torsAngle)
             o_molsys.fragments[f].intcos[I].set_range(qmin, qmax)
         except ValueError:
-            logging.info("Frozen dihedral not present, so adding it.\n")
+            logger.info("Frozen dihedral not present, so adding it.\n")
             torsAngle.set_range(qmin, qmax)
             o_molsys.fragments[f].intcos.append(torsAngle)
 
@@ -618,7 +614,6 @@ def ext_force_tors_from_input(extForceTorsList, o_molsys):
     o_molsys : molsys.Molsys
         optking molecular system
     """
-    logger = logging.getLogger(__name__)
     for T in extForceTorsList:
         if len(T) != 5:
             raise OptError("Num. of entries in ext. force dihedral should be 5.")
@@ -653,7 +648,7 @@ def frozen_oofp_from_input(frozenOofpList, o_molsys):
             I = o_molsys.fragments[f].intcos.index(oofpAngle)
             o_molsys.fragments[f].intcos[I].freeze()
         except ValueError:
-            logging.info("Frozen out-of-plane not present, so adding it.\n")
+            logger.info("Frozen out-of-plane not present, so adding it.\n")
             o_molsys.fragments[f].intcos.append(oofpAngle)
 
 
@@ -679,7 +674,7 @@ def ranged_oofp_from_input(ranged_oofp_list, o_molsys):
             I = o_molsys.fragments[f].intcos.index(oofpAngle)
             o_molsys.fragments[f].intcos[I].set_range(qmin, qmax)
         except ValueError:
-            logging.info("Frozen out-of-plane not present, so adding it.\n")
+            logger.info("Frozen out-of-plane not present, so adding it.\n")
             oofpAngle.set_range(qmin, qmax)
             o_molsys.fragments[f].intcos.append(oofpAngle)
 
@@ -694,7 +689,6 @@ def ext_force_oofp_from_input(ext_force_oofp_list, o_molsys):
     o_molsys : molsys.Molsys
         optking molecular system
     """
-    logger = logging.getLogger(__name__)
     for T in ext_force_oofp_list:
         if len(T) != 5:
             raise OptError("Num. of entries in ext. force out-of-plane should be 5.")
@@ -718,7 +712,6 @@ def frozen_cart_from_input(frozen_cart_list, o_molsys):
         each entry is list with atom number, then list of 'x','y',or'z'
     o_molsys : molsys.Molsys
     """
-    logger = logging.getLogger(__name__)
     for C in frozen_cart_list:
         if len(C) != 2:
             raise OptError("Num. of entries in frozen cart should be 2.")
@@ -746,7 +739,6 @@ def ranged_cart_from_input(ranged_cart_list, o_molsys):
         enter three separate entries with their ranges
     o_molsys : molsys.Molsys
     """
-    logger = logging.getLogger(__name__)
     for C in ranged_cart_list:
         if len(C) != 4:
             raise OptError("Num. of entries in ranged cart should be 4.")
@@ -776,7 +768,6 @@ def ext_force_cart_from_input(ext_force_cart_list, o_molsys):
         'x','y', or 'z', then formula for external force
     o_molsys : molsys.Molsys
     """
-    logger = logging.getLogger(__name__)
     for C in ext_force_cart_list:
         if len(C) != 3:
             raise OptError("Num. of entries in ext. force Cartesian should be 3.")
@@ -800,7 +791,6 @@ def check_fragment(atom_list, o_molsys):
     Implicitly this function also returns a ValueError for too high atom indices.
     Raise error if different, return fragment if same.
     """
-    logger = logging.getLogger(__name__)
     fragList = o_molsys.atom_list2unique_frag_list(atom_list)
     if len(fragList) != 1:
         logger.error("Coordinate contains atoms in different fragments. Not currently supported.\n")
@@ -865,7 +855,7 @@ def add_dimer_frag_intcos(o_molsys):
     # 3. Auto-generate reference atoms.
     # TODO: move into a molsys class function?
 
-    if op.Params.interfrag_coords != None:
+    if op.Params.interfrag_coords is not None:
         if type(op.Params.interfrag_coords) in [list, tuple]:
             for coord in op.Params.interfrag_coords:
                 c = eval(coord)

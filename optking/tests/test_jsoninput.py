@@ -6,17 +6,18 @@ import optking
 import psi4
 
 from qcelemental.models import OptimizationInput
+from .utils import utils
 
 # Varying number of repulsion energy decimals to check.
 @pytest.mark.parametrize(
-    "inp,expected",
+    "inp,expected,num_steps",
     [
-        ("json_h2o.json", (8.9064890670, -74.965901192, 3)),
-        ("json_betapinene.json", (568.2219045869, -383.38105559, 1)),
-        ("json_hooh_frozen.json", (37.969354880, -150.786372411, 2)),
+        ("json_h2o.json", (8.9064890670, -74.965901192, 3), 6),
+        ("json_betapinene.json", (568.2219045869, -383.38105559, 1), 6),
+        ("json_hooh_frozen.json", (37.969354880, -150.786372411, 2), 8),
     ],
 )
-def test_input_through_json(inp, expected):
+def test_input_through_json(inp, expected, num_steps, check_iter):
     with open(os.path.join(os.path.dirname(__file__), inp)) as input_data:
         input_copy = json.load(input_data)
         opt_schema = OptimizationInput(**input_copy)
@@ -38,6 +39,7 @@ def test_input_through_json(inp, expected):
     assert psi4.compare_values(
         expected[1], json_dict["trajectory"][-1]["properties"]["return_energy"], 6, "Reference energy"
     )
+    utils.compare_iterations(json_dict, num_steps, check_iter)
 
     # with open(os.path.join(os.path.dirname(__file__), inp), 'r+') as input_data:
     #    input_data.seek(0)

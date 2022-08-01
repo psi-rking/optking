@@ -4,6 +4,8 @@ import pytest
 
 import psi4
 import optking
+from . utils import utils
+
 
 OH_frozen_stre_rhf = -150.781130356  # TEST
 OOH_frozen_bend_rhf = -150.786372411  # TEST
@@ -13,18 +15,19 @@ f1 = {"frozen_distance": "1 2 3 4"}
 f2 = {"frozen_bend": "1 2 3 2 3 4"}
 f3 = {"frozen_dihedral": "1 2 3 4"}
 
-optking__frozen_coords = [(f1, OH_frozen_stre_rhf), (f2, OOH_frozen_bend_rhf),
-                          (f3, HOOH_frozen_dihedral_rhf)]
+optking__frozen_coords = [(f1, OH_frozen_stre_rhf, 9), (f2, OOH_frozen_bend_rhf, 7), (f3, HOOH_frozen_dihedral_rhf, 7)]
 
-@pytest.mark.parametrize("option, expected", optking__frozen_coords, ids=["frozen stretch",
- "frozen bend", "frozen dihedral"])
-def test_frozen_coords(option, expected):
+
+@pytest.mark.parametrize(
+    "option, expected, num_steps", optking__frozen_coords, ids=["frozen stretch", "frozen bend", "frozen dihedral"]
+)
+def test_frozen_coords(option, expected, num_steps, check_iter):
     # Constrained minimization with frozen bond, bend, and torsion
     hooh = psi4.geometry(
         """
       H
       O 1 0.90
-      O 2 1.40 1 100.0 
+      O 2 1.40 1 100.0
       H 3 0.90 2 100.0 1 115.0
     """
     )
@@ -39,3 +42,5 @@ def test_frozen_coords(option, expected):
     thisenergy = json_output["energies"][-1]
 
     assert psi4.compare_values(expected, thisenergy, 6)  # TEST
+    utils.compare_iterations(json_output, num_steps, check_iter)
+

@@ -16,13 +16,13 @@ def test_ranged_stretch(option):
       O 1 0.90
       O 2 """
         + option
-        + """ 1 100.0 
+        + """ 1 100.0
       H 3 0.90 2 100.0 1 115.0 """
     )
     hooh = psi4.geometry(geom_input_string)
 
     psi4.core.clean_options()
-    psi4options = {"basis": "cc-PVDZ", "g_convergence": "gau_tight", "geom_maxiter": 20}
+    psi4options = {"basis": "cc-PVDZ", "print": 4, "g_convergence": "gau_tight", "geom_maxiter": 20}
     psi4.set_options(psi4options)
 
     xtra = {"ranged_distance": "2 3 1.30 1.35"}

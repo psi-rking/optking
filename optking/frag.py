@@ -8,7 +8,9 @@ from . import addIntcos, bend, oofp, stre, tors
 from .exceptions import OptError
 from .printTools import print_array_string, print_mat_string
 from .v3d import are_collinear
+from . import log_name
 
+logger = logging.getLogger(f"{log_name}{__name__}")
 
 class Frag:
     def __init__(self, Z, geom, masses, intcos=None, frozen=False):
@@ -38,7 +40,7 @@ class Frag:
 
     def __str__(self):
 
-        np.set_printoptions(suppress=True, floatmode='fixed', sign=' ')
+        np.set_printoptions(suppress=True, floatmode="fixed", sign=" ")
         s = f"\n\t {'Z (Atomic Numbers)':<20} {'Masses':^20} {'Geom':^40}"
 
         strip = lambda x: str(x).replace("[", "").replace("]", "")
@@ -123,15 +125,10 @@ class Frag:
         return np.asarray(self.q_show())
 
     def print_intcos(self):
-        logger = logging.getLogger(__name__)
         intcos_report = "\tInternal Coordinate Values\n"
         intcos_report += "\n\t - Coordinate -           - BOHR/RAD -       - ANG/DEG -\n"
         for coord in self._intcos:
-            intcos_report += "\t%-18s=%17.6f%19.6f\n" % (
-                coord,
-                coord.q(self._geom),
-                coord.q_show(self._geom),
-            )
+            intcos_report += "\t%-18s=%17.6f%19.6f\n" % (coord, coord.q(self._geom), coord.q_show(self._geom),)
         intcos_report += "\n"
         logger.info(intcos_report)
 

@@ -7,7 +7,9 @@ from . import optparams as op
 from .exceptions import AlgError, OptError
 from .linearAlgebra import abs_max, rms, symm_mat_inv
 from .printTools import print_mat_string
+from . import log_name
 
+logger = logging.getLogger(f"{log_name}{__name__}")
 # Functions in this file displace.py
 #
 #  displace_molsys: Displace each fragment.  Displace dimer coordinates.
@@ -21,7 +23,7 @@ from .printTools import print_mat_string
 
 
 # Displace molecular system
-def displace_molsys(oMolsys, dq_in, fq=None, ensure_convergence=False):
+def displace_molsys(oMolsys, dq_in, fq=None, ensure_convergence=False, return_str=False):
     """Manage internal coordinate step for a molecular system
     Parameters
     ----------
@@ -36,7 +38,6 @@ def displace_molsys(oMolsys, dq_in, fq=None, ensure_convergence=False):
     -------
     np.ndarray
     """
-    logger = logging.getLogger(__name__)
     # Modify dq_in to account for frozen coordinates and ranged coordinates
     # These do not represent desired Delta(q)
     q_in = oMolsys.q_array()
@@ -109,8 +110,12 @@ def displace_molsys(oMolsys, dq_in, fq=None, ensure_convergence=False):
             )
     else:
         fq_aJ = oMolsys.q_show_forces(fq)  # print forces for step
-        coordinate_change_report += "\t           Coordinate      Previous         Force          Change          New \n"
-        coordinate_change_report += "\t           ----------      --------        ------          ------        ------\n"
+        coordinate_change_report += (
+            "\t           Coordinate      Previous         Force          Change          New \n"
+        )
+        coordinate_change_report += (
+            "\t           ----------      --------        ------          ------        ------\n"
+        )
         for i in range(len(dq_in)):
             coordinate_change_report += "\t%21s%14.5f%15.5f%15.5f%14.5f\n" % (
                 intco_lbls[i],
@@ -124,7 +129,10 @@ def displace_molsys(oMolsys, dq_in, fq=None, ensure_convergence=False):
 
     # Return final, total displacement ACHIEVED
     dq = q_final - q_orig
-    return dq
+    if return_str:
+        return dq, coordinate_change_report
+    else:
+        return dq
 
 
 def displace_frag(F, dq_in, ensure_convergence=False):
@@ -142,7 +150,6 @@ def displace_frag(F, dq_in, ensure_convergence=False):
     -------
     tuple(np.ndarray, bool) : dq achieved, conv and frozen_conv
     """
-    logger = logging.getLogger(__name__)
     geom = F.geom
     dq = dq_in.copy()
     if not F.num_intcos or not len(geom) or not len(dq_in):
@@ -182,7 +189,7 @@ def displace_frag(F, dq_in, ensure_convergence=False):
             logger.info("\tAble to take a small step; trying another partial back-transformations.\n")
 
             for j in range(1, 2 * cnt):
-                logger.info("\tMini-step %d of %d.\n", (j + 1, 2 * cnt))
+                logger.info("\tMini-step %d of %d.\n", j + 1, 2 * cnt)
                 dq[:] = dq_in / (2 * cnt)
 
                 best_geom[:] = geom
@@ -255,12 +262,7 @@ def displace_frag(F, dq_in, ensure_convergence=False):
         frag_report += "\t---------------------------------------------------\n"
         q_target = q_orig + dq_in
         for i in range(F.num_intcos):
-            frag_report += "\t%5d%15.10lf%15.10f%15.10lf\n" % (
-                i + 1,
-                q_final[i],
-                q_target[i],
-                (q_final - q_target)[i],
-            )
+            frag_report += "\t%5d%15.10lf%15.10f%15.10lf\n" % (i + 1, q_final[i], q_target[i], (q_final - q_target)[i],)
         frag_report += "\t--------------------------------------------------\n"
         logger.debug(frag_report)
 
@@ -268,16 +270,9 @@ def displace_frag(F, dq_in, ensure_convergence=False):
 
 
 def back_transformation(
-    intcos,
-    geom,
-    dq,
-    print_lvl,
-    bt_dx_conv=None,
-    bt_dx_rms_change_conv=None,
-    bt_max_iter=None,
+    intcos, geom, dq, print_lvl, bt_dx_conv=None, bt_dx_rms_change_conv=None, bt_max_iter=None,
 ):
 
-    logger = logging.getLogger(__name__)
     dx_rms_last = -1
     if bt_dx_conv is None:
         bt_dx_conv = op.Params.bt_dx_conv
@@ -293,11 +288,7 @@ def back_transformation(
         target_step_str = "Back-transformation in back_transformation():\n"
         target_step_str += "          Original         Target           Dq\n"
         for i in range(len(dq)):
-            target_step_str += "%15.10f%15.10f%15.10f\n" % (
-                q_orig[i],
-                q_target[i],
-                dq[i],
-            )
+            target_step_str += "%15.10f%15.10f%15.10f\n" % (q_orig[i], q_target[i], dq[i],)
         logger.debug(target_step_str)
 
     if print_lvl > 0:
@@ -339,12 +330,7 @@ def back_transformation(
             best_dq_rms = dq_rms
 
         if print_lvl > 0:
-            step_iter_str += "\t%5d %14.1e %14.1e %14.1e\n" % (
-                bt_iter_cnt + 1,
-                dx_rms,
-                dx_max,
-                dq_rms,
-            )
+            step_iter_str += "\t%5d %14.1e %14.1e %14.1e\n" % (bt_iter_cnt + 1, dx_rms, dx_max, dq_rms,)
         bt_iter_cnt += 1
 
     if print_lvl > 0:
@@ -390,7 +376,6 @@ def dq_to_dx(intcos, geom, dq, printDetails=False):
     float :
         absolute maximum of cartesian displacement
     """
-    logger = logging.getLogger(__name__)
     B = intcosMisc.Bmat(intcos, geom)
     G = np.dot(B, B.T)
     Ginv = symm_mat_inv(G, redundant=True)  # redundant_eval_tol = 1.0e-7)
@@ -407,11 +392,7 @@ def dq_to_dx(intcos, geom, dq, printDetails=False):
         displacement_str = "\t      Report of Single-step\n"
         displacement_str += "\t  int       dq_achieved     deviation from target\n"
         for i in range(len(intcos)):
-            displacement_str += "\t%5d%15.10f%15.10f\n" % (
-                i + 1,
-                dq_achieved[i],
-                dq_achieved[i] - dq[i],
-            )
+            displacement_str += "\t%5d%15.10f%15.10f\n" % (i + 1, dq_achieved[i], dq_achieved[i] - dq[i],)
         logger.debug(displacement_str)
 
     dx_rms = rms(dx)

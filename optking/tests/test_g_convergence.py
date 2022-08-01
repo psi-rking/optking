@@ -476,20 +476,25 @@ options = [
     "rms_disp_g_convergence",
 ]
 
-conv_mapping = {'max_energy_g_convergence': 'max_DE',
-                'max_force_g_convergence': 'max_force',
-                'rms_force_g_convergence': 'rms_force',
-                'max_disp_g_convergence': 'max_disp',
-                'rms_disp_g_convergence': 'rms_disp'}
+conv_mapping = {
+    "max_energy_g_convergence": "max_DE",
+    "max_force_g_convergence": "max_force",
+    "rms_force_g_convergence": "rms_force",
+    "max_disp_g_convergence": "max_disp",
+    "rms_disp_g_convergence": "rms_disp",
+}
 
 preset_subset = ["qchem", "gau_tight", "nwchem_loose"]
 
 # only testing up combinations of user settings up to 2
-combos = [val for i in range(1, len(options)) for index, val in enumerate(itertools.combinations(options, i)) if index < 1]
+combos = [
+    val for i in range(1, len(options)) for index, val in enumerate(itertools.combinations(options, i)) if index < 1
+]
 # remove even tests for brevity
 
 for i in range(1, len(tests), 2):
     tests.pop(i)
+
 
 @pytest.mark.parametrize("conv_options", combos)
 @pytest.mark.parametrize("test_name", tests)
@@ -519,7 +524,7 @@ def test_user_tampering(conv_options, test_name, preset, flexible_on):
         state = optking.convcheck._test_for_convergence(conv_met, conv_active)
 
         extra_requirements = [conv_mapping.get(val) for val in conv_options]
-        # all keys that should be met based on changes 
+        # all keys that should be met based on changes
         chosen = [keys[index] for index, val in enumerate(changes) if val <= 0]
 
         extra_flag = True

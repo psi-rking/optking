@@ -1,8 +1,9 @@
 import psi4
 import optking
 
+from .utils import utils
 
-def test_charged_anion():
+def test_charged_anion(check_iter):
     no2 = psi4.geometry(
         """
       -1 1
@@ -23,9 +24,9 @@ def test_charged_anion():
     E = json_output["energies"][-1]
     refenergy = -203.894394347422
     assert psi4.compare_values(refenergy, E, 6, "RHF singlet NO2- energy")
+    utils.compare_iterations(json_output, 4, check_iter)
 
-
-def test_neutral_triplet():
+def test_neutral_triplet(check_iter):
     o2 = psi4.geometry(
         """
       0 3
@@ -46,3 +47,4 @@ def test_neutral_triplet():
     E = result["energies"][-1]
     REF_uhf = -149.6318688
     assert psi4.compare_values(REF_uhf, E, 6, "UHF triplet O2 Energy")  # TEST
+    utils.compare_iterations(result, 3, check_iter)

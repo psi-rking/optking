@@ -2,7 +2,7 @@ import psi4
 import optking
 import numpy as np
 import pytest
-
+from .utils import utils
 
 # Demonstrate and test positioning two water molecules by specifying
 # their interfragment reference points and coordinates.
@@ -69,7 +69,7 @@ MP2minEnergy = -152.5352095
 
 
 @pytest.mark.dimers
-def test_dimers_h2o_auto():  # auto reference pt. creation
+def test_dimers_h2o_auto(check_iter):  # auto reference pt. creation
     h2oD = psi4.geometry(
         """
       0 1
@@ -100,3 +100,6 @@ def test_dimers_h2o_auto():  # auto reference pt. creation
 
     E = json_output["energies"][-1]
     assert psi4.compare_values(MP2minEnergy, E, 6, "MP2 Energy opt from afar, auto")
+
+    utils.compare_iterations(json_output, 19, check_iter)
+

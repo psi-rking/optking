@@ -1,12 +1,15 @@
-### Class to store points on the IRC
+""" Class to store points on the IRC """
 import logging
 import os
 
 import numpy as np
 
 from .exceptions import OptError
-from .printTools import print_geom_string, print_mat_string, print_array_string
+from .printTools import print_geom_string, print_array_string
 from .linearAlgebra import symm_mat_inv
+from . import log_name
+
+logger = logging.getLogger(f"{log_name}{__name__}")
 
 
 class IRCpoint(object):
@@ -35,18 +38,7 @@ class IRCpoint(object):
     """
 
     def __init__(
-        self,
-        step_number,
-        q,
-        x,
-        f_q,
-        f_x,
-        energy,
-        q_pivot,
-        x_pivot,
-        step_dist,
-        arc_dist,
-        line_dist,
+        self, step_number, q, x, f_q, f_x, energy, q_pivot, x_pivot, step_dist, arc_dist, line_dist,
     ):
         self.step_number = step_number
         self.q = q
@@ -67,13 +59,13 @@ class IRCpoint(object):
     def dict_output(self):
         s = {
             "Step Number": self.step_number,
-            "Intco Values": self.q,
-            "Geometry": self.x,
-            "Internal Forces": self.f_q,
-            "Cartesian Forces": self.f_x,
+            "Intco Values": self.q.tolist(),
+            "Geometry": self.x.tolist(),
+            "Internal Forces": self.f_q.tolist(),
+            "Cartesian Forces": self.f_x.tolist(),
             "Energy": self.energy,
-            "Pivot Intco Values": self.q_pivot,
-            "Pivot Geometry": self.x_pivot,
+            "Pivot Intco Values": self.q_pivot.tolist(),
+            "Pivot Geometry": self.x_pivot.tolist(),
             "Step Distance": self.step_dist,
             "Arc Distance": self.arc_dist,
             "Line Distance": self.line_dist,
@@ -81,7 +73,7 @@ class IRCpoint(object):
         return s
 
 
-class IRCdata(object):
+class IRCHistory(object):
     """Stores obtained points along the IRC as well as information about
     the status of the IRC computation"""
 
@@ -136,15 +128,13 @@ class IRCdata(object):
         )
         self.irc_points.append(onepoint)
 
-        logger = logging.getLogger(__name__)
         pindex = len(self.irc_points) - 1
-        outstr = "\nAdding IRC point %d\n" % pindex
+        outstr = "\tAdding IRC point %d\n" % pindex
         outstr += print_geom_string(self.atom_symbols, x_in, "Angstroms")
         logger.info(outstr)
 
     def add_pivot_point(self, q_p, x_p, step=None):
         index = -1 if step is None else step
-        logger = logging.getLogger(__name__)
         pindex = (len(self.irc_points) - 1) if step is None else step
         logger.debug("Adding pivot point (index %d) for finding rxnpath point %d" % (pindex, pindex + 1))
         self.irc_points[index].add_pivot(q_p, x_p)
@@ -211,7 +201,6 @@ class IRCdata(object):
         unit_f_rxn = f_rxn / np.linalg.norm(f_rxn)
         overlap = np.dot(unit_f, unit_f_rxn)
 
-        logger = logging.getLogger(__name__)
         logger.info("Overlap of forces with previous rxnpath point %8.4f" % overlap)
 
         if overlap < -0.7:
@@ -224,18 +213,16 @@ class IRCdata(object):
 
         return False
 
-    def progress_report(self):
+    def progress_report(self, return_str=False):
         blocks = 4  # TODO: make dynamic
         sign = 1
         Ncoord = len(self.q())
 
-        # logging.basicConfig(filename='ircprogress.log',level=logging.DEBUG)
-
         irc_report = os.path.join(os.getcwd(), "ircprogress.log")  # prepare progress report
-        with open(irc_report, "w") as irc_prog:
+        with open(irc_report, "w+") as irc_prog:
             irc_prog.truncate(0)
 
-        irc_log = logging.getLogger("ircprogress")
+        irc_log = logger.getChild("ircprogress")
         irc_handle = logging.FileHandler(os.path.join(os.getcwd(), "ircprogress.log"), "w")
         irc_handle.setLevel(logging.DEBUG)
         irc_log.addHandler(irc_handle)
@@ -313,8 +300,10 @@ class IRCdata(object):
 
         out += "\n"
         out += "\n"
+        if return_str:
+            return out
         irc_log.info(out)
-
+        irc_handle.close()
         # out += mol.print_coords(psi_outfile, qc_outfile)
         # out += mol.print_simples(psi_outfile, qc_outfile)
 
@@ -334,20 +323,19 @@ class IRCdata(object):
 
         """
 
-        logger = logging.getLogger(__name__)
         logger.debug("Projecting out forces parallel to reaction path.")
 
         G_m = o_molsys.Gmat(massWeight=True)
         G_m_inv = symm_mat_inv(G_m, redundant=True)
 
         q_vec = o_molsys.q_array()
-        p_vec = q_vec - history.q_pivot()
-        logger.info("\ncurrent step from IRC pivot point (not previous point on rxnpath):\n %s", print_array_string(p_vec))
+        p_vec = q_vec - self.q_pivot()
+        logger.info(
+            "\ncurrent step from IRC pivot point (not previous point on rxnpath):\n %s", print_array_string(p_vec)
+        )
         logger.info("\nForces at current point on hypersphere\n %s", print_array_string(f_q))
 
         G_m_inv_p = G_m_inv @ p_vec
         orthog_f = f_q - (f_q @ p_vec) / (p_vec @ G_m_inv_p) * G_m_inv_p
         logger.debug("\nForces perpendicular to hypersphere.\n %s", print_array_string(orthog_f))
         return orthog_f
-
-history = 0

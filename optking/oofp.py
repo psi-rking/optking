@@ -5,9 +5,12 @@ import qcelemental as qcel
 
 from . import optparams as op
 from . import v3d
+from . import log_name
 from .exceptions import AlgError
 from .misc import string_math_fx
 from .simple import Simple
+
+logger = logging.getLogger(f"{log_name}{__name__}")
 
 
 class Oofp(Simple):
@@ -37,16 +40,7 @@ class Oofp(Simple):
     """
 
     def __init__(
-        self,
-        a,
-        b,
-        c,
-        d,
-        constraint="free",
-        near180=0,
-        range_min=None,
-        range_max=None,
-        ext_force=None,
+        self, a, b, c, d, constraint="free", near180=0, range_min=None, range_max=None, ext_force=None,
     ):
 
         atoms = (a, b, c, d)
@@ -232,7 +226,6 @@ class Oofp(Simple):
         Schlegel, Theor. Chim. Acta, 66, 333 (1984) and
         Fischer and Almlof, J. Phys. Chem., 96, 9770 (1992).
         """
-        logger = logging.getLogger(__name__)
         if guess_type == "SIMPLE":
             return 0.1
 

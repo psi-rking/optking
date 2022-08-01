@@ -4,7 +4,19 @@ import math
 import numpy as np
 import qcelemental as qcel
 
-from .exceptions import AlgError, OptError
+from .exceptions import OptError
+from . import log_name
+
+logger = logging.getLogger(f"{log_name}{__name__}")
+
+
+def import_psi4(mesg=""):
+    """Attempt psi4 import. Print mesg as indicator for why psi4 is required to user """
+    try:
+        import psi4
+    except ImportError as error:
+        mesg = "Cannot import psi4" + mesg
+        raise OptError(mesg + "conda install psi4 psi4-rt -c psi4") from error
 
 
 def delta(i, j):
@@ -15,14 +27,12 @@ def delta(i, j):
 
 
 def is_dq_symmetric(oMolsys, Dq):
-    logger = logging.getLogger(__name__)
     # TODO add symmetry check
     logger.debug("\tTODO add is_dq_symmetric\n")
     return True
 
 
 def symmetrize_xyz(XYZ):
-    logger = logging.getLogger(__name__)
     # TODO add symmetrize function
     logger.debug("\tTODO add symmetrize XYZ\n")
     return XYZ
@@ -186,7 +196,6 @@ class string_math_fx(object):
         return
 
     def make_fx(self, s):
-        logger = logging.getLogger(__name__)
         for key, val in self.allowed_ops.items():
             s = s.replace(key, val)
 
@@ -202,7 +211,6 @@ class string_math_fx(object):
 def int_fx_string(inString, Nint=1):
     if len(inString) == 0:
         return []
-    logger = logging.getLogger(__name__)
     logger.debug(inString)
 
     # split out the formulae string
@@ -241,7 +249,6 @@ def int_fx_string(inString, Nint=1):
 def int_xyz_fx_string(inString, Nint=1):
     if len(inString) == 0:
         return []
-    logger = logging.getLogger(__name__)
     logger.debug(inString)
 
     # split out the formulae string

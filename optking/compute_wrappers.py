@@ -1,15 +1,15 @@
 import json
 import logging
-import math
 from copy import deepcopy
 
 import numpy as np
 from qcelemental.models import AtomicInput, AtomicResult, Molecule
 from qcelemental.util.serialization import json_dumps
 
-from . import history
 from .exceptions import OptError
+from . import log_name
 
+logger = logging.getLogger(f"{log_name}{__name__}")
 
 class ComputeWrapper:
     """An implementation of MolSSI's qc schema
@@ -78,7 +78,6 @@ class ComputeWrapper:
         dict
         """
 
-        logger = logging.getLogger(__name__)
 
         self.update_geometry(geom)
         ret = self._compute(driver)
@@ -93,8 +92,7 @@ class ComputeWrapper:
             self.energies.append(ret["properties"]["return_energy"])
         else:
             raise OptError(
-                f"Error encountered for {driver} calc. {ret['error']['error_message']}",
-                ret["error"]["error_type"],
+                f"Error encountered for {driver} calc. {ret['error']['error_message']}", ret["error"]["error_type"],
             )
 
         if return_full:
@@ -186,8 +184,6 @@ class UserComputer(ComputeWrapper):
     }
 
     def _compute(self, driver):
-        logger = logging.getLogger(__name__)
-        logger.info("UserComputer only returning provided values")
         E = self.external_energy
         gX = self.external_gradient
         HX = self.external_hessian

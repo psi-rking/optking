@@ -1,9 +1,10 @@
 import psi4
 import optking
+from .utils import utils
 
 #! B3LYP cc-pVDZ geometry optimzation of phenylacetylene, starting from
 #! not quite linear structure
-def test_b3lyp_phenylacetylene():
+def test_b3lyp_phenylacetylene(check_iter):
 
     phenylacetylene = psi4.geometry(
         """
@@ -37,3 +38,4 @@ def test_b3lyp_phenylacetylene():
     REF_b3lyp_E = -308.413691796  # TEST
     E = result["energies"][-1]  # TEST
     assert psi4.compare_values(REF_b3lyp_E, E, 5, "B3LYP energy")  # TEST
+    utils.compare_iterations(result, 5, check_iter)
