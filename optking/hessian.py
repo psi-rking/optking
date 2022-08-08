@@ -66,10 +66,12 @@ def guess(oMolsys, connectivity=None, guessType="SIMPLE"):
     # Since the reference points might not even be at atomic positions, let's not worry
     # about implementing various options for the diagonal Hessian guess.
     for DI in oMolsys._dimer_intcos:
-        for intco in DI._pseudo_frag._intcos:
+        vals = DI.q()
+        for i, intco in enumerate(DI._pseudo_frag._intcos):
             if type(intco) == Stre:
                 h = 0.007
-                # if (Opt_params.interfragment_distance_inverse) H[cnt][cnt] *= pow(rAB,4);
+                if intco.inverse:
+                    h *= pow(vals[i],4); # i should be 0=stretch
             elif type(intco) == Bend:
                 h = 0.003
             elif type(intco) == Tors:

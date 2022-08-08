@@ -83,18 +83,21 @@ class Stre(Simple):
         self._inverse = bool(setval)
 
     def q(self, geom):
-        return v3d.dist(geom[self.A], geom[self.B])
+        R = v3d.dist(geom[self.A], geom[self.B])
+        return 1.0/R if self.inverse else R
 
     def q_show(self, geom):
         return self.q_show_factor * self.q(geom)
 
     @property
     def q_show_factor(self):
-        return qcel.constants.bohr2angstroms
+        b2a = qcel.constants.bohr2angstroms
+        return 1.0/b2a if self.inverse else b2a
 
     @property
     def f_show_factor(self):
-        return qcel.constants.hartree2aJ / qcel.constants.bohr2angstroms
+        v = qcel.constants.hartree2aJ / qcel.constants.bohr2angstroms
+        return 1.0/v if self.inverse else v
 
     def to_dict(self):
         d = {}
@@ -199,9 +202,9 @@ class Stre(Simple):
         """
         logger = logging.getLogger(__name__)
         if guess_type == "SIMPLE":
-            return 0.5
+            rval = 0.5
 
-        if guess_type == "SCHLEGEL":
+        elif guess_type == "SCHLEGEL":
             R = v3d.dist(geom[self.A], geom[self.B])
             PerA = qcel.periodictable.to_period(Z[self.A])
             PerB = qcel.periodictable.to_period(Z[self.B])
@@ -229,24 +232,29 @@ class Stre(Simple):
                 else:
                     BB = 2.068
 
-            F = AA / ((R - BB) * (R - BB) * (R - BB))
-            return F
+            rval = AA / ((R - BB) * (R - BB) * (R - BB))
 
         elif guess_type == "FISCHER":
             Rcov = qcel.covalentradii.get(Z[self.A], missing=4.0) + qcel.covalentradii.get(Z[self.B], missing=4.0)
             R = v3d.dist(geom[self.A], geom[self.B])
             AA = 0.3601
             BB = 1.944
-            return AA * (np.exp(-BB * (R - Rcov)))
+            rval = AA * (np.exp(-BB * (R - Rcov)))
 
         elif guess_type == "LINDH_SIMPLE":
             R = v3d.dist(geom[self.A], geom[self.B])
             k_r = 0.45
-            return k_r * hguess_lindh_rho(Z[self.A], Z[self.B], R)
+            rval = k_r * hguess_lindh_rho(Z[self.A], Z[self.B], R)
 
         else:
             logger.warning("Hessian guess encountered unknown coordinate type.\n")
-            return 1.0
+            rval = 1.0
+
+        if self.inverse and geom is not None:
+            R = v3d.dist(geom[self.A], geom[self.B])
+            rval *= R**4
+ 
+        return rval
 
 
 class HBond(Stre):
@@ -282,14 +290,20 @@ class HBond(Stre):
         """
         logger = logging.getLogger(__name__)
         if guess_type == "SIMPLE":
-            return 0.5
+            rval = 0.5
         elif guess_type in ["SCHLEGEL", "FISCHER"]:
-            return 0.03
+            rval = 0.03
         elif guess_type == "LINDH_SIMPLE":
             # Same as standard stretch
             R = v3d.dist(geom[self.A], geom[self.B])
             k_r = 0.45
-            return k_r * hguess_lindh_rho(Z[self.A], Z[self.B], R)
+            rval = k_r * hguess_lindh_rho(Z[self.A], Z[self.B], R)
         else:
             logger.warning("Hessian guess encountered unknown coordinate type.\n")
-            return 1.0
+            rval = 1.0
+
+        if self.inverse and geom is not None:
+            R = v3d.dist(geom[self.A], geom[self.B])
+            rval *= R**4
+
+        return rval

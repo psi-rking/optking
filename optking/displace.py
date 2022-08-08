@@ -6,7 +6,7 @@ from . import intcosMisc
 from . import optparams as op
 from .exceptions import AlgError, OptError
 from .linearAlgebra import abs_max, rms, symm_mat_inv
-from .printTools import print_mat_string
+from .printTools import print_mat_string, print_array_string
 from . import log_name
 
 logger = logging.getLogger(f"{log_name}{__name__}")
@@ -73,10 +73,18 @@ def displace_molsys(oMolsys, dq_in, fq=None, ensure_convergence=False, return_st
         dq_frag, conv = displace_frag(F, dq_in[oMolsys.frag_intco_slice(iF)], ensure_convergence)
 
     for i, DI in enumerate(oMolsys.dimer_intcos):
-        logger.info("\tTaking step for dimer coordinates of fragments %d and %d." % (DI.A_idx + 1, DI.B_idx + 1))
+        logger.info("\tTaking step for dimer coordinates of fragments %d and %d."
+                    % (DI.A_idx + 1, DI.B_idx + 1))
+
         Axyz = oMolsys.frag_geom(DI.A_idx)
         Bxyz = oMolsys.frag_geom(DI.B_idx)
         Bxyz[:] = DI.orient_fragment(Axyz, Bxyz, q_target[oMolsys.dimerfrag_intco_slice(i)])
+        #logger.debug('print out A geom')
+        #logger.debug(print_mat_string(Axyz))
+        #logger.debug('print out B geom')
+        #logger.debug(print_mat_string(Bxyz))
+        #logger.debug('Error from target 1')
+        #logger.debug(print_array_string((oMolsys.q_array() - q_target)[9:15]))
 
     geom_final = oMolsys.geom
     # Analyze relative to original input geometry
@@ -89,6 +97,8 @@ def displace_molsys(oMolsys, dq_in, fq=None, ensure_convergence=False, return_st
     oMolsys.geom = geom_final
     q_final = oMolsys.q_array()
     qShow_final = oMolsys.q_show_array()
+
+    dx = geom_final - geom_in
 
     dqShow = qShow_final - qShow_orig
     oMolsys.unfix_bend_axes()
@@ -129,10 +139,11 @@ def displace_molsys(oMolsys, dq_in, fq=None, ensure_convergence=False, return_st
 
     # Return final, total displacement ACHIEVED
     dq = q_final - q_orig
+    # RAK TODO : remember why I want to return dx and what to do with it.
     if return_str:
-        return dq, coordinate_change_report
+        return dq, dx, coordinate_change_report
     else:
-        return dq
+        return dq, dx
 
 
 def displace_frag(F, dq_in, ensure_convergence=False):

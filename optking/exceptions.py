@@ -16,8 +16,7 @@ class OptError(Exception):
 class AlgError(Exception):
     # maybe generalize later def __init__(self, *args, **kwargs):
     def __init__(self, mesg="None given", newLinearBends=None):
-        optimize_log.error("AlgError: Exception created.\n")
-        optimize_log.error("Error message: %s", mesg)
+        optimize_log.error(f"AlgError: Exception created. Mesg: {mesg}")
         if newLinearBends:
             optimize_log.error("AlgError: New bends detected.\n")
         self.linearBends = newLinearBends

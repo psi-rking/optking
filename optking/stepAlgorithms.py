@@ -162,8 +162,21 @@ class OptimizationAlgorithm(OptimizationInterface):
         if self.trust_radius_on:
             self.apply_intrafrag_step_scaling(dq)
 
+        # Somewhere we need to check the size of the interfragment modes.  They
+        # can inadvertently represent very large motions.
+        for iDI, DI in enumerate(self.molsys.dimer_intcos): # loop over dimers with interfrag intcos
+            start = self.molsys.dimerfrag_1st_intco(iDI)
+            for i, I in enumerate(DI.pseudo_frag.intcos):  # loop over individual intcos
+                val = dq[start+i]
+                if abs(val) > self.params.interfrag_trust:
+                    logger.info(f"Reducing step for Dimer({DI.A_idx+1},{DI.B_idx+1}), {I}, {start+i}")
+                    if val > 0:
+                        dq[start+i] = self.params.interfrag_trust
+                    else:
+                        dq[start+i] = -1.0*self.params.interfrag_trust
+
         self.molsys.interfrag_dq_discontinuity_correction(dq)
-        achieved_dq, return_str = displace_molsys(self.molsys,
+        achieved_dq, achieved_dx, return_str = displace_molsys(self.molsys,
                                                   dq,
                                                   fq,
                                                   ensure_convergence=self.params.ensure_bt_convergence,
@@ -175,6 +188,8 @@ class OptimizationAlgorithm(OptimizationInterface):
 
         dq_norm = np.linalg.norm(achieved_dq)
         logger.info("\tNorm of achieved step-size %15.10f" % dq_norm)
+        dx_norm = np.linalg.norm(achieved_dx)
+        logger.info("\tNorm of achieved step-size (cart): %15.10f" % dx_norm)
 
         # Before quitting, make sure step is reasonable.  It should only be
         # screwball if we are using the "First Guess" after the back-transformation failed.

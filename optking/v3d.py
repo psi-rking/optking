@@ -311,7 +311,7 @@ def are_collinear(A, B, C, threshold=1.0e-4):
 
     cr = cross(eab, eac)
     N = sqrt(dot(cr, cr))
-    print("N {}".format(N))
+    #print("N {}".format(N))
     if N < threshold:
         return True
     else:

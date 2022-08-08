@@ -106,7 +106,7 @@ class DimerFrag(object):
     A_weights (optional): list of (up to 3) lists of floats
         weights of atoms used to define each reference point of A
     B_weights (optional): list of (up to 3) lists of floats
-        weights of atoms used to define each reference point of A
+        weights of atoms used to define each reference point of B
     A_lbl : string
         name for fragment A
     B_lbl : string
@@ -382,10 +382,18 @@ class DimerFrag(object):
 
     def __str__(self):
 
+        # Note that the "Dimer point" value universally defines the role of the
+        # reference point, while the reference points simply counts the existing
+        # refernece points on each fragment. So, for example, the interfragment 
+        # stretching motion is ALWAYS between dimer points "3" and "4" and the
+        # reference points 1 on A and B.  (Counting from 0 internally; from 1 in
+        # output.)  This is potentially confusing but helps to support the
+        # variety of coordinate sets between diverse fragments that do not
+        # require all 6 interfragment coordinates.
         title = [f"\tFragment {self._A_lbl}", f"{' ':40}\tFragment {self._B_lbl}\n"]
-        labels_a = [f"\t\tDimer point {i + 1} (Ref. pt. {self.n_arefs - i}):" for i in range(self.n_arefs)]
+        labels_a = [f"\t\tDimer point {3 - i} (Ref. pt. {self.n_arefs - i}):" for i in range(self.n_arefs)]
         labels_b = [
-            f"{' ':20}\t\tDimer point {self.n_arefs + i + 1} (Ref. pt. {i + 1}):\n" for i in range(self.n_brefs)
+            f"{' ':20}\t\tDimer point {4 + i} (Ref. pt. {i + 1}):\n" for i in range(self.n_brefs)
         ]
 
         ref_labels_a, ref_vals_a = DimerFrag._split_ref_point_string(self._Arefs)
@@ -393,8 +401,8 @@ class DimerFrag(object):
 
         line_by_line = itertools.chain(*zip(labels_a, labels_b, ref_labels_a, ref_labels_b, ref_vals_a, ref_vals_b))
         full_list = title + list(line_by_line)
-        add_on = f"{'(dimer *connectivity* is ':>50}"
-        connectivity = add_on + "-".join([f"{i + 1}" for i in range(self.n_arefs + self.n_brefs)]) + ")"
+        add_on = f"{'(dimer pt. *connectivity* is ':>50}"
+        connectivity = add_on + "-".join([f"{i + 1}" for i in range(3-self.n_arefs,3+self.n_brefs)]) + ")"
 
         dimer_frag_coords = str(self._pseudo_frag).replace("    Geom", "Ref Pts. Coords")
         return connectivity + "\n\n" + "".join(full_list) + dimer_frag_coords
@@ -471,11 +479,14 @@ class DimerFrag(object):
 
     def active_labels(self):
         lbls = []
-        # to add later
-        #  if (inter_frag->coords.simples[0]->is_inverse_stre()): #    lbl[0] += "1/R"
+        # TODO indicate frozen interfrag coords if not already done.
+        # May be accomplished by also printing base coordinate class __str__.
         #  if (inter_frag->coords.simples[i]->is_frozen()) lbl[i] = "*";
         if self.d_on(0):
-            lbls.append("R")
+            if self.pseudo_frag.intcos[0].inverse:
+                lbls.append("1/R")
+            else:
+                lbls.append("R")
         if self.d_on(1):
             lbls.append("theta_A")
         if self.d_on(2):
@@ -562,7 +573,7 @@ class DimerFrag(object):
         return ref_labels, ref_vals
 
     def orient_fragment(
-        self, Ageom_in, Bgeom_in, q_target, printCoords=False, unit_length="bohr", unit_angle="rad",
+        self, Ageom_in, Bgeom_in, q_target_in, printCoords=False, unit_length="bohr", unit_angle="rad",
     ):
         """orient_fragment() moves the geometry of fragment B so that the
             interfragment coordinates have the given values
@@ -587,13 +598,18 @@ class DimerFrag(object):
         array
             new Cartesian geometry for B
         """
-        if unit_length in ["bohr", "au"]:
-            pass
-        elif unit_length in ["Angstrom", "Ang", "A"]:
-            if self._D_on[0]:
-                q_target[0] /= qcel.constants.bohr2angstroms
-        else:
-            raise RuntimeError("unit_length value {} is unknown".format(unit_length))
+        q_target = q_target_in.copy()
+        if self._D_on[0]:
+            if unit_length in ["bohr", "au"]:
+                pass
+            elif unit_length in ["Angstrom", "Ang", "A"]:
+                b2a = qcel.constants.bohr2angstroms
+                if self.pseudo_frag.intcos[0].inverse:
+                    q_target[0] *= qcel.constants.bohr2angstroms
+                else:
+                    q_target[0] /= qcel.constants.bohr2angstroms
+            else:
+                raise RuntimeError("unit_length value {} is unknown".format(unit_length))
 
         if unit_angle in ["rad"]:
             pass
@@ -636,6 +652,9 @@ class DimerFrag(object):
         if self._D_on[5]:
             phi_B = q_target[cnt]
             cnt += 1
+
+        if self.pseudo_frag.intcos[0].inverse:
+            R_AB = 1.0 / R_AB # Note - makes R_AB (not reciprocal) for displacing
 
         # print this to DEBUG log always; to INFO upon request
         s = "\t---DimerFrag coordinates between fragments %s and %s\n" % (self._A_lbl, self._B_lbl,)
@@ -792,7 +811,6 @@ class DimerFrag(object):
             Column of B matrix at which the cartesian coordinates of atoms in fragment B begin.
         If A_off and B_off are not given, then the minimal (dimer-only) B-matrix is returned.
         """
-        logger.debug("dimerfrag.Bmat...")
 
         NatomA = len(A_geom)
         NatomB = len(B_geom)

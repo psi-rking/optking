@@ -98,11 +98,15 @@ def test_dimers_mt_tyr_frozen_orientation():
     # For the moment, 'interfrag_coords' is a non-standard keyword and so
     # must be passed like this.
     # Optimize fragments and R but not interfragment angular coordinates.
-    psi4.set_options({"d_convergence": 9, "basis": "6-31G(d)", "interfrag_coords": str(MTdimer)})
-    result = optking.optimize_psi4("b3lyp-d3mbj")
+    #psi4.set_options({"d_convergence": 9, "basis": "6-31G(d)", "interfrag_coords": str(MTdimer)})
+    #result = optking.optimize_psi4("b3lyp-d3mbj")
+    psi4.set_options({"d_convergence": 9, "basis": "6-31G(d)"})
+    result = optking.optimize_psi4("b3lyp-d3mbj", **{"interfrag_coords": str(MTdimer)})
 
     E = result["energies"][-1]
 
     REF_631Gd_Energy = -939.169521
     # REF_321G_Energy = -934.237170
     assert psi4.compare_values(REF_631Gd_Energy, E, 4, "B3LYP-D3MBJ energy")  # TEST
+
+

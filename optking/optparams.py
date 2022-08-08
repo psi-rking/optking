@@ -119,7 +119,7 @@ class OptParams(object):
         if self.dynamic_level == 0:  # don't change parameters
             self.dynamic_level_max = 0
         else:
-            self.dynamic_level_max = uod.get("DYNAMIC_LEVEL_MAX", 7)  # 7 level currently defined
+            self.dynamic_level_max = uod.get("DYNAMIC_LEVEL_MAX", 6)  # 6 currently defined
         # IRC step size in bohr(amu)\ $^{1/2}$.
         self.irc_step_size = uod.get("IRC_STEP_SIZE", 0.2)
         # IRC mapping direction
@@ -134,7 +134,7 @@ class OptParams(object):
         # Upper bound for dynamic trust radius [au]
         self.intrafrag_trust_max = uod.get("INTRAFRAG_STEP_LIMIT_MAX", 1.0)
         # Maximum step size in bohr or radian along an interfragment coordinate
-        # P.interfrag_trust = uod.get('INTERFRAG_TRUST', 0.5)
+        self.interfrag_trust = uod.get('INTERFRAG_TRUST', 0.2)
         # Reduce step size as necessary to ensure convergence of back-transformation of
         # internal coordinate step to cartesian coordinates.
         self.ensure_bt_convergence = uod.get('ENSURE_BT_CONVERGENCE', False)
@@ -604,59 +604,50 @@ class OptParams(object):
             P.opt_coordinates = "REDUNDANT"
             P.consecutiveBackstepsAllowed = 0
             P.step_type = "RFO"
-            logger.info("Going to run_level 1: Red. Int., RFO, no backsteps, default, dynamic trust.\n")
+            logger.info("Going to run_level 1: Red. Int., RFO, no backsteps, default, dynamic trust. ~")
         elif run_level == 2:
             P.opt_coordinates = "REDUNDANT"
-            P.consecutiveBackstepsAllowed = 1
+            P.consecutiveBackstepsAllowed = 2
             P.step_type = "RFO"
             P.intrafrag_trust = 0.2
             P.intrafrag_trust_min = 0.2
             P.intrafrag_trust_max = 0.2
-            logger.warning("Going to run_level 2: Red. Int., RFO, 1 backstep, smaller trust.\n")
+            logger.warning("Going to run_level 2: Red. Int., RFO, 2 backstep, smaller trust. ~")
         elif run_level == 3:
             P.opt_coordinates = "BOTH"
-            P.consecutiveBackstepsAllowed = 1
+            P.consecutiveBackstepsAllowed = 2
             P.step_type = "RFO"
             P.intrafrag_trust = 0.1
             P.intrafrag_trust_min = 0.1
             P.intrafrag_trust_max = 0.1
-            logger.warning("Going to run_level 3: Red. Int. + XYZ, RFO, 1 backstep, smaller trust.\n")
+            logger.warning("Going to run_level 3: Red. Int. + XYZ, RFO, 2 backstep, smaller trust. ~")
         elif run_level == 4:
             P.opt_coordinates = "CARTESIAN"
-            P.consecutiveBackstepsAllowed = 1
-            P.step_type = "RFO"
-            P.intrafrag_hess = "LINDH"
-            P.intrafrag_trust = 0.3
-            P.intrafrag_trust_min = 0.3
-            P.intrafrag_trust_max = 0.3
-            logger.warning("Going to run_level 4: XYZ, RFO, 1 backstep, average trust.\n")
-        elif run_level == 5:
-            P.opt_coordinates = "CARTESIAN"
-            P.consecutiveBackstepsAllowed = 1
+            P.consecutiveBackstepsAllowed = 2
             P.step_type = "RFO"
             P.intrafrag_hess = "LINDH"
             P.intrafrag_trust = 0.2
             P.intrafrag_trust_min = 0.2
             P.intrafrag_trust_max = 0.2
-            logger.warning("Going to run_level 5: XYZ, RFO, 1 backstep, smaller trust.\n")
-        elif run_level == 6:
+            logger.warning("Going to run_level 4: XYZ, RFO, 2 backstep, smaller trust. ~")
+        elif run_level == 5:
             P.opt_coordinates = "CARTESIAN"
-            P.consecutiveBackstepsAllowed = 1
+            P.consecutiveBackstepsAllowed = 2
             P.step_type = "SD"
             P.sd_hessian = 0.3
             P.intrafrag_trust = 0.3
             P.intrafrag_trust_min = 0.3
             P.intrafrag_trust_max = 0.3
-            logger.warning("Going to run_level 6: XYZ, SD, 1 backstep, average trust.\n")
-        elif run_level == 7:
+            logger.warning("Going to run_level 5: XYZ, SD, 2 backstep, average trust. ~")
+        elif run_level == 6:
             P.opt_coordinates = "CARTESIAN"
-            P.consecutiveBackstepsAllowed = 1
+            P.consecutiveBackstepsAllowed = 2
             P.step_type = "SD"
             P.sd_hessian = 0.6
             P.intrafrag_trust = 0.1
             P.intrafrag_trust_min = 0.1
             P.intrafrag_trust_max = 0.1
-            logger.warning("Moving to run_level 7: XYZ, SD, 1 backstep, smaller trust, smaller step.\n")
+            logger.warning("Moving to run_level 6: XYZ, SD, 2 backstep, smaller trust. ~")
         else:
             raise OptError("Unknown value of run_level")
 
