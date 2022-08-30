@@ -109,8 +109,14 @@ place Angstroms are expected::
 Running through Psi4 - Development
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Direct integration in Psi4 is in development. Check an upcoming Psi4 release to run optking through psi4.::
-    
+Direct integration in Psi4 is in development. Check an upcoming Psi4 release to run optking through psi4.
+Running this input file `psi4 input.dat` will trigger (as of 1.6) the old c++ optimizer. In the future this
+will trigger optimization through pyoptking. Almost everything in Psi4's current optking documentation is also
+applicable to the new optimizer. Optimizations can also be run through Psi4's python API.
+
+::
+
+
     molecule hooh {
         0 1
         O        0.0000000000      0.0000000000      0.0000000000
@@ -129,9 +135,16 @@ Direct integration in Psi4 is in development. Check an upcoming Psi4 release to 
 Running through an OptHelper
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Two `OptHelper`s are provided to streamline performing an optimization. `EngineHelper` takes an OptimizationHelper
-and calls `qcengine.compute()` to perform basic calculations. `CustomHelper` accepts `QCElemental` and 
-`Psi4` molecules while requiring user provided gradients, energies, and possibly hessians.
+For users looking to run optimizations from python, an examples of QCEngine's python API has already been shown.
+To run optking through Psi4's python API checkout the `Psi4 API docs <https://psicode.org/psi4manual/master/psiapi.html>`.
+These two options should be sufficient for the majority of users.
+
+If direct control over the optimizer is desired two `OptHelper` classes are provided to streamline performing an optimization.
+The molecular system, optimization coordinates, history, etc are all accessible through their respective classes and may be accessed
+as attributes of the OptHelper instance.
+`EngineHelper` takes an OptimizationHelper and calls `qcengine.compute()` to perform basic calculations with the provided `input_specification`
+`CustomHelper` accepts `QCElemental` and `Psi4` molecules while requiring user provided gradients, energies, and possibly hessians. This may
+be useful for implementing a custom optimization driver or procedure using optking.
 
 EngineHelper::
 
@@ -182,7 +195,7 @@ EngineHelper::
     E = json_output["energies"][-1]
 
 `CustomHelper` can take `psi4` or `qcelemental` molecules. A simple example of a custom optimization loop is
-shown where the gradients are provided from optking's simple lennard jones function::
+shown where the gradients are provided from a simple lennard jones potential::
 
     h2o = psi4.geometry(
     """ 
@@ -223,8 +236,3 @@ shown where the gradients are provided from optking's simple lennard jones funct
     json_output = opt.close() # create an unvalidated OptimizationOutput like object
     E = json_output["energies"][-1]
 
-Running optimizations through the python API
-============================================
-
-.. automodapi:: optking.optimize
-.. automodapi:: optking.opt_helper

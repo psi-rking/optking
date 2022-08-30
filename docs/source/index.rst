@@ -14,10 +14,11 @@ Welcome to pyoptking's documentation!
    :caption: Contents:
 
    optimizations
-   options
+   convergence
    algorithms
    molecule
    coords
+   options
 
 
 Indices and tables

@@ -21,5 +21,7 @@ dependencies:
    # Dev
   - sphinx
   - sphinx-automodapi
+  - sphinx_material
+  - graphviz
   - black
   - isort

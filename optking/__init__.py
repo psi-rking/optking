@@ -20,7 +20,12 @@ from ._version import get_versions
 from .opt_helper import EngineHelper, CustomHelper
 from .optimize import make_internal_coords, optimize
 from .optwrapper import optimize_psi4, optimize_qcengine
-
+from .stre import Stre
+from .bend import Bend
+from .tors import Tors
+from .frag import Frag
+from .molsys import Molsys
+from .history import History
 
 op.Params = op.OptParams({})
 
