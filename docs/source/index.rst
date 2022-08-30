@@ -12,11 +12,12 @@ Welcome to pyoptking's documentation!
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
-    
-   algorithms
+
    optimizations
+   options
+   algorithms
+   molecule
    coords
-   api
 
 
 Indices and tables
