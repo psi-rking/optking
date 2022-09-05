@@ -103,7 +103,7 @@ class LineSearch(OptimizationInterface):
             delta_energy = 0
 
         self.molsys.interfrag_dq_discontinuity_correction(dq)
-        achieved_dq, return_str = displace_molsys(self.molsys, dq, fq, return_str=True)
+        achieved_dq, achieved_dx, return_str = displace_molsys(self.molsys, dq, fq, return_str=True)
         achieved_dq_norm = np.linalg.norm(achieved_dq)
         logger.info("\tNorm of achieved step-size %15.10f" % achieved_dq_norm)
 
