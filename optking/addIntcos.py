@@ -281,11 +281,14 @@ def add_tors_from_connectivity(C, intcos, geom):
     # return len(intcos) - Norig
 
 
-# For now, let's just check for a single central atom bonded to all others
+# Function to determine if out-of-plane angles are needed.
 def check_if_oofp_needed(C, intcos, geom):
+    # At present, only checks for molecules with least 4 atoms,
+    # and for which a single atom is connected to all others.
+    # This catches cases like BF3, and CH4.
     Natom = len(C)
     maxNneighbors = max([sum(C[i]) for i in range(Natom)])
-    if maxNneighbors == Natom - 1:
+    if maxNneighbors == Natom - 1 and maxNneighbors > 2:
         logger.debug("check_if_oofp_needed() is turning oofp ON")
         return True
     else:
@@ -856,15 +859,14 @@ def add_dimer_frag_intcos(o_molsys):
     # TODO: move into a molsys class function?
 
     if op.Params.interfrag_coords is not None:
-        if type(op.Params.interfrag_coords) in [list, tuple]:
-            for coord in op.Params.interfrag_coords:
-                c = eval(coord)
-                df = dimerfrag.DimerFrag.fromUserDict(c)
+        uV = eval(op.Params.interfrag_coords) # user value from str
+        if type(uV) in [list, tuple]:
+            for C in uV:
+                df = dimerfrag.DimerFrag.fromUserDict(C)
                 df.update_reference_geometry(o_molsys.frag_geom(df.A_idx), o_molsys.frag_geom(df.B_idx))
                 o_molsys.dimer_intcos.append(df)
         else:
-            c = eval(op.Params.interfrag_coords)
-            df = dimerfrag.DimerFrag.fromUserDict(c)
+            df = dimerfrag.DimerFrag.fromUserDict(uV)
             df.update_reference_geometry(o_molsys.frag_geom(df.A_idx), o_molsys.frag_geom(df.B_idx))
             o_molsys.dimer_intcos.append(df)
 
@@ -874,9 +876,10 @@ def add_dimer_frag_intcos(o_molsys):
         # desired for each coordinate involving that fragment.
         frag_ref_atoms = deepcopy(op.Params.frag_ref_atoms)
         for iF, F in enumerate(frag_ref_atoms):  # fragments
+            frag_1st_atom = o_molsys.frag_1st_atom(iF)
             for iRP, RP in enumerate(F):  # reference points
                 for iAT in range(len(RP)):  # atoms
-                    frag_ref_atoms[iF][iRP][iAT] -= 1
+                    frag_ref_atoms[iF][iRP][iAT] -= 1 + frag_1st_atom
 
         for A, B in combinations(range(o_molsys.nfragments), r=2):
             df = dimerfrag.DimerFrag(A, frag_ref_atoms[A], B, frag_ref_atoms[B])

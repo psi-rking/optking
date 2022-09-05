@@ -6,6 +6,7 @@ def pytest_configure(config):
     # sync with setup.cfg
     config.addinivalue_line("markers", "long")
     config.addinivalue_line("markers", "dimers")
+    config.addinivalue_line("markers", "multimers")
 
 
 @pytest.fixture(scope="function", autouse=True)

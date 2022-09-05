@@ -76,7 +76,7 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
             # We don't add the initial guess steps to the history.
             self.history.append(self.molsys.geom, energy, fq, self.molsys.gradient_to_cartesians(-1 * fq))
             dq = self.dq_irc(fq, H)
-            dq, return_str = displace_molsys(self.molsys, dq, fq, ensure_convergence=True, return_str=True)
+            dq, dx, return_str = displace_molsys(self.molsys, dq, fq, ensure_convergence=True, return_str=True)
             logger.info("IRC Constrained step calculation finished.")
 
             # Complete history entry of step.
@@ -155,7 +155,7 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
         # displace(o_molsys.intcos, x_pivot, dq_pivot, ensure_convergence=True)
 
         # revisit
-        dq1, return_str1 = displace_molsys(self.molsys, dq_pivot, fq, ensure_convergence=True, return_str=return_str)
+        dq1, dx1, return_str1 = displace_molsys(self.molsys, dq_pivot, fq, ensure_convergence=True, return_str=return_str)
         x_pivot = self.molsys.geom
         q_pivot = self.molsys.q_array()
         self.irc_history.add_pivot_point(q_pivot, x_pivot)
@@ -165,7 +165,7 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
         logger.debug(print_array_string(dq_pivot))
         x_guess = x_pivot.copy()
         # displace(o_molsys.intcos, x_guess, dq_pivot, ensure_convergence=True)
-        dq2, return_str2 = displace_molsys(self.molsys, dq_pivot, fq, ensure_convergence=True, return_str=return_str)
+        dq2, dx2, return_str2 = displace_molsys(self.molsys, dq_pivot, fq, ensure_convergence=True, return_str=return_str)
         # self.molsys.geom = x_guess
         if return_str:
             return dq1 + dq2, return_str1 + return_str2

@@ -42,7 +42,7 @@ def optimize(o_molsys, computer):
         converged = False
         if not o_molsys.intcos_present:
             make_internal_coords(o_molsys, op.Params)
-            logger.debug("Molecular systems after make_internal_coords:")
+            logger.debug("Molecular system after make_internal_coords:")
             logger.debug(str(o_molsys))
 
         opt_object = OptimizationManager(o_molsys, opt_history, op.Params, computer)
@@ -281,6 +281,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
             logger.warning(" Erasing coordinates.\n")
             for f in self.molsys.fragments:
                 del f.intcos[:]
+            o_molsys._dimer_intcos = []
 
         if eraseHistory:
             logger.warning(" Erasing history.\n")
@@ -420,11 +421,7 @@ def get_hess_grad(computer, o_molsys):
     -----
     Hessian is in internals gradient is in cartesian
     """
-    # Not sure why we need a copy here
-    logger.debug("Computing an analytical hessian")
-    xyz = o_molsys.geom.copy()
-    # Always return_true so we don't have to compute the gradient as well
-    ret = computer.compute(xyz, driver="hessian", return_full=True, print_result=False)
+    ret = computer.compute(o_molsys.geom, driver="hessian", return_full=True, print_result=False)
     h_cart = np.asarray(ret["return_result"]).reshape(o_molsys.geom.size, o_molsys.geom.size)
     try:
         logger.debug("Looking for gradient in hessian output")
