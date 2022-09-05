@@ -340,8 +340,17 @@ class OptimizationAlgorithm(OptimizationInterface):
         if self.params.intrafrag_trust != maximum:
             new_val = self.params.intrafrag_trust * 3
             new_val = maximum if new_val > self.params.intrafrag_trust_max else new_val
-            logger.info("\tEnergy ratio indicates good step: Trust radius increased to %6.3e.\n", new_val)
+            logger.info("\tEnergy ratio indicates good step.")
+            logger.info("\tIntrafrag trust radius increased to %6.3e.", new_val)
             self.params.intrafrag_trust = new_val
+        if self.params.frag_mode == "MULTI":
+            maximum = self.params.interfrag_trust_max
+            if self.params.interfrag_trust != maximum:
+                new_val = self.params.interfrag_trust * 3
+                new_val = maximum if new_val > self.params.interfrag_trust_max else new_val
+                logger.info("\tEnergy ratio indicates good step.")
+                logger.info("\tInterfrag trust radius increased to %6.3e.", new_val)
+                self.params.interfrag_trust = new_val
 
     def decrease_trust_radius(self):
         """Scale trust radius by 0.25 """
@@ -349,8 +358,17 @@ class OptimizationAlgorithm(OptimizationInterface):
         if self.params.intrafrag_trust != minimum:
             new_val = self.params.intrafrag_trust / 4
             new_val = minimum if new_val < minimum else new_val
-            logger.warning("\tEnergy ratio indicates iffy step: Trust radius decreased to %6.3e.\n", new_val)
+            logger.warning("\tEnergy ratio indicates iffy step.")
+            logger.warning("\tIntrafrag trust radius decreased to %6.3e.", new_val)
             self.params.intrafrag_trust = new_val
+        if self.params.frag_mode == "MULTI":
+            minimum = self.params.interfrag_trust_min
+            if self.params.interfrag_trust != minimum:
+                new_val = self.params.interfrag_trust / 4
+                new_val = minimum if new_val < minimum else new_val
+                logger.warning("\tEnergy ratio indicates iffy step.")
+                logger.warning("\tInterfrag trust radius decreased to %6.3e.", new_val)
+                self.params.interfrag_trust = new_val
 
     def update_history(self, delta_e, achieved_dq, unit_dq, projected_f, projected_hess):
         """Basic history update method. This should be expanded here and in child classes in

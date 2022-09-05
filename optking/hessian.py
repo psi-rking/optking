@@ -71,7 +71,7 @@ def guess(oMolsys, connectivity=None, guessType="SIMPLE"):
             if type(intco) == Stre:
                 h = 0.007
                 if intco.inverse:
-                    h *= pow(vals[i],4); # i should be 0=stretch
+                    h *= pow(1.0/vals[i],4); # i should be 0=stretch
             elif type(intco) == Bend:
                 h = 0.003
             elif type(intco) == Tors:

@@ -45,7 +45,6 @@ def test_dimerfrag_orient_h2o_dimers():
     Itest = optking.dimerfrag.DimerFrag.fromUserDict(dimer)
     Itest.update_reference_geometry(Axyz, Bxyz)
     # print(Itest)
-    # Reference atoms for 2nd fragment:
 
     # Create arbitrary target for displacement with illustrative names.
     R_A1B1 = 3.4
@@ -102,4 +101,5 @@ def test_dimers_h2o_auto(check_iter):  # auto reference pt. creation
     assert psi4.compare_values(MP2minEnergy, E, 6, "MP2 Energy opt from afar, auto")
 
     utils.compare_iterations(json_output, 19, check_iter)
+
 

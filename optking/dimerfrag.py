@@ -382,30 +382,46 @@ class DimerFrag(object):
 
     def __str__(self):
 
-        # Note that the "Dimer point" value universally defines the role of the
-        # reference point, while the reference points simply counts the existing
-        # refernece points on each fragment. So, for example, the interfragment 
-        # stretching motion is ALWAYS between dimer points "3" and "4" and the
-        # reference points 1 on A and B.  (Counting from 0 internally; from 1 in
-        # output.)  This is potentially confusing but helps to support the
-        # variety of coordinate sets between diverse fragments that do not
-        # require all 6 interfragment coordinates.
-        title = [f"\tFragment {self._A_lbl}", f"{' ':40}\tFragment {self._B_lbl}\n"]
-        labels_a = [f"\t\tDimer point {3 - i} (Ref. pt. {self.n_arefs - i}):" for i in range(self.n_arefs)]
-        labels_b = [
-            f"{' ':20}\t\tDimer point {4 + i} (Ref. pt. {i + 1}):\n" for i in range(self.n_brefs)
-        ]
+        # Note that the "Dimer point" value defines the role of a point within the
+        # interfragment coordinate.  For example, the stretch is always between dimer
+        # points labeled 3 and 4; connectivity in terms of dimer points is
+        # 1-2-3-4-5-6. The reference points are numbered 1-3 on each fragment. Only
+        # ref. pt. 1 is required for an atom; only ref. pt. 1 and 2 for a diatomic. The
+        # stretch occurs between ref. pt. 1 on each fragment.
+        # Counting begins at 0 internally from 1 for user.
+        full_list = [f"\tFragment {self.A_idx+1:d} : {self._A_lbl}\n"]
+        for i,refPt in enumerate(self._Arefs[::-1]):
+            full_list.append(f"\t\tDimer point {4-self.n_arefs+i} (Ref. pt. {self.n_arefs-i}):\n")
+            full_list.append(f"\t\t\t{'Atom':>8}\t{'Coeff':>10}\n")
+            for wt in refPt:
+                full_list.append(f"\t\t\t{wt.atom+1:>8}\t{wt.weight:>10.5f}\n")
 
-        ref_labels_a, ref_vals_a = DimerFrag._split_ref_point_string(self._Arefs)
-        ref_labels_b, ref_vals_b = DimerFrag._split_ref_point_string(self._Brefs, end=True)
+        full_list.append(f"\tFragment {self.B_idx+1:d} : {self._B_lbl}\n")
+        for i,refPt in enumerate(self._Brefs):
+            full_list.append(f"\t\tDimer point {4 + i} (Ref. pt. {i + 1}):\n")
+            full_list.append(f"\t\t\t{'Atom':>8}\t{'Coeff':>10}\n")
+            for wt in refPt:
+                full_list.append(f"\t\t\t{wt.atom+1:>8}\t{wt.weight:>10.5f}\n")
 
-        line_by_line = itertools.chain(*zip(labels_a, labels_b, ref_labels_a, ref_labels_b, ref_vals_a, ref_vals_b))
-        full_list = title + list(line_by_line)
+        # This code does not work for reference points defined by linear
+        # combination of multiple atoms.  Some reference points will need > 1
+        # row, and the number may be different between fragments.
+        #labels_a = [f"\t\tDimer point {3 - i} (Ref. pt. {self.n_arefs - i}):" for i in range(self.n_arefs)]
+        #labels_b = [
+        #    f"{' ':20}\t\tDimer point {4 + i} (Ref. pt. {i + 1}):\n" for i in range(self.n_brefs)
+        #]
+        #title = [f"\tFragment {self._A_lbl}", f"{' ':40}\tFragment {self._B_lbl}\n"]
+        #ref_labels_a, ref_vals_a = DimerFrag._split_ref_point_string(self._Arefs)
+        #ref_labels_b, ref_vals_b = DimerFrag._split_ref_point_string(self._Brefs, end=True)
+        #
+        #line_by_line = itertools.chain(*zip(labels_a, labels_b, ref_labels_a, ref_labels_b, ref_vals_a, ref_vals_b))
+        #full_list = title + list(line_by_line)
         add_on = f"{'(dimer pt. *connectivity* is ':>50}"
         connectivity = add_on + "-".join([f"{i + 1}" for i in range(3-self.n_arefs,3+self.n_brefs)]) + ")"
 
         dimer_frag_coords = str(self._pseudo_frag).replace("    Geom", "Ref Pts. Coords")
-        return connectivity + "\n\n" + "".join(full_list) + dimer_frag_coords
+        return_str = connectivity + "\n\n" + "".join(full_list) + dimer_frag_coords
+        return return_str
 
     @property
     def n_arefs(self):  # number of reference points
@@ -561,14 +577,14 @@ class DimerFrag(object):
                     raise AlgError("Can't compute interfragment coord. {} at this geometry.".format(lbls[j]))
         return
 
-    @staticmethod
-    def _split_ref_point_string(ref_points, end=False):
-        """Split str(ref_points) line-by-line to be printed side by side Add space and newline if dimerfrag"""
-        ref_strings = [str(ref) for ref in ref_points]
-        ref_label_vals = [val.split("\n")[:-1] for val in ref_strings]
-
-        ref_labels = [f"{'':20}{sublist[0]}\n" if end else sublist[0] for sublist in ref_label_vals]
-        ref_vals = [f"{'':16}{sublist[1]}\n" if end else sublist[1] for sublist in ref_label_vals]
+    #@staticmethod
+    #def _split_ref_point_string(ref_points, end=False):
+    #    """Split str(ref_points) line-by-line to be printed side by side Add space and newline if dimerfrag"""
+    #    ref_strings = [str(ref) for ref in ref_points]
+    #    ref_label_vals = [val.split("\n")[:-1] for val in ref_strings]
+    #
+    #    ref_labels = [f"{'':20}{sublist[0]}\n" if end else sublist[0] for sublist in ref_label_vals]
+    #    ref_vals = [f"{'':16}{sublist[1]}\n" if end else sublist[1] for sublist in ref_label_vals]
 
         return ref_labels, ref_vals
 

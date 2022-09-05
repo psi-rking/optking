@@ -42,7 +42,7 @@ def optimize(o_molsys, computer):
         converged = False
         if not o_molsys.intcos_present:
             make_internal_coords(o_molsys, op.Params)
-            logger.debug("Molecular systems after make_internal_coords:")
+            logger.debug("Molecular system after make_internal_coords:")
             logger.debug(str(o_molsys))
 
         opt_object = OptimizationManager(o_molsys, opt_history, op.Params, computer)

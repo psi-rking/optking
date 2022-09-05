@@ -134,7 +134,11 @@ class OptParams(object):
         # Upper bound for dynamic trust radius [au]
         self.intrafrag_trust_max = uod.get("INTRAFRAG_STEP_LIMIT_MAX", 1.0)
         # Maximum step size in bohr or radian along an interfragment coordinate
-        self.interfrag_trust = uod.get('INTERFRAG_TRUST', 0.2)
+        self.interfrag_trust = uod.get('INTERFRAG_TRUST', 0.5)
+        # Lower bound for dynamic trust radius [a/u]
+        self.interfrag_trust_min = uod.get("INTERFRAG_TRUST_MIN", 0.001)
+        # Upper bound for dynamic trust radius [au]
+        self.interfrag_trust_max = uod.get("INTERFRAG_TRUST_MAX", 1.0)
         # Reduce step size as necessary to ensure convergence of back-transformation of
         # internal coordinate step to cartesian coordinates.
         self.ensure_bt_convergence = uod.get('ENSURE_BT_CONVERGENCE', False)

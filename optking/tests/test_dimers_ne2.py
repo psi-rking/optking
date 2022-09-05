@@ -3,7 +3,6 @@ import optking
 import numpy as np
 import pytest
 from .utils import utils
-#import utils
 
 # Optimized neon dimer
 MP2minEnergy = -257.4109749
