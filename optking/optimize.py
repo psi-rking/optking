@@ -29,7 +29,7 @@ logger = logging.getLogger(f"{log_name}{__name__}")
 
 
 def optimize(o_molsys, computer):
-    """Driver for OptKing's optimization procedure. Suggested that users use EngineHelper CustomHelper or
+    """Driver for OptKing's optimization procedure. Suggested that users use EngineHelper, CustomHelper, or
     one of the external interfaces (psi4 and qcengine) to perform a normal (full) optimization
 
     Parameters

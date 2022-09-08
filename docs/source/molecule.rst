@@ -4,7 +4,7 @@ The Molecular System
 Opkting's molecular system, at its core, is a list of intramolecular fragments `frag.Frag` and
 intermolecular fragments `dimerfrag.DimerFrag`. The fragments in turn are lists of masses, atomic numbers and coordinates (cartesian or internal)
 along with a numpy array for the cartesian geometry.
-NIST values for masses, and atomic numbers can be easily retrived through `qcelemental` e.g. `qcelemental.periodictable.to_Z('O')`
+NIST values for masses, and atomic numbers can be easily retrieved through `qcelemental` e.g. `qcelemental.periodictable.to_Z('O')`
 
 A fragment for water::
     

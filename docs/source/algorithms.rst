@@ -1,7 +1,7 @@
 Optimization Algorithms
 =======================
 
-Optking performs Newton-Raphson (NR) and Qausi-NR optimizations for small to medium molecules.
+Optking performs Newton-Raphson (NR) and Qausi-NR optimizations for small to medium-sized molecules.
 
 Algorithms include
     * Steepest descent

@@ -7,8 +7,8 @@ If difficulty is encountered with linear coordinates, switching to `opt_coordina
 necessary. In some cases a full set of internal and cartesian coordinates has been found to work well this
 corresonds to `opt_coordinates = 'both'`
 
-It should be noted that optking does NOT accept zmatrix coordinates from any of it's supported interfaces.
-Communication between qcengine and psi4 and optking is purely in cartesian coordinates.
+It should be noted that optking does NOT accept zmatrix coordinates through any of it's supported interfaces.
+Communication of the initial geometry between optking and qcengine or psi4 is purely in cartesian coordinates.
 Simple internal coordinates can be created through the class constructors if desired; however,
 ghost atoms are not supported.
 
@@ -111,9 +111,9 @@ consist internal coordinates for A, B, and C as well as dimer coordinates for AB
 The important keys are
     * `"Natoms per frag"` is a list of ints
     * `X Frag` specifies the index of the Xth fragment in the molecular system.
-    * `A Ref Atoms` list of the atoms to use as the three reference points. In the below example we choose the Oxygen atom,
+    * `A Ref Atoms` list of the atoms to use as the three reference points. In the below example we choose the oxygen atom,
       third hydrogen atom, and the center of the two hydrogens.
-      Lists of multiple indices denote the center of mass between the specified atoms.
+      Lists of multiple indices denote the mid-point between the specified atoms.
 
 ::
 

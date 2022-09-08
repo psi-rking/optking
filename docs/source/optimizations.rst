@@ -22,13 +22,15 @@ To install from source make sure all dependencies are installed via conda or pip
 
 from the installation directory.
 
-To run optking without QCEngine or Psi4, the CustomHelper class may be used though the python API. 
+To run optking without `QCEngine`` or `Psi4`, the `CustomHelper` class may be used though the python API.
+This `Helper` allows for the use of arbitrary packages and/or modified gradients to be used.
+Alternatively, an `OptimizationManager` or an even lower-level class could be used with custom gradients.
 Gradients, energies, and possibly hessians can be provided directly. #TODO add link
 To use the most basic representation of the algorithms with no reference to molecules one of the classes
 inheriting from OptimizationAlgorithm will be needed.
 
-Otherwise (and for most use cases) to run optking QCEngine and your QC/MM program of choice OR Psi4 is required.
-If using QCEngine see MolSSI's `qcengine documentation <http://docs.qcarchive.molssi.org/projects/QCEngine/en/stable/>`_ 
+Otherwise (and for most use cases), `QCEngine` and your QC/MM program of choice OR Psi4 is required.
+If using `QCEngine` see MolSSI's `qcengine documentation <http://docs.qcarchive.molssi.org/projects/QCEngine/en/stable/>`_ 
 to ensure proper setup. Any QC or MM programs will need to be installed such that QCEngine can find them.
 
 Running through QCEngine
