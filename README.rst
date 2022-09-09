@@ -173,7 +173,7 @@ The OptHelpers
 ==============
 
 For users looking to run optimizations from python, an example of QCEngine's python API has already been shown.
-To run optking through Psi4's python API checkout the `Psi4 API docs <https://psicode.org/psi4manual/master/psiapi.html>`.
+To run optking through Psi4's python API checkout the `Psi4 API docs <https://psicode.org/psi4manual/master/psiapi.html>`_.
 These two options should be sufficient for the majority of users.
 
 If direct control over the optimizer is desired two ``OptHelper`` classes are provided to streamline performing an optimization.
