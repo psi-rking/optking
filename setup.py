@@ -31,6 +31,7 @@ if __name__ == "__main__":
             "docs": [
                 "sphinx",  # autodoc was broken in 1.3.1
                 "sphinxcontrib-napoleon",
+                "sphinx-automodapi"
                 "sphinx_rtd_theme",
                 "numpydoc",
             ],

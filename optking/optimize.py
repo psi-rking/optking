@@ -1,7 +1,21 @@
+""" Provides some of the high level functions and classes to run optimizations. This is a good starting place for anyone
+looking to add features to the code to familarize themselves with the overall workings of optking.
+Functions may be useful to users seeking greater control over the inner workings of optking than provided by the 
+OptHelpers. For instance if manually creating a molecular system or manually controlling / switching algorithms
+on the fly.
+
+See also `OptimizationAlgorithm <stepalgorithms.OptimizationAlgorithm>` and
+`OptimizationInterface <stepalgorithms.OptimizationInterface>`for core functionality common to all the optimization
+algorithms like backtransformation and displacement.
+
+"""
+
 import logging
 from typing import Union
 
 import numpy as np
+from optking.compute_wrappers import ComputeWrapper
+from optking.molsys import Molsys
 
 from . import IRCfollowing, addIntcos, hessian, history, intcosMisc
 from . import optparams as op
@@ -15,8 +29,8 @@ logger = logging.getLogger(f"{log_name}{__name__}")
 
 
 def optimize(o_molsys, computer):
-    """Driver for OptKing's optimization procedure. Suggested that users use optimize_psi4 or
-     optimize_qcengine to perform a normal (full) optimization
+    """Driver for OptKing's optimization procedure. Suggested that users use EngineHelper, CustomHelper, or
+    one of the external interfaces (psi4 and qcengine) to perform a normal (full) optimization
 
     Parameters
     ----------
@@ -76,12 +90,15 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
     Currently only 1 linesearch method is implemented so changing linesearch_method to anything that does
     not evaluate to None will turn linesearch on.
 
+    This class' primary purpose is to abstract the interface for an OptimizationAlgorithm, Linesearch, or
+    IRC so no special handling is needed for an IRC optimization as opposed to a NR optimization.
+
     # TODO add dynamic_level management here
     """
 
     _LINESEARCHES = {"ENERGY": linesearch.ThreePointEnergy}
 
-    def __init__(self, molsys, history_object, params, computer):
+    def __init__(self, molsys: Molsys, history_object: history.History, params: op.OptParams, computer: ComputeWrapper):
         super().__init__(molsys, history_object, params)
         self.direction: Union[np.ndarray, None] = None
 
@@ -102,7 +119,19 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         self.check_linesearch = True
         self.error = None
 
-    def start_step(self, H):
+    def start_step(self, H: np.ndarray):
+        """ Initialize coordinates and perform any coordinate transformations of gradients and hessians. 
+        
+        Returns
+        -------
+        H: np.ndarray
+            2D. Hessian in appropriate coordinates
+        f_q: np.ndarray
+            1D. forces in appropriate coordinates
+        E: float
+            energy
+
+        """
 
         # if optimization coordinates are absent, choose them. Could be erased after AlgError
         if not self.molsys.intcos_present:
@@ -127,15 +156,26 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         self.molsys.project_redundancies_and_constraints(f_q, H)
         self.molsys.q_show()
 
-        if op.Params.test_B:
+        if self.params.test_B:
             testB.test_b(self.molsys)
-        if op.Params.test_derivative_B:
+        if self.params.test_derivative_B:
             testB.test_derivative_b(self.molsys)
 
         logger.info(print_array_string(f_q, title="Internal forces in au:"))
         return H, f_q, E
 
     def take_step(self, fq=None, H=None, energy=None, return_str=False, **kwargs):
+        """ Take whatever step (normal, linesearch, IRC, constrained IRC) is next. 
+        
+        fq: Union[np.ndarray, None]
+            forces
+        H: Union[np.ndarray, None]
+            hessian
+        energy: Union[np.ndarray, None]
+        return_str: bool
+            if True return string with information about step (information is logged regardless)
+
+        """
 
         self.current_requirements = self.update_requirements()
 
@@ -171,12 +211,21 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         return achieved_dq
 
     def update_requirements(self):
+        """ Get the current requirements for the next step. 
+        
+        Notes
+        -----
+        If linesearching requirements can change. Always safe to provide a gradient regardless. """
+
         if self.direction is None:
             return self.opt_method.requires()
         else:
             return self.linesearch_method.requires()
 
     def converged(self, E, fq, dq, step_number=None, str_mode=None):
+        """ Test whether the optimization has finished. An optimization can only be declared converged
+        If a gradient has been provided (linesearching cannot terminate an optimization) """
+
         if step_number is None:
             step_number = self.step_number
         converged = False
@@ -191,6 +240,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         return converged
 
     def check_maxiter(self):
+        """ Check iterations < geom_maxiter. For IRC's check `total_steps_taken`. """
 
         if self.params.opt_type == "IRC":
             iterations = self.opt_method.total_steps_taken
@@ -198,7 +248,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
             iterations = self.step_number
 
         # Hard quit if too many total steps taken (inc. all IRC points and algorithms).
-        if iterations == op.Params.geom_maxiter:
+        if iterations >= self.params.geom_maxiter:
             logger.error(
                 "\tTotal number of steps (%d) exceeds maximum allowed (%d).\n" % (iterations, self.params.geom_maxiter)
             )
@@ -207,7 +257,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
             )
 
     def get_hessian_protocol(self):
-        """Determine action to take for how to compute a hessian. Handles alternate IRC behavior
+        """ Determine action to take for how to compute a hessian. Handles alternate IRC behavior
 
         Returns
         -------
@@ -244,6 +294,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         return protocol
 
     def clear(self):
+        """ Reset history (inculding all steps) and molecule """
         self.history.steps = []
         self.molsys.intcos = []
         self.step_number = 0
@@ -251,7 +302,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         self.history.consecutive_backsteps = 0
 
     def alg_error_handler(self, error):
-
+        """ consumes an AlgError. Takes appropriate action """
         logger.error(" Caught AlgError exception\n")
         eraseIntcos = False
 
@@ -291,6 +342,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         self.error = "AlgError"
 
     def opt_error_handler(self, error):
+        """ OptError indicates an unrecoverable error. Print information and trigger cleanup. """
         logger.critical("\tA critical optimization-specific error has occured.")
         logger.critical("\tResetting all optimization options for potential queued jobs.\n")
         logger.exception("Error caught:" + str(error))
@@ -299,6 +351,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         return self._exception_cleanup(error)
 
     def unknown_error_handler(self, error):
+        """ Unknown errors are not recoverable error. Print information and trigger cleanup. """
         logger.critical("\tA non-optimization-specific error has occurred.\n")
         logger.critical("\tResetting all optimization options for potential queued jobs.\n")
         logger.exception("Error Type:  " + str(type(error)))
@@ -307,6 +360,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         return self._exception_cleanup(error)
 
     def _exception_cleanup(self, error):
+        
         logger.info("\tDumping history: Warning last point not converged.\n" + self.history.summary_string())
 
         if self.params.opt_type == "IRC":
@@ -348,11 +402,11 @@ def optimization_factory(method, molsys, history_object, params=None):
     return ALGORITHMS.get(method, stepAlgorithms.RestrictedStepRFO)(molsys, history_object, params)
 
 
-def get_pes_info(H,
-                 computer,
-                 o_molsys,
-                 opt_history,
-                 params,
+def get_pes_info(H: np.ndarray,
+                 computer: ComputeWrapper,
+                 o_molsys: Molsys,
+                 opt_history: history.History,
+                 params: op.OptParams,
                  hessian_protocol="update",
                  requires=("energy", "gradient"),
                  ):
@@ -365,6 +419,7 @@ def get_pes_info(H,
     computer: compute_wrappers.ComputeWrapper
     o_molsys : molsys.Molsys
     opt_history: history.History
+    params: op.OptParams
     requires : list
         ("energy", "gradient", "hessian")
     hessian_protocol: str
