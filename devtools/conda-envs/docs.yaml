@@ -1,0 +1,13 @@
+name: test
+channels:
+  - conda-forge
+
+dependencies:
+  - numpy
+  - python
+  - qcelemental
+  - msgpack-python
+  - sphinx
+  - sphinx-automodapi
+  - sphinx_material
+  - graphviz
