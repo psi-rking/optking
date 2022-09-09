@@ -1,7 +1,7 @@
 version: 2
 
 conda:
-  environment: devtools/conda-envs/dev.yaml
+  environment: devtools/conda-envs/docs.yaml
 
 build:
   os: ubuntu-22.04
