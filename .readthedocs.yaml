@@ -1,10 +1,9 @@
 version: 2
 
-conda:
-  environment: devtools/conda-envs/docs.yaml
-
 build:
   os: ubuntu-22.04
   tools:
-    python: "3.10"
+    python: "mambaforge-4.10"
 
+conda:
+  environment: devtools/conda-envs/docs.yaml
