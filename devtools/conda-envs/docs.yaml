@@ -9,5 +9,5 @@ dependencies:
   - msgpack-python
   - sphinx
   - sphinx-automodapi
-  - sphinx_material
+  - sphinx_rtd_theme
   - graphviz
