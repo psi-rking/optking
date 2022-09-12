@@ -22,10 +22,10 @@ if __name__ == "__main__":
         packages=setuptools.find_packages(),
         include_package_data=True,
         install_requires=[
-            "numpy>=1.7",
-            "qcelemental>=0.12.0",
-            "qcengine>=0.12.0",
-            "msgpack-python",
+            "numpy>=1.20",
+            "qcelemental>=0.20.0",
+            "qcengine>=0.20.0",
+            "msgpack>=1.0",
         ],
         extras_require={
             "docs": [
