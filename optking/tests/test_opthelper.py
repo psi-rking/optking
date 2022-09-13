@@ -3,13 +3,12 @@
 #  2. optking still has a module level parameters and history,
 #       that could be eliminated, so not yet multi-object safe.
 #  3. Have not yet restarted from json or disk, but should be close to working.
-import psi4
 import optking
 import pytest
 
 
 def test_step_by_step():
-
+    import psi4
     h2o = psi4.geometry(
         """
          O
@@ -63,21 +62,18 @@ def test_step_by_step():
 
 
 def test_lj_external_gradient():
-    h2o = psi4.geometry(
+    import qcelemental as qcel
+    import numpy as np
+
+    h2o = qcel.models.Molecule.from_data(
         """
-         O
-         H 1 1.0
-         H 1 1.0 2 104.5
-    """
+        O  0.00000000  0.00000000 -0.12947689
+        H  0.00000000 -1.49418674  1.02744610
+        H  0.00000000  1.49418674  1.02744610
+        """
     )
 
-    psi4.core.clean_options()
-    psi4_options = {
-        "basis": "sto-3g",
-    }
     optking_options = {"g_convergence": "gau_verytight", "intrafrag_hess": "SIMPLE"}
-
-    psi4.set_options(psi4_options)
 
     opt = optking.CustomHelper(h2o, optking_options)
 
@@ -103,11 +99,14 @@ def test_lj_external_gradient():
     assert conv is True
     E = json_output["energies"][-1]  # TEST
     RefEnergy = -0.03  # - epsilon * 3, where -epsilon is depth of each Vij well
-    assert psi4.compare_values(RefEnergy, E, 6, "L-J Energy upon optimization")
+    assert np.isclose(RefEnergy, E, rtol=1e-05, atol=1e-6)
 
 
 # Demonstrate a complete export/import of OptHelper object
 def test_stepwise_export():
+    import psi4
+    import pprint
+
     h2o = psi4.geometry(
         """
          O
@@ -128,8 +127,6 @@ def test_stepwise_export():
 
     opt = optking.CustomHelper(h2o)
     optSaved = opt.to_dict()
-
-    import pprint
 
     pp = pprint.PrettyPrinter(indent=2)
     pp.pprint(optSaved)
