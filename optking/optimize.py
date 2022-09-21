@@ -107,17 +107,65 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         self.step_number = 0
         self.computer = computer
         self.linesearch_method = None
+        self.stashed_hessian = None
 
         if params.linesearch:
             self.linesearch_method = OptimizationManager._LINESEARCHES["ENERGY"](molsys, self.history, params)
             self.opt_method.trust_radius_on = False
-            self.stashed_hessian = None
         self.requires = self.update_requirements()
         self.current_requirements = self.update_requirements()
         self.params = params
         self.erase_hessian = False
         self.check_linesearch = True
         self.error = None
+
+    def to_dict(self):
+        """ Convert attributes to serializable form. """
+        d = {
+            "direction": self.direction,
+            "step_number": self.step_number,
+            "stashed_hessian": self.stashed_hessian,
+            "requires": self.requires,
+            "current_requirements": self.current_requirements,
+            "erase_hessian": self.erase_hessian,
+            "check_linesearch": self.check_linesearch,
+            "error": self.error
+        }
+        if self.linesearch_method:
+            d["linesearch_method"] = self.linesearch_method.to_dict()
+
+        if self.params.opt_type == "IRC":
+            d["irc_object"] = self.opt_method.to_dict()
+
+        return d
+
+    @classmethod
+    def from_dict(cls, d, molsys, history, params, computer):
+        """ Reload attributes from the provided dictionary. Create all necessary classes.
+        
+        To prevent duplication, OptHelper handles converting the molsys, history, params, and computer to/from dict
+        """
+
+        manager = cls(molsys, history, params, computer)
+        manager.direction = d["direction"]
+        method = "IRC" if params.opt_type == "IRC" else params.step_type
+        manager.step_number = d["step_number"]
+        manager.stashed_hessian = d["stashed_hessian"]
+        manager.requires = d["requires"]
+        manager.current_requirements = d["current_requirements"]
+        manager.erase_hessian = d["erase_hessian"]
+        manager.check_linesearch = d["check_linesearch"]
+        manager.error = d["error"]
+
+        if params.opt_type == "IRC":
+            manager.opt_method = IRCfollowing.IntrinsicReactionCoordinate.from_dict(d["irc_object"], molsys, history, params)
+        else:
+            manager.opt_method = optimization_factory(method, molsys, history, params)  # Can just recreate with current history and params 
+
+        if d.get("linesearch_method"): 
+            manager.linesearch_method = OptimizationManager._LINESEARCHES["ENERGY"].from_dict(d["linesearch_method"], molsys, history, params)
+
+        return manager
 
     def start_step(self, H: np.ndarray):
         """ Initialize coordinates and perform any coordinate transformations of gradients and hessians. 
@@ -332,7 +380,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
             logger.warning(" Erasing coordinates.\n")
             for f in self.molsys.fragments:
                 del f.intcos[:]
-            o_molsys._dimer_intcos = []
+            self.molsys._dimer_intcos = []
 
         if eraseHistory:
             logger.warning(" Erasing history.\n")

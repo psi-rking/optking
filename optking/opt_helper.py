@@ -45,11 +45,9 @@ class Helper(ABC):
 
         optwrapper.initialize_options(params, silent=kwargs.get("silent", False))
         self.params = op.Params
-        print(type(self.params))
 
         self.computer: compute_wrappers.ComputeWrapper
         self.step_num = 0
-        self.irc_step_num = 0  # IRC not supported by OptHelper for now.
         # The following are not used before being computed:
 
         self._Hq: Union[np.ndarray, None] = None
@@ -102,15 +100,14 @@ class Helper(ABC):
     def to_dict(self):
         d = {
             "step_num": self.step_num,
-            "irc_step_num": self.irc_step_num,
             "params": self.params.__dict__,
             "molsys": self.molsys.to_dict(),
             "history": self.history.to_dict(),
             "computer": self.computer.__dict__,
             "hessian": self._Hq,
             "opt_input": self.opt_input,
+            "opt_manager": self.opt_manager.to_dict()
         }
-
         return d
 
     @classmethod
@@ -401,7 +398,7 @@ class CustomHelper(Helper):
     def from_dict(cls, d):
         helper = super().from_dict(d)
         helper.computer = compute_wrappers.make_computer_from_dict("user", d.get("computer"))
-        helper.opt_manager = OptimizationManager(helper.molsys, helper.history, helper.params, helper.computer)
+        helper.opt_manager = OptimizationManager.from_dict(d["opt_manager"], helper.molsys, helper.history, helper.params, helper.computer)
         return helper
 
     def _compute(self):
@@ -567,13 +564,13 @@ class EngineHelper(Helper):
         self.computer = optwrapper.make_computer(self.opt_input, "qc")
         self.computer_type = "qc"
         self.build_coordinates()
-        print(type(self.params))
         self.opt_manager = OptimizationManager(self.molsys, self.history, self.params, self.computer)
 
     @classmethod
     def from_dict(cls, d):
         helper = super().from_dict(d)
         helper.computer = compute_wrappers.make_computer_from_dict("qc", d.get("computer"))
+        helper.opt_manager = OptimizationManager.from_dict(d["opt_manager"], helper.molsys, helper.history, helper.params, helper.computer)
         return helper
 
     def _compute(self):

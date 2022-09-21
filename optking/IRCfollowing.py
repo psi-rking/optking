@@ -31,6 +31,25 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
         self.irc_history.set_atom_symbols(self.molsys.atom_symbols)
         self.irc_history.set_step_size_and_direction(self.params.irc_step_size, self.params.irc_direction)
 
+    def to_dict(self):
+
+        return {
+            "irc_step_number": self.irc_step_number,
+            "sub_step_number": self.sub_step_number,
+            "total_steps_taken": self.total_steps_taken,
+            "irc_history": self.irc_history.to_dict(),
+        }
+
+    @classmethod
+    def from_dict(cls, d, molsys, history, params):
+
+        irc = cls(molsys, history, params)
+        irc.irc_step_number = d["irc_step_number"]
+        irc.sub_step_number = d["sub_step_number"]
+        irc.total_steps_taken = d["total_steps_taken"]
+        irc.irc_history = IRCdata.IRCHistory.from_dict(d.get("irc_history"))
+        return irc
+
     def requires(self):
 
         return "energy", "gradient", "hessian"

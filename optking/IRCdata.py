@@ -56,21 +56,27 @@ class IRCpoint(object):
         self.q_pivot = q_p
         self.x_pivot = x_p
 
-    def dict_output(self):
+    def to_dict(self):
         s = {
-            "Step Number": self.step_number,
-            "Intco Values": self.q.tolist(),
-            "Geometry": self.x.tolist(),
-            "Internal Forces": self.f_q.tolist(),
-            "Cartesian Forces": self.f_x.tolist(),
-            "Energy": self.energy,
-            "Pivot Intco Values": self.q_pivot.tolist(),
-            "Pivot Geometry": self.x_pivot.tolist(),
-            "Step Distance": self.step_dist,
-            "Arc Distance": self.arc_dist,
-            "Line Distance": self.line_dist,
+            "step_number": self.step_number,
+            "q": self.q.tolist(),
+            "x": self.x.tolist(),
+            "f_q": self.f_q.tolist(),
+            "f_x": self.f_x.tolist(),
+            "energy": self.energy,
+            "q_pivot": self.q_pivot.tolist(),
+            "x_pivot": self.x_pivot.tolist(),
+            "step_dist": self.step_dist,
+            "arc_dist": self.arc_dist,
+            "line_dist": self.line_dist,
         }
         return s
+
+    @classmethod
+    def from_dict(cls, d):
+        for key in ["q", "x", "f_q", "f_x", "q_pivot", "x_pivot"]:
+            d[key] = np.asarray(d[key])
+        return cls(**d)
 
 
 class IRCHistory(object):
@@ -94,6 +100,24 @@ class IRCHistory(object):
     def set_step_size_and_direction(self, step_size, direction):
         self.__step_size = step_size
         self.__direction = direction
+
+    def to_dict(self):
+
+        d = {
+            "irc_points": [point.to_dict() for point in self.irc_points],
+            "go": self.go,
+            "atom_symbols": self.atom_symbols
+        }
+        return d
+
+    @classmethod
+    def from_dict(cls, d):
+        
+        irc_history = cls()
+        irc_history.irc_points = [IRCpoint.from_dict(point) for point in d["irc_points"]]
+        irc_history.go = d["go"]
+        irc_history.atom_symbols = d["atom_symbols"]
+        return irc_history 
 
     def add_irc_point(self, step_number, q_in, x_in, f_q, f_x, E, lineDistStep=0, arcDistStep=0):
         if len(self.irc_points) != 0:
@@ -308,7 +332,7 @@ class IRCHistory(object):
         # out += mol.print_simples(psi_outfile, qc_outfile)
 
     def rxnpath_dict(self):
-        rp = [self.irc_points[i].dict_output() for i in range(len(self.irc_points))]
+        rp = [self.irc_points[i].to_dict() for i in range(len(self.irc_points))]
         return rp
 
     def _project_forces(self, f_q, o_molsys):
