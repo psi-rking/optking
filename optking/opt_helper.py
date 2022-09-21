@@ -91,6 +91,8 @@ class Helper(ABC):
             else:
                 string += self.opt_manager.opt_method.irc_history.progress_report(return_str=True)
         elif "FAILED" not in status and len(energies) > 0:
+            if self.params.opt_type == 'IRC':
+                conv_info["sub_step_num"] = self.opt_manager.opt_method.sub_step_number
             string += conv_check(conv_info, self.params.__dict__, str_mode="table")
 
         string += "Next Geometry in Ang \n"

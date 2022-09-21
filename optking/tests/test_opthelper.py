@@ -169,7 +169,7 @@ def test_stepwise_export():
 
 def test_hooh_irc(check_iter):
     import psi4
-    import pprint
+    from .utils import utils
     energy_5th_IRC_pt = -150.812913276783  # TEST
     h2o2 = psi4.geometry(
         """
@@ -193,16 +193,15 @@ def test_hooh_irc(check_iter):
         "g_convergence": "gau_verytight",
         "opt_type": "irc",
         "geom_maxiter": 60,
-        "full_hess_every": 0
+        "full_hess_every": 0,
+        "irc_direction": "FORWARD"
     }
 
     psi4.set_options(psi4_options)
     opt = optking.CustomHelper(h2o2, params)
     optSaved = opt.to_dict()
-    
-    pp = pprint.PrettyPrinter(indent=2)
 
-    for i in range(3):
+    for i in range(50):
         opt = optking.CustomHelper.from_dict(optSaved)
         print(opt.step_num)
 
@@ -223,8 +222,6 @@ def test_hooh_irc(check_iter):
             break
         else:
             optSaved = opt.to_dict()
-            print("IRC step number")
-            pp.pprint(optSaved)
         geom = psi4.core.Matrix.from_array(opt.molsys.geom)
         h2o2.set_geometry(geom)
         h2o2.update_geometry()
@@ -234,6 +231,7 @@ def test_hooh_irc(check_iter):
 
     # print(opt.history.summary_string())
     json_output = opt.close()
+    IRC = json_output["extras"]["irc_rxn_path"]
 
-    E = json_output["energies"][-1]  # TEST
-    assert False
+    assert psi4.compare_values(energy_5th_IRC_pt, IRC[5]["energy"], 6, "Energy of 5th IRC point.")  # TEST
+    utils.compare_iterations(json_output, 45, check_iter)

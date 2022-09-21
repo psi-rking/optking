@@ -64,8 +64,8 @@ class IRCpoint(object):
             "f_q": self.f_q.tolist(),
             "f_x": self.f_x.tolist(),
             "energy": self.energy,
-            "q_pivot": self.q_pivot.tolist(),
-            "x_pivot": self.x_pivot.tolist(),
+            "q_pivot": self.q_pivot.tolist() if self.q_pivot is not None else [0] * len(self.q),
+            "x_pivot": self.x_pivot.tolist() if self.x_pivot is not None else [0] * len(self.x),
             "step_dist": self.step_dist,
             "arc_dist": self.arc_dist,
             "line_dist": self.line_dist,
@@ -106,7 +106,9 @@ class IRCHistory(object):
         d = {
             "irc_points": [point.to_dict() for point in self.irc_points],
             "go": self.go,
-            "atom_symbols": self.atom_symbols
+            "atom_symbols": self.atom_symbols,
+            "direction": self.__direction,
+            "step_size": self.__step_size
         }
         return d
 
@@ -117,6 +119,8 @@ class IRCHistory(object):
         irc_history.irc_points = [IRCpoint.from_dict(point) for point in d["irc_points"]]
         irc_history.go = d["go"]
         irc_history.atom_symbols = d["atom_symbols"]
+        irc_history.__direction = d["direction"]
+        irc_history.__step_size = d["step_size"]
         return irc_history 
 
     def add_irc_point(self, step_number, q_in, x_in, f_q, f_x, E, lineDistStep=0, arcDistStep=0):

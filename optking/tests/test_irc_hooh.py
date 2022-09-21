@@ -39,8 +39,8 @@ def test_hooh_irc(check_iter):
     for step in IRC:
         print(
             "%15d%15.5f%20.10f%15.5f"
-            % (step["Step Number"], step["Arc Distance"], step["Energy"], step["Intco Values"][5])
+            % (step["step_number"], step["arc_dist"], step["energy"], step["q"][5])
         )
 
-    assert psi4.compare_values(energy_5th_IRC_pt, IRC[5]["Energy"], 6, "Energy of 5th IRC point.")  # TEST
+    assert psi4.compare_values(energy_5th_IRC_pt, IRC[5]["energy"], 6, "Energy of 5th IRC point.")  # TEST
     utils.compare_iterations(json_output, 45, check_iter)

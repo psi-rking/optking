@@ -624,8 +624,9 @@ def prepare_opt_output(o_molsys, computer, rxnpath=False, error=None):
         qc_output.update({"success": False, "error": {"error_type": error.err_type, "error_message": error.mesg}})
 
     if rxnpath:
+        print(rxnpath)
         qc_output["extras"]["irc_rxn_path"] = rxnpath
-        qc_output["final_geometry"] = rxnpath[-2]["Energy"]
-        qc_output["extras"]["final_irc_energy"] = rxnpath[-2]["Geometry"]
+        qc_output["final_geometry"] = rxnpath[-2]["x"]
+        qc_output["extras"]["final_irc_energy"] = rxnpath[-2]["energy"]
 
     return qc_output

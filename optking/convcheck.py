@@ -244,7 +244,7 @@ def _print_convergence_table(conv_info, criteria, conv_met, conv_active, params_
     if conv_info.get('step_type') == 'standard':
         conv_str += std_vals.format(*print_vals)
     else:
-        print_vals = print_vals[:1] + [conv_info.get('sub_step_num')] + print_vals[1:]
+        print_vals = print_vals[:1] + [conv_info['sub_step_num']] + print_vals[1:]
         conv_str += irc_vals.format(*print_vals)
 
     conv_str += "\t" + "-" * dash_length + "\n\n"
