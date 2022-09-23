@@ -140,7 +140,9 @@ def test_stepwise_export():
         opt.gX = grad.np.reshape(-1)
         opt.E = wfn.energy()
         opt.compute()
+        print(opt.pre_step_str())
         opt.take_step()
+        print(opt.post_step_str())
         conv = opt.test_convergence()
         if conv is True:
             print("Optimization SUCCESS:")
@@ -212,7 +214,9 @@ def test_hooh_irc(check_iter):
         opt.gX = grad.np.reshape(-1)
         opt.E = wfn.energy()
         opt.compute()
+        print(opt.pre_step_str())
         opt.take_step()
+        print(opt.post_step_str())
         conv = opt.test_convergence()
         if conv is True:
             print("Optimization SUCCESS:")
@@ -232,7 +236,6 @@ def test_hooh_irc(check_iter):
 
     assert psi4.compare_values(energy_5th_IRC_pt, IRC[5]["energy"], 6, "Energy of 5th IRC point.")  # TEST
     utils.compare_iterations(json_output, 45, check_iter)
-
 
 def test_linesearch(check_iter):
     import psi4
@@ -269,7 +272,9 @@ def test_linesearch(check_iter):
         opt.gX = grad.np.reshape(-1)
         opt.E = wfn.energy()
         opt.compute()
+        print(opt.pre_step_str())
         opt.take_step()
+        print(opt.post_step_str())
         conv = opt.test_convergence()
         if conv is True:
             print("Optimization SUCCESS:")

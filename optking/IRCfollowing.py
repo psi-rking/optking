@@ -92,7 +92,7 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
 
             dq, return_str = self.compute_pivot_and_guess_points(v, fq, return_str=True)
         else:
-            # We don't add the initial guess steps to the history.
+
             self.history.append(self.molsys.geom, energy, fq, self.molsys.gradient_to_cartesians(-1 * fq))
             dq = self.dq_irc(fq, H)
             dq, dx, return_str = displace_molsys(self.molsys, dq, fq, ensure_convergence=True, return_str=True)
@@ -113,19 +113,15 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
 
     def converged(self, dq, fq, step_number, str_mode='', **kwargs):
 
+        energies = [step.E for step in self.history.steps]
+
         if self.sub_step_number < 1:
             logger.debug("Too few steps. continue optimization")
             return False
 
-        if self.irc_history.test_for_irc_minimum(fq):
+        if self.irc_history.test_for_irc_minimum(fq, energies[-1]):
             logger.info("A minimum has been reached on the IRC.  Stopping here.\n")
             return True
-
-        if self.irc_step_number >= self.params.irc_points:
-            logger.info(f"\tThe requested {self.params.irc_points} IRC points have been obtained.")
-            return True
-
-        energies = [step.E for step in self.history.steps]
 
         fq_new = self.irc_history._project_forces(fq, self.molsys)
 
@@ -148,6 +144,10 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
             logger.info("\tStarting search for next IRC point.")
             logger.info("\tClearing old constrained optimization history.")
             self.history.reset_to_most_recent()  # delete old steps
+
+            if self.irc_step_number >= self.params.irc_points:
+                logger.info(f"\tThe requested {self.params.irc_points} IRC points have been obtained.")
+                return True
 
         if str_mode:
             return substep_convergence

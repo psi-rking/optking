@@ -219,7 +219,7 @@ class IRCHistory(object):
         index = -1 if step is None else step
         return self.irc_points[index].step_dist
 
-    def test_for_irc_minimum(self, f_q):
+    def test_for_irc_minimum(self, f_q, energy):
         """ Given current forces, checks if we are at/near a minimum
         For now, checks if forces are opposite those are previous pivot point
         """
@@ -230,8 +230,11 @@ class IRCHistory(object):
         overlap = np.dot(unit_f, unit_f_rxn)
 
         logger.info("Overlap of forces with previous rxnpath point %8.4f" % overlap)
-
+        d_energy = energy - self.energy()
+        logger.info("Change in energy from last point %d", d_energy)
         if overlap < -0.7:
+            return True
+        elif overlap < 0.0 and d_energy > 0.0:
             return True
 
         # TODO  Look at line distance criterion when distances are working.

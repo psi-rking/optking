@@ -10,6 +10,7 @@ from abc import ABC, abstractmethod
 from typing import Union
 
 import numpy as np
+from optking.IRCfollowing import IntrinsicReactionCoordinate
 import qcelemental as qcel
 
 from . import compute_wrappers, hessian, history, molsys, optwrapper
@@ -92,7 +93,11 @@ class Helper(ABC):
                 string += self.opt_manager.opt_method.irc_history.progress_report(return_str=True)
         elif "FAILED" not in status and len(energies) > 0:
             if self.params.opt_type == 'IRC':
-                conv_info["sub_step_num"] = self.opt_manager.opt_method.sub_step_number
+                irc_object: IntrinsicReactionCoordinate = self.opt_manager.opt_method
+                conv_info["sub_step_num"] = irc_object.sub_step_number
+                conv_info["iternum"] = irc_object.irc_step_number
+                conv_info["fq"] = irc_object.irc_history._project_forces(self.fq, self.molsys)
+
             string += conv_check(conv_info, self.params.__dict__, str_mode="table")
 
         string += "Next Geometry in Ang \n"
