@@ -1,7 +1,6 @@
 """
-Helpers to provide high-level interfaces for optking.  In particular to be able
-to input one's own gradients and run 1 step at a time.
-
+Helpers to provide high-level interfaces for optking.  The Helpers allow individual steps to be taken easily. 
+EngineHelper runs calculations through QCEngine. CustomHelper adds the abilility to directly input gradients.
 """
 
 import logging

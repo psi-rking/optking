@@ -221,7 +221,12 @@ class IRCHistory(object):
 
     def test_for_irc_minimum(self, f_q, energy):
         """ Given current forces, checks if we are at/near a minimum
-        For now, checks if forces are opposite those are previous pivot point
+        Two checks are performed.
+        1. If forces are opposite those are previous pivot point
+            - The forces point in opposite directions due to stepping over the minima
+        2. If forces are have any negative overlap and the energy has increased.
+            - The minima has been stepped over but the forces are not exactly opposite
+            due to finite step size
         """
 
         unit_f = f_q / np.linalg.norm(f_q)  # current forces

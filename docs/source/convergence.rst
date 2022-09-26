@@ -59,3 +59,13 @@ loosening the `rms_force` threshold
          **Max Disp**, and **RMS Disp**) are fulfilled. To help with flat 
          potential surfaces, alternate convergence achieved when 100\ :math:`\times`\ *rms force* is less 
          than **RMS Force** criterion.
+
+IRC Convergence
+---------------
+
+The IRC algorithm uses slightly different convergence criteria since the step sizes are of a fixed distance.
+The optimization ends when the forces are opposite the forces of the previous step at a certain threshold < -0.7.
+Alternatively an increase in energy along the MEP with any negative overlap of the forces is sufficient.
+
+Individual points on the IRC are optimized in a constrained optimization (on a hypersphere of fixed radius) according
+to the convergence criteria of the table above.
