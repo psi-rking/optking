@@ -140,7 +140,9 @@ def test_stepwise_export():
         opt.gX = grad.np.reshape(-1)
         opt.E = wfn.energy()
         opt.compute()
+        print(opt.pre_step_str())
         opt.take_step()
+        print(opt.post_step_str())
         conv = opt.test_convergence()
         if conv is True:
             print("Optimization SUCCESS:")
@@ -165,3 +167,133 @@ def test_stepwise_export():
     refenergy = -74.9659011923  # TEST
     assert psi4.compare_values(refnucenergy, nucenergy, 3, "Nuclear repulsion energy")
     assert psi4.compare_values(refenergy, E, 6, "Reference energy")
+
+
+def test_hooh_irc(check_iter):
+    import psi4
+    from .utils import utils
+    energy_5th_IRC_pt = -150.812913276783  # TEST
+    h2o2 = psi4.geometry(
+        """
+      H     0.0000000000   0.9803530335  -0.8498671785
+      O     0.0000000000   0.6988545188   0.0536419016
+      O     0.0000000000  -0.6988545188   0.0536419016
+      H     0.0000000000  -0.9803530335  -0.8498671785
+    """
+    )
+    # Necessary since IRC will break C2h.
+    h2o2.reset_point_group("c2")
+
+    psi4.core.clean_options()
+
+    psi4_options = {
+        "basis": "dzp",
+        "scf_type": "pk",
+    }
+
+    params = {
+        "g_convergence": "gau_verytight",
+        "opt_type": "irc",
+        "geom_maxiter": 60,
+        "full_hess_every": 0,
+        "irc_direction": "FORWARD"
+    }
+
+    psi4.set_options(psi4_options)
+    opt = optking.CustomHelper(h2o2, params)
+    optSaved = opt.to_dict()
+
+    for i in range(50):
+        opt = optking.CustomHelper.from_dict(optSaved)
+
+        if i == 0:
+            H = psi4.hessian("hf")
+            opt.HX = H.np
+
+        grad, wfn = psi4.gradient("hf", return_wfn=True)
+        opt.gX = grad.np.reshape(-1)
+        opt.E = wfn.energy()
+        opt.compute()
+        print(opt.pre_step_str())
+        opt.take_step()
+        print(opt.post_step_str())
+        conv = opt.test_convergence()
+        if conv is True:
+            print("Optimization SUCCESS:")
+            break
+        else:
+            optSaved = opt.to_dict()
+        geom = psi4.core.Matrix.from_array(opt.molsys.geom)
+        h2o2.set_geometry(geom)
+        h2o2.update_geometry()
+
+    else:
+        print("Optimization FAILURE:\n")
+
+    # print(opt.history.summary_string())
+    json_output = opt.close()
+    IRC = json_output["extras"]["irc_rxn_path"]
+
+    assert psi4.compare_values(energy_5th_IRC_pt, IRC[5]["energy"], 6, "Energy of 5th IRC point.")  # TEST
+    utils.compare_iterations(json_output, 45, check_iter)
+
+def test_linesearch(check_iter):
+    import psi4
+    from .utils import utils
+    
+    refenergy = -1053.880393  # Eh
+    Ar2 = psi4.geometry(
+        """
+      Ar
+      Ar 1 5.0
+    """
+    )
+
+    psi4.core.clean_options()
+    psi4_options = {
+        "basis": "cc-pvdz",
+        "d_convergence": 10
+    }
+
+    optking_options = {
+        "geom_maxiter": 60,
+        "g_convergence": "gau_tight",
+        "step_type": "SD",
+    }
+
+    psi4.set_options(psi4_options)
+    opt = optking.CustomHelper(Ar2, optking_options)
+    optSaved = opt.to_dict()
+
+    for _ in range(50):
+        opt = optking.CustomHelper.from_dict(optSaved)
+
+        grad, wfn = psi4.gradient("mp2", return_wfn=True)
+        opt.gX = grad.np.reshape(-1)
+        opt.E = wfn.energy()
+        opt.compute()
+        print(opt.pre_step_str())
+        opt.take_step()
+        print(opt.post_step_str())
+        conv = opt.test_convergence()
+        if conv is True:
+            print("Optimization SUCCESS:")
+            break
+        else:
+            optSaved = opt.to_dict()
+        geom = psi4.core.Matrix.from_array(opt.molsys.geom)
+        Ar2.set_geometry(geom)
+        Ar2.update_geometry()
+
+    else:
+        print("Optimization FAILURE:\n")
+
+    psi4.set_options(psi4_options)
+
+    # "linesearch" is not currrently recognized by psi4 read_options.
+    json_output = opt.close()
+    E = json_output["energies"][-1]
+    nucenergy = json_output["trajectory"][-1]["properties"]["nuclear_repulsion_energy"]
+    assert psi4.compare_values(nucenergy, nucenergy, 3, "Nuclear repulsion energy")  # TEST
+    assert psi4.compare_values(refenergy, E, 1, "Reference energy")  # TEST
+    utils.compare_iterations(json_output, 25, check_iter)

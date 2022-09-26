@@ -56,21 +56,27 @@ class IRCpoint(object):
         self.q_pivot = q_p
         self.x_pivot = x_p
 
-    def dict_output(self):
+    def to_dict(self):
         s = {
-            "Step Number": self.step_number,
-            "Intco Values": self.q.tolist(),
-            "Geometry": self.x.tolist(),
-            "Internal Forces": self.f_q.tolist(),
-            "Cartesian Forces": self.f_x.tolist(),
-            "Energy": self.energy,
-            "Pivot Intco Values": self.q_pivot.tolist(),
-            "Pivot Geometry": self.x_pivot.tolist(),
-            "Step Distance": self.step_dist,
-            "Arc Distance": self.arc_dist,
-            "Line Distance": self.line_dist,
+            "step_number": self.step_number,
+            "q": self.q.tolist(),
+            "x": self.x.tolist(),
+            "f_q": self.f_q.tolist(),
+            "f_x": self.f_x.tolist(),
+            "energy": self.energy,
+            "q_pivot": self.q_pivot.tolist() if self.q_pivot is not None else [0] * len(self.q),
+            "x_pivot": self.x_pivot.tolist() if self.x_pivot is not None else [0] * len(self.x),
+            "step_dist": self.step_dist,
+            "arc_dist": self.arc_dist,
+            "line_dist": self.line_dist,
         }
         return s
+
+    @classmethod
+    def from_dict(cls, d):
+        for key in ["q", "x", "f_q", "f_x", "q_pivot", "x_pivot"]:
+            d[key] = np.asarray(d[key])
+        return cls(**d)
 
 
 class IRCHistory(object):
@@ -94,6 +100,28 @@ class IRCHistory(object):
     def set_step_size_and_direction(self, step_size, direction):
         self.__step_size = step_size
         self.__direction = direction
+
+    def to_dict(self):
+
+        d = {
+            "irc_points": [point.to_dict() for point in self.irc_points],
+            "go": self.go,
+            "atom_symbols": self.atom_symbols,
+            "direction": self.__direction,
+            "step_size": self.__step_size
+        }
+        return d
+
+    @classmethod
+    def from_dict(cls, d):
+        
+        irc_history = cls()
+        irc_history.irc_points = [IRCpoint.from_dict(point) for point in d["irc_points"]]
+        irc_history.go = d["go"]
+        irc_history.atom_symbols = d["atom_symbols"]
+        irc_history.__direction = d["direction"]
+        irc_history.__step_size = d["step_size"]
+        return irc_history 
 
     def add_irc_point(self, step_number, q_in, x_in, f_q, f_x, E, lineDistStep=0, arcDistStep=0):
         if len(self.irc_points) != 0:
@@ -191,9 +219,14 @@ class IRCHistory(object):
         index = -1 if step is None else step
         return self.irc_points[index].step_dist
 
-    def test_for_irc_minimum(self, f_q):
+    def test_for_irc_minimum(self, f_q, energy):
         """ Given current forces, checks if we are at/near a minimum
-        For now, checks if forces are opposite those are previous pivot point
+        Two checks are performed.
+        1. If forces are opposite those are previous pivot point
+            - The forces point in opposite directions due to stepping over the minima
+        2. If forces are have any negative overlap and the energy has increased.
+            - The minima has been stepped over but the forces are not exactly opposite
+            due to finite step size
         """
 
         unit_f = f_q / np.linalg.norm(f_q)  # current forces
@@ -202,8 +235,11 @@ class IRCHistory(object):
         overlap = np.dot(unit_f, unit_f_rxn)
 
         logger.info("Overlap of forces with previous rxnpath point %8.4f" % overlap)
-
+        d_energy = energy - self.energy()
+        logger.info("Change in energy from last point %d", d_energy)
         if overlap < -0.7:
+            return True
+        elif overlap < 0.0 and d_energy > 0.0:
             return True
 
         # TODO  Look at line distance criterion when distances are working.
@@ -308,7 +344,7 @@ class IRCHistory(object):
         # out += mol.print_simples(psi_outfile, qc_outfile)
 
     def rxnpath_dict(self):
-        rp = [self.irc_points[i].dict_output() for i in range(len(self.irc_points))]
+        rp = [self.irc_points[i].to_dict() for i in range(len(self.irc_points))]
         return rp
 
     def _project_forces(self, f_q, o_molsys):

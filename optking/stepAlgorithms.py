@@ -160,20 +160,8 @@ class OptimizationAlgorithm(OptimizationInterface):
             dq = self.step(fq, H)
 
         if self.trust_radius_on:
-            self.apply_intrafrag_step_scaling(dq)
-
-        # Somewhere we need to check the size of the interfragment modes.  They
-        # can inadvertently represent very large motions.
-        for iDI, DI in enumerate(self.molsys.dimer_intcos): # loop over dimers with interfrag intcos
-            start = self.molsys.dimerfrag_1st_intco(iDI)
-            for i, I in enumerate(DI.pseudo_frag.intcos):  # loop over individual intcos
-                val = dq[start+i]
-                if abs(val) > self.params.interfrag_trust:
-                    logger.info(f"Reducing step for Dimer({DI.A_idx+1},{DI.B_idx+1}), {I}, {start+i}")
-                    if val > 0:
-                        dq[start+i] = self.params.interfrag_trust
-                    else:
-                        dq[start+i] = -1.0*self.params.interfrag_trust
+            dq = self.apply_intrafrag_step_scaling(dq)
+            dq = self.apply_interfrag_step_scaling(dq)
 
         self.molsys.interfrag_dq_discontinuity_correction(dq)
         achieved_dq, achieved_dx, return_str = displace_molsys(self.molsys,
@@ -209,6 +197,26 @@ class OptimizationAlgorithm(OptimizationInterface):
             logger.info("\tStep length exceeds trust radius of %10.5f." % trust)
             logger.info("\tScaling displacements by %10.5f" % scale)
             dq *= scale
+        return dq
+
+    def apply_interfrag_step_scaling(self, dq):
+        """ Check the size of the interfragment modes.  They can inadvertently represent 
+        very large motions. 
+        
+        Returns
+        -------
+        dq : scaled step according to trust radius
+        """
+        for iDI, DI in enumerate(self.molsys.dimer_intcos): # loop over dimers with interfrag intcos
+            start = self.molsys.dimerfrag_1st_intco(iDI)
+            for i, I in enumerate(DI.pseudo_frag.intcos):  # loop over individual intcos
+                val = dq[start+i]
+                if abs(val) > self.params.interfrag_trust:
+                    logger.info(f"Reducing step for Dimer({DI.A_idx+1},{DI.B_idx+1}), {I}, {start+i}")
+                    if val > 0:
+                        dq[start+i] = self.params.interfrag_trust
+                    else:
+                        dq[start+i] = -1.0*self.params.interfrag_trust
         return dq
 
     def backstep(self):
@@ -343,6 +351,7 @@ class OptimizationAlgorithm(OptimizationInterface):
             logger.info("\tEnergy ratio indicates good step.")
             logger.info("\tIntrafrag trust radius increased to %6.3e.", new_val)
             self.params.intrafrag_trust = new_val
+
         if self.params.frag_mode == "MULTI":
             maximum = self.params.interfrag_trust_max
             if self.params.interfrag_trust != maximum:
@@ -361,6 +370,7 @@ class OptimizationAlgorithm(OptimizationInterface):
             logger.warning("\tEnergy ratio indicates iffy step.")
             logger.warning("\tIntrafrag trust radius decreased to %6.3e.", new_val)
             self.params.intrafrag_trust = new_val
+
         if self.params.frag_mode == "MULTI":
             minimum = self.params.interfrag_trust_min
             if self.params.interfrag_trust != minimum:

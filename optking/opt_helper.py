@@ -1,7 +1,6 @@
 """
-Helpers to provide high-level interfaces for optking.  In particular to be able
-to input one's own gradients and run 1 step at a time.
-
+Helpers to provide high-level interfaces for optking.  The Helpers allow individual steps to be taken easily. 
+EngineHelper runs calculations through QCEngine. CustomHelper adds the abilility to directly input gradients.
 """
 
 import logging
@@ -10,6 +9,7 @@ from abc import ABC, abstractmethod
 from typing import Union
 
 import numpy as np
+from optking.IRCfollowing import IntrinsicReactionCoordinate
 import qcelemental as qcel
 
 from . import compute_wrappers, hessian, history, molsys, optwrapper
@@ -45,11 +45,9 @@ class Helper(ABC):
 
         optwrapper.initialize_options(params, silent=kwargs.get("silent", False))
         self.params = op.Params
-        print(type(self.params))
 
         self.computer: compute_wrappers.ComputeWrapper
         self.step_num = 0
-        self.irc_step_num = 0  # IRC not supported by OptHelper for now.
         # The following are not used before being computed:
 
         self._Hq: Union[np.ndarray, None] = None
@@ -93,6 +91,12 @@ class Helper(ABC):
             else:
                 string += self.opt_manager.opt_method.irc_history.progress_report(return_str=True)
         elif "FAILED" not in status and len(energies) > 0:
+            if self.params.opt_type == 'IRC':
+                irc_object: IntrinsicReactionCoordinate = self.opt_manager.opt_method
+                conv_info["sub_step_num"] = irc_object.sub_step_number
+                conv_info["iternum"] = irc_object.irc_step_number
+                conv_info["fq"] = irc_object.irc_history._project_forces(self.fq, self.molsys)
+
             string += conv_check(conv_info, self.params.__dict__, str_mode="table")
 
         string += "Next Geometry in Ang \n"
@@ -102,15 +106,14 @@ class Helper(ABC):
     def to_dict(self):
         d = {
             "step_num": self.step_num,
-            "irc_step_num": self.irc_step_num,
             "params": self.params.__dict__,
             "molsys": self.molsys.to_dict(),
             "history": self.history.to_dict(),
             "computer": self.computer.__dict__,
             "hessian": self._Hq,
             "opt_input": self.opt_input,
+            "opt_manager": self.opt_manager.to_dict()
         }
-
         return d
 
     @classmethod
@@ -401,7 +404,7 @@ class CustomHelper(Helper):
     def from_dict(cls, d):
         helper = super().from_dict(d)
         helper.computer = compute_wrappers.make_computer_from_dict("user", d.get("computer"))
-        helper.opt_manager = OptimizationManager(helper.molsys, helper.history, helper.params, helper.computer)
+        helper.opt_manager = OptimizationManager.from_dict(d["opt_manager"], helper.molsys, helper.history, helper.params, helper.computer)
         return helper
 
     def _compute(self):
@@ -567,13 +570,13 @@ class EngineHelper(Helper):
         self.computer = optwrapper.make_computer(self.opt_input, "qc")
         self.computer_type = "qc"
         self.build_coordinates()
-        print(type(self.params))
         self.opt_manager = OptimizationManager(self.molsys, self.history, self.params, self.computer)
 
     @classmethod
     def from_dict(cls, d):
         helper = super().from_dict(d)
         helper.computer = compute_wrappers.make_computer_from_dict("qc", d.get("computer"))
+        helper.opt_manager = OptimizationManager.from_dict(d["opt_manager"], helper.molsys, helper.history, helper.params, helper.computer)
         return helper
 
     def _compute(self):

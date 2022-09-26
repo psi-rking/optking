@@ -62,7 +62,38 @@ class LineSearch(OptimizationInterface):
         if params.linesearch_step is None:
             self.step_size = np.linalg.norm(self.history[-2].Dq) / 2
 
-    @abstractmethod
+    def to_dict(self):
+        
+        return {
+            "linesearch_max_iter": self.linesearch_max_iter,
+            "linesearch_start": self.linesearch_start,
+            "linesearch_steps": self.linesearch_steps,
+            "points": self.points.to_dict(),
+            "points_needed": self.points_needed,
+            "final_step": self.final_step.tolist(),
+            "final_distance": self.final_distance,
+            "minimized": self.minimized,
+            "direction": self.direction.tolist(),
+            "linesearch_history": self.linesearch_history.to_dict(),
+            "active_point": self.active_point
+        }
+
+    @classmethod
+    def from_dict(cls, d, molsys, history, params):
+        
+        linesearch = cls(molsys, history, params)
+        linesearch.linesearch_max_iter = d["linesearch_max_iter"]
+        linesearch.linesearch_start = d["linesearch_start"]
+        linesearch.linesearch_steps = d["linesearch_steps"]
+        linesearch.points = d["points"]
+        linesearch.final_step = np.asarray(d["final_step"])
+        linesearch.final_distance = d["final_distance"]
+        linesearch.minimized = d["minimized"]
+        linesearch.direction = np.asarray(d["direction"])
+        linesearch.linesearch_history = History.from_dict(d["linesearch_history"])
+        linesearch.active_point = d["active_point"]
+        return linesearch
+
     def fit(self):
         """Determines where the next step should head. Remove points from self.points as needed
         Add the new points. Must set self.final_point if the linesearch has finished.
