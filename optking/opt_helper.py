@@ -387,7 +387,7 @@ class CustomHelper(Helper):
             import_psi4("Attempting to create molsys from psi4 molecule")
             import psi4
 
-            if isinstance(mol_src, psi4.qcdb.Molecule):
+            if isinstance(mol_src, (psi4.qcdb.Molecule, psi4.core.Molecule)):
                 self.molsys, self.opt_input = molsys.Molsys.from_psi4(mol_src)
             else:
                 try:
@@ -483,8 +483,8 @@ class CustomHelper(Helper):
 
 class EngineHelper(Helper):
     """Perform an optimization using qcengine to compute properties. Use OptimizationInput to setup
-    a molecular system 
-    
+    a molecular system
+
     calling `compute()` will perform a QCEngine calculation according to the provided QCInputSpecification.
 
     calling `optimize()` after instantiation will perform an automatic optimization returning an OptimizationResult.
