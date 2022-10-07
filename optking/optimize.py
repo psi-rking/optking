@@ -1,6 +1,6 @@
 """ Provides some of the high level functions and classes to run optimizations. This is a good starting place for anyone
 looking to add features to the code to familarize themselves with the overall workings of optking.
-Functions may be useful to users seeking greater control over the inner workings of optking than provided by the 
+Functions may be useful to users seeking greater control over the inner workings of optking than provided by the
 OptHelpers. For instance if manually creating a molecular system or manually controlling / switching algorithms
 on the fly.
 
@@ -142,7 +142,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
     @classmethod
     def from_dict(cls, d, molsys, history, params, computer):
         """ Reload attributes from the provided dictionary. Create all necessary classes.
-        
+
         To prevent duplication, OptHelper handles converting the molsys, history, params, and computer to/from dict
         """
 
@@ -162,14 +162,14 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         else:
             manager.opt_method = optimization_factory(method, molsys, history, params)  # Can just recreate with current history and params 
 
-        if d.get("linesearch_method"): 
+        if d.get("linesearch_method"):
             manager.linesearch_method = OptimizationManager._LINESEARCHES["ENERGY"].from_dict(d["linesearch_method"], molsys, history, params)
 
         return manager
 
     def start_step(self, H: np.ndarray):
-        """ Initialize coordinates and perform any coordinate transformations of gradients and hessians. 
-        
+        """ Initialize coordinates and perform any coordinate transformations of gradients and hessians.
+
         Returns
         -------
         H: np.ndarray
@@ -183,7 +183,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
 
         # if optimization coordinates are absent, choose them. Could be erased after AlgError
         if not self.molsys.intcos_present:
-            make_internal_coords(self.molsys)
+            make_internal_coords(self.molsys, self.params)
             logger.debug("Molecular system after make_internal_coords:")
             logger.info(str(self.molsys))
 
@@ -195,11 +195,11 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
 
         requirements = self.opt_method.requires()
         protocol = self.get_hessian_protocol()
-        H, gX, E = get_pes_info(H, self.computer, self.molsys, self.history, self.params, protocol, requirements)
+        H, g_q, g_x, E = get_pes_info(H, self.computer, self.molsys, self.history, self.params, protocol, requirements)
 
-        logger.info("%s", print_geom_grad(self.molsys.geom, gX))
+        logger.info("%s", print_geom_grad(self.molsys.geom, g_x))
 
-        f_q = self.molsys.gradient_to_internals(gX, -1.0)
+        f_q = -g_q
         self.molsys.apply_external_forces(f_q, H, self.step_number)
         self.molsys.project_redundancies_and_constraints(f_q, H)
         self.molsys.q_show()
@@ -213,8 +213,8 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         return H, f_q, E
 
     def take_step(self, fq=None, H=None, energy=None, return_str=False, **kwargs):
-        """ Take whatever step (normal, linesearch, IRC, constrained IRC) is next. 
-        
+        """ Take whatever step (normal, linesearch, IRC, constrained IRC) is next.
+
         fq: Union[np.ndarray, None]
             forces
         H: Union[np.ndarray, None]
@@ -259,8 +259,8 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         return achieved_dq
 
     def update_requirements(self):
-        """ Get the current requirements for the next step. 
-        
+        """ Get the current requirements for the next step.
+
         Notes
         -----
         If linesearching requirements can change. Always safe to provide a gradient regardless. """
@@ -318,7 +318,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
 
         if self.erase_hessian is True:
             self.erase_hessian = False
-            return "guess"
+            return "compute" if self.params.full_hess_every > 0 else "guess"
 
         if self.params.cart_hess_read:
             return "compute"
@@ -364,17 +364,19 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
                     intcosMisc.remove_old_now_linear_bend(l.atoms, F.intcos)
                     F.add_intcos_from_connectivity()
             eraseHistory = True
-        elif op.Params.dynamic_level == op.Params.dynamic_level_max:
-            logger.critical("\n\t Current algorithm/dynamic_level is %d.\n" % op.Params.dynamic_level)
+        elif self.params.dynamic_level == self.params.dynamic_level_max:
+            logger.critical("\n\t Current algorithm/dynamic_level is %d.\n" % self.params.dynamic_level)
             logger.critical("\n\t Alternative approaches are not available or turned on.\n")
             raise OptError("Maximum dynamic_level reached.")
         else:
-            op.Params.dynamic_level += 1
-            logger.warning("\n\t Increasing dynamic_level algorithm to %d.\n" % op.Params.dynamic_level)
+            self.params.dynamic_level += 1
+            logger.warning("\n\t Increasing dynamic_level algorithm to %d.\n" % self.params.dynamic_level)
             logger.warning("\n\t Erasing old history, hessian, intcos.\n")
             eraseIntcos = True
             eraseHistory = True
-            op.Params.updateDynamicLevelParameters(op.Params.dynamic_level)
+            self.params.update_dynamic_level_params(self.params.dynamic_level)
+
+        logger.info("Printing the parameters %s", self.params)
 
         if eraseIntcos:
             logger.warning(" Erasing coordinates.\n")
@@ -408,7 +410,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         return self._exception_cleanup(error)
 
     def _exception_cleanup(self, error):
-        
+
         logger.info("\tDumping history: Warning last point not converged.\n" + self.history.summary_string())
 
         if self.params.opt_type == "IRC":
@@ -458,24 +460,33 @@ def get_pes_info(H: np.ndarray,
                  hessian_protocol="update",
                  requires=("energy", "gradient"),
                  ):
-    """Calculate, update, or guess hessian as appropriate. Calculate gradient, pulling
-    gradient from hessian output if possible.
+    """Calculate, update, or guess hessian as appropriate. Calculate gradient and transform to the
+    current coordinate system, pulls the gradient from hessian output if possible.
+
     Parameters
     ----------
     H: np.ndarray
         current Hessian
-    computer: compute_wrappers.ComputeWrapper
+    computer : compute_wrappers.ComputeWrapper
     o_molsys : molsys.Molsys
     opt_history: history.History
-    params: op.OptParams
+    params : op.OptParams
     requires : list
         ("energy", "gradient", "hessian")
-    hessian_protocol: str
+    hessian_protocol : str
         one of ("unneeded", "compute", "guess", "update")
 
     Returns
     -------
-    np.ndarray,
+    np.ndarray
+        hessian matrix (inteneral coordinates)
+    np.ndarray:
+        gradient vector (internal coordinates)
+    np.ndarrray
+        gradient vector (cartesian coordinates)
+    float
+        energy
+
     """
 
     if "gradient" in requires:
@@ -483,31 +494,35 @@ def get_pes_info(H: np.ndarray,
     else:
         driver = "energy"
 
-    if hessian_protocol == "compute" and not params.cart_hess_read:
-        H, g_X = get_hess_grad(computer, o_molsys)
-    elif hessian_protocol == "update":
-        logger.info(f"Updating Hessian with {str(op.Params.hess_update)}")
-        H = opt_history.hessian_update(H, o_molsys)
-        result = computer.compute(o_molsys.geom, driver=driver, return_full=False)
-        g_X = np.asarray(result) if driver == "gradient" else None
-    elif hessian_protocol == "guess" or isinstance(H, int):
-        logger.info(f"Guessing Hessian with {str(op.Params.intrafrag_hess)}")
-        H = hessian.guess(o_molsys, guessType=op.Params.intrafrag_hess)
-        result = computer.compute(o_molsys.geom, driver=driver, return_full=False)
-        g_X = np.asarray(result) if driver == "gradient" else None
-    elif hessian_protocol == "unneeded":
-        result = computer.compute(o_molsys.geom, driver=driver, return_full=False)
-        g_X = np.asarray(result) if driver == "gradient" else None
-    elif params.cart_hess_read:
-        H = hessian.from_file(params.hessian_file)
-        params.cart_hess_read = False
-        params.hessian_file = None
-
+    if hessian_protocol == "update":
+            logger.info(f"Updating Hessian with {str(op.Params.hess_update)}")
+            result = computer.compute(o_molsys.geom, driver=driver, return_full=False)
+            g_x = np.asarray(result) if driver == "gradient" else None
+            g_q = o_molsys.gradient_to_internals(g_x)
+            H = opt_history.hessian_update(H, -g_q, o_molsys)
     else:
-        raise OptError("Encountered unknown value from get_hessian_protocol()")
+        if hessian_protocol == "compute" and not params.cart_hess_read:
+            H, g_x = get_hess_grad(computer, o_molsys)
+
+        elif hessian_protocol == "guess" or isinstance(H, int):
+            logger.info(f"Guessing Hessian with {str(params.intrafrag_hess)}")
+            H = hessian.guess(o_molsys, guessType=params.intrafrag_hess)
+            result = computer.compute(o_molsys.geom, driver=driver, return_full=False)
+            g_x = np.asarray(result) if driver == "gradient" else None
+        elif hessian_protocol in ["unneeded", "update"]:
+            result = computer.compute(o_molsys.geom, driver=driver, return_full=False)
+            g_x = np.asarray(result) if driver == "gradient" else None
+        elif params.cart_hess_read:
+            H = hessian.from_file(params.hessian_file)
+            params.cart_hess_read = False
+            params.hessian_file = None
+        else:
+            raise OptError("Encountered unknown value from get_hessian_protocol()")
+
+        g_q = o_molsys.gradient_to_internals(g_x)
 
     logger.info(print_mat_string(H, title="Hessian matrix"))
-    return H, g_X, computer.energies[-1]
+    return H, g_q, g_x, computer.energies[-1]
 
 
 def get_hess_grad(computer, o_molsys):
@@ -540,7 +555,7 @@ def get_hess_grad(computer, o_molsys):
     return H, g_cart
 
 
-def make_internal_coords(o_molsys, params=None):
+def make_internal_coords(o_molsys: Molsys, params: op.OptParams):
     """
     Add optimization coordinates to molecule system.
     May be called if coordinates have not been added yet, or have been removed due to an
@@ -550,7 +565,7 @@ def make_internal_coords(o_molsys, params=None):
     ----------
     o_molsys: Molsys
         current molecular system.
-    params: OptParams object or else use default module level
+    params: op.OptParams
 
     Returns
     -------

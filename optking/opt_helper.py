@@ -1,5 +1,5 @@
 """
-Helpers to provide high-level interfaces for optking.  The Helpers allow individual steps to be taken easily. 
+Helpers to provide high-level interfaces for optking.  The Helpers allow individual steps to be taken easily.
 EngineHelper runs calculations through QCEngine. CustomHelper adds the abilility to directly input gradients.
 """
 
@@ -27,7 +27,7 @@ logger = logging.getLogger(f"{log_name}{__name__}")
 class Helper(ABC):
     """
     Base class for CustomHelper (accepts user provided gradients) and EngineHelper (uses MolSSI's QCEngine for gradients)
-    
+
     A step may be taken by setting the class attributes gX and E, then calling the
     compute() and take_step() methods. The class attribute HX may also be set at any time as
     desired, if this is not set then optking will perform its normal update/guess procedure.
@@ -74,7 +74,7 @@ class Helper(ABC):
 
     def post_step_str(self):
         """Returns a formatted string to summarize the step taken after calling take_step() """
-        
+
         string = ""
         string += self.step_str if self.step_str is not None else ""
         energies = [step.E for step in self.history.steps]
@@ -153,7 +153,7 @@ class Helper(ABC):
 
         if not self.molsys.intcos_present:
             # opt_manager.molsys is the same object as this molsys
-            make_internal_coords(self.molsys)
+            make_internal_coords(self.molsys, self.params)
             logger.debug("Molecular system after make_internal_coords:")
             logger.info(str(self.molsys))
 
@@ -181,7 +181,7 @@ class Helper(ABC):
 
     def test_convergence(self, str_mode=None):
         """ Check the final two steps for convergence. If the algorithm uses linesearching, linesearches are not considered
- 
+
         Returns
         -------
         bool
@@ -272,8 +272,8 @@ class Helper(ABC):
         return last_step.E, last_step.geom
 
     def status(self, str_mode=None):
-        """ get string message describing state of optimizer 
-        
+        """ get string message describing state of optimizer
+
         Returns
         -------
         str :
@@ -429,8 +429,9 @@ class CustomHelper(Helper):
                 self.gX = self.computer.compute(self.geom, driver="gradient", return_full=False)
             else:
                 logger.debug("Updating hessian")
-                self._Hq = self.history.hessian_update(self._Hq, self.molsys)
                 self.gX = self.computer.compute(self.geom, driver="gradient", return_full=False)
+                f_q = self.molsys.gradient_to_internals(self.gX, -1.0)
+                self._Hq = self.history.hessian_update(self._Hq, f_q, self.molsys)
         else:
             result = self.computer.compute(self.geom, driver="hessian")
             self.HX = result["return_result"]
@@ -584,7 +585,7 @@ class EngineHelper(Helper):
         protocol = self.opt_manager.get_hessian_protocol()
         requires = self.opt_manager.opt_method.requires()
 
-        self._Hq, self.gX, self.E = get_pes_info(self._Hq, self.computer, self.molsys, self.history, self.params, protocol, requires)
+        self._Hq, _, self.gX, self.E = get_pes_info(self._Hq, self.computer, self.molsys, self.history, self.params, protocol, requires)
 
     def optimize(self):
         """ Creating an EngineHelper and calling optimize() is equivalent to calling the deprecated

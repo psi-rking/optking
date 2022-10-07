@@ -1,3 +1,4 @@
+import copy
 import logging
 import math
 from typing import Union
@@ -7,9 +8,11 @@ import qcelemental as qcel
 
 from . import optparams as op
 from .exceptions import OptError
+from .molsys import Molsys
 from .linearAlgebra import abs_max, rms, sign_of_double
 from .printTools import print_array_string, print_mat_string
 from . import log_name
+from optking import molsys
 
 logger = logging.getLogger(f"{log_name}{__name__}")
 
@@ -240,68 +243,49 @@ class History(object):
         return
 
     # Use History to update Hessian
-    def hessian_update(self, H, oMolsys):
+    def hessian_update(self, H, f_q, molsys):
 
-        if self.hess_update == "NONE" or len(self.steps) < 2:
+        if self.hess_update == "NONE" or len(self.steps) < 1:
             return H
 
         logger.info("\tPerforming %s update." % self.hess_update)
-        Nintco = oMolsys.num_intcos  # working dimension
-        orig_save_geom = oMolsys.geom
+        Nintco = molsys.num_intcos  # working dimension
 
-        f = np.zeros(Nintco)
-        # x = np.zeros(self.steps[-1].geom.shape)
-        q = np.zeros(Nintco)
-
-        currentStep = self.steps[-1]
-        f[:] = currentStep.forces
-        # x[:] = currentStep.geom
-        x = currentStep.geom
-        oMolsys.geom = x
-        q[:] = oMolsys.q_array()
+        q = molsys.q_array()
 
         # Fix configuration of torsions and out-of-plane angles,
         # so that Dq's are reasonable
-        oMolsys.update_dihedral_orientations()
-
-        dq = np.zeros(Nintco)
-        dg = np.zeros(Nintco)
-        q_old = np.zeros(Nintco)
+        molsys.update_dihedral_orientations()
 
         # Don't go further back than the last Hessian calculation
-        numToUse = min(self.hess_update_use_last, len(self.steps) - 1, self.steps_since_last_hessian)
-        logger.info("\tUsing %d previous steps for update." % numToUse)
+        num_to_use = min(self.hess_update_use_last, len(self.steps), self.steps_since_last_hessian)
+        logger.info("\tUsing %d previous steps for update.", num_to_use)
 
         # Make list of old geometries to update with.
         # Check each one to see if it is too close (so stable denominators).
         use_steps = []
-        i_step = len(self.steps) - 2  # just in case called with only 1 pt.
-        while i_step > -1 and len(use_steps) < numToUse:
-            old_step = self.steps[i_step]
-            f_old = old_step.forces
-            x_old = old_step.geom
-            oMolsys.geom = x_old
-            q_old[:] = oMolsys.q_array()
-            dq[:] = q - q_old
-            dg[:] = f_old - f  # gradients -- not forces!
-            gq = np.dot(dq, dg)
-            qq = np.dot(dq, dq)
-            max_change = abs_max(dq)
+        i_step = len(self.steps) - 1  # just in case called with only 1 pt.
+        while i_step > -1 and len(use_steps) < num_to_use:
+            step = self.steps[i_step]
+            dq, dg, grad_norm, dq_norm, max_change = self.get_update_info(molsys, f_q, q, step)
 
             # If there is only one left, take it no matter what.
             if len(use_steps) == 0 and i_step == 0:
                 use_steps.append(i_step)
-            elif math.fabs(gq) < self.hess_update_den_tol or math.fabs(qq) < self.hess_update_den_tol:
+            elif math.fabs(grad_norm) < self.hess_update_den_tol or math.fabs(dq_norm) < self.hess_update_den_tol:
                 logger.warning("\tDenominators (dg)(dq) or (dq)(dq) are very small.")
-                logger.warning("\tSkipping Hessian update for step %d." % (i_step + 1))
+                logger.warning("\tSkipping Hessian update for step %d.", i_step + 1)
                 pass
             elif max_change > self.hess_update_dq_tol:
                 logger.warning(
-                    "\tChange in internal coordinate of %5.2e exceeds limit of %5.2e."
-                    % (max_change, self.hess_update_dq_tol)
+                    "\tChange in internal coordinate of %5.2e exceeds limit of %5.2e.",
+                    max_change,
+                    self.hess_update_dq_tol
                 )
-                logger.warning("\tSkipping Hessian update for step %d." % (i_step + 1))
+                logger.warning("\tSkipping Hessian update for step %d.", i_step + 1)
                 pass
+            elif not self.steps[i_step].decent:
+                logger.info("Skipping step %d for hessian update. Poor step", i_step + 1)
             else:
                 use_steps.append(i_step)
             i_step -= 1
@@ -315,24 +299,15 @@ class History(object):
 
         H_new = np.zeros(H.shape)
         for i_step in use_steps:
-            # TODO code duplication. Why do we set o_molsys.geom to an old geometry?
-            old_step = self.steps[i_step]
-
-            f_old = old_step.forces
-            x_old = old_step.geom
-            oMolsys.geom = x_old
-            q_old[:] = oMolsys.q_array()
-            dq[:] = q - q_old
-            dg[:] = f_old - f  # gradients -- not forces!
-            gq = np.dot(dq, dg)
-            qq = np.dot(dq, dq)
+            step = self.steps[i_step]
+            dq, dg, grad_norm, dq_norm, max_change = self.get_update_info(molsys, f_q, q, step)
 
             # See  J. M. Bofill, J. Comp. Chem., Vol. 15, pages 1-11 (1994)
             #  and Helgaker, JCP 2002 for formula.
             if self.hess_update == "BFGS":
                 for i in range(Nintco):
                     for j in range(Nintco):
-                        H_new[i, j] = H[i, j] + dg[i] * dg[j] / gq
+                        H_new[i, j] = H[i, j] + dg[i] * dg[j] / grad_norm
 
                 Hdq = np.dot(H, dq)
                 dqHdq = np.dot(dq, Hdq)
@@ -355,7 +330,7 @@ class History(object):
 
                 for i in range(Nintco):
                     for j in range(Nintco):
-                        H_new[i, j] = H[i, j] - qz / (qq * qq) * dq[i] * dq[j] + (Z[i] * dq[j] + dq[i] * Z[j]) / qq
+                        H_new[i, j] = H[i, j] - qz / (dq_norm * dq_norm) * dq[i] * dq[j] + (Z[i] * dq[j] + dq[i] * Z[j]) / dq_norm
 
             elif self.hess_update == "BOFILL":
                 # Bofill = (1-phi) * MS + phi * Powell
@@ -363,7 +338,7 @@ class History(object):
                 qz = np.dot(dq, Z)
                 zz = np.dot(Z, Z)
 
-                phi = 1.0 - qz * qz / (qq * zz)
+                phi = 1.0 - qz * qz / (dq_norm * zz)
                 if phi < 0.0:
                     phi = 0.0
                 elif phi > 1.0:
@@ -376,7 +351,7 @@ class History(object):
                 for i in range(Nintco):  # (phi * Powell)
                     for j in range(Nintco):
                         H_new[i, j] += phi * (
-                            -1.0 * qz / (qq * qq) * dq[i] * dq[j] + (Z[i] * dq[j] + dq[i] * Z[j]) / qq
+                            -1.0 * qz / (dq_norm * dq_norm) * dq[i] * dq[j] + (Z[i] * dq[j] + dq[i] * Z[j]) / dq_norm
                         )
 
             if self.hess_update_limit:  # limit changes in H
@@ -405,8 +380,32 @@ class History(object):
             # end loop over old geometries
 
         logger.info("\tUpdated Hessian (in au) \n %s" % print_mat_string(H))
-        oMolsys.geom = orig_save_geom
         return H
+
+    def get_update_info(self, molsys: Molsys, f: np.ndarray, q: np.ndarray, step: Step):
+        """ Get gradient and displacement info for updating the Hessian
+
+        Parameters
+        ----------
+        molsys: molsys.Molsys]
+        f: np.ndarray
+        q: np.ndarray
+        step: Step
+
+        """
+        f_old = step.forces
+        x_old = step.geom
+
+        old_molsys = copy.deepcopy(molsys)
+        old_molsys.geom = x_old
+        q_old = old_molsys.q_array()
+
+        dq = q - q_old
+        dg = f_old - f  # gradients -- not forces!
+        grad_norm = np.dot(dq, dg)
+        dq_norm = np.dot(dq, dq)
+        max_change = abs_max(dq)
+        return dq, dg, grad_norm, dq_norm, max_change
 
     def summary_string(self):
         output_string = """\n\t==> Optimization Summary <==\n

@@ -18,7 +18,6 @@ def import_psi4(mesg=""):
         mesg = "Cannot import psi4" + mesg
         raise OptError(mesg + "conda install psi4 psi4-rt -c psi4") from error
 
-
 def delta(i, j):
     if i == j:
         return 1

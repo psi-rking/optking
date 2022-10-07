@@ -41,8 +41,10 @@ from . import convcheck
 from .addIntcos import linear_bend_check
 from .displace import displace_molsys
 from .exceptions import AlgError, OptError
+from .history import History
 from .linearAlgebra import asymm_mat_eig, symm_mat_eig
 from .misc import is_dq_symmetric
+from .molsys import Molsys
 from .printTools import print_array_string, print_mat_string
 from . import log_name
 
@@ -54,7 +56,7 @@ class OptimizationInterface(ABC):
     a self.take_step() method. All methods must be able to determine what the next step
     to take should be given a history. See take_step() docstring for details."""
 
-    def __init__(self, molsys, history, params):
+    def __init__(self, molsys: Molsys, history: History, params: op.OptParams):
         """set history and molsys. Create a default params object if required.
         Individual params will be set as instance attributes by the child classes as needed
 
@@ -64,8 +66,8 @@ class OptimizationInterface(ABC):
         history: history.History
         params: op.OptParams"""
 
-        self.molsys = molsys
-        self.history = history
+        self.molsys: Molsys = molsys
+        self.history: History = history
 
         if not params:
             params = op.OptParams({})
@@ -200,9 +202,9 @@ class OptimizationAlgorithm(OptimizationInterface):
         return dq
 
     def apply_interfrag_step_scaling(self, dq):
-        """ Check the size of the interfragment modes.  They can inadvertently represent 
-        very large motions. 
-        
+        """ Check the size of the interfragment modes.  They can inadvertently represent
+        very large motions.
+
         Returns
         -------
         dq : scaled step according to trust radius

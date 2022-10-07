@@ -116,6 +116,15 @@ class Molsys(object):
         opt_mol = Molsys.from_schema(qc_mol)
         return opt_mol, qc_mol
 
+    def to_schema(self):
+        mol_dict = {"symbols": self.atom_symbols,
+                    "geometry": self.geom.flat,
+                    "atomic_numbers": self.Z,
+                    "mass_numbers": self.masses,
+                    "fix_com": True,
+                    "fix_orientation": True}
+        return qcel.models.Molecule(**mol_dict)
+
     def to_dict(self):
         d = {
             "fragments": [f.to_dict() for f in self._fragments],
