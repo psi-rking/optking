@@ -200,8 +200,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         logger.info("%s", print_geom_grad(self.molsys.geom, g_x))
 
         f_q = -g_q
-        self.molsys.apply_external_forces(f_q, H, self.step_number)
-        self.molsys.project_redundancies_and_constraints(f_q, H)
+        f_q, H = self.molsys.project_redundancies_and_constraints(f_q, H)
         self.molsys.q_show()
 
         if self.params.test_B:
@@ -498,8 +497,10 @@ def get_pes_info(H: np.ndarray,
             logger.info(f"Updating Hessian with {str(op.Params.hess_update)}")
             result = computer.compute(o_molsys.geom, driver=driver, return_full=False)
             g_x = np.asarray(result) if driver == "gradient" else None
-            g_q = o_molsys.gradient_to_internals(g_x)
-            H = opt_history.hessian_update(H, -g_q, o_molsys)
+            f_q = o_molsys.gradient_to_internals(g_x, -1.0)
+            f_q, H = o_molsys.apply_external_forces(f_q, H)
+            H = opt_history.hessian_update(H, f_q, o_molsys)
+            g_q = -f_q
     else:
         if hessian_protocol == "compute" and not params.cart_hess_read:
             H, g_x = get_hess_grad(computer, o_molsys)
@@ -509,7 +510,7 @@ def get_pes_info(H: np.ndarray,
             H = hessian.guess(o_molsys, guessType=params.intrafrag_hess)
             result = computer.compute(o_molsys.geom, driver=driver, return_full=False)
             g_x = np.asarray(result) if driver == "gradient" else None
-        elif hessian_protocol in ["unneeded", "update"]:
+        elif hessian_protocol in ["unneeded"]:
             result = computer.compute(o_molsys.geom, driver=driver, return_full=False)
             g_x = np.asarray(result) if driver == "gradient" else None
         elif params.cart_hess_read:
@@ -519,7 +520,9 @@ def get_pes_info(H: np.ndarray,
         else:
             raise OptError("Encountered unknown value from get_hessian_protocol()")
 
-        g_q = o_molsys.gradient_to_internals(g_x)
+        f_q = o_molsys.gradient_to_internals(g_x, -1)
+        f_q, H = o_molsys.apply_external_forces(f_q, H)
+        g_q = -f_q
 
     logger.info(print_mat_string(H, title="Hessian matrix"))
     return H, g_q, g_x, computer.energies[-1]

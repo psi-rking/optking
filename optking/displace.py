@@ -4,6 +4,7 @@ import numpy as np
 
 from . import intcosMisc
 from . import optparams as op
+from . addIntcos import linear_bend_check
 from .exceptions import AlgError, OptError
 from .linearAlgebra import abs_max, rms, symm_mat_inv
 from .printTools import print_mat_string, print_array_string
@@ -23,7 +24,7 @@ logger = logging.getLogger(f"{log_name}{__name__}")
 
 
 # Displace molecular system
-def displace_molsys(oMolsys, dq_in, fq=None, ensure_convergence=False, return_str=False):
+def displace_molsys(molsys, dq_in, fq=None, ensure_convergence=False, return_str=False):
     """Manage internal coordinate step for a molecular system
     Parameters
     ----------
@@ -38,15 +39,16 @@ def displace_molsys(oMolsys, dq_in, fq=None, ensure_convergence=False, return_st
     -------
     np.ndarray
     """
+
     # Modify dq_in to account for frozen coordinates and ranged coordinates
     # These do not represent desired Delta(q)
-    q_in = oMolsys.q_array()
-    for iF, F in enumerate(oMolsys.fragments):
+    q_in = molsys.q_array()
+    for iF, F in enumerate(molsys.fragments):
         if F.frozen:
             # For accounting only, since displace_frag is not called.
-            dq_in[oMolsys.frag_intco_range(iF)] = 0
+            dq_in[molsys.frag_intco_range(iF)] = 0
             logger.info("\tFragment %d is frozen, so not displacing" % (iF + 1))
-        start = oMolsys.frag_1st_intco(iF)
+        start = molsys.frag_1st_intco(iF)
         for i, I in enumerate(F.intcos):
             if I.frozen:
                 dq_in[start + i] = 0.0
@@ -61,49 +63,42 @@ def displace_molsys(oMolsys, dq_in, fq=None, ensure_convergence=False, return_st
                 else:
                     pass  # value within range
 
-    geom_in = oMolsys.geom
-    q_in = oMolsys.q_array()  # recompute with limitations above
+    geom_in = molsys.geom
+    q_in = molsys.q_array()  # recompute with limitations above
     q_target = q_in + dq_in
 
-    for iF, F in enumerate(oMolsys.fragments):
+    for iF, F in enumerate(molsys.fragments):
         if F.frozen or F.num_intcos == 0:
             continue
         logger.info("\tDetermining Cartesian step for fragment %d." % (iF + 1))
-        # print('dq for frag:', dq_in[o_molsys.frag_intco_slice(iF)])
-        dq_frag, conv = displace_frag(F, dq_in[oMolsys.frag_intco_slice(iF)], ensure_convergence)
+        dq_frag, conv = displace_frag(F, dq_in[molsys.frag_intco_slice(iF)], ensure_convergence)
 
-    for i, DI in enumerate(oMolsys.dimer_intcos):
+    for i, DI in enumerate(molsys.dimer_intcos):
         logger.info("\tTaking step for dimer coordinates of fragments %d and %d."
                     % (DI.A_idx + 1, DI.B_idx + 1))
 
-        Axyz = oMolsys.frag_geom(DI.A_idx)
-        Bxyz = oMolsys.frag_geom(DI.B_idx)
-        Bxyz[:] = DI.orient_fragment(Axyz, Bxyz, q_target[oMolsys.dimerfrag_intco_slice(i)])
-        #logger.debug('print out A geom')
-        #logger.debug(print_mat_string(Axyz))
-        #logger.debug('print out B geom')
-        #logger.debug(print_mat_string(Bxyz))
-        #logger.debug('Error from target 1')
-        #logger.debug(print_array_string((oMolsys.q_array() - q_target)[9:15]))
+        Axyz = molsys.frag_geom(DI.A_idx)
+        Bxyz = molsys.frag_geom(DI.B_idx)
+        Bxyz[:] = DI.orient_fragment(Axyz, Bxyz, q_target[molsys.dimerfrag_intco_slice(i)])
 
-    geom_final = oMolsys.geom
+    geom_final = molsys.geom
     # Analyze relative to original input geometry
-    oMolsys.geom = geom_in
-    oMolsys.update_dihedral_orientations()
-    oMolsys.fix_bend_axes()
-    q_orig = oMolsys.q_array()
-    qShow_orig = oMolsys.q_show_array()
+    molsys.geom = geom_in
+    molsys.update_dihedral_orientations()
+    molsys.fix_bend_axes()
+    q_orig = molsys.q_array()
+    qShow_orig = molsys.q_show_array()
 
-    oMolsys.geom = geom_final
-    q_final = oMolsys.q_array()
-    qShow_final = oMolsys.q_show_array()
+    molsys.geom = geom_final
+    q_final = molsys.q_array()
+    qShow_final = molsys.q_show_array()
 
     dx = geom_final - geom_in
 
     dqShow = qShow_final - qShow_orig
-    oMolsys.unfix_bend_axes()
+    molsys.unfix_bend_axes()
 
-    intco_lbls = oMolsys.intco_lbls
+    intco_lbls = molsys.intco_lbls
 
     coordinate_change_report = "\n\n\t        --- Internal Coordinate Step in ANG or DEG, aJ/ANG or AJ/DEG ---\n"
     coordinate_change_report += "\t-------------------------------------------------------------------------------\n"
@@ -119,7 +114,7 @@ def displace_molsys(oMolsys, dq_in, fq=None, ensure_convergence=False, return_st
                 qShow_final[i],
             )
     else:
-        fq_aJ = oMolsys.q_show_forces(fq)  # print forces for step
+        fq_aJ = molsys.q_show_forces(fq)  # print forces for step
         coordinate_change_report += (
             "\t           Coordinate      Previous         Force          Change          New \n"
         )
@@ -139,6 +134,11 @@ def displace_molsys(oMolsys, dq_in, fq=None, ensure_convergence=False, return_st
 
     # Return final, total displacement ACHIEVED
     dq = q_final - q_orig
+
+    linear_list = linear_bend_check(molsys)
+    if linear_list:
+        raise AlgError("New linear angles", newLinearBends=linear_list)
+
     # RAK TODO : remember why I want to return dx and what to do with it.
     if return_str:
         return dq, dx, coordinate_change_report
@@ -240,6 +240,12 @@ def displace_frag(F, dq_in, ensure_convergence=False):
                     dq_adjust_frozen[i] = intco.range_max - qnow[i]
                 elif qnow[i] < intco.range_min:
                     dq_adjust_frozen[i] = intco.range_min - qnow[i]
+
+        # For stability try scaling the adjustment if its quite long.
+        # Slow progress towards the constraint is better than none
+        if np.linalg.norm(dq_adjust_frozen) > 0.5:
+            scale = 0.5 / np.linalg.norm(dq_adjust_frozen)
+            dq_adjust_frozen *= scale
 
         frozen_msg = "\tAdditional back-transformation to adjust frozen/ranged coordinates: "
 
@@ -388,10 +394,9 @@ def dq_to_dx(intcos, geom, dq, printDetails=False):
         absolute maximum of cartesian displacement
     """
     B = intcosMisc.Bmat(intcos, geom)
-    G = np.dot(B, B.T)
-    Ginv = symm_mat_inv(G, redundant=True)  # redundant_eval_tol = 1.0e-7)
-    tmp_v_Nint = np.dot(Ginv, dq)
-    dx = np.dot(B.T, tmp_v_Nint)
+    G = B @ B.T
+    Ginv = np.linalg.pinv(G)
+    dx = B.T @ Ginv @ dq
 
     if printDetails:
         qOld = intcosMisc.q_values(intcos, geom)
@@ -408,5 +413,5 @@ def dq_to_dx(intcos, geom, dq, printDetails=False):
 
     dx_rms = rms(dx)
     dx_max = abs_max(dx)
-    del B, G, Ginv, tmp_v_Nint, dx
+    del B, G, Ginv, dx
     return dx_rms, dx_max

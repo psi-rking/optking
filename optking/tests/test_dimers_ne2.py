@@ -147,7 +147,7 @@ def test_dimers_ne2_dict():
         "A Label": "Ne atom 1",
         "B Frag": 2,
         "B Ref Atoms": [[2]],
-        "B Label": "Ne atom 2",
+        "B Label": "Ne atom 2"
     }
 
     psi4.set_options(psi4_options)

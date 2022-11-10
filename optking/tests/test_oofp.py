@@ -53,6 +53,7 @@ def test_ranged_oofp(check_iter):
     psi4.core.clean_options()
     psi4_options = {
         "basis": "def2-SVP",
+        "ensure_bt_convergence": True
     }
     psi4.set_options(psi4_options)
 
@@ -75,6 +76,7 @@ def test_ext_force_oofp(check_iter):
     psi4.core.clean_options()
     psi4_options = {
         "basis": "def2-SVP",
+        "ensure_bt_convergence": True
     }
     psi4.set_options(psi4_options)
 

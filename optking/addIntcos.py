@@ -1,3 +1,4 @@
+import json
 import logging
 from copy import deepcopy
 from itertools import combinations, permutations
@@ -362,10 +363,10 @@ def add_cartesian_intcos(intcos, geom):
     # return len(intcos) - Norig
 
 
-def linear_bend_check(o_molsys, dq):
+def linear_bend_check(o_molsys):
     """
     Searches fragments to identify bends which are quasi-linear but not
-    previously identified as "linear bends".
+    previously identified as "linear bends". Called in displace after fragments are adjusted (post backtransform)
     Parameters
     ---------
     o_molsys : MOLSYS class
@@ -383,7 +384,7 @@ def linear_bend_check(o_molsys, dq):
     for frag_index, frag in enumerate(o_molsys.fragments):
         for i, intco in enumerate(frag.intcos):
             if isinstance(intco, bend.Bend):
-                new_val = intco.q(frag.geom) + dq[o_molsys.frag_1st_intco(frag_index) + i]
+                new_val = intco.q(frag.geom)
                 A, B, C = intco.A, intco.B, intco.C
 
                 # <ABC < 0.  A-C-B should be linear bends.
@@ -858,15 +859,35 @@ def add_dimer_frag_intcos(o_molsys):
     # 3. Auto-generate reference atoms.
     # TODO: move into a molsys class function?
 
-    if op.Params.interfrag_coords is not None:
-        uV = eval(op.Params.interfrag_coords) # user value from str
-        if type(uV) in [list, tuple]:
-            for C in uV:
-                df = dimerfrag.DimerFrag.fromUserDict(C)
-                df.update_reference_geometry(o_molsys.frag_geom(df.A_idx), o_molsys.frag_geom(df.B_idx))
-                o_molsys.dimer_intcos.append(df)
+    input = op.Params.interfrag_coords
+    if input is not None:
+
+        logger.debug("%s", input)
+
+        # Place input in iterable for consistency
+        if isinstance(input, str):
+            input = input.replace("\'", "\"")
+            input = json.loads(input)
+            # input could come back as a dictionary or as a list of dictionaries
+            input = input if isinstance(input, (list, tuple)) else [input]
+        elif isinstance(input, dict):
+            input = [input]
+        elif isinstance(input, (list, tuple)):
+            pass
         else:
-            df = dimerfrag.DimerFrag.fromUserDict(uV)
+            raise TypeError("Cannot convert keyword interfrag_coords to a (list of) dictionary(s). Provide a (list of) dict or str")
+
+        # Check elements for correct type (should really be done in OptParams). Ensure everything is of dict by end
+        # create DimerFrags and add to molsys
+        for val in input:
+            if isinstance(val, str):
+                dict_val = json.loads(val)
+            elif isinstance(val, dict):
+                dict_val = val
+            else:
+                raise TypeError("Cannot convert keyword interfrag_coords to a (list of) dictionary(s). Provide a (list of) dict or str")
+
+            df = dimerfrag.DimerFrag.fromUserDict(dict_val)
             df.update_reference_geometry(o_molsys.frag_geom(df.A_idx), o_molsys.frag_geom(df.B_idx))
             o_molsys.dimer_intcos.append(df)
 
@@ -886,7 +907,7 @@ def add_dimer_frag_intcos(o_molsys):
             df.update_reference_geometry(o_molsys.frag_geom(A), o_molsys.frag_geom(B))
             o_molsys.dimer_intcos.append(df)
 
-    else:  # autogenerate interfragment coordinates
+    else:  # autogenerate interfswap_min_maxragment coordinates
         # Tolerance for collinearity of ref points. Can be mad smaller, but its
         # riskier to start wth ref points the make very large angles
         col_tol = op.Params.interfrag_collinear_tol

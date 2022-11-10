@@ -112,6 +112,8 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
         return dq
 
     def converged(self, dq, fq, step_number, str_mode='', **kwargs):
+        # This method no longer clears out the history after converging. This reproduces old optking
+        # behavior. It is also found that clearing the history negatively impacts hessian updating.
 
         energies = [step.E for step in self.history.steps]
 
@@ -143,7 +145,6 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
             self.sub_step_number = -1
             logger.info("\tStarting search for next IRC point.")
             logger.info("\tClearing old constrained optimization history.")
-            self.history.reset_to_most_recent()  # delete old steps
 
             if self.irc_step_number >= self.params.irc_points:
                 logger.info(f"\tThe requested {self.params.irc_points} IRC points have been obtained.")

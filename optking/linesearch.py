@@ -5,7 +5,6 @@ from typing import Union
 
 import numpy as np
 
-from .addIntcos import linear_bend_check
 from .displace import displace_molsys
 from .exceptions import AlgError, OptError
 from .history import Step, History
@@ -139,10 +138,6 @@ class LineSearch(OptimizationInterface):
         logger.info("\tNorm of achieved step-size %15.10f" % achieved_dq_norm)
 
         self.linesearch_history.append_record(delta_energy, achieved_dq, self.direction, None, None)
-
-        linear_list = linear_bend_check(self.molsys, achieved_dq)
-        if linear_list:
-            raise AlgError("New linear angles", newLinearBends=linear_list)
 
         if not isclose(np.linalg.norm(dq), achieved_dq_norm, rel_tol=5, abs_tol=0):
             # Attempt to replicate step_size check in OptimizationAlgorithm

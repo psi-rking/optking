@@ -284,8 +284,6 @@ class History(object):
                 )
                 logger.warning("\tSkipping Hessian update for step %d.", i_step + 1)
                 pass
-            elif not self.steps[i_step].decent:
-                logger.info("Skipping step %d for hessian update. Poor step", i_step + 1)
             else:
                 use_steps.append(i_step)
             i_step -= 1
@@ -296,6 +294,12 @@ class History(object):
         hessian_steps += "\n"
 
         logger.info(hessian_steps)
+
+        # Don't update any modes if constraints are enacted.
+        frozen = molsys.frozen_intco_list
+        ranged = molsys.ranged_intco_list
+        constrained = frozen + ranged
+        C = np.diagflat(constrained)
 
         H_new = np.zeros(H.shape)
         for i_step in use_steps:
@@ -353,6 +357,12 @@ class History(object):
                         H_new[i, j] += phi * (
                             -1.0 * qz / (dq_norm * dq_norm) * dq[i] * dq[j] + (Z[i] * dq[j] + dq[i] * Z[j]) / dq_norm
                         )
+
+            # If the cooordinate is constrained. Don't allow the update to occur.
+            for i in range(Nintco):
+                if C[i, i] == 1:
+                    H_new[i, :] = H_new[:, i] = np.zeros(len(f_q))
+                    H_new[i, i] = H[i, i]
 
             if self.hess_update_limit:  # limit changes in H
                 # Changes to the Hessian from the update scheme are limited to the larger of

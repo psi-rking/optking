@@ -307,8 +307,21 @@ class Molsys(object):
                 cnt += 1
         return frozen
 
+    @property
+    def ranged_intco_list(self):
+        ranged = np.zeros(self.num_intcos, dtype=bool)
+        cnt = 0
+
+        for f in self.all_fragments:
+            for intco in f.intcos:
+                if intco.ranged:
+                   ranged[cnt] = True
+                cnt += 1
+        return ranged 
+
     # Used to zero out forces.  For any ranged intco, indicate frozen if
     # within 0.1% of boundary and its corresponding force is in that direction.
+    # Add an additional check to zero the force of a coordinate outside its range to zero
     def ranged_frozen_intco_list(self, fq):
         """Determine vector with 1 for any ranged intco that is at its limit"""
         qvals = self.q()
@@ -319,21 +332,22 @@ class Molsys(object):
             for intco in f.intcos:
                 if intco.ranged:
                     tol = 0.001 * (intco.range_max - intco.range_min)
-                    if np.fabs(qvals[cnt] - intco.range_max) < tol and fq[cnt] > 0:
+                    if np.fabs(qvals[cnt] - intco.range_max) < tol and fq[cnt] > 0 or qvals[cnt] > intco.range_max:
                         frozen[cnt] = True
-                    elif np.fabs(qvals[cnt] - intco.range_min) < tol and fq[cnt] < 0:
+                    elif np.fabs(qvals[cnt] - intco.range_min) < tol and fq[cnt] < 0 or qvals[cnt] < intco.range_min:
                         frozen[cnt] = True
                 cnt += 1
 
         return frozen
 
-    def constraint_matrix(self, fq=None):
-        """Returns constraint matrix with 1 on diagonal for frozen coordinates"""
+    def constraint_matrix(self, fq):
+        """ Returns constraint matrix with 1 on diagonal for frozen coordinates.
+        Tis method used to check for forces being passed in but wasn't being used. Forces now need to be passed in
+        """
         frozen = self.frozen_intco_list
 
-        if fq is not None:
-            range_frozen = self.ranged_frozen_intco_list(fq)
-            frozen = np.logical_or(frozen, range_frozen)
+        range_frozen = self.ranged_frozen_intco_list(fq)
+        frozen = np.logical_or(frozen, range_frozen)
 
         if np.any(frozen):
             return np.diagflat(frozen)
@@ -813,7 +827,7 @@ class Molsys(object):
         # compute projection matrix = G G^-1
         G = self.Gmat()
         G_inv = symm_mat_inv(G, redundant=True)
-        Pprime = np.dot(G, G_inv)
+        Pprime = G @ G_inv
         # logger.debug("\tProjection matrix for redundancies.\n\n" + print_mat_string(Pprime))
         # Add constraints to projection matrix
         C = self.constraint_matrix(fq)  # returns None, if aren't any
@@ -821,17 +835,15 @@ class Molsys(object):
 
         if C is not None:
             logger.debug("Adding constraints for projection.\n" + print_mat_string(C))
-            CPC = np.zeros((Nint, Nint))
-            CPC[:, :] = np.dot(C, np.dot(Pprime, C))
+            CPC = C @ Pprime @ C
             CPCInv = symm_mat_inv(CPC, redundant=True)
-            P = np.zeros((Nint, Nint))
-            P[:, :] = Pprime - np.dot(Pprime, np.dot(C, np.dot(CPCInv, np.dot(C, Pprime))))
+            P = Pprime - Pprime @ C @ CPCInv @ C @ Pprime
         else:
             P = Pprime
 
         # Project redundancies out of forces.
         # fq~ = P fq
-        fq[:] = np.dot(P, fq.T)
+        fq = P @ fq.T
 
         # if op.Params.print_lvl >= 3:
         logger.debug(
@@ -842,16 +854,27 @@ class Molsys(object):
         # Project redundancies out of Hessian matrix.
         # Peng, Ayala, Schlegel, JCC 1996 give H -> PHP + 1000(1-P)
         # The second term appears unnecessary and sometimes messes up Hessian updating.
-        tempMat = np.dot(H, P)
-        H[:, :] = np.dot(P, tempMat)
-        # for i in range(dim)
-        #    H[i,i] += 1000 * (1.0 - P[i,i])
-        # for i in range(dim)
-        #    for j in range(i):
-        #        H[j,i] = H[i,j] = H[i,j] + 1000 * (1.0 - P[i,j])
+        H = P @ H @ P
+        # H += 1000 * (1 - P)
+
+        # The above projection of constraints shouldn't automatically remove external and ranged
+        # coordinates from the forces (sometimes it should) but we should remove these coordinates from
+        # the hessian. These coordinates are not updated in the hessian update but this makes
+        # sure that the projection doesn't add coupling constants involving frozen coordinates
+        ranged = self.ranged_intco_list
+        C = np.diagflat(ranged)
+        for i in range(len(fq)):
+            if C[i, i] == 1:
+                tmp = H[i, i]
+                H[i, :] = H[:, i] = np.zeros(len(fq))
+                H[i, i] = tmp 
+
         logger.debug("Projected (PHP) Hessian matrix\n" + print_mat_string(H))
 
-    def apply_external_forces(self, fq, H, stepNumber):
+        return fq, H
+
+    def apply_external_forces(self, fq, H):
+        # TODO after sympy integration. Update Hessian with the symbolic second derivative
         report = "Adding external forces\n"
 
         for iF, F in enumerate(self.fragments):
@@ -876,6 +899,8 @@ class Molsys(object):
 
         if "Frag" in report:
             logger.info(report)
+ 
+        return fq, H 
 
     def hessian_to_cartesians(self, Hint, g_q=None):
         logger.info("Converting Hessian from internals to cartesians.\n")

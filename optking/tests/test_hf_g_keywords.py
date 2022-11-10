@@ -90,5 +90,6 @@ def test_maxiter_geom():
     psi4.set_options(psi4options)
     nextStepEnergy = psi4.driver.energy("scf/cc-pvdz")  # TEST
     REF_energy = -76.0270381300  # TEST
+    REF_energy = -76.0270521  # TEST changed. Energy different now that update occurs
     assert psi4.compare_values(REF_energy, nextStepEnergy, 5, "Energy of next-step molecule")
     # TEST

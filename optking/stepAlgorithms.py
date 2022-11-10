@@ -38,7 +38,6 @@ import numpy as np
 
 from . import optparams as op
 from . import convcheck
-from .addIntcos import linear_bend_check
 from .displace import displace_molsys
 from .exceptions import AlgError, OptError
 from .history import History
@@ -174,7 +173,7 @@ class OptimizationAlgorithm(OptimizationInterface):
         dq_norm, unit_dq, projected_fq, projected_hess = self.step_metrics(achieved_dq, fq, H)
         delta_energy = self.expected_energy(dq_norm, projected_fq, projected_hess)
         logger.debug("\tProjected energy change: %10.10lf\n" % delta_energy)
-        self.update_history(delta_energy, achieved_dq, unit_dq, projected_fq, projected_hess)
+        self.history.append_record(delta_energy, achieved_dq, unit_dq, projected_fq, projected_hess)
 
         dq_norm = np.linalg.norm(achieved_dq)
         logger.info("\tNorm of achieved step-size %15.10f" % dq_norm)
@@ -386,12 +385,6 @@ class OptimizationAlgorithm(OptimizationInterface):
         """Basic history update method. This should be expanded here and in child classes in
         future"""
 
-        self.history.append_record(delta_e, achieved_dq, unit_dq, projected_f, projected_hess)
-
-        linear_list = linear_bend_check(self.molsys, achieved_dq)
-        if linear_list:
-            raise AlgError("New linear angles", newLinearBends=linear_list)
-
     # def converged(self, step_number, dq, fq):
     #     energies = (self.history.steps[-1].E, self.history.steps[-2].E)  # grab last two energies
     #     converged = convcheck.conv_check(step_number, self.molsys, dq, energies)
@@ -562,7 +555,6 @@ class RestrictedStepRFO(RFO):
 
         # Build the original, unscaled RFO matrix.
         RFOmat = RFO.build_rfo_matrix(0, len(H), fq, H)  # use entire hessian for RFO matrix
-        logger.debug("\tOriginal, unscaled RFO matrix:\n\n" + print_mat_string(RFOmat))
 
         if self.params.simple_step_scaling:
             e_vectors, e_values = self._intermediate_normalize(RFOmat)
@@ -604,7 +596,12 @@ class RestrictedStepRFO(RFO):
                 logger.warning("\tFailed to converge alpha. Doing simple step-scaling instead.")
                 alpha = 1.0
 
-            SRFOevals, SRFOevects = self._scale_and_normalize(RFOmat, alpha)
+            try:
+                SRFOevals, SRFOevects = self._scale_and_normalize(RFOmat, alpha)
+            except OptError:
+                alpha = 1.0
+                logger.warning("Could not converge alpha due to a linear algebra error. Continuing with simple step scaling")
+                break
 
             # Determine best (lowest eigenvalue), acceptable root and take as step
             rfo_root = self._select_rfo_root(last_evect, SRFOevects, SRFOevals, alpha_iter)
