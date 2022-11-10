@@ -36,6 +36,7 @@ def test_scsmp2_opt(check_iter):
 
     utils.compare_iterations(result, 5, check_iter)
 
+
 #! SCS-OMP3 cc-pVDZ geometry optimization for the H2O molecule.
 def test_scsmp3_opt(check_iter):
 
@@ -69,6 +70,7 @@ def test_scsmp3_opt(check_iter):
     # TEST
 
     utils.compare_iterations(result, 5, check_iter)
+
 
 #! SOS-OMP2 cc-pVDZ geometry optimization for the H2O molecule.
 def test_sosmp2_opt(check_iter):

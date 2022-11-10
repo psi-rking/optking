@@ -25,7 +25,7 @@ def abs_min(V):
 
 
 def rms(V):
-    return np.sqrt(np.mean(V ** 2))
+    return np.sqrt(np.mean(V**2))
 
 
 def sign_of_double(d):

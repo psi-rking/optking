@@ -12,6 +12,7 @@ from . import log_name
 
 logger = logging.getLogger(f"{log_name}{__name__}")
 
+
 class Bend(Simple):
     """bend coordinate between three atoms a-b-c
 

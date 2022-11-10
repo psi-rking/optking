@@ -9,6 +9,7 @@ import pytest
 
 from .utils import utils
 
+
 def test_sf4_quasilinear_cart(check_iter):
     sf4 = psi4.geometry(
         """
@@ -35,6 +36,7 @@ def test_sf4_quasilinear_cart(check_iter):
     assert psi4.compare_values(REF_energy, E, 6, "Reference energy")
 
     utils.compare_iterations(json_output, 9, check_iter)
+
 
 # This needs debugged. RAK (Jan. 2020) thinks that when/if we get
 # full symmetrization of our step (C2v) point group here, then the

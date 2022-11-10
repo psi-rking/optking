@@ -38,6 +38,7 @@ def test_B_dB_matrices(check_iter):
     assert psi4.compare_values(refenergy, E, 8, "Reference energy")  # TEST
     utils.compare_iterations(json_output, 9, check_iter)
 
+
 def test_maxiter(check_iter):
 
     h2o = psi4.geometry(
@@ -65,6 +66,7 @@ def test_maxiter(check_iter):
     assert "geom_maxiter" in json_output["keywords"]  # TEST
     assert "Maximum number of steps exceeded" in json_output["error"]["error_message"]  # TEST
     assert "OptError" in json_output["error"]["error_type"]  # TEST
+
 
 # Test the energy of geometry output, when maxiter is reached.
 def test_maxiter_geom():

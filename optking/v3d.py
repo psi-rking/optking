@@ -82,7 +82,7 @@ def cross(u, v):
 
 
 def are_parallel(u, v):
-    """ Determines if two vectors are parallel within tolerance (1e-10)"""
+    """Determines if two vectors are parallel within tolerance (1e-10)"""
     if fabs(dot(u, v) - 1.0e0) < DOT_PARALLEL_LIMIT:
         return True
     else:
@@ -90,7 +90,7 @@ def are_parallel(u, v):
 
 
 def are_antiparallel(u, v):
-    """ Determines if two vectors are antiparallel within tolerance (1e-10)"""
+    """Determines if two vectors are antiparallel within tolerance (1e-10)"""
     if fabs(dot(u, v) + 1.0e0) < DOT_PARALLEL_LIMIT:
         return True
     else:
@@ -311,7 +311,7 @@ def are_collinear(A, B, C, threshold=1.0e-4):
 
     cr = cross(eab, eac)
     N = sqrt(dot(cr, cr))
-    #print("N {}".format(N))
+    # print("N {}".format(N))
     if N < threshold:
         return True
     else:

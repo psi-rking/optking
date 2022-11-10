@@ -4,7 +4,7 @@ import pytest
 
 import psi4
 import optking
-from . utils import utils
+from .utils import utils
 
 
 OH_frozen_stre_rhf = -150.781130356  # TEST
@@ -43,4 +43,3 @@ def test_frozen_coords(option, expected, num_steps, check_iter):
 
     assert psi4.compare_values(expected, thisenergy, 6)  # TEST
     utils.compare_iterations(json_output, num_steps, check_iter)
-

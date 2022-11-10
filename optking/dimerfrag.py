@@ -15,6 +15,7 @@ from . import log_name
 
 logger = logging.getLogger(f"{log_name}{__name__}")
 
+
 class Weight(object):
     def __init__(self, a, w):
         self._atom = a  # int:   index of atom in fragment
@@ -30,7 +31,7 @@ class Weight(object):
 
 
 class RefPoint(object):
-    """ Collection of weights for a single reference point. """
+    """Collection of weights for a single reference point."""
 
     def __init__(self, atoms, coeff):
         self._weights = []
@@ -115,7 +116,16 @@ class DimerFrag(object):
     """
 
     def __init__(
-        self, A_idx, A_atoms, B_idx, B_atoms, A_weights=None, B_weights=None, A_lbl="A", B_lbl="B", frozen=None,
+        self,
+        A_idx,
+        A_atoms,
+        B_idx,
+        B_atoms,
+        A_weights=None,
+        B_weights=None,
+        A_lbl="A",
+        B_lbl="B",
+        frozen=None,
     ):
         self._A_lbl = A_lbl
         self._B_lbl = B_lbl
@@ -390,14 +400,14 @@ class DimerFrag(object):
         # stretch occurs between ref. pt. 1 on each fragment.
         # Counting begins at 0 internally from 1 for user.
         full_list = [f"\tFragment {self.A_idx+1:d} : {self._A_lbl}\n"]
-        for i,refPt in enumerate(self._Arefs[::-1]):
+        for i, refPt in enumerate(self._Arefs[::-1]):
             full_list.append(f"\t\tDimer point {4-self.n_arefs+i} (Ref. pt. {self.n_arefs-i}):\n")
             full_list.append(f"\t\t\t{'Atom':>8}\t{'Coeff':>10}\n")
             for wt in refPt:
                 full_list.append(f"\t\t\t{wt.atom+1:>8}\t{wt.weight:>10.5f}\n")
 
         full_list.append(f"\tFragment {self.B_idx+1:d} : {self._B_lbl}\n")
-        for i,refPt in enumerate(self._Brefs):
+        for i, refPt in enumerate(self._Brefs):
             full_list.append(f"\t\tDimer point {4 + i} (Ref. pt. {i + 1}):\n")
             full_list.append(f"\t\t\t{'Atom':>8}\t{'Coeff':>10}\n")
             for wt in refPt:
@@ -406,18 +416,18 @@ class DimerFrag(object):
         # This code does not work for reference points defined by linear
         # combination of multiple atoms.  Some reference points will need > 1
         # row, and the number may be different between fragments.
-        #labels_a = [f"\t\tDimer point {3 - i} (Ref. pt. {self.n_arefs - i}):" for i in range(self.n_arefs)]
-        #labels_b = [
+        # labels_a = [f"\t\tDimer point {3 - i} (Ref. pt. {self.n_arefs - i}):" for i in range(self.n_arefs)]
+        # labels_b = [
         #    f"{' ':20}\t\tDimer point {4 + i} (Ref. pt. {i + 1}):\n" for i in range(self.n_brefs)
-        #]
-        #title = [f"\tFragment {self._A_lbl}", f"{' ':40}\tFragment {self._B_lbl}\n"]
-        #ref_labels_a, ref_vals_a = DimerFrag._split_ref_point_string(self._Arefs)
-        #ref_labels_b, ref_vals_b = DimerFrag._split_ref_point_string(self._Brefs, end=True)
+        # ]
+        # title = [f"\tFragment {self._A_lbl}", f"{' ':40}\tFragment {self._B_lbl}\n"]
+        # ref_labels_a, ref_vals_a = DimerFrag._split_ref_point_string(self._Arefs)
+        # ref_labels_b, ref_vals_b = DimerFrag._split_ref_point_string(self._Brefs, end=True)
         #
-        #line_by_line = itertools.chain(*zip(labels_a, labels_b, ref_labels_a, ref_labels_b, ref_vals_a, ref_vals_b))
-        #full_list = title + list(line_by_line)
+        # line_by_line = itertools.chain(*zip(labels_a, labels_b, ref_labels_a, ref_labels_b, ref_vals_a, ref_vals_b))
+        # full_list = title + list(line_by_line)
         add_on = f"{'(dimer pt. *connectivity* is ':>50}"
-        connectivity = add_on + "-".join([f"{i + 1}" for i in range(3-self.n_arefs,3+self.n_brefs)]) + ")"
+        connectivity = add_on + "-".join([f"{i + 1}" for i in range(3 - self.n_arefs, 3 + self.n_brefs)]) + ")"
 
         dimer_frag_coords = str(self._pseudo_frag).replace("    Geom", "Ref Pts. Coords")
         return_str = connectivity + "\n\n" + "".join(full_list) + dimer_frag_coords
@@ -577,19 +587,25 @@ class DimerFrag(object):
                     raise AlgError("Can't compute interfragment coord. {} at this geometry.".format(lbls[j]))
         return
 
-    #@staticmethod
-    #def _split_ref_point_string(ref_points, end=False):
-    #    """Split str(ref_points) line-by-line to be printed side by side Add space and newline if dimerfrag"""
-    #    ref_strings = [str(ref) for ref in ref_points]
-    #    ref_label_vals = [val.split("\n")[:-1] for val in ref_strings]
-    #
-    #    ref_labels = [f"{'':20}{sublist[0]}\n" if end else sublist[0] for sublist in ref_label_vals]
-    #    ref_vals = [f"{'':16}{sublist[1]}\n" if end else sublist[1] for sublist in ref_label_vals]
+        # @staticmethod
+        # def _split_ref_point_string(ref_points, end=False):
+        #    """Split str(ref_points) line-by-line to be printed side by side Add space and newline if dimerfrag"""
+        #    ref_strings = [str(ref) for ref in ref_points]
+        #    ref_label_vals = [val.split("\n")[:-1] for val in ref_strings]
+        #
+        #    ref_labels = [f"{'':20}{sublist[0]}\n" if end else sublist[0] for sublist in ref_label_vals]
+        #    ref_vals = [f"{'':16}{sublist[1]}\n" if end else sublist[1] for sublist in ref_label_vals]
 
         return ref_labels, ref_vals
 
     def orient_fragment(
-        self, Ageom_in, Bgeom_in, q_target_in, printCoords=False, unit_length="bohr", unit_angle="rad",
+        self,
+        Ageom_in,
+        Bgeom_in,
+        q_target_in,
+        printCoords=False,
+        unit_length="bohr",
+        unit_angle="rad",
     ):
         """orient_fragment() moves the geometry of fragment B so that the
             interfragment coordinates have the given values
@@ -670,10 +686,13 @@ class DimerFrag(object):
             cnt += 1
 
         if self.pseudo_frag.intcos[0].inverse:
-            R_AB = 1.0 / R_AB # Note - makes R_AB (not reciprocal) for displacing
+            R_AB = 1.0 / R_AB  # Note - makes R_AB (not reciprocal) for displacing
 
         # print this to DEBUG log always; to INFO upon request
-        s = "\t---DimerFrag coordinates between fragments %s and %s\n" % (self._A_lbl, self._B_lbl,)
+        s = "\t---DimerFrag coordinates between fragments %s and %s\n" % (
+            self._A_lbl,
+            self._B_lbl,
+        )
         s += "\t---Internal Coordinate Step in ANG or DEG, aJ/ANG or AJ/DEG ---\n"
         s += "\t ----------------------------------------------------------------------\n"
         s += "\t Coordinate             Previous     Change       Target\n"
@@ -681,7 +700,12 @@ class DimerFrag(object):
 
         for i in range(self.num_intcos):
             c = self.pseudo_frag.intcos[i].q_show_factor  # for printing to Angstroms/degrees
-            s += "\t%-20s%12.5f%13.5f%13.5f\n" % (active_lbls[i], c * q_orig[i], c * dq_target[i], c * q_target[i],)
+            s += "\t%-20s%12.5f%13.5f%13.5f\n" % (
+                active_lbls[i],
+                c * q_orig[i],
+                c * dq_target[i],
+                c * q_target[i],
+            )
 
         s += "\t ----------------------------------------------------------------------"
         logger.debug(s)

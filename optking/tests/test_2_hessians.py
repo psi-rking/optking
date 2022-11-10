@@ -16,6 +16,7 @@ hess_update = [("MS", final_energy, 13), ("powell", final_energy, 11), ("bofill"
 
 logger = optking.logger
 
+
 @pytest.mark.parametrize("every, expected, num_steps", hess_every, ids=["None", "First Step", "Every", "Every 3"])
 def test_hess_every(check_iter, every, expected, num_steps):
 
@@ -29,7 +30,13 @@ def test_hess_every(check_iter, every, expected, num_steps):
     )
 
     psi4.core.clean_options()
-    psi4_options = {"basis": "cc-pvdz", "scf_type": "pk", "g_convergence": "gau_verytight", "full_hess_every": every, "print": 4}
+    psi4_options = {
+        "basis": "cc-pvdz",
+        "scf_type": "pk",
+        "g_convergence": "gau_verytight",
+        "full_hess_every": every,
+        "print": 4,
+    }
 
     psi4.set_options(psi4_options)
     json_output = optking.optimize_psi4("hf")  # Uses default program (psi4)
@@ -38,6 +45,7 @@ def test_hess_every(check_iter, every, expected, num_steps):
     assert psi4.compare_values(expected, E, 8, "Final energy, every step Hessian")  # TEST
 
     utils.compare_iterations(json_output, num_steps, check_iter)
+
 
 @pytest.mark.parametrize("guess, expected, num_steps", hess_guess)
 def test_hess_guess(check_iter, guess, expected, num_steps):
@@ -62,6 +70,7 @@ def test_hess_guess(check_iter, guess, expected, num_steps):
 
     utils.compare_iterations(json_output, num_steps, check_iter)
 
+
 @pytest.mark.parametrize("update, expected, num_steps", hess_update)
 def test_hess_update(check_iter, update, expected, num_steps):
 
@@ -85,4 +94,3 @@ def test_hess_update(check_iter, update, expected, num_steps):
     assert psi4.compare_values(expected, E, 8, "Final energy, every step Hessian")  # TEST
 
     utils.compare_iterations(json_output, num_steps, check_iter)
-

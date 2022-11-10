@@ -120,7 +120,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         self.error = None
 
     def to_dict(self):
-        """ Convert attributes to serializable form. """
+        """Convert attributes to serializable form."""
         d = {
             "direction": self.direction,
             "step_number": self.step_number,
@@ -129,7 +129,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
             "current_requirements": self.current_requirements,
             "erase_hessian": self.erase_hessian,
             "check_linesearch": self.check_linesearch,
-            "error": self.error
+            "error": self.error,
         }
         if self.linesearch_method:
             d["linesearch_method"] = self.linesearch_method.to_dict()
@@ -141,7 +141,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
 
     @classmethod
     def from_dict(cls, d, molsys, history, params, computer):
-        """ Reload attributes from the provided dictionary. Create all necessary classes.
+        """Reload attributes from the provided dictionary. Create all necessary classes.
 
         To prevent duplication, OptHelper handles converting the molsys, history, params, and computer to/from dict
         """
@@ -158,17 +158,23 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         manager.error = d["error"]
 
         if params.opt_type == "IRC":
-            manager.opt_method = IRCfollowing.IntrinsicReactionCoordinate.from_dict(d["irc_object"], molsys, history, params)
+            manager.opt_method = IRCfollowing.IntrinsicReactionCoordinate.from_dict(
+                d["irc_object"], molsys, history, params
+            )
         else:
-            manager.opt_method = optimization_factory(method, molsys, history, params)  # Can just recreate with current history and params 
+            manager.opt_method = optimization_factory(
+                method, molsys, history, params
+            )  # Can just recreate with current history and params
 
         if d.get("linesearch_method"):
-            manager.linesearch_method = OptimizationManager._LINESEARCHES["ENERGY"].from_dict(d["linesearch_method"], molsys, history, params)
+            manager.linesearch_method = OptimizationManager._LINESEARCHES["ENERGY"].from_dict(
+                d["linesearch_method"], molsys, history, params
+            )
 
         return manager
 
     def start_step(self, H: np.ndarray):
-        """ Initialize coordinates and perform any coordinate transformations of gradients and hessians.
+        """Initialize coordinates and perform any coordinate transformations of gradients and hessians.
 
         Returns
         -------
@@ -212,7 +218,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         return H, f_q, E
 
     def take_step(self, fq=None, H=None, energy=None, return_str=False, **kwargs):
-        """ Take whatever step (normal, linesearch, IRC, constrained IRC) is next.
+        """Take whatever step (normal, linesearch, IRC, constrained IRC) is next.
 
         fq: Union[np.ndarray, None]
             forces
@@ -258,11 +264,11 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         return achieved_dq
 
     def update_requirements(self):
-        """ Get the current requirements for the next step.
+        """Get the current requirements for the next step.
 
         Notes
         -----
-        If linesearching requirements can change. Always safe to provide a gradient regardless. """
+        If linesearching requirements can change. Always safe to provide a gradient regardless."""
 
         if self.direction is None:
             return self.opt_method.requires()
@@ -270,8 +276,8 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
             return self.linesearch_method.requires()
 
     def converged(self, E, fq, dq, step_number=None, str_mode=None):
-        """ Test whether the optimization has finished. An optimization can only be declared converged
-        If a gradient has been provided (linesearching cannot terminate an optimization) """
+        """Test whether the optimization has finished. An optimization can only be declared converged
+        If a gradient has been provided (linesearching cannot terminate an optimization)"""
 
         if step_number is None:
             step_number = self.step_number
@@ -287,7 +293,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         return converged
 
     def check_maxiter(self):
-        """ Check iterations < geom_maxiter. For IRC's check `total_steps_taken`. """
+        """Check iterations < geom_maxiter. For IRC's check `total_steps_taken`."""
 
         if self.params.opt_type == "IRC":
             iterations = self.opt_method.total_steps_taken
@@ -300,11 +306,12 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
                 "\tTotal number of steps (%d) exceeds maximum allowed (%d).\n" % (iterations, self.params.geom_maxiter)
             )
             raise OptError(
-                "Maximum number of steps exceeded: {}.".format(self.params.geom_maxiter), "OptError",
+                "Maximum number of steps exceeded: {}.".format(self.params.geom_maxiter),
+                "OptError",
             )
 
     def get_hessian_protocol(self):
-        """ Determine action to take for how to compute a hessian. Handles alternate IRC behavior
+        """Determine action to take for how to compute a hessian. Handles alternate IRC behavior
 
         Returns
         -------
@@ -341,7 +348,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         return protocol
 
     def clear(self):
-        """ Reset history (inculding all steps) and molecule """
+        """Reset history (inculding all steps) and molecule"""
         self.history.steps = []
         self.molsys.intcos = []
         self.step_number = 0
@@ -349,7 +356,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         self.history.consecutive_backsteps = 0
 
     def alg_error_handler(self, error):
-        """ consumes an AlgError. Takes appropriate action """
+        """consumes an AlgError. Takes appropriate action"""
         logger.error(" Caught AlgError exception\n")
         eraseIntcos = False
 
@@ -391,7 +398,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         self.error = "AlgError"
 
     def opt_error_handler(self, error):
-        """ OptError indicates an unrecoverable error. Print information and trigger cleanup. """
+        """OptError indicates an unrecoverable error. Print information and trigger cleanup."""
         logger.critical("\tA critical optimization-specific error has occured.")
         logger.critical("\tResetting all optimization options for potential queued jobs.\n")
         logger.exception("Error caught:" + str(error))
@@ -400,7 +407,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         return self._exception_cleanup(error)
 
     def unknown_error_handler(self, error):
-        """ Unknown errors are not recoverable error. Print information and trigger cleanup. """
+        """Unknown errors are not recoverable error. Print information and trigger cleanup."""
         logger.critical("\tA non-optimization-specific error has occurred.\n")
         logger.critical("\tResetting all optimization options for potential queued jobs.\n")
         logger.exception("Error Type:  " + str(type(error)))
@@ -439,7 +446,7 @@ def optimization_factory(method, molsys, history_object, params=None):
 
     Returns
     -------
-    OptimizationAlgorithm """
+    OptimizationAlgorithm"""
     ALGORITHMS = {
         "RFO": stepAlgorithms.RestrictedStepRFO,
         "P_RFO": stepAlgorithms.PartitionedRFO,
@@ -451,14 +458,15 @@ def optimization_factory(method, molsys, history_object, params=None):
     return ALGORITHMS.get(method, stepAlgorithms.RestrictedStepRFO)(molsys, history_object, params)
 
 
-def get_pes_info(H: np.ndarray,
-                 computer: ComputeWrapper,
-                 o_molsys: Molsys,
-                 opt_history: history.History,
-                 params: op.OptParams,
-                 hessian_protocol="update",
-                 requires=("energy", "gradient"),
-                 ):
+def get_pes_info(
+    H: np.ndarray,
+    computer: ComputeWrapper,
+    o_molsys: Molsys,
+    opt_history: history.History,
+    params: op.OptParams,
+    hessian_protocol="update",
+    requires=("energy", "gradient"),
+):
     """Calculate, update, or guess hessian as appropriate. Calculate gradient and transform to the
     current coordinate system, pulls the gradient from hessian output if possible.
 
@@ -494,13 +502,13 @@ def get_pes_info(H: np.ndarray,
         driver = "energy"
 
     if hessian_protocol == "update":
-            logger.info(f"Updating Hessian with {str(op.Params.hess_update)}")
-            result = computer.compute(o_molsys.geom, driver=driver, return_full=False)
-            g_x = np.asarray(result) if driver == "gradient" else None
-            f_q = o_molsys.gradient_to_internals(g_x, -1.0)
-            f_q, H = o_molsys.apply_external_forces(f_q, H)
-            H = opt_history.hessian_update(H, f_q, o_molsys)
-            g_q = -f_q
+        logger.info(f"Updating Hessian with {str(op.Params.hess_update)}")
+        result = computer.compute(o_molsys.geom, driver=driver, return_full=False)
+        g_x = np.asarray(result) if driver == "gradient" else None
+        f_q = o_molsys.gradient_to_internals(g_x, -1.0)
+        f_q, H = o_molsys.apply_external_forces(f_q, H)
+        H = opt_history.hessian_update(H, f_q, o_molsys)
+        g_q = -f_q
     else:
         if hessian_protocol == "compute" and not params.cart_hess_read:
             H, g_x = get_hess_grad(computer, o_molsys)

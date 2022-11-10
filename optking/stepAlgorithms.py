@@ -165,11 +165,9 @@ class OptimizationAlgorithm(OptimizationInterface):
             dq = self.apply_interfrag_step_scaling(dq)
 
         self.molsys.interfrag_dq_discontinuity_correction(dq)
-        achieved_dq, achieved_dx, return_str = displace_molsys(self.molsys,
-                                                  dq,
-                                                  fq,
-                                                  ensure_convergence=self.params.ensure_bt_convergence,
-                                                  return_str=return_str)
+        achieved_dq, achieved_dx, return_str = displace_molsys(
+            self.molsys, dq, fq, ensure_convergence=self.params.ensure_bt_convergence, return_str=return_str
+        )
         dq_norm, unit_dq, projected_fq, projected_hess = self.step_metrics(achieved_dq, fq, H)
         delta_energy = self.expected_energy(dq_norm, projected_fq, projected_hess)
         logger.debug("\tProjected energy change: %10.10lf\n" % delta_energy)
@@ -201,23 +199,23 @@ class OptimizationAlgorithm(OptimizationInterface):
         return dq
 
     def apply_interfrag_step_scaling(self, dq):
-        """ Check the size of the interfragment modes.  They can inadvertently represent
+        """Check the size of the interfragment modes.  They can inadvertently represent
         very large motions.
 
         Returns
         -------
         dq : scaled step according to trust radius
         """
-        for iDI, DI in enumerate(self.molsys.dimer_intcos): # loop over dimers with interfrag intcos
+        for iDI, DI in enumerate(self.molsys.dimer_intcos):  # loop over dimers with interfrag intcos
             start = self.molsys.dimerfrag_1st_intco(iDI)
             for i, I in enumerate(DI.pseudo_frag.intcos):  # loop over individual intcos
-                val = dq[start+i]
+                val = dq[start + i]
                 if abs(val) > self.params.interfrag_trust:
                     logger.info(f"Reducing step for Dimer({DI.A_idx+1},{DI.B_idx+1}), {I}, {start+i}")
                     if val > 0:
-                        dq[start+i] = self.params.interfrag_trust
+                        dq[start + i] = self.params.interfrag_trust
                     else:
-                        dq[start+i] = -1.0*self.params.interfrag_trust
+                        dq[start + i] = -1.0 * self.params.interfrag_trust
         return dq
 
     def backstep(self):
@@ -261,11 +259,7 @@ class OptimizationAlgorithm(OptimizationInterface):
 
     def converged(self, dq, fq, step_number, str_mode=None):
         energies = [step.E for step in self.history.steps]
-        conv_info = {'step_type': 'standard',
-                     'energies': energies,
-                     'dq': dq,
-                     'fq': fq,
-                     'iternum': step_number}
+        conv_info = {"step_type": "standard", "energies": energies, "dq": dq, "fq": fq, "iternum": step_number}
         converged = convcheck.conv_check(conv_info, self.params.__dict__, str_mode=str_mode)
         if str_mode:
             return converged
@@ -344,7 +338,7 @@ class OptimizationAlgorithm(OptimizationInterface):
         return decent
 
     def increase_trust_radius(self):
-        """ Increase trust radius by factor of 3 """
+        """Increase trust radius by factor of 3"""
         maximum = self.params.intrafrag_trust_max
         if self.params.intrafrag_trust != maximum:
             new_val = self.params.intrafrag_trust * 3
@@ -363,7 +357,7 @@ class OptimizationAlgorithm(OptimizationInterface):
                 self.params.interfrag_trust = new_val
 
     def decrease_trust_radius(self):
-        """Scale trust radius by 0.25 """
+        """Scale trust radius by 0.25"""
         minimum = self.params.intrafrag_trust_min
         if self.params.intrafrag_trust != minimum:
             new_val = self.params.intrafrag_trust / 4
@@ -600,7 +594,9 @@ class RestrictedStepRFO(RFO):
                 SRFOevals, SRFOevects = self._scale_and_normalize(RFOmat, alpha)
             except OptError:
                 alpha = 1.0
-                logger.warning("Could not converge alpha due to a linear algebra error. Continuing with simple step scaling")
+                logger.warning(
+                    "Could not converge alpha due to a linear algebra error. Continuing with simple step scaling"
+                )
                 break
 
             # Determine best (lowest eigenvalue), acceptable root and take as step
@@ -639,7 +635,12 @@ class RestrictedStepRFO(RFO):
             )
 
         elif alpha_iter > 0 and not op.Params.simple_step_scaling:
-            rfo_step_report += "\t%5d%12.5lf%14.5lf%12d\n" % (alpha_iter + 1, sqrt(dqtdq), alpha, self.rfo_root + 1,)
+            rfo_step_report += "\t%5d%12.5lf%14.5lf%12d\n" % (
+                alpha_iter + 1,
+                sqrt(dqtdq),
+                alpha,
+                self.rfo_root + 1,
+            )
 
         Lambda = -1 * fq @ dq
 
@@ -680,7 +681,7 @@ class RestrictedStepRFO(RFO):
         SRFOevects = self._intermediate_normalize(SRFOevects)
 
         # transform step back.
-        scale_mat = np.diag(np.repeat(1 / alpha ** 0.5, dim1))
+        scale_mat = np.diag(np.repeat(1 / alpha**0.5, dim1))
         scale_mat[-1, -1] = 1
         # SRFOevects = np.einsum("ij, jk -> ik", scale_mat, SRFOevects)
         SRFOevects = np.transpose(scale_mat @ np.transpose(SRFOevects))

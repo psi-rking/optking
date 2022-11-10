@@ -8,6 +8,7 @@ import optking
 import psi4
 from .utils import utils
 
+
 def test_linesearch(check_iter):
     Ar2 = psi4.geometry(
         """

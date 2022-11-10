@@ -17,6 +17,7 @@ import psi4
 import optking
 from .utils import utils
 
+
 def test_oofp_formaldehyde(check_iter):
     form = psi4.geometry(
         """
@@ -41,6 +42,7 @@ def test_oofp_formaldehyde(check_iter):
     assert psi4.compare_values(b3lyp_opt_energy, E, 8, "B3LYP energy")
     utils.compare_iterations(result, 8, check_iter)
 
+
 def test_ranged_oofp(check_iter):
     form = psi4.geometry(
         """
@@ -51,10 +53,7 @@ def test_ranged_oofp(check_iter):
     """
     )
     psi4.core.clean_options()
-    psi4_options = {
-        "basis": "def2-SVP",
-        "ensure_bt_convergence": True
-    }
+    psi4_options = {"basis": "def2-SVP", "ensure_bt_convergence": True}
     psi4.set_options(psi4_options)
 
     xtra = {"ranged_oofp": "(3 2 1 4 -40.0 -30.0) (4 2 1 3 30.0 40.0)"}
@@ -63,6 +62,7 @@ def test_ranged_oofp(check_iter):
 
     assert psi4.compare_values(b3lyp_ranged_oop_30_energy, E, 5, "B3LYP energy")
     utils.compare_iterations(result, 15, check_iter)
+
 
 def test_ext_force_oofp(check_iter):
     form = psi4.geometry(
@@ -74,10 +74,7 @@ def test_ext_force_oofp(check_iter):
     """
     )
     psi4.core.clean_options()
-    psi4_options = {
-        "basis": "def2-SVP",
-        "ensure_bt_convergence": True
-    }
+    psi4_options = {"basis": "def2-SVP", "ensure_bt_convergence": True}
     psi4.set_options(psi4_options)
 
     xtra = {"ext_force_oofp": "3 2 1 4 '-0.5*(x+30)' 4 2 1 3 '-0.5*(x-30.0)'"}

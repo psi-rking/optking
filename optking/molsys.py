@@ -117,12 +117,14 @@ class Molsys(object):
         return opt_mol, qc_mol
 
     def to_schema(self):
-        mol_dict = {"symbols": self.atom_symbols,
-                    "geometry": self.geom.flat,
-                    "atomic_numbers": self.Z,
-                    "mass_numbers": self.masses,
-                    "fix_com": True,
-                    "fix_orientation": True}
+        mol_dict = {
+            "symbols": self.atom_symbols,
+            "geometry": self.geom.flat,
+            "atomic_numbers": self.Z,
+            "mass_numbers": self.masses,
+            "fix_com": True,
+            "fix_orientation": True,
+        }
         return qcel.models.Molecule(**mol_dict)
 
     def to_dict(self):
@@ -240,7 +242,7 @@ class Molsys(object):
 
     @geom.setter
     def geom(self, newgeom):
-        """ setter for geometry"""
+        """setter for geometry"""
         for iF, F in enumerate(self._fragments):
             row = self.frag_1st_atom(iF)
             F.geom[:] = newgeom[row : (row + F.natom), :]
@@ -315,9 +317,9 @@ class Molsys(object):
         for f in self.all_fragments:
             for intco in f.intcos:
                 if intco.ranged:
-                   ranged[cnt] = True
+                    ranged[cnt] = True
                 cnt += 1
-        return ranged 
+        return ranged
 
     # Used to zero out forces.  For any ranged intco, indicate frozen if
     # within 0.1% of boundary and its corresponding force is in that direction.
@@ -341,7 +343,7 @@ class Molsys(object):
         return frozen
 
     def constraint_matrix(self, fq):
-        """ Returns constraint matrix with 1 on diagonal for frozen coordinates.
+        """Returns constraint matrix with 1 on diagonal for frozen coordinates.
         Tis method used to check for forces being passed in but wasn't being used. Forces now need to be passed in
         """
         frozen = self.frozen_intco_list
@@ -479,7 +481,7 @@ class Molsys(object):
         self._fragments.append(consolidatedFrag)
 
     def split_fragments_by_connectivity(self):
-        """ Split any fragment not connected by bond connectivity."""
+        """Split any fragment not connected by bond connectivity."""
         tempZ = np.copy(self.Z)
         tempGeom = np.copy(self.geom)
         tempMasses = np.copy(self.masses)
@@ -629,7 +631,7 @@ class Molsys(object):
             DI.update_reference_geometry(xA, xB)
 
     def update_dihedral_orientations(self):
-        """ See description in Fragment class. """
+        """See description in Fragment class."""
         for F in self._fragments:
             F.update_dihedral_orientations()
         self.update_dimer_intco_reference_points()
@@ -637,7 +639,7 @@ class Molsys(object):
             DI.pseudo_frag.update_dihedral_orientations()
 
     def fix_bend_axes(self):
-        """ See description in Fragment class. """
+        """See description in Fragment class."""
         for F in self._fragments:
             F.fix_bend_axes()
         self.update_dimer_intco_reference_points()
@@ -645,7 +647,7 @@ class Molsys(object):
             DI.pseudo_frag.fix_bend_axes()
 
     def unfix_bend_axes(self):
-        """ See description in Fragment class. """
+        """See description in Fragment class."""
         for F in self._fragments:
             F.unfix_bend_axes()
         for DI in self._dimer_intcos:
@@ -687,7 +689,7 @@ class Molsys(object):
         return B
 
     def q_show_forces(self, forces):
-        """ Returns scaled forces as array. """
+        """Returns scaled forces as array."""
 
         c = [intco.f_show_factor for f in self.all_fragments for intco in f.intcos]
         c = np.asarray(c)
@@ -867,7 +869,7 @@ class Molsys(object):
             if C[i, i] == 1:
                 tmp = H[i, i]
                 H[i, :] = H[:, i] = np.zeros(len(fq))
-                H[i, i] = tmp 
+                H[i, i] = tmp
 
         logger.debug("Projected (PHP) Hessian matrix\n" + print_mat_string(H))
 
@@ -899,8 +901,8 @@ class Molsys(object):
 
         if "Frag" in report:
             logger.info(report)
- 
-        return fq, H 
+
+        return fq, H
 
     def hessian_to_cartesians(self, Hint, g_q=None):
         logger.info("Converting Hessian from internals to cartesians.\n")
@@ -955,7 +957,7 @@ class Molsys(object):
         return g_x
 
     def test_Bmat(self):
-        """ Test the analytic B matrix (dq/dx) via finite differences.
+        """Test the analytic B matrix (dq/dx) via finite differences.
         The 5-point formula should be good to DISP_SIZE^4 - a few
         unfortunates will be slightly worse.
 
@@ -1042,7 +1044,7 @@ class Molsys(object):
     # The 5-point formula should be good to DISP_SIZE^4 -
     #  a few unfortunates will be slightly worse
     def test_derivative_Bmat(self):
-        """ Test the analytic derivative B matrix (d2q/dx2) via finite
+        """Test the analytic derivative B matrix (d2q/dx2) via finite
         differences.  The 5-point formula should be good to DISP_SIZE^4 - a few
         unfortunates will be slightly worse.
 
@@ -1052,6 +1054,7 @@ class Molsys(object):
             Returns True or False, doesn't raise exceptions
         """
         from . import intcosMisc
+
         DISP_SIZE = 0.01
         MAX_ERROR = 10 * DISP_SIZE * DISP_SIZE * DISP_SIZE * DISP_SIZE
 
@@ -1088,7 +1091,7 @@ class Molsys(object):
                         B_p = intcosMisc.Bmat(F.intcos, coord)
 
                         coord[atom_a, xyz_a] += DISP_SIZE
-                        B_p2 =intcosMisc.Bmat(F.intcos, coord)
+                        B_p2 = intcosMisc.Bmat(F.intcos, coord)
 
                         coord[atom_a, xyz_a] -= 3.0 * DISP_SIZE
                         B_m = intcosMisc.Bmat(F.intcos, coord)

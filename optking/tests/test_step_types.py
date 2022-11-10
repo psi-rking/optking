@@ -3,10 +3,13 @@ import optking
 import pytest
 
 from .utils import utils
+
 finalEnergy = -76.05776970  # TEST
 
 #! SCF CC-PVTZ geometry optimzation, with Z-matrix input
-@pytest.mark.parametrize("option, expected, num_steps", [("RFO", finalEnergy, 6), ("NR", finalEnergy, 6), ("SD", finalEnergy, 10)])
+@pytest.mark.parametrize(
+    "option, expected, num_steps", [("RFO", finalEnergy, 6), ("NR", finalEnergy, 6), ("SD", finalEnergy, 10)]
+)
 def test_h2o_rfo(option, expected, num_steps, check_iter):
 
     h2o = psi4.geometry(

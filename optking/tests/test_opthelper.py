@@ -9,6 +9,7 @@ import pytest
 
 def test_step_by_step():
     import psi4
+
     h2o = psi4.geometry(
         """
          O
@@ -172,6 +173,7 @@ def test_stepwise_export():
 def test_hooh_irc(check_iter):
     import psi4
     from .utils import utils
+
     energy_5th_IRC_pt = -150.812913276783  # TEST
     h2o2 = psi4.geometry(
         """
@@ -196,7 +198,7 @@ def test_hooh_irc(check_iter):
         "opt_type": "irc",
         "geom_maxiter": 60,
         "full_hess_every": 0,
-        "irc_direction": "FORWARD"
+        "irc_direction": "FORWARD",
     }
 
     psi4.set_options(psi4_options)
@@ -237,10 +239,11 @@ def test_hooh_irc(check_iter):
     assert psi4.compare_values(energy_5th_IRC_pt, IRC[5]["energy"], 6, "Energy of 5th IRC point.")  # TEST
     utils.compare_iterations(json_output, 45, check_iter)
 
+
 def test_linesearch(check_iter):
     import psi4
     from .utils import utils
-    
+
     refenergy = -1053.880393  # Eh
     Ar2 = psi4.geometry(
         """
@@ -250,10 +253,7 @@ def test_linesearch(check_iter):
     )
 
     psi4.core.clean_options()
-    psi4_options = {
-        "basis": "cc-pvdz",
-        "d_convergence": 10
-    }
+    psi4_options = {"basis": "cc-pvdz", "d_convergence": 10}
 
     optking_options = {
         "geom_maxiter": 60,

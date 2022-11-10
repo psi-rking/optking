@@ -11,12 +11,13 @@ logger = logging.getLogger(f"{log_name}{__name__}")
 
 
 def import_psi4(mesg=""):
-    """Attempt psi4 import. Print mesg as indicator for why psi4 is required to user """
+    """Attempt psi4 import. Print mesg as indicator for why psi4 is required to user"""
     try:
         import psi4
     except ImportError as error:
         mesg = "Cannot import psi4" + mesg
         raise OptError(mesg + "conda install psi4 psi4-rt -c psi4") from error
+
 
 def delta(i, j):
     if i == j:

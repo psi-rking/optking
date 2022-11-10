@@ -33,6 +33,7 @@ def test_ccsd_h2o(check_iter):
 
     utils.compare_iterations(result, 3, check_iter)
 
+
 #! ROHF-CCSD/cc-pVDZ $^{3}B@@1$ CH2 geometry opt, analytic gradients, tight
 def test_ccsd_ch2(check_iter):
 
@@ -72,6 +73,7 @@ def test_ccsd_ch2(check_iter):
 
     utils.compare_iterations(result, 10, check_iter)
 
+
 #! UHF-CCSD/cc-pVDZ $^{3}B@@1$ CH2 geometry opt via analytic gradients, tight
 def test_uccsd_ch2(check_iter):
 
@@ -110,6 +112,7 @@ def test_uccsd_ch2(check_iter):
     assert psi4.compare_values(REF_total, this_total, 6, "UCCSD Total energy")  # TEST
 
     utils.compare_iterations(result, 10, check_iter)
+
 
 #! UHF-CCSD(T)/cc-pVDZ $^{3}B@@1$ CH2 geometry optimization via analytic gradients
 @pytest.mark.long

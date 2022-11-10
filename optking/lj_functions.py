@@ -19,8 +19,8 @@ def calc_energy_and_gradient(positions, sigma, epsilon, do_gradient=True):
 
     gradient = np.zeros((natom, 3))
 
-    sigma6 = sigma ** 6
-    sigma12 = sigma6 ** 2
+    sigma6 = sigma**6
+    sigma12 = sigma6**2
 
     # Double loop over all particles
     for i, j in combinations(range(natom), 2):

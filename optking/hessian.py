@@ -71,7 +71,8 @@ def guess(oMolsys, connectivity=None, guessType="SIMPLE"):
             if type(intco) == Stre:
                 h = 0.007
                 if intco.inverse:
-                    h *= pow(1.0/vals[i],4); # i should be 0=stretch
+                    h *= pow(1.0 / vals[i], 4)
+                    # i should be 0=stretch
             elif type(intco) == Bend:
                 h = 0.003
             elif type(intco) == Tors:
@@ -85,13 +86,13 @@ def guess(oMolsys, connectivity=None, guessType="SIMPLE"):
 
 
 def from_file(filename):
-    """Read user provided hessian from disk """
+    """Read user provided hessian from disk"""
 
     with open(filename) as f:
-        if '.json' == filename[:-5]:
+        if ".json" == filename[:-5]:
             result = json.load(f)
-            hess = result['return_result']
-            ncart = 3 * len(result['molecule']['symbols'])
+            hess = result["return_result"]
+            ncart = 3 * len(result["molecule"]["symbols"])
         else:
             # 2D split. Cast everything to floats and convert back to 2D list from map.
             lines = f.readlines()

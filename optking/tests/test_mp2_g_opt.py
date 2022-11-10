@@ -2,6 +2,7 @@ import psi4
 import optking
 from .utils import utils
 
+
 def test_mp2_h2o(check_iter):
 
     h2o = psi4.geometry(

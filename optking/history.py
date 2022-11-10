@@ -132,7 +132,7 @@ class History(object):
 
     # Add new step.  We will store geometry as 1D in history.
     def append(self, geom, E, forces, cart_grad):
-        """ Create a new step geometry should be stored as a one D object
+        """Create a new step geometry should be stored as a one D object
 
         Parameters
         ----------
@@ -201,7 +201,13 @@ class History(object):
             rms_disp = rms(step.Dq)
 
             steps.append(
-                {"Energy": step.E, "DE": DE, "max_force": max_force, "max_disp": max_disp, "rms_disp": rms_disp,}
+                {
+                    "Energy": step.E,
+                    "DE": DE,
+                    "max_force": max_force,
+                    "max_disp": max_disp,
+                    "rms_disp": rms_disp,
+                }
             )
 
             if max_force is None or rms_force is None:
@@ -280,7 +286,7 @@ class History(object):
                 logger.warning(
                     "\tChange in internal coordinate of %5.2e exceeds limit of %5.2e.",
                     max_change,
-                    self.hess_update_dq_tol
+                    self.hess_update_dq_tol,
                 )
                 logger.warning("\tSkipping Hessian update for step %d.", i_step + 1)
                 pass
@@ -334,7 +340,9 @@ class History(object):
 
                 for i in range(Nintco):
                     for j in range(Nintco):
-                        H_new[i, j] = H[i, j] - qz / (dq_norm * dq_norm) * dq[i] * dq[j] + (Z[i] * dq[j] + dq[i] * Z[j]) / dq_norm
+                        H_new[i, j] = (
+                            H[i, j] - qz / (dq_norm * dq_norm) * dq[i] * dq[j] + (Z[i] * dq[j] + dq[i] * Z[j]) / dq_norm
+                        )
 
             elif self.hess_update == "BOFILL":
                 # Bofill = (1-phi) * MS + phi * Powell
@@ -393,7 +401,7 @@ class History(object):
         return H
 
     def get_update_info(self, molsys: Molsys, f: np.ndarray, q: np.ndarray, step: Step):
-        """ Get gradient and displacement info for updating the Hessian
+        """Get gradient and displacement info for updating the Hessian
 
         Parameters
         ----------

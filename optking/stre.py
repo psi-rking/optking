@@ -31,7 +31,14 @@ class Stre(Simple):
     """
 
     def __init__(
-        self, a, b, constraint="free", inverse=False, range_min=None, range_max=None, ext_force=None,
+        self,
+        a,
+        b,
+        constraint="free",
+        inverse=False,
+        range_min=None,
+        range_max=None,
+        ext_force=None,
     ):
 
         self._inverse = inverse  # bool - is really 1/R coordinate?
@@ -84,7 +91,7 @@ class Stre(Simple):
 
     def q(self, geom):
         R = v3d.dist(geom[self.A], geom[self.B])
-        return 1.0/R if self.inverse else R
+        return 1.0 / R if self.inverse else R
 
     def q_show(self, geom):
         return self.q_show_factor * self.q(geom)
@@ -92,12 +99,12 @@ class Stre(Simple):
     @property
     def q_show_factor(self):
         b2a = qcel.constants.bohr2angstroms
-        return 1.0/b2a if self.inverse else b2a
+        return 1.0 / b2a if self.inverse else b2a
 
     @property
     def f_show_factor(self):
         v = qcel.constants.hartree2aJ / qcel.constants.bohr2angstroms
-        return 1.0/v if self.inverse else v
+        return 1.0 / v if self.inverse else v
 
     def to_dict(self):
         d = {}
@@ -253,7 +260,7 @@ class Stre(Simple):
         if self.inverse and geom is not None:
             R = v3d.dist(geom[self.A], geom[self.B])
             rval *= R**4
- 
+
         return rval
 
 

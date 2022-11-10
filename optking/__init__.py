@@ -4,8 +4,9 @@ import sys
 from logging.config import dictConfig
 from . import lj_functions, loggingconfig
 
-if 'psi4' in sys.argv[0] or 'psi4' in sys._getframe(1).f_globals.get('__name__'):
+if "psi4" in sys.argv[0] or "psi4" in sys._getframe(1).f_globals.get("__name__"):
     from psi4 import logger
+
     opt_log = logger.getChild("optking")
     log_name = "psi4."
     opt_log.propagate = True

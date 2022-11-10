@@ -18,6 +18,7 @@ from . import log_name
 
 logger = logging.getLogger(f"{log_name}{__name__}")
 
+
 def connectivity_from_distances(geom, Z):
     """
     Creates a matrix (1 or 0) to describe molecular connectivity based on
@@ -270,7 +271,12 @@ def add_tors_from_connectivity(C, intcos, geom):
                                             else:  # Have found I-J-K-L.
                                                 L = l
                                                 try:
-                                                    val = v3d.tors(geom[I], geom[J], geom[K], geom[L],)
+                                                    val = v3d.tors(
+                                                        geom[I],
+                                                        geom[J],
+                                                        geom[K],
+                                                        geom[L],
+                                                    )
                                                 except AlgError:
                                                     pass
                                                 else:
@@ -866,7 +872,7 @@ def add_dimer_frag_intcos(o_molsys):
 
         # Place input in iterable for consistency
         if isinstance(input, str):
-            input = input.replace("\'", "\"")
+            input = input.replace("'", '"')
             input = json.loads(input)
             # input could come back as a dictionary or as a list of dictionaries
             input = input if isinstance(input, (list, tuple)) else [input]
@@ -875,7 +881,9 @@ def add_dimer_frag_intcos(o_molsys):
         elif isinstance(input, (list, tuple)):
             pass
         else:
-            raise TypeError("Cannot convert keyword interfrag_coords to a (list of) dictionary(s). Provide a (list of) dict or str")
+            raise TypeError(
+                "Cannot convert keyword interfrag_coords to a (list of) dictionary(s). Provide a (list of) dict or str"
+            )
 
         # Check elements for correct type (should really be done in OptParams). Ensure everything is of dict by end
         # create DimerFrags and add to molsys
@@ -885,7 +893,9 @@ def add_dimer_frag_intcos(o_molsys):
             elif isinstance(val, dict):
                 dict_val = val
             else:
-                raise TypeError("Cannot convert keyword interfrag_coords to a (list of) dictionary(s). Provide a (list of) dict or str")
+                raise TypeError(
+                    "Cannot convert keyword interfrag_coords to a (list of) dictionary(s). Provide a (list of) dict or str"
+                )
 
             df = dimerfrag.DimerFrag.fromUserDict(dict_val)
             df.update_reference_geometry(o_molsys.frag_geom(df.A_idx), o_molsys.frag_geom(df.B_idx))

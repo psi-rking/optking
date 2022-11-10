@@ -101,5 +101,3 @@ def test_dimers_h2o_auto(check_iter):  # auto reference pt. creation
     assert psi4.compare_values(MP2minEnergy, E, 6, "MP2 Energy opt from afar, auto")
 
     utils.compare_iterations(json_output, 19, check_iter)
-
-
