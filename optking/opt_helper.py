@@ -420,7 +420,7 @@ class CustomHelper(Helper):
         if self.HX is None:
             if "hessian" in self.calculations_needed():
                 if self.params.cart_hess_read:
-                    self.HX = hessian.from_file(self.params.hessian_file)  # set ourselves if file\
+                    self.HX = hessian.from_file(self.params.hessian_file)  # set ourselves if file
                     _ = self.computer.compute(self.geom, driver="hessian")
                     self._Hq = self.molsys.hessian_to_internals(self.HX)
                     self.fq, self._Hq = self.molsys.apply_external_forces(self.fq, self._Hq)

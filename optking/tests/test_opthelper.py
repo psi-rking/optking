@@ -237,7 +237,7 @@ def test_hooh_irc(check_iter):
     IRC = json_output["extras"]["irc_rxn_path"]
 
     assert psi4.compare_values(energy_5th_IRC_pt, IRC[5]["energy"], 6, "Energy of 5th IRC point.")  # TEST
-    utils.compare_iterations(json_output, 45, check_iter)
+    utils.compare_iterations(json_output, 44, check_iter)
 
 
 def test_linesearch(check_iter):
@@ -296,4 +296,4 @@ def test_linesearch(check_iter):
     nucenergy = json_output["trajectory"][-1]["properties"]["nuclear_repulsion_energy"]
     assert psi4.compare_values(nucenergy, nucenergy, 3, "Nuclear repulsion energy")  # TEST
     assert psi4.compare_values(refenergy, E, 1, "Reference energy")  # TEST
-    utils.compare_iterations(json_output, 25, check_iter)
+    utils.compare_iterations(json_output, 9, check_iter)

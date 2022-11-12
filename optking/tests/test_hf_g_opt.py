@@ -32,7 +32,7 @@ def test_hf_g_h2o(check_iter):
     refenergy = -74.9659011923  # TEST
     assert psi4.compare_values(refnucenergy, nucenergy, 3, "Nuclear repulsion energy")  # TEST
     assert psi4.compare_values(refenergy, E, 6, "Reference energy")  # TEST
-    utils.compare_iterations(json_output, 6, check_iter)
+    utils.compare_iterations(json_output, 4, check_iter)
 
 
 #! SCF cc-pVDZ geometry optimzation, Z-matrix input, tight convergence
@@ -61,7 +61,7 @@ def test_hf_g_h2o_tight(check_iter):
     E = json_output["energies"][-1]  # TEST
     REF_energy = -76.02705351276  # TEST
     assert psi4.compare_values(REF_energy, E, 8, "RHF energy")  # TEST
-    utils.compare_iterations(json_output, 7, check_iter)
+    utils.compare_iterations(json_output, 6, check_iter)
 
 
 def test_hf_g_h2o_large(check_iter):
@@ -88,7 +88,7 @@ def test_hf_g_h2o_large(check_iter):
     E = json_output["energies"][-1]  # TEST
     REF_energy = -76.05776970191  # TEST
     assert psi4.compare_values(REF_energy, E, 8, "RHF energy")  # TEST
-    utils.compare_iterations(json_output, 7, check_iter)
+    utils.compare_iterations(json_output, 6, check_iter)
 
 
 #! SCF cc-pVDZ geometry optimzation of ketene, starting from bent structure
@@ -114,4 +114,4 @@ def test_hf_g_ketene(check_iter):
     E = result["energies"][-1]  # TEST
     REF_energy = -151.7410313803  # TEST
     assert psi4.compare_values(REF_energy, E, 8, "RHF energy")  # TEST
-    utils.compare_iterations(result, 8, check_iter)
+    utils.compare_iterations(result, 7, check_iter)

@@ -174,7 +174,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         return manager
 
     def start_step(self, H: np.ndarray):
-        """Initialize coordinates and perform any coordinate transformations of gradients and hessians.
+        """Initialize coordinates. Compute needed properties. Print molecular system and property information
 
         Returns
         -------
@@ -190,8 +190,6 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         # if optimization coordinates are absent, choose them. Could be erased after AlgError
         if not self.molsys.intcos_present:
             make_internal_coords(self.molsys, self.params)
-            logger.debug("Molecular system after make_internal_coords:")
-            logger.info(str(self.molsys))
 
         self.step_number += 1
         header = f"{'----------------------------':^74}"
@@ -205,8 +203,6 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
 
         logger.info("%s", print_geom_grad(self.molsys.geom, g_x))
 
-        f_q = -g_q
-        f_q, H = self.molsys.project_redundancies_and_constraints(f_q, H)
         self.molsys.q_show()
 
         if self.params.test_B:
@@ -214,8 +210,8 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         if self.params.test_derivative_B:
             testB.test_derivative_b(self.molsys)
 
-        logger.info(print_array_string(f_q, title="Internal forces in au:"))
-        return H, f_q, E
+        logger.info(print_array_string(-g_q, title="Internal forces in au:"))
+        return H, -g_q, E
 
     def take_step(self, fq=None, H=None, energy=None, return_str=False, **kwargs):
         """Take whatever step (normal, linesearch, IRC, constrained IRC) is next.
@@ -494,6 +490,11 @@ def get_pes_info(
     float
         energy
 
+    Notes
+    -----
+    Some functionality from start_step has now been placed here. external forces are added into the forces.
+    Redundancies and constraints are projected out of the forces and hessian. 
+
     """
 
     if "gradient" in requires:
@@ -502,36 +503,41 @@ def get_pes_info(
         driver = "energy"
 
     if hessian_protocol == "update":
+        # For update. Compute new gradient. Update with external forces if present. Update the hessian
         logger.info(f"Updating Hessian with {str(op.Params.hess_update)}")
         result = computer.compute(o_molsys.geom, driver=driver, return_full=False)
         g_x = np.asarray(result) if driver == "gradient" else None
         f_q = o_molsys.gradient_to_internals(g_x, -1.0)
         f_q, H = o_molsys.apply_external_forces(f_q, H)
         H = opt_history.hessian_update(H, f_q, o_molsys)
-        g_q = -f_q
     else:
         if hessian_protocol == "compute" and not params.cart_hess_read:
-            H, g_x = get_hess_grad(computer, o_molsys)
+            H, g_x = get_hess_grad(computer, o_molsys)  # get gradient from hessian
 
         elif hessian_protocol == "guess" or isinstance(H, int):
+            # guess hessian compute gradient
             logger.info(f"Guessing Hessian with {str(params.intrafrag_hess)}")
             H = hessian.guess(o_molsys, guessType=params.intrafrag_hess)
             result = computer.compute(o_molsys.geom, driver=driver, return_full=False)
             g_x = np.asarray(result) if driver == "gradient" else None
         elif hessian_protocol in ["unneeded"]:
+            # compute gradient
             result = computer.compute(o_molsys.geom, driver=driver, return_full=False)
             g_x = np.asarray(result) if driver == "gradient" else None
         elif params.cart_hess_read:
+            # TODO Bug. IF hessian_protocol = "compute" and cart_hess_read. No gradient 
             H = hessian.from_file(params.hessian_file)
             params.cart_hess_read = False
             params.hessian_file = None
         else:
             raise OptError("Encountered unknown value from get_hessian_protocol()")
 
+        # Handle external forces (not included in hessian currently)
         f_q = o_molsys.gradient_to_internals(g_x, -1)
         f_q, H = o_molsys.apply_external_forces(f_q, H)
-        g_q = -f_q
 
+    f_q, H = o_molsys.project_redundancies_and_constraints(f_q, H)
+    g_q = -f_q
     logger.info(print_mat_string(H, title="Hessian matrix"))
     return H, g_q, g_x, computer.energies[-1]
 

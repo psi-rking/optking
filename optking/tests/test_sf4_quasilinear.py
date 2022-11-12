@@ -69,4 +69,4 @@ def test_sf4_quasilinear():
 
     E = json_output["energies"][-1]
     REF_energy = -795.1433965
-    assert psi4.compare_values(REF_energy, E, 6, "Reference energy")
+    assert psi4.compare_values(REF_energy, E, 5, "Reference energy")

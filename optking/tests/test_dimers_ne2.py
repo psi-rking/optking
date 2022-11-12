@@ -33,7 +33,7 @@ def test_dimers_ne2_long(check_iter):
     json_output = optking.optimize_psi4("mp2")
     E = json_output["energies"][-1]
     assert psi4.compare_values(MP2minEnergy, E, 6, "MP2 Energy opt from afar")
-    utils.compare_iterations(json_output, 16, check_iter)
+    utils.compare_iterations(json_output, 14, check_iter)
 
 
 #! (Ne)_2 with interfrag coordinates, specifying ref atoms, from short-range
@@ -63,7 +63,7 @@ def test_dimers_ne2_short(check_iter):
     json_output = optking.optimize_psi4("mp2")
     E = json_output["energies"][-1]
     assert psi4.compare_values(MP2minEnergy, E, 6, "MP2 Energy opt from close")
-    utils.compare_iterations(json_output, 17, check_iter)
+    utils.compare_iterations(json_output, 15, check_iter)
 
 
 #! (Ne)_2 with interfrag coordinates, auto-generated ref atoms
@@ -86,7 +86,7 @@ def test_dimers_ne2_auto(check_iter):  # auto reference pt. creation
     json_output = optking.optimize_psi4("mp2")
     E = json_output["energies"][-1]
     assert psi4.compare_values(MP2minEnergy, E, 6, "MP2 Energy opt from afar, auto")
-    utils.compare_iterations(json_output, 16, check_iter)
+    utils.compare_iterations(json_output, 13, check_iter)
 
 
 #! (Ne)_2 with interfrag coordinates, using 1/R distance
@@ -117,7 +117,7 @@ def test_dimers_ne2_inverseR(check_iter):
     json_output = optking.optimize_psi4("mp2")
     E = json_output["energies"][-1]
     assert psi4.compare_values(MP2minEnergy, E, 6, "MP2 Energy opt from afar, auto")
-    utils.compare_iterations(json_output, 16, check_iter)
+    utils.compare_iterations(json_output, 10, check_iter)
 
 
 #! (Ne)_2 with interfrag coordinates, using full user dict input

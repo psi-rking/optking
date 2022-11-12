@@ -43,7 +43,7 @@ def test_trimers_h2o_auto(check_iter):
 
     E = json_output["energies"][-1]
     assert psi4.compare_values(MP2minEnergy, E, 6, "(H2O)_3 MP2 Energy opt, auto")
-    utils.compare_iterations(json_output, 24, check_iter)
+    utils.compare_iterations(json_output, 22, check_iter)
 
 
 #! H2O trimer with user-provided interfragment coordinates
@@ -115,8 +115,7 @@ def test_trimers_h2o_user(check_iter):
 
     E = json_output["energies"][-1]
     assert psi4.compare_values(MP2minEnergy, E, 6, "(H2O)_3 MP2 Energy opt, user")
-    utils.compare_iterations(json_output, 24, check_iter)
-
+    utils.compare_iterations(json_output, 22, check_iter)
 
 #! H2O trimer with user-provided interfragment coords with weights
 @pytest.mark.multimers
@@ -192,4 +191,4 @@ def test_trimers_h2o_weights(check_iter):
 
     E = json_output["energies"][-1]
     assert psi4.compare_values(MP2minEnergy, E, 6, "(H2O)_3 MP2 Energy opt, user")
-    utils.compare_iterations(json_output, 26, check_iter)
+    utils.compare_iterations(json_output, 19, check_iter)

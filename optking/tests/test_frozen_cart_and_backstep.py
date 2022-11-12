@@ -33,11 +33,11 @@ opt3 = {"frozen_cartesian": f3}
 opt4 = {"frozen_cartesian": f1, "opt_coordinates": "redundant"}
 
 optking__freeze_params = [
-    (opt0, HOOH_E, 16),
-    (opt1, HOOH_E_frozen_H_xyz, 15),
-    (opt2, HOOH_E_frozen_O_xyz, 16),
-    (opt3, HOOH_E_frozen_H_xyz, 15),
-    (opt4, HOOH_E_frozen_H_xyz, 15),
+    (opt0, HOOH_E, 15),
+    (opt1, HOOH_E_frozen_H_xyz, 13),
+    (opt2, HOOH_E_frozen_O_xyz, 13),
+    (opt3, HOOH_E_frozen_H_xyz, 13),
+    (opt4, HOOH_E_frozen_H_xyz, 13),
 ]
 
 

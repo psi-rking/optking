@@ -5,14 +5,14 @@ import optking
 from .utils import utils
 
 final_energy = -150.786766850
-hess_every = [(-1, final_energy, 8), (0, final_energy, 10), (1, final_energy, 4), (3, final_energy, 5)]
+hess_every = [(-1, final_energy, 10), (0, final_energy, 10), (1, final_energy, 4), (3, final_energy, 5)]
 hess_guess = [
-    ("fischer", final_energy, 10),
-    ("lindH_simple", final_energy, 10),
-    ("simple", final_energy, 13),
-    ("lindh", final_energy, 17),
+    ("fischer", final_energy, 9),
+    ("lindH_simple", final_energy, 11),
+    ("simple", final_energy, 12),
+    ("lindh", final_energy, 16),
 ]
-hess_update = [("MS", final_energy, 13), ("powell", final_energy, 11), ("bofill", final_energy, 9)]
+hess_update = [("MS", final_energy, 10), ("powell", final_energy, 11), ("bofill", final_energy, 10)]
 
 logger = optking.logger
 

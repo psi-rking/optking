@@ -787,11 +787,11 @@ class RestrictedStepRFO(RFO):
         if not symmetric:
             return reject_root("it breaks the molecular point group")
 
-        if vector[-1] < 1e-10:
-            return reject_root("Normalization gives large value")
+        if np.abs(vector[-1]) < 1e-10:
+            return reject_root(f"Normalization gives large value. denominator is {vector[-1]}")
 
         if np.amax(np.abs(vector)) > self.params.rfo_normalization_max:
-            return reject_root("Normalization gives large value")
+            return reject_root(f"Normalization gives large value. largest value is {np.amax(np.abs(vector))}")
 
         return True
 

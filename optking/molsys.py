@@ -856,24 +856,26 @@ class Molsys(object):
         # Project redundancies out of Hessian matrix.
         # Peng, Ayala, Schlegel, JCC 1996 give H -> PHP + 1000(1-P)
         # The second term appears unnecessary and sometimes messes up Hessian updating.
-        H = P @ H @ P
+        H_new = P @ H @ P
         # H += 1000 * (1 - P)
 
         # The above projection of constraints shouldn't automatically remove external and ranged
         # coordinates from the forces (sometimes it should) but we should remove these coordinates from
         # the hessian. These coordinates are not updated in the hessian update but this makes
         # sure that the projection doesn't add coupling constants involving frozen coordinates
+
+        logger.info("pre zeroing hessian %s", H)
         ranged = self.ranged_intco_list
         C = np.diagflat(ranged)
         for i in range(len(fq)):
             if C[i, i] == 1:
-                tmp = H[i, i]
-                H[i, :] = H[:, i] = np.zeros(len(fq))
-                H[i, i] = tmp
+                tmp = H[i, i].copy()
+                H_new[i, :] = H_new[:, i] = np.zeros(len(fq))
+                H_new[i, i] = tmp
 
-        logger.debug("Projected (PHP) Hessian matrix\n" + print_mat_string(H))
+        logger.info("Projected (PHP) Hessian matrix\n" + print_mat_string(H))
 
-        return fq, H
+        return fq, H_new
 
     def apply_external_forces(self, fq, H):
         # TODO after sympy integration. Update Hessian with the symbolic second derivative
