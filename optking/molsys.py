@@ -864,7 +864,6 @@ class Molsys(object):
         # the hessian. These coordinates are not updated in the hessian update but this makes
         # sure that the projection doesn't add coupling constants involving frozen coordinates
 
-        logger.info("pre zeroing hessian %s", H)
         ranged = self.ranged_intco_list
         C = np.diagflat(ranged)
         for i in range(len(fq)):

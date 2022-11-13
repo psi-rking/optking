@@ -514,19 +514,19 @@ def get_pes_info(
         if hessian_protocol == "compute" and not params.cart_hess_read:
             H, g_x = get_hess_grad(computer, o_molsys)  # get gradient from hessian
 
-        elif hessian_protocol == "guess" or isinstance(H, int):
+        elif hessian_protocol in ["guess", "unneeded"]:
             # guess hessian compute gradient
             logger.info(f"Guessing Hessian with {str(params.intrafrag_hess)}")
             H = hessian.guess(o_molsys, guessType=params.intrafrag_hess)
             result = computer.compute(o_molsys.geom, driver=driver, return_full=False)
             g_x = np.asarray(result) if driver == "gradient" else None
-        elif hessian_protocol in ["unneeded"]:
-            # compute gradient
+        elif params.cart_hess_read:
+            # read hessian from file. calculate gradient. Update params to not read from disk again
+            logger.info("Reading hessian from file")
             result = computer.compute(o_molsys.geom, driver=driver, return_full=False)
             g_x = np.asarray(result) if driver == "gradient" else None
-        elif params.cart_hess_read:
-            # TODO Bug. IF hessian_protocol = "compute" and cart_hess_read. No gradient 
-            H = hessian.from_file(params.hessian_file)
+            Hx = hessian.from_file(params.hessian_file)
+            H = o_molsys.hessian_to_internals(Hx)
             params.cart_hess_read = False
             params.hessian_file = None
         else:
