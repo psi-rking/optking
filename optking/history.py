@@ -273,12 +273,12 @@ class History(object):
         i_step = len(self.steps) - 1  # just in case called with only 1 pt.
         while i_step > -1 and len(use_steps) < num_to_use:
             step = self.steps[i_step]
-            dq, dg, grad_norm, dq_norm, max_change = self.get_update_info(molsys, f_q, q, step)
+            dq, dg, dqdg, dqdq, max_change = self.get_update_info(molsys, f_q, q, step)
 
             # If there is only one left, take it no matter what.
             if len(use_steps) == 0 and i_step == 0:
                 use_steps.append(i_step)
-            elif math.fabs(grad_norm) < self.hess_update_den_tol or math.fabs(dq_norm) < self.hess_update_den_tol:
+            elif math.fabs(dqdg) < self.hess_update_den_tol or math.fabs(dqdq) < self.hess_update_den_tol:
                 logger.warning("\tDenominators (dg)(dq) or (dq)(dq) are very small.")
                 logger.warning("\tSkipping Hessian update for step %d.", i_step + 1)
                 pass
@@ -310,14 +310,14 @@ class History(object):
         H_new = np.zeros(H.shape)
         for i_step in use_steps:
             step = self.steps[i_step]
-            dq, dg, grad_norm, dq_norm, max_change = self.get_update_info(molsys, f_q, q, step)
+            dq, dg, dqdg, dqdq, max_change = self.get_update_info(molsys, f_q, q, step)
 
             # See  J. M. Bofill, J. Comp. Chem., Vol. 15, pages 1-11 (1994)
             #  and Helgaker, JCP 2002 for formula.
             if self.hess_update == "BFGS":
                 for i in range(Nintco):
                     for j in range(Nintco):
-                        H_new[i, j] = H[i, j] + dg[i] * dg[j] / grad_norm
+                        H_new[i, j] = H[i, j] + dg[i] * dg[j] / dqdg
 
                 Hdq = np.dot(H, dq)
                 dqHdq = np.dot(dq, Hdq)
@@ -341,7 +341,7 @@ class History(object):
                 for i in range(Nintco):
                     for j in range(Nintco):
                         H_new[i, j] = (
-                            H[i, j] - qz / (dq_norm * dq_norm) * dq[i] * dq[j] + (Z[i] * dq[j] + dq[i] * Z[j]) / dq_norm
+                            H[i, j] - qz / (dqdq * dqdq) * dq[i] * dq[j] + (Z[i] * dq[j] + dq[i] * Z[j]) / dqdq
                         )
 
             elif self.hess_update == "BOFILL":
@@ -350,7 +350,7 @@ class History(object):
                 qz = np.dot(dq, Z)
                 zz = np.dot(Z, Z)
 
-                phi = 1.0 - qz * qz / (dq_norm * zz)
+                phi = 1.0 - qz * qz / (dqdq * zz)
                 if phi < 0.0:
                     phi = 0.0
                 elif phi > 1.0:
@@ -363,7 +363,7 @@ class History(object):
                 for i in range(Nintco):  # (phi * Powell)
                     for j in range(Nintco):
                         H_new[i, j] += phi * (
-                            -1.0 * qz / (dq_norm * dq_norm) * dq[i] * dq[j] + (Z[i] * dq[j] + dq[i] * Z[j]) / dq_norm
+                            -1.0 * qz / (dqdq * dqdq) * dq[i] * dq[j] + (Z[i] * dq[j] + dq[i] * Z[j]) / dqdq
                         )
 
             # If the cooordinate is constrained. Don't allow the update to occur.
@@ -420,10 +420,10 @@ class History(object):
 
         dq = q - q_old
         dg = f_old - f  # gradients -- not forces!
-        grad_norm = np.dot(dq, dg)
-        dq_norm = np.dot(dq, dq)
+        dqdg = np.dot(dq, dg)
+        dqdq = np.dot(dq, dq)
         max_change = abs_max(dq)
-        return dq, dg, grad_norm, dq_norm, max_change
+        return dq, dg, dqdg, dqdq, max_change
 
     def summary_string(self):
         output_string = """\n\t==> Optimization Summary <==\n

@@ -13,7 +13,7 @@ from . import log_name
 logger = logging.getLogger(f"{log_name}{__name__}")
 
 
-def show(H, oMolsys):
+def show(H: np.ndarray, oMolsys):
     """Print the Hessian in common spectroscopic units of [aJ/Ang^2], [aJ/deg^2] or [aJ/(Ang deg)]"""
 
     factors = np.zeros(oMolsys.num_intcos)

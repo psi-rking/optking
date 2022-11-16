@@ -277,7 +277,7 @@ class Molsys(object):
     #    return _intcos
 
     @property
-    def num_intcos(self):
+    def num_intcos(self) -> int:
 
         nintco_list = [f.num_intcos for f in self.all_fragments]
         return sum(nintco_list)
@@ -830,10 +830,9 @@ class Molsys(object):
         G = self.Gmat()
         G_inv = symm_mat_inv(G, redundant=True)
         Pprime = G @ G_inv
-        # logger.debug("\tProjection matrix for redundancies.\n\n" + print_mat_string(Pprime))
         # Add constraints to projection matrix
-        C = self.constraint_matrix(fq)  # returns None, if aren't any
         # fq is passed to Supplement matrix with ranged variables that are at their limit
+        C = self.constraint_matrix(fq)  # returns None, if aren't any
 
         if C is not None:
             logger.debug("Adding constraints for projection.\n" + print_mat_string(C))

@@ -166,9 +166,7 @@ class Helper(ABC):
 
         self._compute()
         logger.info("\n\t%s", print_geom_grad(self.geom, self.gX))
-        self.fq = self.molsys.gradient_to_internals(self.gX, -1.0)
-
-        self.molsys.project_redundancies_and_constraints(self.fq, self._Hq)
+        self.fq, self._Hq = self.molsys.project_redundancies_and_constraints(self.fq, self._Hq)
 
     def take_step(self):
         """Must call compute before calling this method. Takes the next step."""
@@ -422,8 +420,11 @@ class CustomHelper(Helper):
                 if self.params.cart_hess_read:
                     self.HX = hessian.from_file(self.params.hessian_file)  # set ourselves if file
                     _ = self.computer.compute(self.geom, driver="hessian")
+                    self.gX = self.computer.external_gradient
+                    self.fq = self.molsys.gradient_to_internals(self.gX, -1.0)
                     self._Hq = self.molsys.hessian_to_internals(self.HX)
                     self.fq, self._Hq = self.molsys.apply_external_forces(self.fq, self._Hq)
+                    self.fq, self._Hq = self.molsys.project_redundancies_and_constraints(self.fq, self._Hq)
                     self.HX = None
                     self.params.cart_hess_read = False
                     self.params.hessian_file = None
@@ -435,21 +436,26 @@ class CustomHelper(Helper):
                 logger.debug("Guessing hessian")
                 self._Hq = hessian.guess(self.molsys, guessType=self.params.intrafrag_hess)
                 self.gX = self.computer.compute(self.geom, driver="gradient", return_full=False)
+                self.fq = self.molsys.gradient_to_internals(self.gX, -1.0)
                 self.fq, self._Hq = self.molsys.apply_external_forces(self.fq, self._Hq)
+                self.fq, self._Hq = self.molsys.project_redundancies_and_constraints(self.fq, self._Hq)
 
             else:
                 logger.debug("Updating hessian")
                 self.gX = self.computer.compute(self.geom, driver="gradient", return_full=False)
-                f_q = self.molsys.gradient_to_internals(self.gX, -1.0)
-                self.fq, self._Hq = self.molsys.apply_external_forces(f_q, self._Hq)
+                self.fq = self.molsys.gradient_to_internals(self.gX, -1.0)
+                self.fq, self._Hq = self.molsys.apply_external_forces(self.fq, self._Hq)
                 self._Hq = self.history.hessian_update(self._Hq, self.fq, self.molsys)
+                self.fq, self._Hq = self.molsys.project_redundancies_and_constraints(self.fq, self._Hq)
         else:
             result = self.computer.compute(self.geom, driver="hessian")
-            self.HX = result["return_result"]
-            self.gX = result["extras"]["qcvars"]["CURRENT GRADIENT"]
+            self.HX = self.computer.external_hessian
+            self.gX = self.computer.external_gradient
+            self.fq = self.molsys.gradient_to_internals(self.gX, -1.0)
             self._Hq = self.molsys.hessian_to_internals(self.HX)
             self.HX = None  # set back to None
             self.fq, self._Hq = self.molsys.apply_external_forces(self.fq, self._Hq)
+            self.fq, self._Hq = self.molsys.project_redundancies_and_constraints(self.fq, self._Hq)
 
     def calculations_needed(self):
         """Assume gradient is always needed. Provide tuple with keys for required properties"""
@@ -602,6 +608,9 @@ class EngineHelper(Helper):
         self._Hq, _, self.gX, self.E = get_pes_info(
             self._Hq, self.computer, self.molsys, self.history, self.params, protocol, requires
         )
+
+        self.fq = self.molsys.gradient_to_internals(self.gX, -1.0)
+        self.fq, self._Hq = self.molsys.apply_external_forces(self.fq, self._Hq)
 
     def optimize(self):
         """Creating an EngineHelper and calling optimize() is equivalent to calling the deprecated
