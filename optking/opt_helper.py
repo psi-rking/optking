@@ -166,7 +166,6 @@ class Helper(ABC):
 
         self._compute()
         logger.info("\n\t%s", print_geom_grad(self.geom, self.gX))
-        self.fq, self._Hq = self.molsys.project_redundancies_and_constraints(self.fq, self._Hq)
 
     def take_step(self):
         """Must call compute before calling this method. Takes the next step."""
@@ -610,7 +609,6 @@ class EngineHelper(Helper):
         )
 
         self.fq = self.molsys.gradient_to_internals(self.gX, -1.0)
-        self.fq, self._Hq = self.molsys.apply_external_forces(self.fq, self._Hq)
 
     def optimize(self):
         """Creating an EngineHelper and calling optimize() is equivalent to calling the deprecated

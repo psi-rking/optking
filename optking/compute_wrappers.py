@@ -223,8 +223,4 @@ class UserComputer(ComputeWrapper):
         elif driver == "hessian":
             result["return_result"] = HX
 
-        # maybe do this to protect against repeatedly going back for same?
-        self.external_energy = None
-        self.external_gradient = None
-        self.external_hessian = None
         return AtomicResult(**result)
