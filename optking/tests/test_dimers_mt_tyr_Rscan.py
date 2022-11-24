@@ -144,4 +144,3 @@ def test_dimers_mt_tyr_Rscan():
     REF_Energy_kcal_60 = 2.029
     row = np.where(E_Rab[:, 0] == 6.0)[0][0]
     assert psi4.compare_values(REF_Energy_kcal_60, E_Rab[row, 2], 3)
-

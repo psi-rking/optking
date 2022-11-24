@@ -116,6 +116,17 @@ class Molsys(object):
         opt_mol = Molsys.from_schema(qc_mol)
         return opt_mol, qc_mol
 
+    def to_schema(self):
+        mol_dict = {
+            "symbols": self.atom_symbols,
+            "geometry": self.geom.flat,
+            "atomic_numbers": self.Z,
+            "mass_numbers": self.masses,
+            "fix_com": True,
+            "fix_orientation": True,
+        }
+        return qcel.models.Molecule(**mol_dict)
+
     def to_dict(self):
         d = {
             "fragments": [f.to_dict() for f in self._fragments],
@@ -231,7 +242,7 @@ class Molsys(object):
 
     @geom.setter
     def geom(self, newgeom):
-        """ setter for geometry"""
+        """setter for geometry"""
         for iF, F in enumerate(self._fragments):
             row = self.frag_1st_atom(iF)
             F.geom[:] = newgeom[row : (row + F.natom), :]
@@ -266,7 +277,7 @@ class Molsys(object):
     #    return _intcos
 
     @property
-    def num_intcos(self):
+    def num_intcos(self) -> int:
 
         nintco_list = [f.num_intcos for f in self.all_fragments]
         return sum(nintco_list)
@@ -298,8 +309,21 @@ class Molsys(object):
                 cnt += 1
         return frozen
 
+    @property
+    def ranged_intco_list(self):
+        ranged = np.zeros(self.num_intcos, dtype=bool)
+        cnt = 0
+
+        for f in self.all_fragments:
+            for intco in f.intcos:
+                if intco.ranged:
+                    ranged[cnt] = True
+                cnt += 1
+        return ranged
+
     # Used to zero out forces.  For any ranged intco, indicate frozen if
     # within 0.1% of boundary and its corresponding force is in that direction.
+    # Add an additional check to zero the force of a coordinate outside its range to zero
     def ranged_frozen_intco_list(self, fq):
         """Determine vector with 1 for any ranged intco that is at its limit"""
         qvals = self.q()
@@ -310,21 +334,22 @@ class Molsys(object):
             for intco in f.intcos:
                 if intco.ranged:
                     tol = 0.001 * (intco.range_max - intco.range_min)
-                    if np.fabs(qvals[cnt] - intco.range_max) < tol and fq[cnt] > 0:
+                    if np.fabs(qvals[cnt] - intco.range_max) < tol and fq[cnt] > 0 or qvals[cnt] > intco.range_max:
                         frozen[cnt] = True
-                    elif np.fabs(qvals[cnt] - intco.range_min) < tol and fq[cnt] < 0:
+                    elif np.fabs(qvals[cnt] - intco.range_min) < tol and fq[cnt] < 0 or qvals[cnt] < intco.range_min:
                         frozen[cnt] = True
                 cnt += 1
 
         return frozen
 
-    def constraint_matrix(self, fq=None):
-        """Returns constraint matrix with 1 on diagonal for frozen coordinates"""
+    def constraint_matrix(self, fq):
+        """Returns constraint matrix with 1 on diagonal for frozen coordinates.
+        Tis method used to check for forces being passed in but wasn't being used. Forces now need to be passed in
+        """
         frozen = self.frozen_intco_list
 
-        if fq is not None:
-            range_frozen = self.ranged_frozen_intco_list(fq)
-            frozen = np.logical_or(frozen, range_frozen)
+        range_frozen = self.ranged_frozen_intco_list(fq)
+        frozen = np.logical_or(frozen, range_frozen)
 
         if np.any(frozen):
             return np.diagflat(frozen)
@@ -456,7 +481,7 @@ class Molsys(object):
         self._fragments.append(consolidatedFrag)
 
     def split_fragments_by_connectivity(self):
-        """ Split any fragment not connected by bond connectivity."""
+        """Split any fragment not connected by bond connectivity."""
         tempZ = np.copy(self.Z)
         tempGeom = np.copy(self.geom)
         tempMasses = np.copy(self.masses)
@@ -606,7 +631,7 @@ class Molsys(object):
             DI.update_reference_geometry(xA, xB)
 
     def update_dihedral_orientations(self):
-        """ See description in Fragment class. """
+        """See description in Fragment class."""
         for F in self._fragments:
             F.update_dihedral_orientations()
         self.update_dimer_intco_reference_points()
@@ -614,7 +639,7 @@ class Molsys(object):
             DI.pseudo_frag.update_dihedral_orientations()
 
     def fix_bend_axes(self):
-        """ See description in Fragment class. """
+        """See description in Fragment class."""
         for F in self._fragments:
             F.fix_bend_axes()
         self.update_dimer_intco_reference_points()
@@ -622,7 +647,7 @@ class Molsys(object):
             DI.pseudo_frag.fix_bend_axes()
 
     def unfix_bend_axes(self):
-        """ See description in Fragment class. """
+        """See description in Fragment class."""
         for F in self._fragments:
             F.unfix_bend_axes()
         for DI in self._dimer_intcos:
@@ -664,7 +689,7 @@ class Molsys(object):
         return B
 
     def q_show_forces(self, forces):
-        """ Returns scaled forces as array. """
+        """Returns scaled forces as array."""
 
         c = [intco.f_show_factor for f in self.all_fragments for intco in f.intcos]
         c = np.asarray(c)
@@ -804,25 +829,22 @@ class Molsys(object):
         # compute projection matrix = G G^-1
         G = self.Gmat()
         G_inv = symm_mat_inv(G, redundant=True)
-        Pprime = np.dot(G, G_inv)
-        # logger.debug("\tProjection matrix for redundancies.\n\n" + print_mat_string(Pprime))
+        Pprime = G @ G_inv
         # Add constraints to projection matrix
-        C = self.constraint_matrix(fq)  # returns None, if aren't any
         # fq is passed to Supplement matrix with ranged variables that are at their limit
+        C = self.constraint_matrix(fq)  # returns None, if aren't any
 
         if C is not None:
             logger.debug("Adding constraints for projection.\n" + print_mat_string(C))
-            CPC = np.zeros((Nint, Nint))
-            CPC[:, :] = np.dot(C, np.dot(Pprime, C))
+            CPC = C @ Pprime @ C
             CPCInv = symm_mat_inv(CPC, redundant=True)
-            P = np.zeros((Nint, Nint))
-            P[:, :] = Pprime - np.dot(Pprime, np.dot(C, np.dot(CPCInv, np.dot(C, Pprime))))
+            P = Pprime - Pprime @ C @ CPCInv @ C @ Pprime
         else:
             P = Pprime
 
         # Project redundancies out of forces.
         # fq~ = P fq
-        fq[:] = np.dot(P, fq.T)
+        fq = P @ fq.T
 
         # if op.Params.print_lvl >= 3:
         logger.debug(
@@ -833,16 +855,28 @@ class Molsys(object):
         # Project redundancies out of Hessian matrix.
         # Peng, Ayala, Schlegel, JCC 1996 give H -> PHP + 1000(1-P)
         # The second term appears unnecessary and sometimes messes up Hessian updating.
-        tempMat = np.dot(H, P)
-        H[:, :] = np.dot(P, tempMat)
-        # for i in range(dim)
-        #    H[i,i] += 1000 * (1.0 - P[i,i])
-        # for i in range(dim)
-        #    for j in range(i):
-        #        H[j,i] = H[i,j] = H[i,j] + 1000 * (1.0 - P[i,j])
-        logger.debug("Projected (PHP) Hessian matrix\n" + print_mat_string(H))
+        H_new = P @ H @ P
+        # H += 1000 * (1 - P)
 
-    def apply_external_forces(self, fq, H, stepNumber):
+        # The above projection of constraints shouldn't automatically remove external and ranged
+        # coordinates from the forces (sometimes it should) but we should remove these coordinates from
+        # the hessian. These coordinates are not updated in the hessian update but this makes
+        # sure that the projection doesn't add coupling constants involving frozen coordinates
+
+        ranged = self.ranged_intco_list
+        C = np.diagflat(ranged)
+        for i in range(len(fq)):
+            if C[i, i] == 1:
+                tmp = H[i, i].copy()
+                H_new[i, :] = H_new[:, i] = np.zeros(len(fq))
+                H_new[i, i] = tmp
+
+        logger.info("Projected (PHP) Hessian matrix\n" + print_mat_string(H))
+
+        return fq, H_new
+
+    def apply_external_forces(self, fq, H):
+        # TODO after sympy integration. Update Hessian with the symbolic second derivative
         report = "Adding external forces\n"
 
         for iF, F in enumerate(self.fragments):
@@ -867,6 +901,8 @@ class Molsys(object):
 
         if "Frag" in report:
             logger.info(report)
+
+        return fq, H
 
     def hessian_to_cartesians(self, Hint, g_q=None):
         logger.info("Converting Hessian from internals to cartesians.\n")
@@ -921,7 +957,7 @@ class Molsys(object):
         return g_x
 
     def test_Bmat(self):
-        """ Test the analytic B matrix (dq/dx) via finite differences.
+        """Test the analytic B matrix (dq/dx) via finite differences.
         The 5-point formula should be good to DISP_SIZE^4 - a few
         unfortunates will be slightly worse.
 
@@ -1008,7 +1044,7 @@ class Molsys(object):
     # The 5-point formula should be good to DISP_SIZE^4 -
     #  a few unfortunates will be slightly worse
     def test_derivative_Bmat(self):
-        """ Test the analytic derivative B matrix (d2q/dx2) via finite
+        """Test the analytic derivative B matrix (d2q/dx2) via finite
         differences.  The 5-point formula should be good to DISP_SIZE^4 - a few
         unfortunates will be slightly worse.
 
@@ -1018,6 +1054,7 @@ class Molsys(object):
             Returns True or False, doesn't raise exceptions
         """
         from . import intcosMisc
+
         DISP_SIZE = 0.01
         MAX_ERROR = 10 * DISP_SIZE * DISP_SIZE * DISP_SIZE * DISP_SIZE
 
@@ -1054,7 +1091,7 @@ class Molsys(object):
                         B_p = intcosMisc.Bmat(F.intcos, coord)
 
                         coord[atom_a, xyz_a] += DISP_SIZE
-                        B_p2 =intcosMisc.Bmat(F.intcos, coord)
+                        B_p2 = intcosMisc.Bmat(F.intcos, coord)
 
                         coord[atom_a, xyz_a] -= 3.0 * DISP_SIZE
                         B_m = intcosMisc.Bmat(F.intcos, coord)

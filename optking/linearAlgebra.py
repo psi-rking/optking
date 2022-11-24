@@ -25,7 +25,7 @@ def abs_min(V):
 
 
 def rms(V):
-    return np.sqrt(np.mean(V ** 2))
+    return np.sqrt(np.mean(V**2))
 
 
 def sign_of_double(d):
@@ -126,38 +126,15 @@ def symm_mat_inv(A, redundant=False, redundant_eval_tol=1.0e-10):
     dim = A.shape[0]
     if dim == 0:
         return np.zeros((0, 0))
-    det = 1.0
 
     try:
-        evals, evects = symm_mat_eig(A)
+        if redundant:
+            return np.linalg.pinv(A)
+        else:
+            return np.linalg.inv(A)
     except LinAlgError:
         raise OptError("symmMatrixInv: could not compute eigenvectors")
         # could be LinAlgError?
-
-    logger.debug("Eigenvalues for symm matrix inversion")
-    logger.debug("\n" + print_array_string(evals, form=":12.3e"))
-
-    for i in range(dim):
-        det *= evals[i]
-
-    if not redundant and fabs(det) < 1e-10:
-        raise OptError("symmMatrixInv: non-generalized inverse failed; very small determinant")
-        # could be LinAlgError?
-
-    diagInv = np.zeros((dim, dim))
-
-    if redundant:
-        for i in range(dim):
-            if fabs(evals[i]) > redundant_eval_tol:
-                diagInv[i, i] = 1.0 / evals[i]
-    else:
-        for i in range(dim):
-            diagInv[i, i] = 1.0 / evals[i]
-
-    # A^-1 = P^t d^-1 P
-    tmpMat = np.dot(diagInv, evects)
-    AInv = np.dot(evects.T, tmpMat)
-    return AInv
 
 
 def symm_mat_root(A, Inverse=None):

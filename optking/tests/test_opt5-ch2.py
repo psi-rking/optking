@@ -42,4 +42,4 @@ def test_ch2_with_dummy_atoms(check_iter):
     assert psi4.compare_values(nucrefenergy, nucenergy, 3, "Nuclear repulsion energy")  # TEST
     assert psi4.compare_values(refenergy, thisenergy, 6, "Reference energy")  # TEST
 
-    utils.compare_iterations(json_output, 5, check_iter)
+    utils.compare_iterations(json_output, 4, check_iter)

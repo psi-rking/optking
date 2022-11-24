@@ -3,6 +3,7 @@ import psi4
 import optking
 import json
 from .utils import utils
+
 psi4.set_memory("2 GB")
 
 
@@ -27,7 +28,7 @@ def test_hooh_irc(check_iter):
         "g_convergence": "gau_verytight",
         "opt_type": "irc",
         "geom_maxiter": 60,
-        "full_hess_every": 0
+        "full_hess_every": 0,
     }
 
     psi4.set_options(psi4_options)
@@ -37,10 +38,7 @@ def test_hooh_irc(check_iter):
 
     print("%15s%15s%20s%15s" % ("Step Number", "Arc Distance", "Energy", "HOOH dihedral"))
     for step in IRC:
-        print(
-            "%15d%15.5f%20.10f%15.5f"
-            % (step["step_number"], step["arc_dist"], step["energy"], step["q"][5])
-        )
+        print("%15d%15.5f%20.10f%15.5f" % (step["step_number"], step["arc_dist"], step["energy"], step["q"][5]))
 
     assert psi4.compare_values(energy_5th_IRC_pt, IRC[5]["energy"], 6, "Energy of 5th IRC point.")  # TEST
     utils.compare_iterations(json_output, 45, check_iter)

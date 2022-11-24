@@ -38,7 +38,18 @@ class IRCpoint(object):
     """
 
     def __init__(
-        self, step_number, q, x, f_q, f_x, energy, q_pivot, x_pivot, step_dist, arc_dist, line_dist,
+        self,
+        step_number,
+        q,
+        x,
+        f_q,
+        f_x,
+        energy,
+        q_pivot,
+        x_pivot,
+        step_dist,
+        arc_dist,
+        line_dist,
     ):
         self.step_number = step_number
         self.q = q
@@ -108,20 +119,20 @@ class IRCHistory(object):
             "go": self.go,
             "atom_symbols": self.atom_symbols,
             "direction": self.__direction,
-            "step_size": self.__step_size
+            "step_size": self.__step_size,
         }
         return d
 
     @classmethod
     def from_dict(cls, d):
-        
+
         irc_history = cls()
         irc_history.irc_points = [IRCpoint.from_dict(point) for point in d["irc_points"]]
         irc_history.go = d["go"]
         irc_history.atom_symbols = d["atom_symbols"]
         irc_history.__direction = d["direction"]
         irc_history.__step_size = d["step_size"]
-        return irc_history 
+        return irc_history
 
     def add_irc_point(self, step_number, q_in, x_in, f_q, f_x, E, lineDistStep=0, arcDistStep=0):
         if len(self.irc_points) != 0:
@@ -220,7 +231,7 @@ class IRCHistory(object):
         return self.irc_points[index].step_dist
 
     def test_for_irc_minimum(self, f_q, energy):
-        """ Given current forces, checks if we are at/near a minimum
+        """Given current forces, checks if we are at/near a minimum
         Two checks are performed.
         1. If forces are opposite those are previous pivot point
             - The forces point in opposite directions due to stepping over the minima

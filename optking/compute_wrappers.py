@@ -11,6 +11,7 @@ from . import log_name
 
 logger = logging.getLogger(f"{log_name}{__name__}")
 
+
 class ComputeWrapper:
     """An implementation of MolSSI's qc schema
 
@@ -60,7 +61,7 @@ class ComputeWrapper:
         return inp
 
     def _compute(self, driver):
-        """ Abstract style method for child classes"""
+        """Abstract style method for child classes"""
         pass
 
     def compute(self, geom, driver, return_full=True, print_result=False):
@@ -78,7 +79,6 @@ class ComputeWrapper:
         dict
         """
 
-
         self.update_geometry(geom)
         ret = self._compute(driver)
         # Decodes the Result Schema to remove numpy elements (Makes ret JSON serializable)
@@ -92,7 +92,8 @@ class ComputeWrapper:
             self.energies.append(ret["properties"]["return_energy"])
         else:
             raise OptError(
-                f"Error encountered for {driver} calc. {ret['error']['error_message']}", ret["error"]["error_type"],
+                f"Error encountered for {driver} calc. {ret['error']['error_message']}",
+                ret["error"]["error_type"],
             )
 
         if return_full:
@@ -222,8 +223,4 @@ class UserComputer(ComputeWrapper):
         elif driver == "hessian":
             result["return_result"] = HX
 
-        # maybe do this to protect against repeatedly going back for same?
-        self.external_energy = None
-        self.external_gradient = None
-        self.external_hessian = None
         return AtomicResult(**result)

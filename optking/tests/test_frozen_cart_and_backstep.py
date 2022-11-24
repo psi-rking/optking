@@ -2,6 +2,7 @@ import psi4
 import optking
 import pytest
 from .utils import utils
+
 #! Various constrained energy minimizations of HOOH with cc-pvdz RHF.
 #! Cartesian-coordinate constrained optimizations of HOOH in Cartesians.
 #! 1. Cartesian optimization.
@@ -32,11 +33,11 @@ opt3 = {"frozen_cartesian": f3}
 opt4 = {"frozen_cartesian": f1, "opt_coordinates": "redundant"}
 
 optking__freeze_params = [
-    (opt0, HOOH_E, 16),
-    (opt1, HOOH_E_frozen_H_xyz, 15),
-    (opt2, HOOH_E_frozen_O_xyz, 16),
-    (opt3, HOOH_E_frozen_H_xyz, 15),
-    (opt4, HOOH_E_frozen_H_xyz, 15),
+    (opt0, HOOH_E, 15),
+    (opt1, HOOH_E_frozen_H_xyz, 13),
+    (opt2, HOOH_E_frozen_O_xyz, 13),
+    (opt3, HOOH_E_frozen_H_xyz, 13),
+    (opt4, HOOH_E_frozen_H_xyz, 13),
 ]
 
 
@@ -75,6 +76,7 @@ def test_hooh_freeze_xyz_Hs(check_iter, options, expected, num_steps):
 
     utils.compare_iterations(json_output, num_steps, check_iter)
 
+
 #! test if we can keep oxygen atom from moving off of the point (1,1,1)
 def test_frozen_cart_h2o(check_iter):
 
@@ -103,4 +105,3 @@ def test_frozen_cart_h2o(check_iter):
     assert psi4.compare_values(h2o.z(0), 1.88972613289, 6, "Z Frozen coordinate")
 
     utils.compare_iterations(json_output, 6, check_iter)
-

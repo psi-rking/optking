@@ -34,7 +34,8 @@ def test_scsmp2_opt(check_iter):
     assert psi4.compare_values(REF_scsomp2, this_energy, 6, "SCS-OMP2 Total Energy (a.u.)")
     # TEST
 
-    utils.compare_iterations(result, 5, check_iter)
+    utils.compare_iterations(result, 4, check_iter)
+
 
 #! SCS-OMP3 cc-pVDZ geometry optimization for the H2O molecule.
 def test_scsmp3_opt(check_iter):
@@ -68,7 +69,8 @@ def test_scsmp3_opt(check_iter):
     assert psi4.compare_values(REF_scsomp3, this_energy, 6, "SCS-OMP3 Total Energy (a.u.)")
     # TEST
 
-    utils.compare_iterations(result, 5, check_iter)
+    utils.compare_iterations(result, 4, check_iter)
+
 
 #! SOS-OMP2 cc-pVDZ geometry optimization for the H2O molecule.
 def test_sosmp2_opt(check_iter):
@@ -137,4 +139,4 @@ def test_sosmp3_opt(check_iter):
     assert psi4.compare_values(REF_sosomp3, this_energy, 6, "SOS-OMP3 Total Energy (a.u.)")
     # TEST
 
-    utils.compare_iterations(result, 5, check_iter)
+    utils.compare_iterations(result, 4, check_iter)

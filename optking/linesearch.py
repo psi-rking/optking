@@ -5,7 +5,6 @@ from typing import Union
 
 import numpy as np
 
-from .addIntcos import linear_bend_check
 from .displace import displace_molsys
 from .exceptions import AlgError, OptError
 from .history import Step, History
@@ -16,7 +15,7 @@ logger = logging.getLogger(f"{log_name}{__name__}")
 
 
 class LineSearchStep(Step):
-    """Extension of history.Step """
+    """Extension of history.Step"""
 
     def __init__(self, geom, energy, forces, distance, next_pt_dist):
         super().__init__(geom, energy, forces, np.zeros(geom.shape))
@@ -63,7 +62,7 @@ class LineSearch(OptimizationInterface):
             self.step_size = np.linalg.norm(self.history[-2].Dq) / 2
 
     def to_dict(self):
-        
+
         return {
             "linesearch_max_iter": self.linesearch_max_iter,
             "linesearch_start": self.linesearch_start,
@@ -75,12 +74,12 @@ class LineSearch(OptimizationInterface):
             "minimized": self.minimized,
             "direction": self.direction.tolist(),
             "linesearch_history": self.linesearch_history.to_dict(),
-            "active_point": self.active_point
+            "active_point": self.active_point,
         }
 
     @classmethod
     def from_dict(cls, d, molsys, history, params):
-        
+
         linesearch = cls(molsys, history, params)
         linesearch.linesearch_max_iter = d["linesearch_max_iter"]
         linesearch.linesearch_start = d["linesearch_start"]
@@ -140,10 +139,6 @@ class LineSearch(OptimizationInterface):
 
         self.linesearch_history.append_record(delta_energy, achieved_dq, self.direction, None, None)
 
-        linear_list = linear_bend_check(self.molsys, achieved_dq)
-        if linear_list:
-            raise AlgError("New linear angles", newLinearBends=linear_list)
-
         if not isclose(np.linalg.norm(dq), achieved_dq_norm, rel_tol=5, abs_tol=0):
             # Attempt to replicate step_size check in OptimizationAlgorithm
             # TODO create a check in displace for backtransformation failure
@@ -186,7 +181,7 @@ class ThreePointEnergy(LineSearch):
         self.expected_energy = 0
 
     def step(self, fq=None, energy=None, **kwargs):
-        """ Determine the new step to take in the linesearch procedure. (Could be stepping backwards
+        """Determine the new step to take in the linesearch procedure. (Could be stepping backwards
         from the previous point).
 
         Parameters
@@ -261,7 +256,7 @@ class ThreePointEnergy(LineSearch):
 
             x = np.linalg.solve(A, B)
             x_min = -x[1] / (2 * x[0])
-            min_energy = x[0] * x_min ** 2 + x[1] * x_min + energy_a
+            min_energy = x[0] * x_min**2 + x[1] * x_min + energy_a
 
             logger.info("Desired point %s", x_min)
             logger.info("Desired point %s", sb)

@@ -41,7 +41,7 @@ def test_dcft_O2(check_iter):
     assert psi4.compare_values(REF_mp2, this_mp2, 6, "MP2 Energy")  # TEST
     assert psi4.compare_values(REF_dct, this_dct, 6, "DC-06 Energy (two-step response)")  # TEST
 
-    utils.compare_iterations(result, 5, check_iter)
+    utils.compare_iterations(result, 4, check_iter)
     # Psi4 should test this; so optking shouldn't need to.
     # Now try alternative response
     # psi4.set_options( {'response_algorithm': 'simultaneous'} )

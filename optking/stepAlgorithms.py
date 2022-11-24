@@ -38,11 +38,12 @@ import numpy as np
 
 from . import optparams as op
 from . import convcheck
-from .addIntcos import linear_bend_check
 from .displace import displace_molsys
 from .exceptions import AlgError, OptError
+from .history import History
 from .linearAlgebra import asymm_mat_eig, symm_mat_eig
 from .misc import is_dq_symmetric
+from .molsys import Molsys
 from .printTools import print_array_string, print_mat_string
 from . import log_name
 
@@ -54,7 +55,7 @@ class OptimizationInterface(ABC):
     a self.take_step() method. All methods must be able to determine what the next step
     to take should be given a history. See take_step() docstring for details."""
 
-    def __init__(self, molsys, history, params):
+    def __init__(self, molsys: Molsys, history: History, params: op.OptParams):
         """set history and molsys. Create a default params object if required.
         Individual params will be set as instance attributes by the child classes as needed
 
@@ -64,8 +65,8 @@ class OptimizationInterface(ABC):
         history: history.History
         params: op.OptParams"""
 
-        self.molsys = molsys
-        self.history = history
+        self.molsys: Molsys = molsys
+        self.history: History = history
 
         if not params:
             params = op.OptParams({})
@@ -164,15 +165,13 @@ class OptimizationAlgorithm(OptimizationInterface):
             dq = self.apply_interfrag_step_scaling(dq)
 
         self.molsys.interfrag_dq_discontinuity_correction(dq)
-        achieved_dq, achieved_dx, return_str = displace_molsys(self.molsys,
-                                                  dq,
-                                                  fq,
-                                                  ensure_convergence=self.params.ensure_bt_convergence,
-                                                  return_str=return_str)
+        achieved_dq, achieved_dx, return_str = displace_molsys(
+            self.molsys, dq, fq, ensure_convergence=self.params.ensure_bt_convergence, return_str=return_str
+        )
         dq_norm, unit_dq, projected_fq, projected_hess = self.step_metrics(achieved_dq, fq, H)
         delta_energy = self.expected_energy(dq_norm, projected_fq, projected_hess)
         logger.debug("\tProjected energy change: %10.10lf\n" % delta_energy)
-        self.update_history(delta_energy, achieved_dq, unit_dq, projected_fq, projected_hess)
+        self.history.append_record(delta_energy, achieved_dq, unit_dq, projected_fq, projected_hess)
 
         dq_norm = np.linalg.norm(achieved_dq)
         logger.info("\tNorm of achieved step-size %15.10f" % dq_norm)
@@ -200,23 +199,23 @@ class OptimizationAlgorithm(OptimizationInterface):
         return dq
 
     def apply_interfrag_step_scaling(self, dq):
-        """ Check the size of the interfragment modes.  They can inadvertently represent 
-        very large motions. 
-        
+        """Check the size of the interfragment modes.  They can inadvertently represent
+        very large motions.
+
         Returns
         -------
         dq : scaled step according to trust radius
         """
-        for iDI, DI in enumerate(self.molsys.dimer_intcos): # loop over dimers with interfrag intcos
+        for iDI, DI in enumerate(self.molsys.dimer_intcos):  # loop over dimers with interfrag intcos
             start = self.molsys.dimerfrag_1st_intco(iDI)
             for i, I in enumerate(DI.pseudo_frag.intcos):  # loop over individual intcos
-                val = dq[start+i]
+                val = dq[start + i]
                 if abs(val) > self.params.interfrag_trust:
                     logger.info(f"Reducing step for Dimer({DI.A_idx+1},{DI.B_idx+1}), {I}, {start+i}")
                     if val > 0:
-                        dq[start+i] = self.params.interfrag_trust
+                        dq[start + i] = self.params.interfrag_trust
                     else:
-                        dq[start+i] = -1.0*self.params.interfrag_trust
+                        dq[start + i] = -1.0 * self.params.interfrag_trust
         return dq
 
     def backstep(self):
@@ -260,11 +259,7 @@ class OptimizationAlgorithm(OptimizationInterface):
 
     def converged(self, dq, fq, step_number, str_mode=None):
         energies = [step.E for step in self.history.steps]
-        conv_info = {'step_type': 'standard',
-                     'energies': energies,
-                     'dq': dq,
-                     'fq': fq,
-                     'iternum': step_number}
+        conv_info = {"step_type": "standard", "energies": energies, "dq": dq, "fq": fq, "iternum": step_number}
         converged = convcheck.conv_check(conv_info, self.params.__dict__, str_mode=str_mode)
         if str_mode:
             return converged
@@ -343,7 +338,7 @@ class OptimizationAlgorithm(OptimizationInterface):
         return decent
 
     def increase_trust_radius(self):
-        """ Increase trust radius by factor of 3 """
+        """Increase trust radius by factor of 3"""
         maximum = self.params.intrafrag_trust_max
         if self.params.intrafrag_trust != maximum:
             new_val = self.params.intrafrag_trust * 3
@@ -362,7 +357,7 @@ class OptimizationAlgorithm(OptimizationInterface):
                 self.params.interfrag_trust = new_val
 
     def decrease_trust_radius(self):
-        """Scale trust radius by 0.25 """
+        """Scale trust radius by 0.25"""
         minimum = self.params.intrafrag_trust_min
         if self.params.intrafrag_trust != minimum:
             new_val = self.params.intrafrag_trust / 4
@@ -383,12 +378,6 @@ class OptimizationAlgorithm(OptimizationInterface):
     def update_history(self, delta_e, achieved_dq, unit_dq, projected_f, projected_hess):
         """Basic history update method. This should be expanded here and in child classes in
         future"""
-
-        self.history.append_record(delta_e, achieved_dq, unit_dq, projected_f, projected_hess)
-
-        linear_list = linear_bend_check(self.molsys, achieved_dq)
-        if linear_list:
-            raise AlgError("New linear angles", newLinearBends=linear_list)
 
     # def converged(self, step_number, dq, fq):
     #     energies = (self.history.steps[-1].E, self.history.steps[-2].E)  # grab last two energies
@@ -560,7 +549,6 @@ class RestrictedStepRFO(RFO):
 
         # Build the original, unscaled RFO matrix.
         RFOmat = RFO.build_rfo_matrix(0, len(H), fq, H)  # use entire hessian for RFO matrix
-        logger.debug("\tOriginal, unscaled RFO matrix:\n\n" + print_mat_string(RFOmat))
 
         if self.params.simple_step_scaling:
             e_vectors, e_values = self._intermediate_normalize(RFOmat)
@@ -602,7 +590,14 @@ class RestrictedStepRFO(RFO):
                 logger.warning("\tFailed to converge alpha. Doing simple step-scaling instead.")
                 alpha = 1.0
 
-            SRFOevals, SRFOevects = self._scale_and_normalize(RFOmat, alpha)
+            try:
+                SRFOevals, SRFOevects = self._scale_and_normalize(RFOmat, alpha)
+            except OptError:
+                alpha = 1.0
+                logger.warning(
+                    "Could not converge alpha due to a linear algebra error. Continuing with simple step scaling"
+                )
+                break
 
             # Determine best (lowest eigenvalue), acceptable root and take as step
             rfo_root = self._select_rfo_root(last_evect, SRFOevects, SRFOevals, alpha_iter)
@@ -640,7 +635,12 @@ class RestrictedStepRFO(RFO):
             )
 
         elif alpha_iter > 0 and not op.Params.simple_step_scaling:
-            rfo_step_report += "\t%5d%12.5lf%14.5lf%12d\n" % (alpha_iter + 1, sqrt(dqtdq), alpha, self.rfo_root + 1,)
+            rfo_step_report += "\t%5d%12.5lf%14.5lf%12d\n" % (
+                alpha_iter + 1,
+                sqrt(dqtdq),
+                alpha,
+                self.rfo_root + 1,
+            )
 
         Lambda = -1 * fq @ dq
 
@@ -681,7 +681,7 @@ class RestrictedStepRFO(RFO):
         SRFOevects = self._intermediate_normalize(SRFOevects)
 
         # transform step back.
-        scale_mat = np.diag(np.repeat(1 / alpha ** 0.5, dim1))
+        scale_mat = np.diag(np.repeat(1 / alpha**0.5, dim1))
         scale_mat[-1, -1] = 1
         # SRFOevects = np.einsum("ij, jk -> ik", scale_mat, SRFOevects)
         SRFOevects = np.transpose(scale_mat @ np.transpose(SRFOevects))
@@ -787,11 +787,11 @@ class RestrictedStepRFO(RFO):
         if not symmetric:
             return reject_root("it breaks the molecular point group")
 
-        if vector[-1] < 1e-10:
-            return reject_root("Normalization gives large value")
+        if np.abs(vector[-1]) < 1e-10:
+            return reject_root(f"Normalization gives large value. denominator is {vector[-1]}")
 
         if np.amax(np.abs(vector)) > self.params.rfo_normalization_max:
-            return reject_root("Normalization gives large value")
+            return reject_root(f"Normalization gives large value. largest value is {np.amax(np.abs(vector))}")
 
         return True
 

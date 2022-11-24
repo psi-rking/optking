@@ -12,6 +12,7 @@ from . import log_name
 
 logger = logging.getLogger(f"{log_name}{__name__}")
 
+
 class Frag:
     def __init__(self, Z, geom, masses, intcos=None, frozen=False):
         """Group of bonded atoms
@@ -128,7 +129,11 @@ class Frag:
         intcos_report = "\tInternal Coordinate Values\n"
         intcos_report += "\n\t - Coordinate -           - BOHR/RAD -       - ANG/DEG -\n"
         for coord in self._intcos:
-            intcos_report += "\t%-18s=%17.6f%19.6f\n" % (coord, coord.q(self._geom), coord.q_show(self._geom),)
+            intcos_report += "\t%-18s=%17.6f%19.6f\n" % (
+                coord,
+                coord.q(self._geom),
+                coord.q_show(self._geom),
+            )
         intcos_report += "\n"
         logger.info(intcos_report)
 
@@ -145,7 +150,7 @@ class Frag:
         addIntcos.add_cartesian_intcos(self._intcos, self._geom)
 
     def add_h_bonds(self):
-        """ Prepend h_bonds because that's where optking 2 places them """
+        """Prepend h_bonds because that's where optking 2 places them"""
         h_bonds = addIntcos.add_h_bonds(self.geom, self.Z, self.natom)
         for h_bond in h_bonds:
             if stre.Stre(h_bond.A, h_bond.B) in self._intcos:

@@ -4,6 +4,7 @@
 import psi4
 import optking
 from .utils import utils
+
 # import importlib
 
 
@@ -60,4 +61,4 @@ def test_opt2_allene(check_iter):
     nucenergy = json_output["trajectory"][-1]["properties"]["nuclear_repulsion_energy"]
     assert psi4.compare_values(refnucenergy, nucenergy, 2, "Nuclear repulsion energy")  # TEST
     assert psi4.compare_values(refenergy, E, 6, "Reference energy")  # TEST
-    utils.compare_iterations(json_output, 9, check_iter)
+    utils.compare_iterations(json_output, 7, check_iter)

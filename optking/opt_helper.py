@@ -1,5 +1,5 @@
 """
-Helpers to provide high-level interfaces for optking.  The Helpers allow individual steps to be taken easily. 
+Helpers to provide high-level interfaces for optking.  The Helpers allow individual steps to be taken easily.
 EngineHelper runs calculations through QCEngine. CustomHelper adds the abilility to directly input gradients.
 """
 
@@ -27,7 +27,7 @@ logger = logging.getLogger(f"{log_name}{__name__}")
 class Helper(ABC):
     """
     Base class for CustomHelper (accepts user provided gradients) and EngineHelper (uses MolSSI's QCEngine for gradients)
-    
+
     A step may be taken by setting the class attributes gX and E, then calling the
     compute() and take_step() methods. The class attribute HX may also be set at any time as
     desired, if this is not set then optking will perform its normal update/guess procedure.
@@ -40,8 +40,9 @@ class Helper(ABC):
     calling close()
 
     """
+
     def __init__(self, params={}, **kwargs):
-        """Initialize options. Still need a molecule to create molsys and computer """
+        """Initialize options. Still need a molecule to create molsys and computer"""
 
         optwrapper.initialize_options(params, silent=kwargs.get("silent", False))
         self.params = op.Params
@@ -65,7 +66,7 @@ class Helper(ABC):
         self.opt_manager: OptimizationManager
 
     def pre_step_str(self):
-        """Returns a formatted string to summarize molecular system before taking a step or calling compute """
+        """Returns a formatted string to summarize molecular system before taking a step or calling compute"""
 
         string = ""
         string += welcome()
@@ -73,17 +74,23 @@ class Helper(ABC):
         return string
 
     def post_step_str(self):
-        """Returns a formatted string to summarize the step taken after calling take_step() """
-        
+        """Returns a formatted string to summarize the step taken after calling take_step()"""
+
         string = ""
         string += self.step_str if self.step_str is not None else ""
         energies = [step.E for step in self.history.steps]
-        status = self.status(str_mode='both')
-        step_type = 'irc' if self.params.opt_type == 'IRC' else 'standard'
-        conv_info = {'step_type': step_type, 'energies': energies, 'dq': self.dq, 'fq': self.fq, 'iternum': self.step_num}
+        status = self.status(str_mode="both")
+        step_type = "irc" if self.params.opt_type == "IRC" else "standard"
+        conv_info = {
+            "step_type": step_type,
+            "energies": energies,
+            "dq": self.dq,
+            "fq": self.fq,
+            "iternum": self.step_num,
+        }
 
         if status == "CONVERGED" and len(energies) > 0:
-            if self.params.opt_type != 'IRC':
+            if self.params.opt_type != "IRC":
                 conv_table, criteria_table = conv_check(conv_info, self.params.__dict__, str_mode="both")
                 string += conv_table
                 string += criteria_table
@@ -91,7 +98,7 @@ class Helper(ABC):
             else:
                 string += self.opt_manager.opt_method.irc_history.progress_report(return_str=True)
         elif "FAILED" not in status and len(energies) > 0:
-            if self.params.opt_type == 'IRC':
+            if self.params.opt_type == "IRC":
                 irc_object: IntrinsicReactionCoordinate = self.opt_manager.opt_method
                 conv_info["sub_step_num"] = irc_object.sub_step_number
                 conv_info["iternum"] = irc_object.irc_step_number
@@ -112,13 +119,13 @@ class Helper(ABC):
             "computer": self.computer.__dict__,
             "hessian": self._Hq,
             "opt_input": self.opt_input,
-            "opt_manager": self.opt_manager.to_dict()
+            "opt_manager": self.opt_manager.to_dict(),
         }
         return d
 
     @classmethod
     def from_dict(cls, d):
-        """Construct as far as possible the helper. Child class will need to update computer """
+        """Construct as far as possible the helper. Child class will need to update computer"""
         # creates the initial configuration of the OptHelper. Some options might
         # have changed over the course of the optimization (eg trust radius)
 
@@ -135,7 +142,7 @@ class Helper(ABC):
         return helper
 
     def build_coordinates(self):
-        """ Create coordinates for optimization. print to logger """
+        """Create coordinates for optimization. print to logger"""
 
         make_internal_coords(self.molsys, self.params)
         self.show()
@@ -146,26 +153,22 @@ class Helper(ABC):
 
     @abstractmethod
     def _compute(self):
-        """get energy gradient and hessian """
+        """get energy gradient and hessian"""
 
     def compute(self):
-        """Get the energy, gradient, and hessian. Project redundancies and apply constraints / forces """
+        """Get the energy, gradient, and hessian. Project redundancies and apply constraints / forces"""
 
         if not self.molsys.intcos_present:
             # opt_manager.molsys is the same object as this molsys
-            make_internal_coords(self.molsys)
+            make_internal_coords(self.molsys, self.params)
             logger.debug("Molecular system after make_internal_coords:")
             logger.info(str(self.molsys))
 
         self._compute()
         logger.info("\n\t%s", print_geom_grad(self.geom, self.gX))
-        self.fq = self.molsys.gradient_to_internals(self.gX, -1.0)
-
-        self.molsys.apply_external_forces(self.fq, self._Hq, self.step_num)
-        self.molsys.project_redundancies_and_constraints(self.fq, self._Hq)
 
     def take_step(self):
-        """Must call compute before calling this method. Takes the next step. """
+        """Must call compute before calling this method. Takes the next step."""
         self.opt_manager.error = None
         try:
             self.dq, self.step_str = self.opt_manager.take_step(self.fq, self._Hq, self.E, return_str=True)
@@ -180,8 +183,8 @@ class Helper(ABC):
         return self.dq
 
     def test_convergence(self, str_mode=None):
-        """ Check the final two steps for convergence. If the algorithm uses linesearching, linesearches are not considered
- 
+        """Check the final two steps for convergence. If the algorithm uses linesearching, linesearches are not considered
+
         Returns
         -------
         bool
@@ -201,7 +204,7 @@ class Helper(ABC):
 
     @gX.setter
     def gX(self, val):
-        """ gX must be set in order to perform an optimization. Cartesian only"""
+        """gX must be set in order to perform an optimization. Cartesian only"""
 
         if val is None:
             self._gX = val
@@ -214,9 +217,7 @@ class Helper(ABC):
                 if val.shape == (self.molsys.natom, 3):
                     self._gX = np.ravel(val)
                 else:
-                    raise TypeError(
-                        f"Gradient must an iterable with shape (3, {self.molsys.natom}) or (1, {ncart})"
-                    )
+                    raise TypeError(f"Gradient must an iterable with shape (3, {self.molsys.natom}) or (1, {ncart})")
 
     @property
     def HX(self):
@@ -234,7 +235,7 @@ class Helper(ABC):
 
             if val.shape == (dim, dim):
                 self._HX = val
-            elif val.ndim == 1 and len(val) == dim **2:
+            elif val.ndim == 1 and len(val) == dim**2:
                 self._HX = val.reshape(dim, dim)
             else:
                 raise TypeError(f"Hessian must be a nxn iterable with n={self.molsys.natom * 3}")
@@ -267,13 +268,13 @@ class Helper(ABC):
         return array
 
     def summarize_result(self):
-        """ Return final energy and geometry """
+        """Return final energy and geometry"""
         last_step = self.history.steps[-1]
         return last_step.E, last_step.geom
 
     def status(self, str_mode=None):
-        """ get string message describing state of optimizer 
-        
+        """get string message describing state of optimizer
+
         Returns
         -------
         str :
@@ -299,7 +300,7 @@ class Helper(ABC):
 
 
 class CustomHelper(Helper):
-    """ Class allows for easy setup of optking. Accepts custom forces, energies,
+    """Class allows for easy setup of optking. Accepts custom forces, energies,
     and hessians from user. User will need to write a loop to perform optimization.
 
     examples
@@ -330,12 +331,12 @@ class CustomHelper(Helper):
     ...         ],
     ...         "fix_com": True,
     ...         "fix_orientation": True,
-    ...     },  
+    ...     },
     ...     "input_specification": {
     ...         "model": {"method": "hf", "basis": "sto-3g"},
     ...         "driver": "gradient",
     ...         "keywords": {"d_convergence": "1e-7"},
-    ...     },  
+    ...     },
     ...     "keywords": {"g_convergence": "GAU_TIGHT", "program": "psi4"},
     ... }
 
@@ -343,10 +344,10 @@ class CustomHelper(Helper):
     ... # Compute one's own energy and gradient
     ... E, gX = optking.lj_functions.calc_energy_and_gradient(opt.geom, 2.5, 0.01, True)
     ... # Insert these values into the 'user' computer.
-    ... opt.E = E 
+    ... opt.E = E
     ... opt.gX = gX
     ... opt.compute() # process input. Get ready to take a step
-    ... opt.take_step() 
+    ... opt.take_step()
     ... conv = opt.test_convergence()
     ... if conv is True:
     ...     print("Optimization SUCCESS:")
@@ -359,7 +360,7 @@ class CustomHelper(Helper):
 
     Notes
     -----
-    Overrides. gX, Hessian, and Energy to allow for user input. """
+    Overrides. gX, Hessian, and Energy to allow for user input."""
 
     def __init__(self, mol_src, params={}, **kwargs):
         """
@@ -404,42 +405,59 @@ class CustomHelper(Helper):
     def from_dict(cls, d):
         helper = super().from_dict(d)
         helper.computer = compute_wrappers.make_computer_from_dict("user", d.get("computer"))
-        helper.opt_manager = OptimizationManager.from_dict(d["opt_manager"], helper.molsys, helper.history, helper.params, helper.computer)
+        helper.opt_manager = OptimizationManager.from_dict(
+            d["opt_manager"], helper.molsys, helper.history, helper.params, helper.computer
+        )
         return helper
 
     def _compute(self):
         """The call to computer in this class is essentially a lookup for the value provided by
-        the User. """
+        the User."""
 
         if self.HX is None:
             if "hessian" in self.calculations_needed():
                 if self.params.cart_hess_read:
-                    self.HX = hessian.from_file(self.params.hessian_file)  # set ourselves if file\
+                    self.HX = hessian.from_file(self.params.hessian_file)  # set ourselves if file
                     _ = self.computer.compute(self.geom, driver="hessian")
+                    self.gX = self.computer.external_gradient
+                    self.fq = self.molsys.gradient_to_internals(self.gX, -1.0)
                     self._Hq = self.molsys.hessian_to_internals(self.HX)
+                    self.fq, self._Hq = self.molsys.apply_external_forces(self.fq, self._Hq)
+                    self.fq, self._Hq = self.molsys.project_redundancies_and_constraints(self.fq, self._Hq)
                     self.HX = None
                     self.params.cart_hess_read = False
                     self.params.hessian_file = None
                 else:
-                    raise RuntimeError("Optking requested a hessian but was not provided one. "
-                                       "This could be a driver issue")
+                    raise RuntimeError(
+                        "Optking requested a hessian but was not provided one. " "This could be a driver issue"
+                    )
             elif self.step_num == 0:
                 logger.debug("Guessing hessian")
                 self._Hq = hessian.guess(self.molsys, guessType=self.params.intrafrag_hess)
                 self.gX = self.computer.compute(self.geom, driver="gradient", return_full=False)
+                self.fq = self.molsys.gradient_to_internals(self.gX, -1.0)
+                self.fq, self._Hq = self.molsys.apply_external_forces(self.fq, self._Hq)
+                self.fq, self._Hq = self.molsys.project_redundancies_and_constraints(self.fq, self._Hq)
+
             else:
                 logger.debug("Updating hessian")
-                self._Hq = self.history.hessian_update(self._Hq, self.molsys)
                 self.gX = self.computer.compute(self.geom, driver="gradient", return_full=False)
+                self.fq = self.molsys.gradient_to_internals(self.gX, -1.0)
+                self.fq, self._Hq = self.molsys.apply_external_forces(self.fq, self._Hq)
+                self._Hq = self.history.hessian_update(self._Hq, self.fq, self.molsys)
+                self.fq, self._Hq = self.molsys.project_redundancies_and_constraints(self.fq, self._Hq)
         else:
             result = self.computer.compute(self.geom, driver="hessian")
-            self.HX = result["return_result"]
-            self.gX = result["extras"]["qcvars"]["CURRENT GRADIENT"]
+            self.HX = self.computer.external_hessian
+            self.gX = self.computer.external_gradient
+            self.fq = self.molsys.gradient_to_internals(self.gX, -1.0)
             self._Hq = self.molsys.hessian_to_internals(self.HX)
             self.HX = None  # set back to None
+            self.fq, self._Hq = self.molsys.apply_external_forces(self.fq, self._Hq)
+            self.fq, self._Hq = self.molsys.project_redundancies_and_constraints(self.fq, self._Hq)
 
     def calculations_needed(self):
-        """Assume gradient is always needed. Provide tuple with keys for required properties """
+        """Assume gradient is always needed. Provide tuple with keys for required properties"""
         hessian_protocol = self.opt_manager.get_hessian_protocol()
 
         if hessian_protocol == "compute":
@@ -461,7 +479,7 @@ class CustomHelper(Helper):
 
     @E.setter
     def E(self, val):
-        """Set energy in self and computer """
+        """Set energy in self and computer"""
         # call parent classes setter. Weird python syntax. Class will always be CustomHelper
         # self.__class__ could be a child class type. (No child class currently)
         # super() and super(__class__, self.__class__) should be equivalent but the latter is required?
@@ -470,21 +488,21 @@ class CustomHelper(Helper):
 
     @HX.setter
     def HX(self, val):
-        """Set hessian in self and computer """
+        """Set hessian in self and computer"""
         super(__class__, self.__class__).HX.__set__(self, val)
         self.computer.external_hessian = val
 
     @gX.setter
     def gX(self, val):
-        """Set gradient in self and computer """
+        """Set gradient in self and computer"""
         super(__class__, self.__class__).gX.__set__(self, val)
         self.computer.external_gradient = val
 
 
 class EngineHelper(Helper):
     """Perform an optimization using qcengine to compute properties. Use OptimizationInput to setup
-    a molecular system 
-    
+    a molecular system
+
     calling `compute()` will perform a QCEngine calculation according to the provided QCInputSpecification.
 
     calling `optimize()` after instantiation will perform an automatic optimization returning an OptimizationResult.
@@ -544,14 +562,14 @@ class EngineHelper(Helper):
     ...        break
     >>> else:
     ...     print("Optimization FAILURE:\n")
-    
+
     >>> json_output = opt.close() # create an unvalidated OptimizationOutput like object
     >>> E = json_output["energies"][-1]
 
     """
 
     def __init__(self, optimization_input, **kwargs):
-        """ Create an EngineHelper. Can optimize interactivly or non interactively.
+        """Create an EngineHelper. Can optimize interactivly or non interactively.
 
         Parameters
         ----------
@@ -576,7 +594,9 @@ class EngineHelper(Helper):
     def from_dict(cls, d):
         helper = super().from_dict(d)
         helper.computer = compute_wrappers.make_computer_from_dict("qc", d.get("computer"))
-        helper.opt_manager = OptimizationManager.from_dict(d["opt_manager"], helper.molsys, helper.history, helper.params, helper.computer)
+        helper.opt_manager = OptimizationManager.from_dict(
+            d["opt_manager"], helper.molsys, helper.history, helper.params, helper.computer
+        )
         return helper
 
     def _compute(self):
@@ -584,12 +604,16 @@ class EngineHelper(Helper):
         protocol = self.opt_manager.get_hessian_protocol()
         requires = self.opt_manager.opt_method.requires()
 
-        self._Hq, self.gX, self.E = get_pes_info(self._Hq, self.computer, self.molsys, self.history, self.params, protocol, requires)
+        self._Hq, _, self.gX, self.E = get_pes_info(
+            self._Hq, self.computer, self.molsys, self.history, self.params, protocol, requires
+        )
+
+        self.fq = self.molsys.gradient_to_internals(self.gX, -1.0)
 
     def optimize(self):
-        """ Creating an EngineHelper and calling optimize() is equivalent to calling the deprecated
+        """Creating an EngineHelper and calling optimize() is equivalent to calling the deprecated
         optimize_qcengine() with an OptimizationInput. However, EngineHelper will maintain
-        its state. """
+        its state."""
         self.opt_input = optimize(self.molsys, self.computer)
         # update molecular system
         # set E, g_x, and hessian to have their last values

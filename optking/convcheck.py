@@ -7,7 +7,6 @@ conv_check: Primary wrapper. Take information (as dictionary) from previous step
 """
 
 
-
 import logging
 from math import fabs
 
@@ -41,7 +40,7 @@ CONVERGENCE_PRESETS = {
 }
 
 
-def conv_check(conv_info: dict, params: dict, required=None, str_mode=''):
+def conv_check(conv_info: dict, params: dict, required=None, str_mode=""):
     """
     Parameters
     ----------
@@ -67,27 +66,27 @@ def conv_check(conv_info: dict, params: dict, required=None, str_mode=''):
     return_str: if requested
     """
 
-    return_str = True if str_mode in ['both', 'table'] else False
+    return_str = True if str_mode in ["both", "table"] else False
     if not return_str:
         logger.info("Performing convergence check.")
 
-    criteria = _get_conv_criteria(conv_info.get('dq'), conv_info.get('fq'), conv_info.get('energies'), required)
+    criteria = _get_conv_criteria(conv_info.get("dq"), conv_info.get("fq"), conv_info.get("energies"), required)
     conv_met, conv_active = _transform_criteria(criteria, params)
     conv_str = _print_convergence_table(conv_info, criteria, conv_met, conv_active, params, return_str)
 
     # flat potential cannot be activated by the user - purely an internal tool for gau_type convergence
     conv_met.update({"flat_potential": 100 * criteria.get("rms_force") < op.Params.conv_rms_force})
 
-    if str_mode == 'table':
+    if str_mode == "table":
         return conv_str
-    elif str_mode == 'both':
+    elif str_mode == "both":
         return conv_str, _test_for_convergence(conv_met, conv_active, return_str)
     else:
         return _test_for_convergence(conv_met, conv_active)
 
 
 def _get_conv_criteria(dq, f_vec, energies, required=None):
-    """ Creates a dictionary of step information for convergence test """
+    """Creates a dictionary of step information for convergence test"""
 
     energy = energies[-1]
     last_energy = energies[-2] if len(energies) > 1 else 0.0
@@ -131,7 +130,7 @@ def _transform_criteria(criteria, params_dict):
 
 
 def _get_criteria_symbol(criteria_met, criteria_active):
-    """ Return symbol for inactive: "o" met: "*" or unmet: " " """
+    """Return symbol for inactive: "o" met: "*" or unmet: " " """
 
     symbol = "*" if criteria_met else ""
 
@@ -197,33 +196,44 @@ def _test_for_convergence(conv_met, conv_active, return_str=False):
 
 
 def _print_convergence_table(conv_info, criteria, conv_met, conv_active, params_dict, return_str=False):
-    """Print a nice looking table for the current step """
+    """Print a nice looking table for the current step"""
 
     # define all the variable strings that can get used below
-    std_header = f"\t {'Step': ^8}{'Total Energy': ^17}{'Delta E': ^12}{'Max Force': ^14}{'RMS Force': ^14}" + \
-                 f"{'Max Disp': ^14}{'RMS Disp': ^14}"
-    std_vals = "\t  {0:4d} {1:16.8f} {2:11.2e} {7:1s} {3:11.2e} {8:1s} {4:11.2e} {9:1s} {5:11.2e} {10:1s}" + \
-               " {6:11.2e} {11:1s}  ~\n"
+    std_header = (
+        f"\t {'Step': ^8}{'Total Energy': ^17}{'Delta E': ^12}{'Max Force': ^14}{'RMS Force': ^14}"
+        + f"{'Max Disp': ^14}{'RMS Disp': ^14}"
+    )
+    std_vals = (
+        "\t  {0:4d} {1:16.8f} {2:11.2e} {7:1s} {3:11.2e} {8:1s} {4:11.2e} {9:1s} {5:11.2e} {10:1s}"
+        + " {6:11.2e} {11:1s}  ~\n"
+    )
 
-    irc_header = f"\t {'Step': ^8}{'Sphere Step': ^16}{'Total Energy': ^17}{'Delta E': ^12}{'Max Force': ^14}" + \
-                 f"{'RMS Force': ^14}{'Max Disp': ^14}{'RMS Disp': ^14}"
-    irc_vals = "\t  {0:4d}     {1:^11d} {2:16.8f} {3:11.2e} {8:1s} {4:11.2e} {9:1s} {5:11.2e} {10:1s} {6:11.2e}" + \
-               " {11:1s} {7:11.2e} {12:1s}  ~\n"
+    irc_header = (
+        f"\t {'Step': ^8}{'Sphere Step': ^16}{'Total Energy': ^17}{'Delta E': ^12}{'Max Force': ^14}"
+        + f"{'RMS Force': ^14}{'Max Disp': ^14}{'RMS Disp': ^14}"
+    )
+    irc_vals = (
+        "\t  {0:4d}     {1:^11d} {2:16.8f} {3:11.2e} {8:1s} {4:11.2e} {9:1s} {5:11.2e} {10:1s} {6:11.2e}"
+        + " {11:1s} {7:11.2e} {12:1s}  ~\n"
+    )
 
     # Get all the values for convergence critera and active criteria markers
     conv_symbols = {key: _get_criteria_symbol(conv_met.get(key), conv_active.get(key)) for key in conv_met}
-    print_vals = ([conv_info.get('iternum'), conv_info.get('energies')[-1]] +
-                  list(criteria.values()) + list(conv_symbols.values()))  # All columns
+    print_vals = (
+        [conv_info.get("iternum"), conv_info.get("energies")[-1]]
+        + list(criteria.values())
+        + list(conv_symbols.values())
+    )  # All columns
 
     # For each active criteria print the target value and the met/inactive/unmet symbol
     # easier to just redetermine instead of adapt conv_symbols above
     active = lambda x: f"{params_dict.get('conv_' + x) :11.2e} {'*'}"
     conv_active_str = [active(key) if conv_active.get(key) else f"{'o': >13}" for key in conv_active]
 
-    suffix = "~\n" if conv_info.get('iternum') == 0 else "\n"
+    suffix = "~\n" if conv_info.get("iternum") == 0 else "\n"
 
     # adjust printing spacing for irc
-    if conv_info.get('step_type', 'standard') == 'standard':
+    if conv_info.get("step_type", "standard") == "standard":
         dash_length, extra_irc_space, header = 94, "", std_header
     else:
         dash_length, extra_irc_space, header = 114, " " * 16, irc_header
@@ -241,10 +251,10 @@ def _print_convergence_table(conv_info, criteria, conv_met, conv_active, params_
     conv_str += "\t" + "-" * dash_length + suffix
 
     # unpack all information for the step: energy, force max / rms etc into strings
-    if conv_info.get('step_type') == 'standard':
+    if conv_info.get("step_type") == "standard":
         conv_str += std_vals.format(*print_vals)
     else:
-        print_vals = print_vals[:1] + [conv_info['sub_step_num']] + print_vals[1:]
+        print_vals = print_vals[:1] + [conv_info["sub_step_num"]] + print_vals[1:]
         conv_str += irc_vals.format(*print_vals)
 
     conv_str += "\t" + "-" * dash_length + "\n\n"
@@ -254,7 +264,7 @@ def _print_convergence_table(conv_info, criteria, conv_met, conv_active, params_
 
 
 def _print_active_criteria(conv_status, conv_requirements):
-    """Get string describing all convergence criteria being considered for the optimization """
+    """Get string describing all convergence criteria being considered for the optimization"""
     conv_str = f"\n\t {'===> Final Convergence Report <===': ^76}\n"
     conv_str += "\n\t" + "-" * 76
     conv_str += f"\n\t|{'Required Criteria': ^24}|{'One or More Criteria': ^24}|{'Alternate Criteria': ^24}|"

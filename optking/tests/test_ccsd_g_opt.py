@@ -33,6 +33,7 @@ def test_ccsd_h2o(check_iter):
 
     utils.compare_iterations(result, 3, check_iter)
 
+
 #! ROHF-CCSD/cc-pVDZ $^{3}B@@1$ CH2 geometry opt, analytic gradients, tight
 def test_ccsd_ch2(check_iter):
 
@@ -70,7 +71,8 @@ def test_ccsd_ch2(check_iter):
     assert psi4.compare_values(REF_cor, this_ccsd, 6, "ROHF CCSD contribution")  # TEST
     assert psi4.compare_values(REF_tot, this_total, 6, "ROHF CCSD Total energy")  # TEST
 
-    utils.compare_iterations(result, 10, check_iter)
+    utils.compare_iterations(result, 9, check_iter)
+
 
 #! UHF-CCSD/cc-pVDZ $^{3}B@@1$ CH2 geometry opt via analytic gradients, tight
 def test_uccsd_ch2(check_iter):
@@ -109,7 +111,8 @@ def test_uccsd_ch2(check_iter):
     assert psi4.compare_values(REF_ccsd, this_ccsd, 6, "UHF CCSD contribution")  # TEST
     assert psi4.compare_values(REF_total, this_total, 6, "UCCSD Total energy")  # TEST
 
-    utils.compare_iterations(result, 10, check_iter)
+    utils.compare_iterations(result, 9, check_iter)
+
 
 #! UHF-CCSD(T)/cc-pVDZ $^{3}B@@1$ CH2 geometry optimization via analytic gradients
 @pytest.mark.long
@@ -154,4 +157,4 @@ def test_uccsdpt_ch2(check_iter):
     assert psi4.compare_values(REF_total, this_total, 6, "Total CCSD(T) energy")  # TEST
     assert psi4.compare_values(REF_total, this_return, 6, "Total CCSD(T) return energy")  # TEST
 
-    utils.compare_iterations(result, 10, check_iter)
+    utils.compare_iterations(result, 9, check_iter)

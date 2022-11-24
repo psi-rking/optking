@@ -36,7 +36,8 @@ def test_B_dB_matrices(check_iter):
     assert "g_convergence" in json_output["keywords"]  # TEST
     assert psi4.compare_values(refnucenergy, nucenergy, 3, "Nuclear repulsion energy")  # TEST
     assert psi4.compare_values(refenergy, E, 8, "Reference energy")  # TEST
-    utils.compare_iterations(json_output, 9, check_iter)
+    utils.compare_iterations(json_output, 7, check_iter)
+
 
 def test_maxiter(check_iter):
 
@@ -66,6 +67,7 @@ def test_maxiter(check_iter):
     assert "Maximum number of steps exceeded" in json_output["error"]["error_message"]  # TEST
     assert "OptError" in json_output["error"]["error_type"]  # TEST
 
+
 # Test the energy of geometry output, when maxiter is reached.
 def test_maxiter_geom():
 
@@ -90,5 +92,6 @@ def test_maxiter_geom():
     psi4.set_options(psi4options)
     nextStepEnergy = psi4.driver.energy("scf/cc-pvdz")  # TEST
     REF_energy = -76.0270381300  # TEST
+    REF_energy = -76.0270521  # TEST changed. Energy different now that update occurs
     assert psi4.compare_values(REF_energy, nextStepEnergy, 5, "Energy of next-step molecule")
     # TEST

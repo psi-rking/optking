@@ -12,9 +12,9 @@ from .utils import utils
 @pytest.mark.parametrize(
     "inp,expected,num_steps",
     [
-        ("json_h2o.json", (8.9064890670, -74.965901192, 3), 6),
-        ("json_betapinene.json", (568.2219045869, -383.38105559, 1), 6),
-        ("json_hooh_frozen.json", (37.969354880, -150.786372411, 2), 8),
+        ("json_h2o.json", (8.9064890670, -74.965901192, 3), 5),
+        ("json_betapinene.json", (568.2219045869, -383.38105559, 1), 4),
+        ("json_hooh_frozen.json", (37.969354880, -150.786372411, 2), 6),
     ],
 )
 def test_input_through_json(inp, expected, num_steps, check_iter):

@@ -1,6 +1,7 @@
 import logging
 
 from . import log_name
+
 optimize_log = logging.getLogger(f"{log_name}{__name__}")
 
 # We don't catch this one internallyclass OptFail(Exception):

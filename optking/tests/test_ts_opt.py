@@ -2,6 +2,7 @@ import psi4
 import optking
 
 from .utils import utils
+
 #! Optimization to 180 degree torsion from 120
 def test_hooh_TS(check_iter):
 
@@ -33,7 +34,8 @@ def test_hooh_TS(check_iter):
     # print( '{:15.10f}'.format(E) )
     C2H_TS_ENERGY = -150.7854114803  # TEST
     assert psi4.compare_values(C2H_TS_ENERGY, E, 6, "RHF Energy after optimization to C2H TS")  # TEST
-    utils.compare_iterations(json_output, 15, check_iter)
+    utils.compare_iterations(json_output, 14, check_iter)
+
 
 #! Optimization to 0 degree torsion from 100
 def test_hooh_TS_zero(check_iter):
@@ -65,7 +67,7 @@ def test_hooh_TS_zero(check_iter):
     E = json_output["energies"][-1]  # TEST
     C2V_TS_ENERGY = -150.774009217562  # TEST
     assert psi4.compare_values(C2V_TS_ENERGY, E, 6, "RHF Energy after optimization to C2H TS")  # TEST
-    utils.compare_iterations(json_output, 22, check_iter)
+    utils.compare_iterations(json_output, 21, check_iter)
 
 
 def test_hooh_min(check_iter):
@@ -95,4 +97,4 @@ def test_hooh_min(check_iter):
     # print( '{:15.10f}'.format(E) )
     MIN_ENERGY = -150.7867668  # TEST
     assert psi4.compare_values(MIN_ENERGY, E, 6, "RHF Energy")  # TEST
-    utils.compare_iterations(json_output, 9, check_iter)
+    utils.compare_iterations(json_output, 7, check_iter)

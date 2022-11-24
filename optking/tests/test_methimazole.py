@@ -31,4 +31,4 @@ def test_methimazole(check_iter):
     result = optking.optimize_psi4("wb97x-d")
     E = result["energies"][-1]
     assert psi4.compare_values(E, REF_E, 5, "WB97X-D Min Energy")
-    utils.compare_iterations(result, 12, check_iter)
+    utils.compare_iterations(result, 6, check_iter)

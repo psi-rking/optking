@@ -11,7 +11,7 @@ logger = logging.getLogger(f"{log_name}{__name__}")
 
 
 def import_psi4(mesg=""):
-    """Attempt psi4 import. Print mesg as indicator for why psi4 is required to user """
+    """Attempt psi4 import. Print mesg as indicator for why psi4 is required to user"""
     try:
         import psi4
     except ImportError as error:

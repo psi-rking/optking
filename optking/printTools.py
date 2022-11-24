@@ -106,7 +106,12 @@ def print_geom_string(symbols, geom, unit=None):
     else:
         geom_str = "\n\tCartesian Geometry\n"
         for i in range(geom.shape[0]):
-            geom_str += "\t%5s%20.10f%20.10f%20.10f\n" % (symbols[i], geom[i, 0], geom[i, 1], geom[i, 2],)
+            geom_str += "\t%5s%20.10f%20.10f%20.10f\n" % (
+                symbols[i],
+                geom[i, 0],
+                geom[i, 1],
+                geom[i, 2],
+            )
     return geom_str
 
 

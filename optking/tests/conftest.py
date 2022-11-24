@@ -18,12 +18,13 @@ def set_up():
 
 def pytest_addoption(parser):
     parser.addoption(
-        "--check_iter", action="store", default=0,
-        help="1 -- raise error if # of steps taken doesn't match expected. 0 (default) -- ignore mismatch but warn user in log"
+        "--check_iter",
+        action="store",
+        default=0,
+        help="1 -- raise error if # of steps taken doesn't match expected. 0 (default) -- ignore mismatch but warn user in log",
     )
 
 
 @pytest.fixture
 def check_iter(request):
     return request.config.getoption("--check_iter")
-

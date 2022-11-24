@@ -15,21 +15,22 @@ HOOH_120_dihedral = -150.786647
 # to 1.0 and 1.0.  Just for fun.
 HOOH_minimum = -150.7866742
 
-f1 = ({"ext_force_distance": "1 2 '-8.0*(x-0.950)' 3 4 '-8.0*(x-0.950)'"}, OH_950_stre)
-f2 = ({"ext_force_bend": "1 2 3 '-8.0*(x-105.0)' 2 3 4 '-8.0*(x-105.0)'"}, OOH_105_bend)
-f3 = ({"ext_force_dihedral": "1 2 3 4 '-8.0*(x-120.0)'"}, HOOH_120_dihedral)
-f4 = ({"ext_force_cartesian": "1 x '-2.0*(x-1.0)' 1 y '-2.0*(x-1.0)'"}, HOOH_minimum)
+f1 = ({"ext_force_distance": "1 2 '-8.0*(x-0.950)' 3 4 '-8.0*(x-0.950)'"}, OH_950_stre, 9)
+f2 = ({"ext_force_bend": "1 2 3 '-8.0*(x-105.0)' 2 3 4 '-8.0*(x-105.0)'"}, OOH_105_bend, 17)
+f3 = ({"ext_force_dihedral": "1 2 3 4 '-8.0*(x-120.0)'"}, HOOH_120_dihedral, 15)
+f4 = ({"ext_force_cartesian": "1 x '-2.0*(x-1.0)' 1 y '-2.0*(x-1.0)'"}, HOOH_minimum, 10)
 # Same as f1, but 'soften'/dampen force at long range.
 f5 = (
     {
         "ext_force_distance": "1 2 '-8.0 * (x-0.950) * exp(-20*abs(x-0.950) )' 3 4 '-8.0*(x-0.950) * exp(-20*abs(x-0.950))'"
     },
-    OH_950_stre
+    OH_950_stre,
+    13
 )
 
 
-@pytest.mark.parametrize("option, expected", [f1, f2, f3, f4, f5])
-def test_hooh_fixed_OH_stre(option, expected):
+@pytest.mark.parametrize("option, expected, num_steps", [f1, f2, f3, f4, f5])
+def test_hooh_fixed_OH_stre(option, expected, num_steps, check_iter):
     hooh = psi4.geometry(
         """
       H
@@ -47,3 +48,4 @@ def test_hooh_fixed_OH_stre(option, expected):
 
     E = json_output["energies"][-1]
     assert psi4.compare_values(expected, E, 6, list(option.keys())[0])
+    utils.compare_iterations(json_output, num_steps, check_iter)
