@@ -10,8 +10,9 @@
 # B3LYP/6-31+G* 10 ->  9   B3LYP/6-31+G* 12 -> 11   B3LYP/6-31+G* 14 -> 14
 # TODO: explore FISCHER Hessian guess alongside auxiliary bonds performance
 
-import optking
 import psi4
+import optking
+import pytest
 from .utils import utils
 
 menthone = psi4.geometry(""" 
