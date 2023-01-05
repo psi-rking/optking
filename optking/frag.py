@@ -146,6 +146,11 @@ class Frag:
         addIntcos.add_intcos_from_connectivity(connectivity, self._intcos, self._geom)
         self.add_h_bonds()
 
+    def add_auxiliary_bonds(self, connectivity=None):
+        if connectivity is None:
+            connectivity = self.connectivity_from_distances()
+        addIntcos.add_auxiliary_bonds(connectivity, self._intcos, self._geom, self._Z)
+
     def add_cartesian_intcos(self):
         addIntcos.add_cartesian_intcos(self._intcos, self._geom)
 

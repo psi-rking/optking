@@ -49,6 +49,72 @@ def connectivity_from_distances(geom, Z):
     return C
 
 
+def add_auxiliary_bonds(connectivity, intcos, geom, Z):
+    """
+    Adds "auxiliary" or pseudo-bond stretches to support 1-5 carbon motions.
+    Parameters
+    ----------
+    connectivity : ndarray
+        (nat, nat) bond connectivity matrix
+    intcos : list[simple.Simple]
+            (nat) list of current internal coordinates (Stre, Bend, Tors)
+    geom : ndarray
+        (nat, 3) cartesian geometry
+    Z : list[int]
+        (nat) list of atomic numbers
+
+    Returns
+    -------
+    Nadded : int
+        number of auxiliary bonds added on to intcos list
+
+    """
+    radii = qcel.covalentradii  # these are in bohr
+    Natom = len(geom)  # also in bohr
+    Nadded=0
+
+    for a, b in combinations(range(Natom), 2):
+        # No auxiliary bonds involving H atoms
+        if Z[a] == 1 or Z[b] == 1:
+            continue
+
+        R = v3d.dist(geom[a], geom[b])
+        Rcov = radii.get(Z[a], missing=4.0) + radii.get(Z[b], missing=4.0)
+
+        if R > Rcov * op.Params.auxiliary_bond_factor:
+            continue
+
+        omit = False
+        # Omit auxiliary bonds between a and b, if a-c-b
+        for c in range(Natom):
+            if c not in [a,b]:
+                if connectivity[a][c] and connectivity[b][c]:
+                    omit = True
+                    break
+        if omit: continue
+
+        # Omit auxiliary bonds between a and b, if a-c-d-b
+        for c in range(Natom):
+            if c not in [a,b]:
+                if connectivity[c][a]:
+                    for d in range(Natom):
+                        if d not in [a,b,c]:
+                             if connectivity[d][c] and connectivity[d][b]:
+                                 omit = True
+                                 break
+                    if omit: break
+        if omit: continue
+
+        s = stre.Stre(a, b)
+        if s not in intcos:
+            logger.info("Adding auxiliary bond %d - %d" % (a+1,b+1))
+            logger.info("Rcov = %10.5f; R = %10.5f; R/Rcov = %10.5f" % (Rcov, R, R/Rcov))
+            intcos.append(s)
+            Nadded += 1
+
+    return Nadded
+
+
 def add_intcos_from_connectivity(C, intcos, geom):
     """
     Calls add_x_FromConnectivity for each internal coordinate type
