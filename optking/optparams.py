@@ -293,9 +293,9 @@ class OptParams(object):
         # principal axes or fixed linear combinations of atoms.
         self.interfrag_mode = uod.get("INTERFRAG_MODE", "FIXED")
         # Do add bond coordinates at nearby atoms for non-bonded systems?
-        # P.add_auxiliary_bonds = uod.get('ADD_AUXILIARY_BONDS', True)
+        self.add_auxiliary_bonds = uod.get('ADD_AUXILIARY_BONDS', False)
         # This factor times standard covalent distance is used to add extra stretch coordinates.
-        # P.auxiliary_bond_factor = uod.get('AUXILIARYBOND_FACTOR', 2.5)
+        self.auxiliary_bond_factor = uod.get('AUXILIARY_BOND_FACTOR', 2.5)
         # Do use 1/R for the interfragment stretching coordinate instead of R?
         self.interfrag_dist_inv = uod.get("INTERFRAG_DIST_INV", False)
         # Used for determining which atoms in a system are too collinear to

@@ -607,6 +607,8 @@ def make_internal_coords(o_molsys: Molsys, params: op.OptParams):
 
         if params.opt_coordinates in ["INTERNAL", "REDUNDANT", "BOTH"]:
             o_molsys.fragments[0].add_intcos_from_connectivity(connectivity)
+            if params.add_auxiliary_bonds:
+                o_molsys.fragments[0].add_auxiliary_bonds(connectivity)
 
         if params.opt_coordinates in ["CARTESIAN", "BOTH"]:
             o_molsys.fragments[0].add_cartesian_intcos()
@@ -628,6 +630,8 @@ def make_internal_coords(o_molsys: Molsys, params: op.OptParams):
                 C = np.ndarray((F.natom, F.natom))
                 C[:] = connectivity[o_molsys.frag_atom_slice(iF), o_molsys.frag_atom_slice(iF)]
                 F.add_intcos_from_connectivity(C)
+                if params.add_auxiliary_bonds:
+                    F.add_auxiliary_bonds(connectivity)
 
         if params.opt_coordinates in ["CARTESIAN", "BOTH"]:
             for F in o_molsys.fragments:
