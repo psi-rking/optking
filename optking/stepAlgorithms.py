@@ -12,6 +12,10 @@ opt_helper.OptHelper for easy setup and control over optimization procedures.
     * SteepestDescent
         * overlap
         * barzilai_borwein
+    * ConjugateGradient
+        * Fletcher
+        * descent
+        * Polak
     * RestricedStepRFO
     * ParitionedRFO
 * Linesearch
@@ -472,6 +476,47 @@ class SteepestDescent(OptimizationAlgorithm):
         logger.info("Taking Steepest Descent Step")
         sd_h = self.step_size_scalar(fq)
         dq = fq * sd_h
+        return dq
+
+    def expected_energy(self, step, grad, hess):
+        """Quadratic energy model"""
+        return step * grad + 0.5 * step * step * hess
+
+class ConjugateGradient(OptimizationAlgorithm):
+
+    def __init__(self, molsys, history, params):
+        super().__init__(molsys, history, params)
+        self.method = params.conjugate_gradient_type
+
+    def requires(self):
+        return "energy", "gradient"
+
+    def step(self, fq, *args, **kwargs):
+        logger.info("Taking Conjugate Gradient Step")
+
+        if len(self.history.steps) < 2:
+            return fq
+
+        # Previous step
+        prev_dq = self.history.steps[-2].Dq
+        # Previous gradient
+        prev_fq = self.history.steps[-2].forces
+
+        # Default method
+        if self.method == "FLETCHER":
+            beta_numerator = np.dot((fq.T), fq)
+            beta_denominator = np.dot((prev_fq.T), prev_fq)
+
+        elif self.method == "DESCENT":
+            beta_numerator = -np.dot((fq.T), fq)
+            beta_denominator = np.dot((prev_fq.T), prev_dq)
+        
+        elif self.method == "POLAK":
+            beta_numerator = np.dot((fq * -prev_fq).T, fq)
+            beta_denominator = np.dot((prev_fq.T), prev_fq)
+        
+        beta_fq = beta_numerator / beta_denominator
+        dq = -fq + beta_fq * prev_dq
         return dq
 
     def expected_energy(self, step, grad, hess):

@@ -307,6 +307,7 @@ class ThreePointEnergy(LineSearch):
 
     def compute_distance(self):
         if self.linesearch_steps == 0:
-            return np.zeros(len(self.molsys.q_array()))
+            return 0
+            # return np.zeros(len(self.molsys.q_array()))
         else:
             return super().compute_distance()
