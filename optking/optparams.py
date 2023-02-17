@@ -110,8 +110,11 @@ class OptParams(object):
         self.step_type = uod.get("STEP_TYPE", "RFO")
         # variation of steepest descent step size
         self.steepest_descent_type = uod.get("STEEPEST_DESCENT_TYPE", "OVERLAP")
-        # conjugate gradient default
-        self.conjugate_gradient_type = uod.get("CONJUGTE_MODE", "FLETCHER")
+        # Conjugate gradient step types. See wikipedia on Nonlinear_conjugate_gradient
+        # "POLAK" for Polak-Ribiere. Polak, E.; Ribière, G. (1969). 
+        # Revue Française d'Automatique, Informatique, Recherche Opérationnelle. 3 (1): 35–43.
+        # "FLETCHER" for Fletcher-Reeves.  Fletcher, R.; Reeves, C. M. (1964).
+        self.conjugate_gradient_type = uod.get("CONJUGATE_GRADIENT_TYPE", "FLETCHER")
         # Geometry optimization coordinates to use.
         # REDUNDANT and INTERNAL are synonyms and the default.
         # DELOCALIZED are the coordinates of Baker.

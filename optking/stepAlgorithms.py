@@ -503,20 +503,25 @@ class ConjugateGradient(OptimizationAlgorithm):
         prev_fq = self.history.steps[-2].forces
 
         # Default method
-        if self.method == "FLETCHER":
-            beta_numerator = np.dot((fq.T), fq)
-            beta_denominator = np.dot((prev_fq.T), prev_fq)
+        if self.method == "FLETCHER": # Fletcher-Reeves
+            beta_numerator = np.dot(fq, fq)
+            beta_denominator = np.dot(prev_fq, prev_fq)
+
+        elif self.method == "POLAK": # Polak-Ribiere
+            beta_numerator = np.dot(fq, fq - prev_fq)
+            beta_denominator = np.dot(prev_fq, prev_fq)
 
         elif self.method == "DESCENT":
-            beta_numerator = -np.dot((fq.T), fq)
-            beta_denominator = np.dot((prev_fq.T), prev_dq)
-        
-        elif self.method == "POLAK":
-            beta_numerator = np.dot((fq * -prev_fq).T, fq)
-            beta_denominator = np.dot((prev_fq.T), prev_fq)
+            beta_numerator = -np.dot(fq, fq)
+            beta_denominator = np.dot(prev_fq, prev_dq)
+
+        if beta_numerator < 0:  #some advocate this for resets
+            beta_numberator = 0
         
         beta_fq = beta_numerator / beta_denominator
-        dq = -fq + beta_fq * prev_dq
+        #logger.info("\tfq:\n\t" + print_array_string(fq))
+        dq = fq + beta_fq * prev_dq
+        #logger.info("\tdq:\n\t" + print_array_string(dq))
         return dq
 
     def expected_energy(self, step, grad, hess):
