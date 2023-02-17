@@ -6,11 +6,13 @@ import psi4
 import optking
 from .utils import utils
 
+check_iter = True
+
 refE = -173.3000252
-cg_step_types = [("FLETCHER", 14), ("POLAK", 44)]
+cg_step_types = [("FLETCHER",14),("DESCENT", 24), ("POLAK", 44)]
 
 @pytest.mark.long
-@pytest.mark.parametrize("option, num_steps", cg_step_types, ids=["FLETCHER","POLAK"])
+@pytest.mark.parametrize("option, num_steps", cg_step_types, ids=["FLETCHER","DESCENT","POLAK"])
 def test_conjugate_gradient_type(option, num_steps, check_iter):
     propylamine = psi4.geometry(
     """

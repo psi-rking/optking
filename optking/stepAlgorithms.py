@@ -512,7 +512,7 @@ class ConjugateGradient(OptimizationAlgorithm):
             beta_denominator = np.dot(prev_fq, prev_fq)
 
         elif self.method == "DESCENT":
-            beta_numerator = -np.dot(fq, fq)
+            beta_numerator = np.dot(fq, fq)
             beta_denominator = np.dot(prev_fq, prev_dq)
 
         if beta_numerator < 0:  #some advocate this for resets
