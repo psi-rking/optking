@@ -515,9 +515,6 @@ class ConjugateGradient(OptimizationAlgorithm):
             beta_numerator = np.dot(fq, fq)
             beta_denominator = np.dot(prev_fq, prev_dq)
 
-        if beta_numerator < 0:  #some advocate this for resets
-            beta_numberator = 0
-        
         beta_fq = beta_numerator / beta_denominator
         #logger.info("\tfq:\n\t" + print_array_string(fq))
         dq = fq + beta_fq * prev_dq
