@@ -111,7 +111,7 @@ class OptParams(object):
         # variation of steepest descent step size
         self.steepest_descent_type = uod.get("STEEPEST_DESCENT_TYPE", "OVERLAP")
         # conjugate gradient default
-        self.conjugate_gradient_type = uod.get("CONJUGTE_MODE", "FLETCHER")
+        self.conjugate_gradient_type = uod.get("CONJUGATE_GRADIENT_TYPE", "FLETCHER")
         # Geometry optimization coordinates to use.
         # REDUNDANT and INTERNAL are synonyms and the default.
         # DELOCALIZED are the coordinates of Baker.

@@ -13,9 +13,9 @@ opt_helper.OptHelper for easy setup and control over optimization procedures.
         * overlap
         * barzilai_borwein
     * ConjugateGradient
-        * Fletcher
-        * descent
-        * Polak
+        * Fletcher (from Fletcher's "Pratical Methods of Optimization, Vol. 1", Ch. 4, Pg. 63, Eqn. 4.1.4)
+        * descent (from Fletcher, Ch. 4, Pg. 66, Eqn. 4.1.11)
+        * Polak (from Fletcher, Ch. 4, Pg. 66, Eqn. 4.1.12)
     * RestricedStepRFO
     * ParitionedRFO
 * Linesearch
