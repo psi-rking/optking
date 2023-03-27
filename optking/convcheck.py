@@ -160,7 +160,7 @@ def _test_for_convergence(conv_met, conv_active, return_str=False):
 
     if op.Params.i_untampered:
         # flexible_criteria forces this route, but with an adjusted value for an individual criteria
-        if "GAU" in op.Params.g_convergence:
+        if "GAU" in op.Params.g_convergence or op.Params.g_convergence == "INTERFRAG_TIGHT":
             conv_requirements = CONVERGENCE_PRESETS.get("GAUSSIAN")
         elif op.Params.g_convergence in ["QCHEM", "MOLPRO"]:
             conv_requirements = CONVERGENCE_PRESETS.get("QCHEM_MOLPRO")
