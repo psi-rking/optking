@@ -68,7 +68,8 @@ MP2minEnergy = -152.5352095
 
 
 @pytest.mark.dimers
-def test_dimers_h2o_auto(check_iter):  # auto reference pt. creation
+@pytest.mark.parametrize("option, iter", [("gau_tight", 13), ("interfrag_tight", 11)])
+def test_dimers_h2o_auto(check_iter, option, iter):  # auto reference pt. creation
     h2oD = psi4.geometry(
         """
       0 1
@@ -90,7 +91,7 @@ def test_dimers_h2o_auto(check_iter):  # auto reference pt. creation
         "basis": "aug-cc-pvdz",
         "geom_maxiter": 40,
         "frag_mode": "MULTI",
-        "g_convergence": "gau_tight",
+        "g_convergence": f"{option}",
     }
     psi4.set_options(psi4_options)
 
@@ -100,4 +101,4 @@ def test_dimers_h2o_auto(check_iter):  # auto reference pt. creation
     E = json_output["energies"][-1]
     assert psi4.compare_values(MP2minEnergy, E, 6, "MP2 Energy opt from afar, auto")
 
-    utils.compare_iterations(json_output, 13, check_iter)
+    utils.compare_iterations(json_output, iter, check_iter)
