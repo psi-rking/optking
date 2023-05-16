@@ -131,7 +131,12 @@ class OptimizationAlgorithm(OptimizationInterface):
         needs to compute a new point"""
         pass
 
-    def expected_energy(self, step, grad, hess):
+    @abstractmethod
+    def supports_trust_region(self):
+        """ Returns boolean for whether a trust region should be used with this method """
+        pass
+
+    def expected_energy(self, dq, fq, H):
         """Compute the expected energy given the model for the step
 
         Parameters
@@ -173,7 +178,7 @@ class OptimizationAlgorithm(OptimizationInterface):
             self.molsys, dq, fq, ensure_convergence=self.params.ensure_bt_convergence, return_str=return_str
         )
         dq_norm, unit_dq, projected_fq, projected_hess = self.step_metrics(achieved_dq, fq, H)
-        delta_energy = self.expected_energy(dq_norm, projected_fq, projected_hess)
+        delta_energy = self.expected_energy(dq, fq, H)
         logger.debug("\tProjected energy change: %10.10lf\n" % delta_energy)
         self.history.append_record(delta_energy, achieved_dq, unit_dq, projected_fq, projected_hess)
 
@@ -321,7 +326,7 @@ class OptimizationAlgorithm(OptimizationInterface):
         energy_ratio = energy_change / projected_change
         logger.info("\tEnergy ratio = %10.5lf" % energy_ratio)
 
-        if self.params.opt_type == "MIN" and not self.params.linesearch:
+        if self.supports_trust_region() and not self.params.linesearch:
             # Predicted up. Actual down.  OK.  Do nothing.
             if projected_change > 0 and energy_ratio < 0.0:
                 decent = True
@@ -391,12 +396,17 @@ class OptimizationAlgorithm(OptimizationInterface):
 
 
 class QuasiNewtonOptimization(OptimizationAlgorithm, ABC):
+
     def requires(self):
         return "energy", "gradient", "hessian"
 
-    def expected_energy(self, step, grad, hess):
+    def supports_trust_region(self):
+        return True
+
+    def expected_energy(self, dq, fq, H):
         """Quadratic energy model"""
-        return step * grad + 0.5 * step * step * hess
+        dq_norm, step, proj_grad, proj_hess = self.step_metrics(dq, fq, H)
+        return dq_norm * proj_grad + 0.5 * dq_norm**2 * proj_hess
 
     def take_step(self, fq=None, H=None, energy=None, return_str=False, **kwargs):
         if len(H) == 0:
@@ -419,6 +429,9 @@ class SteepestDescent(OptimizationAlgorithm):
 
     def requires(self):
         return "energy", "gradient"
+
+    def supports_trust_region(self):
+        return True
 
     def step_size_scalar(self, fq):
         """Perform two point calculation of steepest descent step_size"""
@@ -478,9 +491,10 @@ class SteepestDescent(OptimizationAlgorithm):
         dq = fq * sd_h
         return dq
 
-    def expected_energy(self, step, grad, hess):
+    def expected_energy(self, dq, fq, H):
         """Quadratic energy model"""
-        return step * grad + 0.5 * step * step * hess
+        dq_norm, unit_dq, proj_grad, proj_hess = self.step_metrics(dq, fq, H)
+        return dq_norm * proj_grad + 0.5 * dq_norm**2 * proj_hess
 
 class ConjugateGradient(OptimizationAlgorithm):
 
@@ -549,9 +563,10 @@ class RFO(QuasiNewtonOptimization, ABC):
         self.old_root = self.rfo_root
         # self.rfo_normalization_max = params.rfo_normalization_max
 
-    def expected_energy(self, step, grad, hess):
+    def expected_energy(self, dq, fq, H):
         """RFO model - 2x2 Pade Approximation"""
-        return (step * grad + 0.5 * step * step * hess) / (1 + step * step)
+        dq_norm, step, proj_grad, proj_hess = self.step_metrics(dq, fq, H)
+        return (dq_norm * proj_grad + 0.5 * dq_norm **2 * proj_hess) / (1 + dq_norm**2)
 
     @staticmethod
     def build_rfo_matrix(lower, upper, fq, H):
@@ -574,8 +589,8 @@ class RFO(QuasiNewtonOptimization, ABC):
         i_norm = i_norm.reshape(-1, 1)
         tmp = eigenvectors / i_norm
         max_values = (np.amax(np.abs(tmp), axis=1)).reshape(-1, 1)
-        eigenvectors = np.where(max_values < self.params.rfo_normalization_max, tmp, eigenvectors)
-        return eigenvectors
+        normalized_evects = np.where(max_values < self.params.rfo_normalization_max, tmp, eigenvectors)
+        return normalized_evects
 
 
 class RestrictedStepRFO(RFO):
@@ -586,6 +601,8 @@ class RestrictedStepRFO(RFO):
         super().__init__(molsys, history, params)
         # self.rsrfo_alpha_max = params.rsrfo_alpha_max
         # self.accept_symmetry_breaking = params.accept_symmetry_breaking
+        self.alpha = 1.0
+        self.unnormalized = np.zeros(molsys.num_intcos)
 
     def step(self, fq, H, *args, **kawrgs):
         """The step is an eigenvector of the gradient augmented Hessian. Looks for the
@@ -650,7 +667,6 @@ class RestrictedStepRFO(RFO):
             rfo_root = self._select_rfo_root(last_evect, SRFOevects, SRFOevals, alpha_iter)
             dq = SRFOevects[rfo_root][:-1]  # omit last column
             # last_evect = dq / np.linalg.norm(dq)
-
             dqtdq = np.dot(dq, dq)
             # If alpha explodes, give up on iterative scheme
             if fabs(alpha) > self.params.rsrfo_alpha_max:
@@ -663,8 +679,10 @@ class RestrictedStepRFO(RFO):
             rfo_step_report += print_out
 
         # end alpha RS-RFO iterations
+        self.alpha = alpha
         logger.debug(rfo_step_report)
         self.params.rfo_follow_root = follow_root
+        self.image_eval = SRFOevals[self.rfo_root]
         return converged, dq
 
     def _update_alpha(self, alpha, dqtdq, alpha_iter, dq, fq, Hevects, Hevals):
@@ -706,7 +724,7 @@ class RestrictedStepRFO(RFO):
 
         return alpha, rfo_step_report
 
-    def _scale_and_normalize(self, RFOmat, alpha=1):
+    def _scale_and_normalize(self, RFOmat, alpha=1.0):
         """Scale the RFO matrix given alpha. Compute eigenvectors and eigenvalaues. Peform normalization
         and report values
 
@@ -727,6 +745,7 @@ class RestrictedStepRFO(RFO):
         SRFOmat[:-1, -1] = RFOmat[:-1, -1] / rootAlpha
         SRFOevals, SRFOevects = symm_mat_eig(SRFOmat)
 
+        self.prenormalized = SRFOevects[:, :]
         SRFOevects = self._intermediate_normalize(SRFOevects)
 
         # transform step back.
@@ -782,6 +801,7 @@ class RestrictedStepRFO(RFO):
                 else:
                     # no good root found, using the default
                     rfo_root = self.rfo_root
+
             # Save initial root. 'Follow' during the RS-RFO iterations.
             self.params.rfo_follow_root = True
 
@@ -849,6 +869,10 @@ class PartitionedRFO(RFO):
     """Partitions the gradient augmented Hessian into eigenvectors to maximize along (direction of the TS)
     and minimize along all other directions. Rational Function or (2x2 Pade approximation)"""
 
+    def supports_trust_region(self):
+        """ Historically has not supported a trust region. TODO test turning on """
+        return False
+
     def step(self, fq, H, *args, **kwargs):
 
         hdim = len(fq)  # size of Hessian
@@ -915,3 +939,151 @@ class PartitionedRFO(RFO):
             printxopt("\tMaximizing along %d lowest eigenvalue of Hessian.\n" % (rfo_root+1) )
         """
         raise NotImplementedError("Partitioned RFO only follows the lowest eigenvalue / vector currently")
+
+class ImageRFO(RestrictedStepRFO):
+
+    def __init__(self, molsys, history, params):
+        super().__init__(molsys, history, params)
+        self.image_eval = np.zeros(molsys.num_intcos) # transformed eigenvalue
+        self.w_tv = np.zeros(molsys.num_intcos) # hessian eigenvector corresponding to the transition vector vt
+        self.h_tv = 0.0
+        self.alpha = 1.0
+
+    def supports_trust_region(self):
+        return True
+
+    def step(self, fq, H, *args, **kwargs):
+
+        H_evals, H_evects = symm_mat_eig(H)
+
+        logger.info("Hessian eigenvalues %s", print_array_string(H_evals))
+
+        # Takes the smallest eigenvalue and the smallest eigenvector and transforms the gradient
+        # and hessian so that the reaction mode is being minimized not maximimized
+        logger.info("Transforming the PES with image function to search for a saddlepoint")
+
+        # not a vector product. Matrix product with the two eigenvectors
+        self.w_tv = H_evects[self.rfo_root]
+        self.h_tv = H_evals[self.rfo_root]
+        householder_op = np.eye(len(fq)) - 2 * self.w_tv.reshape(-1, 1) @ self.w_tv.reshape(1, -1)
+        fq_image = householder_op @ fq
+        H_image = householder_op @ H
+
+        # Use entire matrix 0, len(H). No need to partition
+        # h_image_evals, h_image_evects = symm_mat_eig(H_image)
+        # h_d_image = np.diag(h_image_evals)
+        # fq_image_hbasis = h_image_evects @ fq  # gradient transformation
+        RFO_image_mat = RFO.build_rfo_matrix(0, len(H), fq_image, H_image)
+
+        # same as RS-RFO above.
+        if self.params.simple_step_scaling:
+            e_vectors, e_values = self._intermediate_normalize(RFO_image_mat)
+            self.rfo_root = self._select_rfo_root(
+                self.history.steps[-2].followedUnitVector, e_vectors, e_values, fq,
+            )
+            dq = e_vectors[self.rfo_root, :-1]
+            self.image_eval = e_values[self.rfo_root]
+            converged = False
+        else:
+            # converge alpha to select step length. Same procedure as above.
+            converged, dq = self._solve_rs_rfo(RFO_image_mat, H_image, fq_image)
+
+        # dq = h_image_evects.transpose() @ dq
+        # if converged, trust radius has already been applied through alpha
+        self.trust_radius_on = not converged
+        logger.debug("\tFinal scaled step dq:\n\n\t" + print_array_string(dq))
+        return dq
+
+    # def expected_energy(self, dq, fq, H):
+
+    #     # the eigenvalue of the RFO matrix is found by transforming the negative mode to positive
+    #     # transform back to predict the energy change for going uphill
+    #     logger.info("%s", self.w_tv)
+    #     logger.info("%s", fq)
+    #     fq_tv = self.w_tv @ -fq  # B&B label with f but seems to be overlap with gradient
+    #     # fq_tv_2 = self.w_tv @ fq
+    #     dq_tv = self.w_tv @ dq
+    #     eigval = self.image_eval + (2 * fq_tv * dq_tv + self.h_tv * dq_tv **2) / (1 + self.alpha * dq @ dq)
+    #     # eigval_2 = self.image_eval + (2 * fq_tv_2 * dq_tv + self.h_tv * dq_tv **2) / (1 + self.alpha * dq @ dq)
+
+    #     logger.info("Transformed lambda %f", self.image_eval)
+    #     logger.info("untransformed lambda %f", eigval)
+    #     logger.info("fq_tv %s", fq_tv)
+    #     logger.info("dq_tv %s", dq_tv)
+    #     # logger.info("untransformed lambda2 %f", eigval_2)
+
+    #     v_tv = self.prenormalized[self.rfo_root, :-1]  # final value in rfo eigenvecor that gets normalized to 1.
+    #     u_tv = self.prenormalized[self.rfo_root + 1, -1]
+    #     norm_2 = u_tv**2 + v_tv @ (np.eye(len(v_tv)) * self.alpha) @ v_tv
+
+    #     logger.info("intermediate normalization coefficient %f", u_tv)
+    #     # logger.info("second normalization coefficient %f", norm_2)
+
+    #     logger.info("Value: %s", 0.5 * eigval / u_tv**2)
+    #     return (0.5 * eigval / (u_tv**2)) / (1 + dq @ (np.eye(len(v_tv)) * self.alpha) @ dq)
+
+    def assess_previous_step(self):
+        """Determine whether the last step was acceptable, prints summary and change trust radius"""
+
+        decent = True
+        if len(self.history.steps) < 2:
+            self.history.steps[-1].decent = decent
+            return decent
+
+        energy_change = self.history.steps[-1].E - self.history.steps[-2].E
+        projected_change = self.history.steps[-2].projectedDE
+
+        opt_step_report = "\n\tCurrent energy: %20.10lf\n" % self.history.steps[-1].E
+        opt_step_report += "\tEnergy change for the previous step:\n"
+        opt_step_report += "\t\tActual       : %20.10lf\n" % energy_change
+        opt_step_report += "\t\tProjected    : %20.10lf\n" % projected_change
+
+        logger.info("\tCurrent Step Report \n %s" % opt_step_report)
+
+        # names reflect those used by Besalu and Bofill
+        lower_b = 0
+        upper_b = 2
+        de = 0.20
+        di = 0.25
+
+        # The de, di, upper_b and lower_b are recommended by B&B. Require that LB < rle < rli < rui < rue < UB
+        r_lower_e = lower_b + de  # 0.75
+        r_lower_i = lower_b + di  # 0.80
+        r_upper_e = upper_b - de  # 1.25
+        r_upper_i = upper_b - di  # 1.20
+
+        energy_ratio = energy_change / projected_change
+        logger.info("\tEnergy ratio = %10.5lf" % energy_ratio)
+
+        dq = self.history.steps[-1].Dq
+
+        # is step within trust region (1e-5 is the error used in alpha convergence)
+        in_trust_region = np.sqrt(dq @ dq) - self.params.intrafrag_trust < 1e-5
+
+        if self.supports_trust_region() and not self.params.linesearch:
+
+            if energy_ratio < r_lower_e or energy_ratio > r_upper_e:
+                logger.debug("Decreasing trust radius")
+                self.decrease_trust_radius()
+                decent = False
+            if r_lower_i < energy_ratio < r_upper_e and in_trust_region:
+                logger.debug("Increasing trust radius")
+                self.increase_trust_radius()
+                decent = True
+
+        self.history.steps[-2].decent = decent
+        return decent
+
+    def _select_rfo_root(self, last_evect, SRFOevects, SRFOevals, alpha_iter=0):
+
+        if not self.params.rfo_follow_root or len(self.history.steps) < 2:
+            rfo_root = self.params.rfo_root
+            logger.debug("\tMaximizing along %d lowest eigenvalue of Hessian.\n" % (rfo_root+1) )
+        else:
+            last_iter_evect = self.history[-1].Dq
+            dots = np.array([SRFOevects[i] @ last_iter_evect for i in range(SRFOevals)], float)
+            rfo_root = np.argmax(dots)
+            logger.debug("\tOverlaps with previous step checked for root-following.\n")
+            logger.debug("\tMaximizing along %d lowest eigenvalue of Hessian.\n" % (rfo_root+1) )
+        return rfo_root
+

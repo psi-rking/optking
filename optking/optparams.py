@@ -8,7 +8,9 @@ import logging
 
 from .exceptions import AlgError, OptError
 from .misc import int_float_list, int_fx_string, int_list, int_xyz_float_list, int_xyz_fx_string, tokenize_input_string
+from . import log_name
 
+logger = logging.getLogger(f"{log_name}{__name__}")
 
 # Class for enumerated string options.
 def string_option(storage_name):
@@ -28,6 +30,7 @@ def string_option(storage_name):
 allowedStringOptions = {
     "opt_type": ("MIN", "TS", "IRC"),
     "step_type": ("RFO", "P_RFO", "NR", "SD", "LINESEARCH", "CONJUGATE"),
+    "step_type": ("RFO", "RS_I_RFO", "P_RFO", "NR", "SD", "LINESEARCH", "CONJUGATE"),
     "opt_coordinates": (
         "REDUNDANT",
         "INTERNAL",

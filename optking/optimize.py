@@ -455,6 +455,7 @@ def optimization_factory(method, molsys, history_object, params=None):
         "SD": stepAlgorithms.SteepestDescent,
         "IRC": IRCfollowing.IntrinsicReactionCoordinate,
         "CONJUGATE": stepAlgorithms.ConjugateGradient,
+        "RS_I_RFO": stepAlgorithms.ImageRFO,
     }
 
     return ALGORITHMS.get(method, stepAlgorithms.RestrictedStepRFO)(molsys, history_object, params)
