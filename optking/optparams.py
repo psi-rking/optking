@@ -47,6 +47,7 @@ allowedStringOptions = {
         "TURBOMOLE",
         "CFOUR",
         "NWCHEM_LOOSE",
+        "INTERFRAG_TIGHT",
     ),
     "hess_update": ("NONE", "BFGS", "MS", "POWELL", "BOFILL"),
     "intrafrag_hess": ("SCHLEGEL", "FISCHER", "SCHLEGEL", "SIMPLE", "LINDH", "LINDH_SIMPLE"),
@@ -551,6 +552,20 @@ class OptParams(object):
             self.i_max_disp = True
             self.conv_rms_disp = 3.6e-3
             self.i_rms_disp = True
+        elif self.g_convergence == "INTERFRAG_TIGHT":
+            self.i_untampered = True
+            self.conv_max_DE = 1.0e-5
+            self.i_max_DE = True
+            self.conv_max_force = 1.5e-5
+            self.i_max_force = True
+            self.conv_rms_force = 1.0e-5
+            self.i_rms_force = True
+            self.conv_max_disp = 6.0e-4
+            self.i_max_disp = True
+            self.conv_rms_disp = 4.0e-4
+            self.i_rms_disp = True
+
+
 
         # ---  Specific optimization criteria
         if "MAX_FORCE_G_CONVERGENCE" in uod:
