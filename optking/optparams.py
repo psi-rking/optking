@@ -27,7 +27,7 @@ def string_option(storage_name):
 # The keys on the left here should be lower-case, as should the storage name of the property.
 allowedStringOptions = {
     "opt_type": ("MIN", "TS", "IRC"),
-    "step_type": ("RFO", "P_RFO", "NR", "SD", "LINESEARCH"),
+    "step_type": ("RFO", "P_RFO", "NR", "SD", "LINESEARCH", "CONJUGATE"),
     "opt_coordinates": (
         "REDUNDANT",
         "INTERNAL",
@@ -54,6 +54,7 @@ allowedStringOptions = {
     "frag_mode": ("SINGLE", "MULTI"),
     "interfrag_mode": ("FIXED", "PRINCIPAL_AXES"),
     "interfrag_hess": ("DEFAULT", "FISCHER_LIKE"),
+    "conjugate_gradient_type": ("FLETCHER", "DESCENT", "POLAK")
 }
 
 # def enum_key( enum_type, value):
@@ -70,6 +71,7 @@ class OptParams(object):
     hess_update = string_option("hess_update")
     intrafrag_hess = string_option("intrafrag_hess")
     frag_mode = string_option("frag_mode")
+    conjugate_gradient_type = string_option("conjugate_gradient_type")
 
     # interfrag_mode  = stringOption( 'interfrag_mode' )
     # interfrag_hess  = stringOption( 'interfrag_hess' )
@@ -109,6 +111,11 @@ class OptParams(object):
         self.step_type = uod.get("STEP_TYPE", "RFO")
         # variation of steepest descent step size
         self.steepest_descent_type = uod.get("STEEPEST_DESCENT_TYPE", "OVERLAP")
+        # Conjugate gradient step types. See wikipedia on Nonlinear_conjugate_gradient
+        # "POLAK" for Polak-Ribiere. Polak, E.; Ribière, G. (1969). 
+        # Revue Française d'Automatique, Informatique, Recherche Opérationnelle. 3 (1): 35–43.
+        # "FLETCHER" for Fletcher-Reeves.  Fletcher, R.; Reeves, C. M. (1964).
+        self.conjugate_gradient_type = uod.get("CONJUGATE_GRADIENT_TYPE", "FLETCHER")
         # Geometry optimization coordinates to use.
         # REDUNDANT and INTERNAL are synonyms and the default.
         # DELOCALIZED are the coordinates of Baker.
@@ -605,7 +612,7 @@ class OptParams(object):
         return setattr(self, key, value)
 
     def update_dynamic_level_params(self, run_level):
-        logger = logging.getLogger(__name__)
+        logger = logging.getLogger(__name__)                                                                                        #TODO?
         """
         *dynamic  step   coord   trust      backsteps         criteria
         * run_level                                           for downmove    for upmove

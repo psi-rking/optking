@@ -239,10 +239,10 @@ class ThreePointEnergy(LineSearch):
         logger.info("\n\tCurrent linesearch bounds.\n")
         logger.info("\t s=%7.5f, Ea=%17.12f", 0, energy_a)
         logger.info("\t s=%7.5f, Eb=%17.12f", sb, energy_b)
-        logger.info("\t s=%7.5f, Ec=%17.12f\n", sc, energy_c)
+        logger.info("\t s=%7.5f, Ec=%17.12f", sc, energy_c)
 
         if energy_b < energy_a and energy_b < energy_c:
-            logger.debug("\tMiddle point is lowest energy. Good. Projecting minimum.")
+            logger.info("\tMiddle point is lowest energy. Good. Projecting minimum.")
 
             A = np.zeros((2, 2))
             A[0, 0] = sc * sc - sb * sb
@@ -258,9 +258,7 @@ class ThreePointEnergy(LineSearch):
             x_min = -x[1] / (2 * x[0])
             min_energy = x[0] * x_min**2 + x[1] * x_min + energy_a
 
-            logger.info("Desired point %s", x_min)
-            logger.info("Desired point %s", sb)
-            logger.info("Desired point %s", sc)
+            logger.info("Min: s=%7.5f, Eo=%17.12f\n", x_min, min_energy)
 
             # active point corresponds to the old point (we just created a new one)
             if self.points.index(self.active_point) == 1:
@@ -307,6 +305,7 @@ class ThreePointEnergy(LineSearch):
 
     def compute_distance(self):
         if self.linesearch_steps == 0:
-            return np.zeros(len(self.molsys.q_array()))
+            return 0
+            # return np.zeros(len(self.molsys.q_array()))
         else:
             return super().compute_distance()

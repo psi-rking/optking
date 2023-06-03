@@ -12,6 +12,10 @@ opt_helper.OptHelper for easy setup and control over optimization procedures.
     * SteepestDescent
         * overlap
         * barzilai_borwein
+    * ConjugateGradient
+        * Fletcher (from Fletcher's "Pratical Methods of Optimization, Vol. 1", Ch. 4, Pg. 63, Eqn. 4.1.4)
+        * descent (from Fletcher, Ch. 4, Pg. 66, Eqn. 4.1.11)
+        * Polak (from Fletcher, Ch. 4, Pg. 66, Eqn. 4.1.12)
     * RestricedStepRFO
     * ParitionedRFO
 * Linesearch
@@ -472,6 +476,49 @@ class SteepestDescent(OptimizationAlgorithm):
         logger.info("Taking Steepest Descent Step")
         sd_h = self.step_size_scalar(fq)
         dq = fq * sd_h
+        return dq
+
+    def expected_energy(self, step, grad, hess):
+        """Quadratic energy model"""
+        return step * grad + 0.5 * step * step * hess
+
+class ConjugateGradient(OptimizationAlgorithm):
+
+    def __init__(self, molsys, history, params):
+        super().__init__(molsys, history, params)
+        self.method = params.conjugate_gradient_type
+
+    def requires(self):
+        return "energy", "gradient"
+
+    def step(self, fq, *args, **kwargs):
+        logger.info("Taking Conjugate Gradient Step")
+
+        if len(self.history.steps) < 2:
+            return fq
+
+        # Previous step
+        prev_dq = self.history.steps[-2].Dq
+        # Previous gradient
+        prev_fq = self.history.steps[-2].forces
+
+        # Default method
+        if self.method == "FLETCHER": # Fletcher-Reeves
+            beta_numerator = np.dot(fq, fq)
+            beta_denominator = np.dot(prev_fq, prev_fq)
+
+        elif self.method == "POLAK": # Polak-Ribiere
+            beta_numerator = np.dot(fq, fq - prev_fq)
+            beta_denominator = np.dot(prev_fq, prev_fq)
+
+        elif self.method == "DESCENT":
+            beta_numerator = np.dot(fq, fq)
+            beta_denominator = np.dot(prev_fq, prev_dq)
+
+        beta_fq = beta_numerator / beta_denominator
+        #logger.info("\tfq:\n\t" + print_array_string(fq))
+        dq = fq + beta_fq * prev_dq
+        #logger.info("\tdq:\n\t" + print_array_string(dq))
         return dq
 
     def expected_energy(self, step, grad, hess):
