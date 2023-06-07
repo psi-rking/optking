@@ -871,7 +871,8 @@ class Molsys(object):
                 H_new[i, :] = H_new[:, i] = np.zeros(len(fq))
                 H_new[i, i] = tmp
 
-        logger.info("Projected (PHP) Hessian matrix\n" + print_mat_string(H))
+        if H.size:
+            logger.info("Projected (PHP) Hessian matrix\n" + print_mat_string(H))
 
         return fq, H_new
 
