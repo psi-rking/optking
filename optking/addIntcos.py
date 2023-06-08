@@ -41,8 +41,8 @@ def connectivity_from_distances(geom, Z):
     for i, j in combinations(range(nat), 2):
         R = v3d.dist(geom[i], geom[j])
         Rcov = qcel.covalentradii.get(Z[i], missing=4.0) + qcel.covalentradii.get(Z[j], missing=4.0)
-        # logger.debug("Trying to connect atoms " + str(i) + ' and ' + str(j) + " distance is: " +
-        #            str(qcel.covalentradii.get(Z[i], missing=4.0) + qcel.covalentradii.get(Z[j], missing=4.0)))
+        #logger.debug("Checking atoms %d (Z=%d) and %d (Z=%d); R: %.3f; Rcov: %.3f; %s" %(i,
+        #             Z[i],j,Z[j],R,Rcov, 'Y' if (R<op.Params.covalent_connect*Rcov) else 'N'))
         if R < op.Params.covalent_connect * Rcov:
             C[i, j] = C[j, i] = True
 
