@@ -60,13 +60,6 @@ def optimize(o_molsys, computer):
             logger.debug(str(o_molsys))
 
         opt_object = OptimizationManager(o_molsys, opt_history, op.Params, computer)
-        if o_molsys.natom == 1:
-            logger.info("There is only 1 atom. Nothing to optimize. Computing energy.")
-            E = get_pes_info(np.ndarray(0), opt_object.computer, opt_object.molsys,
-                    opt_object.history, opt_object.params, "unneeded", ["energy"])[2]
-            err = OptError("There is only 1 atom. Nothing to optimize. Computing energy.")
-            return prepare_opt_output(o_molsys, opt_object.computer, error=err)
-        # following loop may repeat over multiple algorithms OR over IRC points
         logger.info("\tStarting optimization algorithm.\n")
         while converged is not True:
             try:
@@ -192,6 +185,12 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
             energy
 
         """
+
+        if self.molsys.natom == 1:
+            logger.info("There is only 1 atom. Nothing to optimize. Computing energy.")
+            E = get_pes_info(np.ndarray(0), self.computer, self.molsys,
+                    self.history, self.params, "unneeded", ["energy"])[2]
+            raise OptError("There is only 1 atom. Nothing to optimize. Computing energy.","OptError")
 
         # if optimization coordinates are absent, choose them. Could be erased after AlgError
         if not self.molsys.intcos_present:
