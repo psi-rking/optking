@@ -230,7 +230,7 @@ def _print_convergence_table(conv_info, criteria, conv_met, conv_active, params_
     active = lambda x: f"{params_dict.get('conv_' + x) :11.2e} {'*'}"
     conv_active_str = [active(key) if conv_active.get(key) else f"{'o': >13}" for key in conv_active]
 
-    suffix = "~\n" if conv_info.get("iternum") == 0 else "\n"
+    suffix = "~\n" if conv_info.get("iternum") == 1 else "\n"
 
     # adjust printing spacing for irc
     if conv_info.get("step_type", "standard") == "standard":
