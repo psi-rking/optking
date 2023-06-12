@@ -60,7 +60,6 @@ def optimize(o_molsys, computer):
             logger.debug(str(o_molsys))
 
         opt_object = OptimizationManager(o_molsys, opt_history, op.Params, computer)
-        # following loop may repeat over multiple algorithms OR over IRC points
         logger.info("\tStarting optimization algorithm.\n")
         while converged is not True:
             try:
@@ -186,6 +185,12 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
             energy
 
         """
+
+        if self.molsys.natom == 1:
+            logger.info("There is only 1 atom. Nothing to optimize. Computing energy.")
+            E = get_pes_info(np.ndarray(0), self.computer, self.molsys,
+                    self.history, self.params, "unneeded", ["energy"])[2]
+            raise OptError("There is only 1 atom. Nothing to optimize. Computing energy.","OptError")
 
         # if optimization coordinates are absent, choose them. Could be erased after AlgError
         if not self.molsys.intcos_present:
@@ -539,7 +544,8 @@ def get_pes_info(
 
     f_q, H = o_molsys.project_redundancies_and_constraints(f_q, H)
     g_q = -f_q
-    logger.info(print_mat_string(H, title="Hessian matrix"))
+    if H.size:
+        logger.info(print_mat_string(H, title="Hessian matrix"))
     return H, g_q, g_x, computer.energies[-1]
 
 

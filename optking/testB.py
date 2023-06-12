@@ -11,10 +11,11 @@ import numpy as np
 from . import intcosMisc
 from . import optparams as op
 from .printTools import print_mat_string
+from . import log_name
 
+logger = logging.getLogger(f"{log_name}{__name__}")
 
 def test_b(oMolsys):
-    logger = logging.getLogger(__name__)
     Natom = oMolsys.natom
     Nintco = oMolsys.num_intcos
     DISP_SIZE = 0.01

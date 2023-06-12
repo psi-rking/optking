@@ -311,8 +311,8 @@ def back_transformation(
     q_orig = intcosMisc.q_values(intcos, geom)
     q_target = q_orig + dq
 
-    if print_lvl > 1:
-        target_step_str = "Back-transformation in back_transformation():\n"
+    if print_lvl > 1: # printing is supressed for frozen coordinate cleanup
+        target_step_str = "Initial target in back_transformation():\n"
         target_step_str += "          Original         Target           Dq\n"
         for i in range(len(dq)):
             target_step_str += "%15.10f%15.10f%15.10f\n" % (
@@ -323,7 +323,7 @@ def back_transformation(
         logger.debug(target_step_str)
 
     if print_lvl > 0:
-        step_iter_str = "\t             Back Transformation Report            "
+        step_iter_str = "\n\t             Back Transformation Report            "
         step_iter_str += "\n\t---------------------------------------------------\n"
         step_iter_str += "\t Iter        RMS(dx)        Max(dx)        RMS(dq) \n"
         step_iter_str += "\t---------------------------------------------------\n"
@@ -338,7 +338,7 @@ def back_transformation(
     while bt_iter_continue:
 
         # dq_rms = rms(dq)
-        dx_rms, dx_max = dq_to_dx(intcos, geom, dq, print_lvl > 2)
+        dx_rms, dx_max = dq_to_dx(intcos, geom, dq, print_lvl > 2, op.Params.bt_pinv_rcond)
 
         # Met convergence thresholds
         if dx_rms < bt_dx_conv and dx_max < bt_dx_conv:
@@ -360,7 +360,7 @@ def back_transformation(
             best_geom[:] = geom
             best_dq_rms = dq_rms
 
-        if print_lvl > 0:
+        if print_lvl > 2:
             step_iter_str += "\t%5d %14.1e %14.1e %14.1e\n" % (
                 bt_iter_cnt + 1,
                 dx_rms,
@@ -395,7 +395,7 @@ def back_transformation(
 # B (dx) = B * [Bt (B Bt)^-1 dq]
 #   dx = Bt (B Bt)^-1 dq
 #   dx = Bt G^-1 dq, where G = B B^t.
-def dq_to_dx(intcos, geom, dq, printDetails=False):
+def dq_to_dx(intcos, geom, dq, printDetails, pinv_rcond):
     """Convert dq to dx.  Geometry is updated
 
     Parameters
@@ -414,8 +414,10 @@ def dq_to_dx(intcos, geom, dq, printDetails=False):
     """
     B = intcosMisc.Bmat(intcos, geom)
     G = B @ B.T
-    Ginv = np.linalg.pinv(G)
+    Ginv = np.linalg.pinv(G, rcond=pinv_rcond)
     dx = B.T @ Ginv @ dq
+    # large values in Ginv indicate rcond needs adjusted
+    # logger.debug("Ginv matrix:\n" + print_mat_string(Ginv))
 
     if printDetails:
         qOld = intcosMisc.q_values(intcos, geom)
@@ -424,7 +426,7 @@ def dq_to_dx(intcos, geom, dq, printDetails=False):
 
     if printDetails:
         dq_achieved = intcosMisc.q_values(intcos, geom) - qOld
-        displacement_str = "\t      Report of Single-step\n"
+        displacement_str = "\n\t      Report of Single-step\n"
         displacement_str += "\t  int       dq_achieved     deviation from target\n"
         for i in range(len(intcos)):
             displacement_str += "\t%5d%15.10f%15.10f\n" % (
