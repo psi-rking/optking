@@ -50,6 +50,7 @@ logging_configuration = {
         },
     },
     "loggers": {"optking": {"level": "INFO", "handlers": ["file_log_info"]}},
+    #"loggers": {"optking": {"level": "DEBUG", "handlers": ["file_log_debug"]}},
     # "root": {
     #     # "level": "INFO",
     #     # "handlers": ["file_log_info"],
