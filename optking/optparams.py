@@ -286,7 +286,7 @@ class OptParams(object):
         self.bt_max_iter = uod.get("bt_max_iter", 25)
         self.bt_dx_conv = uod.get("bt_dx_conv", 1.0e-7)
         self.bt_dx_rms_change_conv = uod.get("bt_dx_rms_change_conv", 1.0e-12)
-        self.bt_pinv_rcond = uod.get("bt_pinv_rcond", 1.0e-12)
+        self.bt_pinv_rcond = uod.get("bt_pinv_rcond", 1.0e-7)
         #
         # For multi-fragment molecules, treat as single bonded molecule or via interfragment
         # coordinates. A primary difference is that in ``MULTI`` mode, the interfragment

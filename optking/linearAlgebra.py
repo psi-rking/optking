@@ -129,7 +129,11 @@ def symm_mat_inv(A, redundant=False, redundant_eval_tol=1.0e-10):
 
     try:
         if redundant:
-            return np.linalg.pinv(A)
+            # rcond is not the same thing precisely as the former
+            # redundant_eval_tol, but using it here is better than leaving it
+            # at its 10^-15 default.  Note bt_pinv_rcond for
+            # backtransformation is treated as a separate keyword.
+            return np.linalg.pinv(A, rcond=redundant_eval_tol)
         else:
             return np.linalg.inv(A)
     except LinAlgError:
