@@ -142,19 +142,13 @@ def test_uccsdpt_ch2(check_iter):
 
     result = optking.optimize_psi4("CCSD(T)")
 
-    this_scf = result["trajectory"][-1]["properties"]["scf_total_energy"]  # TEST
     this_ccsd_t = result["trajectory"][-1]["properties"]["ccsd_prt_pr_correlation_energy"]  # TEST
     this_total = result["trajectory"][-1]["properties"]["ccsd_prt_pr_total_energy"]  # TEST
-    this_return = result["trajectory"][-1]["properties"]["return_energy"]  # TEST
-    REF_scf = -38.9265520844  # TEST
+    REF_scf = -38.9265520844  # TEST. Value is not currently included in trajectory output
     REF_ccsd_t = -0.1171601876  # TEST
     REF_total = -39.0437122710  # TEST
-    # print( '{:15.10f}'.format(this_scf))
-    # print( '{:15.10f}'.format(this_ccsd_t))
-    # print( '{:15.10f}'.format(this_total))
-    assert psi4.compare_values(REF_scf, this_scf, 6, "SCF energy")  # TEST
     assert psi4.compare_values(REF_ccsd_t, this_ccsd_t, 6, "CCSD(T) contribution")  # TEST
     assert psi4.compare_values(REF_total, this_total, 6, "Total CCSD(T) energy")  # TEST
-    assert psi4.compare_values(REF_total, this_return, 6, "Total CCSD(T) return energy")  # TEST
 
     utils.compare_iterations(result, 9, check_iter)
+

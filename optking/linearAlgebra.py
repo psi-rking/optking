@@ -106,7 +106,7 @@ def asymm_mat_eig(mat):
     return evals.real, evects.real.T
 
 
-def symm_mat_inv(A, redundant=False, redundant_eval_tol=1.0e-10):
+def symm_mat_inv(A, redundant=False, smallValLimit=1.0e-10):
     """
     Return the inverse of a real, symmetric matrix.
 
@@ -115,7 +115,8 @@ def symm_mat_inv(A, redundant=False, redundant_eval_tol=1.0e-10):
     A : np.ndarray
     redundant : bool
         allow generalized inverse
-    redundant_eval_tol : float
+    smallValLimit : float
+        specifies how small of singular values to invert
 
     Returns
     -------
@@ -129,13 +130,24 @@ def symm_mat_inv(A, redundant=False, redundant_eval_tol=1.0e-10):
 
     try:
         if redundant:
-            # rcond is not the same thing precisely as the former
-            # redundant_eval_tol, but using it here is better than leaving it
-            # at its 10^-15 default.  Note bt_pinv_rcond for
-            # backtransformation is treated as a separate keyword.
-            return np.linalg.pinv(A, rcond=redundant_eval_tol)
+
+            if logger.isEnabledFor(logging.DEBUG):
+                try:
+                    evals, evects = np.linalg.eigh(A)
+                except LinAlgError:
+                    raise OptError("symm_mat_inv: could not compute eigenvectors")
+
+                absEvals = np.abs(evals)
+                threshold = smallValLimit * np.max(absEvals)
+                logger.debug("Singular | values | > %8.3e will be inverted." % threshold)
+                val = np.min(absEvals[absEvals > threshold])
+                logger.debug("Smallest inverted value is %8.3e." % val)
+
+            return np.linalg.pinv(A, rcond=smallValLimit)
+
         else:
             return np.linalg.inv(A)
+
     except LinAlgError:
         raise OptError("symmMatrixInv: could not compute eigenvectors")
         # could be LinAlgError?

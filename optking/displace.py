@@ -56,10 +56,10 @@ def displace_molsys(molsys, dq_in, fq=None, ensure_convergence=False, return_str
                 tentative = q_in[start + i] + dq_in[start + i]
                 if tentative > I.range_max:
                     dq_in[start + i] = I.range_max - q_in[start + i]
-                    logger.info("setting to max: {:10.5f}".format(dq_in[start + i]))
+                    logger.info("\tSetting to max: {:12.7f}".format(dq_in[start + i]))
                 elif tentative < I.range_min:
                     dq_in[start + i] = I.range_min - q_in[start + i]
-                    logger.info("setting to min: {:10.5f}".format(dq_in[start + i]))
+                    logger.info("\tSetting to min: {:12.7f}".format(dq_in[start + i]))
                 else:
                     pass  # value within range
 
@@ -338,7 +338,7 @@ def back_transformation(
     while bt_iter_continue:
 
         # dq_rms = rms(dq)
-        dx_rms, dx_max = dq_to_dx(intcos, geom, dq, print_lvl > 2, op.Params.bt_pinv_rcond)
+        dx_rms, dx_max = dq_to_dx(intcos, geom, dq, print_lvl > 2)
 
         # Met convergence thresholds
         if dx_rms < bt_dx_conv and dx_max < bt_dx_conv:
@@ -395,7 +395,7 @@ def back_transformation(
 # B (dx) = B * [Bt (B Bt)^-1 dq]
 #   dx = Bt (B Bt)^-1 dq
 #   dx = Bt G^-1 dq, where G = B B^t.
-def dq_to_dx(intcos, geom, dq, printDetails, pinv_rcond):
+def dq_to_dx(intcos, geom, dq, printDetails):
     """Convert dq to dx.  Geometry is updated
 
     Parameters
@@ -414,10 +414,8 @@ def dq_to_dx(intcos, geom, dq, printDetails, pinv_rcond):
     """
     B = intcosMisc.Bmat(intcos, geom)
     G = B @ B.T
-    Ginv = np.linalg.pinv(G, rcond=pinv_rcond)
+    Ginv = symm_mat_inv(G, redundant=True, smallValLimit = op.Params.bt_pinv_rcond)
     dx = B.T @ Ginv @ dq
-    # large values in Ginv indicate rcond needs adjusted
-    # logger.debug("Ginv matrix:\n" + print_mat_string(Ginv))
 
     if printDetails:
         qOld = intcosMisc.q_values(intcos, geom)
