@@ -286,7 +286,10 @@ class OptParams(object):
         self.bt_max_iter = uod.get("bt_max_iter", 25)
         self.bt_dx_conv = uod.get("bt_dx_conv", 1.0e-7)
         self.bt_dx_rms_change_conv = uod.get("bt_dx_rms_change_conv", 1.0e-12)
-        self.bt_pinv_rcond = uod.get("bt_pinv_rcond", 1.0e-7)
+        # The following should be used whenever redundancies in the coordinates
+        # are removed, in particular when forces and Hessian are projected and
+        # in back-transformation from delta(q) to delta(x).
+        self.bt_pinv_rcond = uod.get("bt_pinv_rcond", 1.0e-6)
         #
         # For multi-fragment molecules, treat as single bonded molecule or via interfragment
         # coordinates. A primary difference is that in ``MULTI`` mode, the interfragment
@@ -456,7 +459,7 @@ class OptParams(object):
 
         # Threshold for which entries in diagonalized redundant matrix are kept and
         # inverted while computing a generalized inverse of a matrix
-        self.redundant_eval_tol = 1.0e-10
+        self.redundant_eval_tol = 1.0e-10 # to be deprecated.
         #
         # --- SET INTERNAL OPTIMIZATION PARAMETERS ---
         self.i_max_force = False

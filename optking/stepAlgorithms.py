@@ -721,14 +721,16 @@ class RestrictedStepRFO(RFO):
 
         # scale RFO matrix leaving the last row unchanged, compute eigenvectors
         SRFOmat[:-1, :-1] = RFOmat[:-1, :-1] / alpha
-        SRFOmat[-1, :-1] = RFOmat[-1, :-1] / alpha**0.5
-        SRFOmat[:-1, -1] = RFOmat[:-1, -1] / alpha**0.5
+        # in case alpha goes negative, this prevents warnings
+        rootAlpha = np.sign(alpha) * (np.abs(alpha))**0.5
+        SRFOmat[-1, :-1] = RFOmat[-1, :-1] / rootAlpha
+        SRFOmat[:-1, -1] = RFOmat[:-1, -1] / rootAlpha
         SRFOevals, SRFOevects = symm_mat_eig(SRFOmat)
 
         SRFOevects = self._intermediate_normalize(SRFOevects)
 
         # transform step back.
-        scale_mat = np.diag(np.repeat(1 / alpha**0.5, dim1))
+        scale_mat = np.diag(np.repeat(1 / rootAlpha, dim1))
         scale_mat[-1, -1] = 1
         # SRFOevects = np.einsum("ij, jk -> ik", scale_mat, SRFOevects)
         SRFOevects = np.transpose(scale_mat @ np.transpose(SRFOevects))

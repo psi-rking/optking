@@ -828,7 +828,7 @@ class Molsys(object):
         Nint = self.num_intcos
         # compute projection matrix = G G^-1
         G = self.Gmat()
-        G_inv = symm_mat_inv(G, redundant=True)
+        G_inv = symm_mat_inv(G, redundant=True, smallValLimit=op.Params.bt_pinv_rcond)
         Pprime = G @ G_inv
         # Add constraints to projection matrix
         # fq is passed to Supplement matrix with ranged variables that are at their limit
@@ -837,7 +837,7 @@ class Molsys(object):
         if C is not None:
             logger.debug("Adding constraints for projection.\n" + print_mat_string(C))
             CPC = C @ Pprime @ C
-            CPCInv = symm_mat_inv(CPC, redundant=True)
+            CPCInv = symm_mat_inv(CPC, redundant=True, smallValLimit=op.Params.bt_pinv_rcond)
             P = Pprime - Pprime @ C @ CPCInv @ C @ Pprime
         else:
             P = Pprime
