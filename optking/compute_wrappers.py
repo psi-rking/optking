@@ -22,12 +22,13 @@ class ComputeWrapper:
 
     """
 
-    def __init__(self, molecule, model, keywords, program):
+    def __init__(self, molecule, model, keywords, program, config=None):
 
         self.molecule = molecule
         self.model = model
         self.keywords = keywords
         self.program = program
+        self.config = config if config else {}
         self.trajectory = []
         self.energies = []
 
@@ -151,12 +152,12 @@ class QCEngineComputer(ComputeWrapper):
 
         inp = self.generate_schema_input(driver)
 
-        local_options = {}
-        if self.program == "psi4":
-            import psi4
+        local_options = self.config #{}
+        #if self.program == "psi4":
+        #    import psi4
 
-            local_options["memory"] = psi4.core.get_memory() / 1000000000
-            local_options["ncores"] = psi4.core.get_num_threads()
+        #    local_options["memory"] = psi4.core.get_memory() / 1000000000
+        #    local_options["ncores"] = psi4.core.get_num_threads()
 
         ret = qcengine.compute(inp, self.program, True, local_options)
         return ret
