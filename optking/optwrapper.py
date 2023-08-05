@@ -204,12 +204,13 @@ def make_computer(opt_input: dict, computer_type):
     qc_input = opt_input["input_specification"]
     options = qc_input["keywords"]
     model = qc_input["model"]
+    config = opt_input["input_specification"]["extras"]["_qcengine_local_config"]
 
     if computer_type == "psi4":
         # Please note that program is not actually used here
         return Psi4Computer(molecule, model, options, program)
     elif computer_type == "qc":
-        return QCEngineComputer(molecule, model, options, program)
+        return QCEngineComputer(molecule, model, options, program, config)
     elif computer_type == "user":
         logger.info("Creating a UserComputer")
         return UserComputer(molecule, model, options, program)
