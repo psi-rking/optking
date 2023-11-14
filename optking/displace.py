@@ -159,12 +159,13 @@ def displace_frag(F, dq_in, ensure_convergence=False):
 
     Returns
     -------
-    tuple(np.ndarray, bool) : dq achieved, conv and frozen_conv
+    np.ndarray: dq achieved
+    bool : conv and frozen_conv
     """
     geom = F.geom
     dq = dq_in.copy()
     if not F.num_intcos or not len(geom) or not len(dq_in):
-        return dq and True
+        return dq, True
 
     geom_orig = np.copy(geom)
     q_orig = F.q_array()
