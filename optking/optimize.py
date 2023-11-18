@@ -48,6 +48,7 @@ def optimize(o_molsys, computer):
     logger = logging.getLogger(__name__)
 
     H = 0  # hessian in internals
+    fq = 0
 
     opt_history = history.History(op.Params)
 
@@ -69,7 +70,9 @@ def optimize(o_molsys, computer):
                 opt_object.check_maxiter()  # raise error otherwise continue
 
             except AlgError as AF:
-                opt_object.alg_error_handler(AF)
+                if H == 0 or fq == 0:
+                    raise OptError("Failed to compute Hessian and Forces")
+                opt_object.alg_error_handler(H, fq, AF)
         qc_output = opt_object.finish(error=None)
         return qc_output
 
@@ -117,6 +120,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         self.erase_hessian = False
         self.check_linesearch = True
         self.error = None
+        self.protocol = {"protocol": None, "step_number": -100} # Just a number that will never occur naturally
 
     def to_dict(self):
         """Convert attributes to serializable form."""
@@ -203,7 +207,8 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         logger.info(header)
 
         requirements = self.opt_method.requires()
-        protocol = self.get_hessian_protocol()
+        hessian_protocol = self.get_hessian_protocol(self.step_number)
+        protocol = hessian_protocol["protocol"]
         H, g_q, g_x, E = get_pes_info(H, self.computer, self.molsys, self.history, self.params, protocol, requirements)
 
         logger.info("%s", print_geom_grad(self.molsys.geom, g_x))
@@ -311,7 +316,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
                 "OptError",
             )
 
-    def get_hessian_protocol(self):
+    def get_hessian_protocol(self, step_number):
         """Determine action to take for how to compute a hessian. Handles alternate IRC behavior
 
         Returns
@@ -320,33 +325,49 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
 
         """
 
+        # Check whether the protocol has already been generated for this
+        # step. This method needs to be called (potentially) multiple times and
+        # flags like self.erase_hessian will be reset once a protocol is created.
+        # Saving the protocol allows for this method to be called
+        # multiple times for a single step with consistent output
+        if step_number == self.protocol.get("step_number"):
+            return self.protocol
+
+        # Have not called method yet for this step. Create new protocol
+        self.protocol = {"protocol": None, "step_number": step_number}
+
         if "hessian" not in self.opt_method.requires():
-            return "unneeded"
+            self.protocol.update({"protocol": "uneeded"})
+            return self.protocol
 
         if self.erase_hessian is True:
             self.erase_hessian = False
-            return "compute" if self.params.full_hess_every > 0 else "guess"
+            action = "compute" if self.params.full_hess_every > 0 else "update"
+            self.protocol.update({"protocol": action}) 
+            return self.protocol
 
         if self.params.cart_hess_read:
-            return "compute"
+            self.protocol.update({"protocol": "compute"})
+            return self.protocol
 
         if self.step_number <= 1:
             if self.params.opt_type != "IRC":
                 if self.params.full_hess_every > -1:  # compute hessian at least once.
-                    protocol = "compute"
+                    action = "compute"
                 else:
-                    protocol = "guess"
+                    action = "guess"
             else:  # IRC
-                protocol = "compute"
+                action = "compute"
         else:
             if self.params.full_hess_every < 1:
-                protocol = "update"
+                action = "update"
             elif (self.step_number - 1) % self.params.full_hess_every == 0:
-                protocol = "compute"
+                action = "compute"
             else:
-                protocol = "update"
+                action = "update"
 
-        return protocol
+        self.protocol.update({"protocol": action})
+        return self.protocol
 
     def clear(self):
         """Reset history (inculding all steps) and molecule"""
@@ -356,7 +377,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         self.history.steps_since_last_hessian = 0
         self.history.consecutive_backsteps = 0
 
-    def alg_error_handler(self, error):
+    def alg_error_handler(self, H, fq, error):
         """consumes an AlgError. Takes appropriate action"""
         logger.error(" Caught AlgError exception\n")
         eraseIntcos = False
@@ -364,6 +385,11 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         if error.linearBends:
             # New linear bends detected; Add them, and continue at current level.
             # from . import bend # import not currently being used according to IDE
+
+            # Convert the Updated Hessian back into internal coordinates
+            Hx = self.molsys.hessian_to_cartesians(H, -1 * fq)
+            gx = self.molsys.gradient_to_cartesians(-1 * fq)
+
             for l in error.linearBends:
                 if l.bend_type == "LINEAR":  # no need to repeat this code for "COMPLEMENT"
                     iF = addIntcos.check_fragment(l.atoms, self.molsys)
@@ -371,6 +397,10 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
                     intcosMisc.remove_old_now_linear_bend(l.atoms, F.intcos)
                     F.add_intcos_from_connectivity()
             eraseHistory = True
+
+            # Convert the Hessian back into the new coordinate system
+            self.H = self.molsys.hessian_to_internals(Hx, gx)
+            
         elif self.params.dynamic_level == self.params.dynamic_level_max:
             logger.critical("\n\t Current algorithm/dynamic_level is %d.\n" % self.params.dynamic_level)
             logger.critical("\n\t Alternative approaches are not available or turned on.\n")
@@ -397,7 +427,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
             self.erase_hessian = True
 
         self.error = "AlgError"
-
+    
     def opt_error_handler(self, error):
         """OptError indicates an unrecoverable error. Print information and trigger cleanup."""
         logger.critical("\tA critical optimization-specific error has occured.")
