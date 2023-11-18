@@ -99,9 +99,9 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
                 self.molsys,
                 dq,
                 fq,
-                ensure_convergence=True,
+                **self.params.__dict__,
                 return_str=True,
-                print_lvl=self.params.print_lvl
+                ensure_convergence=True
             )
             logger.info("IRC Constrained step calculation finished.")
 
@@ -188,9 +188,9 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
             self.molsys,
             dq_pivot,
             fq,
+            **self.params.__dict__,
             ensure_convergence=True,
-            return_str=return_str,
-            print_lvl=self.params.print_lvl
+            return_str=True
         )
         x_pivot = self.molsys.geom
         q_pivot = self.molsys.q_array()
@@ -199,7 +199,7 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
         # Step again to get initial guess for next step.  Leave geometry in o_molsys.
         logger.info("Computing Dq to First Guess Point")
         logger.debug(print_array_string(dq_pivot))
-        # x_guess = x_pivot.copy() unused
+        x_guess = x_pivot.copy()
         # displace(o_molsys.intcos, x_guess, dq_pivot, ensure_convergence=True)
         dq2, dx2, return_str2 = displace_molsys(
             self.molsys,
