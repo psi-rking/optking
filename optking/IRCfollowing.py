@@ -95,7 +95,14 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
 
             self.history.append(self.molsys.geom, energy, fq, self.molsys.gradient_to_cartesians(-1 * fq))
             dq = self.dq_irc(fq, H)
-            dq, dx, return_str = displace_molsys(self.molsys, dq, fq, ensure_convergence=True, return_str=True)
+            dq, dx, return_str = displace_molsys(
+                self.molsys,
+                dq,
+                fq,
+                ensure_convergence=True,
+                return_str=True,
+                print_lvl=self.params.print_lvl
+            )
             logger.info("IRC Constrained step calculation finished.")
 
             # Complete history entry of step.
@@ -178,7 +185,12 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
 
         # revisit
         dq1, dx1, return_str1 = displace_molsys(
-            self.molsys, dq_pivot, fq, ensure_convergence=True, return_str=return_str
+            self.molsys,
+            dq_pivot,
+            fq,
+            ensure_convergence=True,
+            return_str=return_str,
+            print_lvl=self.params.print_lvl
         )
         x_pivot = self.molsys.geom
         q_pivot = self.molsys.q_array()
@@ -187,10 +199,15 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
         # Step again to get initial guess for next step.  Leave geometry in o_molsys.
         logger.info("Computing Dq to First Guess Point")
         logger.debug(print_array_string(dq_pivot))
-        x_guess = x_pivot.copy()
+        # x_guess = x_pivot.copy() unused
         # displace(o_molsys.intcos, x_guess, dq_pivot, ensure_convergence=True)
         dq2, dx2, return_str2 = displace_molsys(
-            self.molsys, dq_pivot, fq, ensure_convergence=True, return_str=return_str
+            self.molsys,
+            dq_pivot,
+            fq,
+            ensure_convergence=True,
+            return_str=return_str,
+            print_lvl=self.params.print_lvl
         )
         # self.molsys.geom = x_guess
         if return_str:

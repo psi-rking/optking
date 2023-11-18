@@ -175,7 +175,12 @@ class OptimizationAlgorithm(OptimizationInterface):
 
         self.molsys.interfrag_dq_discontinuity_correction(dq)
         achieved_dq, achieved_dx, return_str = displace_molsys(
-            self.molsys, dq, fq, ensure_convergence=self.params.ensure_bt_convergence, return_str=return_str
+            self.molsys,
+            dq,
+            fq,
+            ensure_convergence=self.params.ensure_bt_convergence,
+            return_str=return_str,
+            print_lvl=self.params.print_lvl
         )
         dq_norm, unit_dq, projected_fq, projected_hess = self.step_metrics(achieved_dq, fq, H)
         delta_energy = self.expected_energy(dq, fq, H)
