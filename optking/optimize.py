@@ -68,11 +68,11 @@ def optimize(o_molsys, computer):
                 dq = opt_object.take_step(fq, H, energy, return_str=False)
                 converged = opt_object.converged(energy, fq, dq)
                 opt_object.check_maxiter()  # raise error otherwise continue
-
             except AlgError as AF:
-                if H == 0 or fq == 0:
+                if isinstance(H, int) or isinstance(fq, int):
                     raise OptError("Failed to compute Hessian and Forces")
                 opt_object.alg_error_handler(H, fq, AF)
+                H = opt_object.H
         qc_output = opt_object.finish(error=None)
         return qc_output
 
@@ -337,7 +337,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         self.protocol = {"protocol": None, "step_number": step_number}
 
         if "hessian" not in self.opt_method.requires():
-            self.protocol.update({"protocol": "uneeded"})
+            self.protocol.update({"protocol": "unneeded"})
             return self.protocol
 
         if self.erase_hessian is True:
@@ -541,7 +541,7 @@ def get_pes_info(
 
     if hessian_protocol == "update":
         # For update. Compute new gradient. Update with external forces if present. Update the hessian
-        logger.info(f"Updating Hessian with {str(op.Params.hess_update)}")
+        logger.info(f"Updating Hessian with {str(params.hess_update)}")
         result = computer.compute(o_molsys.geom, driver=driver, return_full=False)
         g_x = np.asarray(result) if driver == "gradient" else None
         f_q = o_molsys.gradient_to_internals(g_x, -1.0)

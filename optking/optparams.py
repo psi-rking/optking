@@ -29,7 +29,6 @@ def string_option(storage_name):
 # The keys on the left here should be lower-case, as should the storage name of the property.
 allowedStringOptions = {
     "opt_type": ("MIN", "TS", "IRC"),
-    "step_type": ("RFO", "P_RFO", "NR", "SD", "LINESEARCH", "CONJUGATE"),
     "step_type": ("RFO", "RS_I_RFO", "P_RFO", "NR", "SD", "LINESEARCH", "CONJUGATE"),
     "opt_coordinates": (
         "REDUNDANT",
@@ -366,7 +365,8 @@ class OptParams(object):
         # Assume RFO means P-RFO for transition states.
         if self.opt_type == "TS":
             if self.step_type == "RFO" or "STEP_TYPE" not in uod:
-                self.step_type = "P_RFO"
+                self.step_type = "RS_I_RFO"
+                self.intrafrag_trust = 0.2
 
         if "GEOM_MAXITER" not in uod:
             if self.opt_type == "IRC":

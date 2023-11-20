@@ -200,7 +200,10 @@ def displace_frag(frag, dq_in, **kwargs):
     bool : conv and frozen_conv
     """
 
-    ensure_convergence = kwargs.get("ensure_convergence", False) 
+    ensure_convergence = kwargs.get(
+        "ensure_convergence",
+        kwargs.get("ensure_bt_convergence", False)
+    )
     
     geom = frag.geom
     dq = dq_in.copy()
