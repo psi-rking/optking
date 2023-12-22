@@ -1,6 +1,7 @@
 import logging
 
 import numpy as np
+from itertools import compress
 
 from . import intcosMisc
 from . import optparams as op
@@ -231,14 +232,26 @@ def displace_frag(F, dq_in, ensure_convergence=False):
         qnow = intcosMisc.q_values(F.intcos, geom)
         dq_adjust_frozen = np.zeros(len(F.intcos))
 
+        intcosToConstrainBoolean = [0 for i in range(F.num_intcos)]
         for i, intco in enumerate(F.intcos):
             if intco.frozen:  # cleanup step = -Dq
                 dq_adjust_frozen[i] = q_orig[i] - qnow[i]
+                intcosToConstrainBoolean[i] = 1
             elif intco.ranged:  # put within range
                 if qnow[i] > intco.range_max:
                     dq_adjust_frozen[i] = intco.range_max - qnow[i]
+                    intcosToConstrainBoolean[i] = 1
                 elif qnow[i] < intco.range_min:
                     dq_adjust_frozen[i] = intco.range_min - qnow[i]
+                    intcosToConstrainBoolean[i] = 1
+
+        # Could be streamlined with above, but for now testing to see if helps
+        intcosToConstrain = list(compress(F.intcos, intcosToConstrainBoolean))
+        dqToConstrain = np.asarray(list(compress(dq_adjust_frozen, intcosToConstrainBoolean)))
+        adjust_info = "\nAdjustments to Frozen/Ranged Coordinates Needed:\n"
+        for l,v in zip([str(i) for i in intcosToConstrain], dqToConstrain):
+            adjust_info += f'{l:>8s}{v:10.6f}\n'
+        logger.info(adjust_info)
 
         # For stability try scaling the adjustment if its quite long.
         # Slow progress towards the constraint is better than none
@@ -249,9 +262,9 @@ def displace_frag(F, dq_in, ensure_convergence=False):
         frozen_msg = "\tAdditional back-transformation to adjust frozen/ranged coordinates: "
 
         frozen_conv = back_transformation(
-            F.intcos,
+            intcosToConstrain, #F.intcos,
             geom,
-            dq_adjust_frozen,
+            dqToConstrain, # dq_adjust_frozen,
             op.Params.print_lvl - 1,  # suppress printing
             bt_dx_conv=1.0e-12,
             bt_dx_rms_change_conv=1.0e-12,
