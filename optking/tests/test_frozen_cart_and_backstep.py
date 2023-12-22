@@ -2,6 +2,9 @@ import psi4
 import optking
 import pytest
 from .utils import utils
+import numpy as np
+from qcelemental import constants
+bohr2angstroms = constants.bohr2angstroms
 
 #! Various constrained energy minimizations of HOOH with cc-pvdz RHF.
 #! Cartesian-coordinate constrained optimizations of HOOH in Cartesians.
@@ -98,10 +101,57 @@ def test_frozen_cart_h2o(check_iter):
 
     json_output = optking.optimize_psi4("hf")
 
+    optGeom = bohr2angstroms*np.asarray(json_output['final_molecule']['geometry']).reshape(-1,3)
+
     thisenergy = json_output["energies"][-1]
     assert psi4.compare_values(-76.0270327834836, thisenergy, 6, "RHF Energy")
-    assert psi4.compare_values(h2o.x(0), 1.88972613289, 6, "X Frozen coordinate")
-    assert psi4.compare_values(h2o.y(0), 1.88972613289, 6, "Y Frozen coordinate")
-    assert psi4.compare_values(h2o.z(0), 1.88972613289, 6, "Z Frozen coordinate")
+    assert psi4.compare_values(optGeom[0,0], 1.0, 6, "X Frozen coordinate")
+    assert psi4.compare_values(optGeom[0,1], 1.0, 6, "Y Frozen coordinate")
+    assert psi4.compare_values(optGeom[0,2], 1.0, 6, "Z Frozen coordinate")
 
     utils.compare_iterations(json_output, 6, check_iter)
+
+
+#! test h2o dimer with frozen oxygen atoms
+def test_frozen_cart_h2o_dimer(check_iter):
+    h2oDimer = psi4.geometry(
+        """
+        O   -0.3289725   -1.4662712    0.0000000
+        H   -1.3007725   -1.5158712    0.0000000
+        H    0.0634274    0.4333287    0.0000000
+        O    0.3010274    1.3644287    0.0000000
+        H    0.8404274    1.3494287    0.7893000
+        H    0.8404274    1.3494287   -0.7893000
+        units = angstrom
+        no_com
+        no_reorient
+        """
+    )
+    inputGeom= np.asarray(h2oDimer.geometry())
+
+    psi4.core.clean_options()
+    psi4_options = {
+        "basis": "cc-pVDZ",
+        "optking__g_convergence": "gau_tight",
+        "optking__frozen_cartesian": """ 1 xyz 4 xyz """,
+        "optking__geom_maxiter": 40,
+    }
+    psi4.set_options(psi4_options)
+
+    json_output = optking.optimize_psi4("mp2")
+
+    optGeom = np.asarray(json_output['final_molecule']['geometry']).reshape(-1,3)
+
+    thisenergy = json_output["energies"][-1]  # TEST
+    assert psi4.compare_values(-152.47381494, thisenergy, 8, "MP2 Energy")
+
+    assert psi4.compare_values(inputGeom[0,0], optGeom[0,0], 6, "O1 X Frozen coordinate")
+    assert psi4.compare_values(inputGeom[0,1], optGeom[0,1], 6, "O1 Y Frozen coordinate")
+    assert psi4.compare_values(inputGeom[0,2], optGeom[0,2], 6, "O1 Z Frozen coordinate")
+    assert psi4.compare_values(inputGeom[3,0], optGeom[3,0], 6, "O2 X Frozen coordinate")
+    assert psi4.compare_values(inputGeom[3,1], optGeom[3,1], 6, "O2 Y Frozen coordinate")
+    assert psi4.compare_values(inputGeom[3,2], optGeom[3,2], 6, "O2 Z Frozen coordinate")
+    assert np.abs(inputGeom[1,0] - optGeom[1,0]) > 0.01 # Check a not-frozen coordinate.
+
+    utils.compare_iterations(json_output, 25, True)
+
