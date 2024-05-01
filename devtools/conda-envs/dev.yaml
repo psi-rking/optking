@@ -1,6 +1,5 @@
 name: test
 channels:
-  - psi4/label/dev
   - conda-forge
   - defaults
 dependencies:
@@ -15,7 +14,8 @@ dependencies:
   - pytest
   - pytest-cov
   - psi4
-  - dftd3
+  - simple-dftd3
+  - dftd3-python
   - codecov
 
    # Dev
