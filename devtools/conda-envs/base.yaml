@@ -12,6 +12,6 @@ dependencies:
     # Testing
   - pytest
   - pytest-cov
-  - psi4
+  - psi4 1.9.1
   - dftd3-python
   - codecov
