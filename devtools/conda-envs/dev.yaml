@@ -1,7 +1,7 @@
 name: test
 channels:
   - conda-forge
-  - defaults
+  - nodefaults
 dependencies:
     # Base
   - numpy
@@ -14,7 +14,6 @@ dependencies:
   - pytest
   - pytest-cov
   - psi4
-  - simple-dftd3
   - dftd3-python
   - codecov
 
