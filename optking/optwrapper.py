@@ -201,9 +201,17 @@ def make_computer(opt_input: dict, computer_type):
 
     # This gets updated so it shouldn't be a reference
     molecule = copy.deepcopy(opt_input["initial_molecule"])
-    qc_input = opt_input["input_specification"]
-    options = qc_input["keywords"]
-    model = qc_input["model"]
+
+    # Sorting by spec_schema_name isn't foolproof b/c opt_input might not be a
+    #   constructed model at this point if it's not arriving through QCEngine.
+    spec_schema_name = opt_input["input_specification"].get("schema_name", "qcschema_input")
+    if spec_schema_name == "qcschema_manybodyspecification":
+        model = "(proc_spec_in_options)"
+        options = opt_input["input_specification"]
+    else:
+        qc_input = opt_input["input_specification"]
+        options = qc_input["keywords"]
+        model = qc_input["model"]
 
     if computer_type == "psi4":
         # Please note that program is not actually used here

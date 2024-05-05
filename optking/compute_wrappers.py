@@ -60,6 +60,13 @@ class ComputeWrapper:
 
         return inp
 
+    def generate_schema_input_for_procedure(self, driver):
+        molecule = Molecule(**self.molecule)
+        mbspec = self.keywords
+        mbspec["driver"] = driver
+
+        return {"molecule": molecule, "specification": mbspec}
+
     def _compute(self, driver):
         """Abstract style method for child classes"""
         pass
@@ -149,8 +156,6 @@ class QCEngineComputer(ComputeWrapper):
 
         import qcengine
 
-        inp = self.generate_schema_input(driver)
-
         local_options = {}
         if self.program == "psi4":
             import psi4
@@ -158,7 +163,16 @@ class QCEngineComputer(ComputeWrapper):
             local_options["memory"] = psi4.core.get_memory() / 1000000000
             local_options["ncores"] = psi4.core.get_num_threads()
 
-        ret = qcengine.compute(inp, self.program, True, local_options)
+        if self.model == "(proc_spec_in_options)":
+            logger.debug("QCEngineComputer.path: ManyBody")
+            inp = self.generate_schema_input_for_procedure(driver)
+            ret = qcengine.compute_procedure(inp, "qcmanybody", True, local_options)
+
+        else:
+            logger.debug("QCEngineComputer.path: Atomic")
+            inp = self.generate_schema_input(driver)
+            ret = qcengine.compute(inp, self.program, True, local_options)
+
         return ret
 
 
