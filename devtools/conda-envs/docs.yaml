@@ -7,7 +7,7 @@ dependencies:
   - python
   - qcelemental
   - msgpack-python
-  - sphinx
-  - sphinx-automodapi
-  - sphinx_rtd_theme
-  - graphviz
+  - sphinx=7.3.7
+  - sphinx-automodapi=0.16
+  - sphinx_rtd_theme=2.0.0
+  - graphviz=9.0.0
