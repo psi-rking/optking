@@ -314,6 +314,7 @@ def displace_frag(frag, dq_in, **kwargs):
             **kwargs
             )
 
+        # unsuppress printing for the next stage
         kwargs.update({"print_lvl": kwargs.get("print_lvl", 0) + 1})
         frag.unfix_bend_axes()
 
