@@ -1,0 +1,17 @@
+{"initial_molecule": {"fragment_charges": [1, -1], "fragments": [[0], [1]], "geometry": [0.0, 0.0, 0.0, 0.0, 0.0, 3.0], "symbols": ["Li", "F"]},
+ "input_specification": {"driver": "energy",
+                         "schema_name": "qcschema_manybodyspecification",
+                         "keywords": {"bsse_type": "cp", "supersystem_ie_only": true},
+                         "protocols": {"component_results": "all"},
+                         "specification": {"driver": "energy",
+                                           "extras": {"psiapi": true},
+                                           "keywords": {},
+                                           "model": {"basis": "6-31g", "method": "hf"},
+                                           "program": "psi4",
+                                           "protocols": {"stdout": false}}},
+ "keywords": {"g_convergence": "interfrag_tight", "program": "psi4"},
+ "protocols": {"trajectory": "final"},
+ "provenance": {"creator": "optking", "routine": "optimize_qcengine", "version": "0.2.1+14.gdc8fd03.dirty"},
+ "schema_name": "qcschema_generalizedoptimizationinput",
+ "schema_version": 1}
+
