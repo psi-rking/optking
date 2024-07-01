@@ -1264,8 +1264,10 @@ def step_matches_forces(dq: np.ndarray, fq: np.ndarray):
 
     # Check for eigenvector values (dq) that are are non-zero where
     # the correspinding forces for that coordinate are zero
-    indices = np.argwhere(np.abs(fq) < 1e-10)
-    if not np.allclose(dq[indices], 0.0):
+    indices = np.argwhere(np.abs(fq) < 1e-12)
+    if not np.allclose(dq[indices], 0.0, rtol=0.0, atol=1e-4):
+        logger.debug("The step has a non-zero component along a coordinate with near-zero force %s",
+                     print_array_string(dq, form=":10.12f"))
         return False
 
     return True
