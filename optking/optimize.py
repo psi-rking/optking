@@ -379,10 +379,11 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
 
     def alg_error_handler(self, H, fq, error):
         """consumes an AlgError. Takes appropriate action"""
+
         logger.error(" Caught AlgError exception\n")
         eraseIntcos = False
 
-        if error.linearBends:
+        if error.linear_bends or error.linear_torsions or error.oofp_failures:
             # New linear bends detected; Add them, and continue at current level.
             # from . import bend # import not currently being used according to IDE
 
@@ -390,17 +391,32 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
             Hx = self.molsys.hessian_to_cartesians(H, -1 * fq)
             gx = self.molsys.gradient_to_cartesians(-1 * fq)
 
-            for l in error.linearBends:
-                if l.bend_type == "LINEAR":  # no need to repeat this code for "COMPLEMENT"
-                    iF = addIntcos.check_fragment(l.atoms, self.molsys)
+            # This takes a more heavy handed approach:
+            # Collect all the bends involved in our problematic coordinates
+            # Then remove all the bends involved in these problematic coordinates as well as the oofps and
+            # torsions. Rely on the add_intcos routine to judge which coordinates should be added back
+            bends = [bend for dihedral in error.linear_torsions for bend in dihedral.bends]
+            bends += [bend for oofp in error.oofp_failures for bend in oofp.bends]
+            bends += error.linear_bends
+
+            logger.info(f"Current bends considered for removal: {bends}")
+
+            affected_frags = []
+            for bend in bends:
+                if bend.bend_type != "COMPLEMENT":  # no need to repeat this code for "COMPLEMENT"
+                    iF = addIntcos.check_fragment(bend.atoms, self.molsys)
                     F = self.molsys.fragments[iF]
-                    intcosMisc.remove_old_now_linear_bend(l.atoms, F.intcos)
-                    F.add_intcos_from_connectivity()
+                    affected_frags.append(F)
+                    intcosMisc.remove_old_now_linear_bend(bend.atoms, F.intcos)
+
+            # problematic coordinates are now all removed. Add new coordinates
+            for frag in set(affected_frags):
+                frag.add_intcos_from_connectivity()
             eraseHistory = True
 
             # Convert the Hessian back into the new coordinate system
             self.H = self.molsys.hessian_to_internals(Hx, gx)
-            
+
         elif self.params.dynamic_level == self.params.dynamic_level_max:
             logger.critical("\n\t Current algorithm/dynamic_level is %d.\n" % self.params.dynamic_level)
             logger.critical("\n\t Alternative approaches are not available or turned on.\n")
@@ -636,44 +652,57 @@ def make_internal_coords(o_molsys: Molsys, params: op.OptParams):
     logger.debug("Connectivity Matrix\n" + print_mat_string(connectivity))
 
     if params.frag_mode == "SINGLE":
-        # Make a single, supermolecule.
-        o_molsys.consolidate_fragments()  # collapse into one frag (if > 1)
-        o_molsys.split_fragments_by_connectivity()  # separate by connectivity
-        # increase connectivity until all atoms are connected
-        o_molsys.augment_connectivity_to_single_fragment(connectivity)
-        o_molsys.consolidate_fragments()  # collapse into one frag
+        try:
+            # Make a single, supermolecule.
+            o_molsys.consolidate_fragments()  # collapse into one frag (if > 1)
+            o_molsys.split_fragments_by_connectivity()  # separate by connectivity
+            # increase connectivity until all atoms are connected
+            o_molsys.augment_connectivity_to_single_fragment(connectivity)
+            o_molsys.consolidate_fragments()  # collapse into one frag
 
-        if params.opt_coordinates in ["INTERNAL", "REDUNDANT", "BOTH"]:
-            o_molsys.fragments[0].add_intcos_from_connectivity(connectivity)
-            if params.add_auxiliary_bonds:
-                o_molsys.fragments[0].add_auxiliary_bonds(connectivity)
+            if params.opt_coordinates in ["INTERNAL", "REDUNDANT", "BOTH"]:
+                o_molsys.fragments[0].add_intcos_from_connectivity(connectivity)
+                if params.add_auxiliary_bonds:
+                    o_molsys.fragments[0].add_auxiliary_bonds(connectivity)
+        except AlgError as error:
+            o_molsys.fragments[0]._intcos = []
+            if error.oofp_failures or error.linear_bends or error.linear_torsions:
+                params.opt_coordinates = "CARTESIAN"
 
         if params.opt_coordinates in ["CARTESIAN", "BOTH"]:
             o_molsys.fragments[0].add_cartesian_intcos()
 
     elif params.frag_mode == "MULTI":
-        # if provided multiple frags, then we use these.
-        # if not, then split them (if not connected).
-        if o_molsys.nfragments == 1:
-            o_molsys.split_fragments_by_connectivity()
 
-        if o_molsys.nfragments > 1:
-            addIntcos.add_dimer_frag_intcos(o_molsys)
-            # remove connectivity so that we don't add redundant coordinates
-            # between fragments
-            o_molsys.purge_interfragment_connectivity(connectivity)
+        try:
+            # if provided multiple frags, then we use these.
+            # if not, then split them (if not connected).
+            if o_molsys.nfragments == 1:
+                o_molsys.split_fragments_by_connectivity()
 
-        if params.opt_coordinates in ["INTERNAL", "REDUNDANT", "BOTH"]:
-            for iF, F in enumerate(o_molsys.fragments):
-                C = np.ndarray((F.natom, F.natom))
-                C[:] = connectivity[o_molsys.frag_atom_slice(iF), o_molsys.frag_atom_slice(iF)]
-                F.add_intcos_from_connectivity(C)
-                if params.add_auxiliary_bonds:
-                    F.add_auxiliary_bonds(connectivity)
+            if o_molsys.nfragments > 1:
+                addIntcos.add_dimer_frag_intcos(o_molsys)
+                # remove connectivity so that we don't add redundant coordinates
+                # between fragments
+                o_molsys.purge_interfragment_connectivity(connectivity)
+
+            if params.opt_coordinates in ["INTERNAL", "REDUNDANT", "BOTH"]:
+                for iF, F in enumerate(o_molsys.fragments):
+                    C = np.ndarray((F.natom, F.natom))
+                    C[:] = connectivity[o_molsys.frag_atom_slice(iF), o_molsys.frag_atom_slice(iF)]
+                    F.add_intcos_from_connectivity(C)
+                    if params.add_auxiliary_bonds:
+                        F.add_auxiliary_bonds(connectivity)
+        except AlgError as error:
+            if error.oofp_failures or error.linear_bends or error.linear_torsions:
+                for frag in o_molsys.fragments:
+                    frag._intcos = []
+                params.opt_coordinates = "CARTESIAN"
 
         if params.opt_coordinates in ["CARTESIAN", "BOTH"]:
             for F in o_molsys.fragments:
                 F.add_cartesian_intcos()
+
     addIntcos.add_constrained_intcos(o_molsys)  # make sure these are in the set
     return
 
@@ -698,7 +727,6 @@ def prepare_opt_output(o_molsys, computer, rxnpath=False, error=None):
         qc_output.update({"success": False, "error": {"error_type": error.err_type, "error_message": error.mesg}})
 
     if rxnpath:
-        print(rxnpath)
         qc_output["extras"]["irc_rxn_path"] = rxnpath
         qc_output["final_geometry"] = rxnpath[-2]["x"]
         qc_output["extras"]["final_irc_energy"] = rxnpath[-2]["energy"]

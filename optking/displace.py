@@ -162,7 +162,7 @@ def displace_molsys(
 
     linear_list = linear_bend_check(molsys)
     if linear_list:
-        raise AlgError("New linear angles", newLinearBends=linear_list)
+        raise AlgError("New linear angles", new_linear_bends=linear_list)
 
     # RAK TODO : remember why I want to return dx and what to do with it.
     if return_str:

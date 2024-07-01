@@ -763,7 +763,12 @@ class RestrictedStepRFO(RFO):
             elif step_len < (trust + 1e-5):
                 converged = True
 
-            if np.abs(step_len - trust) < np.abs(best_alpha["steplen"] - trust):
+            # When alpha blows up, the proposed, tiny step if often closer to the trust radius
+            # than the previous, reasonable step that is larger than the trust radius
+            # Don't store these alphas as "best"
+            step_closer = np.abs(step_len - trust) < np.abs(best_alpha["steplen"] - trust)
+            alpha_suitable = fabs(alpha) < self.params.rsrfo_alpha_max
+            if step_closer and alpha_suitable:
                 best_alpha["alpha"] = alpha
                 best_alpha["dq"] = dq
                 best_alpha["steplen"] = step_len
@@ -1104,7 +1109,7 @@ class PartitionedRFO(RFO):
 class ImageRFO(RestrictedStepRFO):
     def __init__(self, molsys, history, params):
         super().__init__(molsys, history, params)
-        self.image_eval = np.zeros(molsys.num_intcos)  # transformed eigenvalue
+        self.image_eval = 0  # transformed eigenvalue
         self.w_tv = np.zeros(
             molsys.num_intcos
         )  # hessian eigenvector corresponding to the transition vector vt
@@ -1125,14 +1130,19 @@ class ImageRFO(RestrictedStepRFO):
             "Transforming the PES with image function to search for a saddlepoint"
         )
 
+        # choose the vector more intelligently - smallest nonzero value (even if 0?)
+        reduced_selection = H_evals[np.where(np.abs(H_evals) > 1e-7)]
+        self.h_tv = reduced_selection[0]  # now we can find the smallest eigenvalue
+        # Get eigenvector by searching Hevals for self.h_tv
+        self.w_tv = H_evects[np.where(H_evals == self.h_tv), :]
+        # self.h_tv = H_evals[0]
         # not a vector product. Matrix product with the two eigenvectors
-        self.w_tv = H_evects[0]
-        self.h_tv = H_evals[0]
-        householder_op = np.eye(len(fq)) - 2 * self.w_tv.reshape(
-            -1, 1
-        ) @ self.w_tv.reshape(1, -1)
+        householder_op = np.eye(len(fq)) - 2 * self.w_tv.reshape(-1, 1) @ self.w_tv.reshape(1, -1)
         fq_image = householder_op @ fq
         H_image = householder_op @ H
+
+        logger.debug("eigenvalue of inverted mode is %s", self.h_tv)
+        logger.debug("Forces transformed with image function %s", print_array_string(fq_image))
 
         # Use entire matrix 0, len(H). No need to partition
         RFO_image_mat = RFO.build_rfo_matrix(0, len(H), fq_image, H_image)
@@ -1208,15 +1218,16 @@ class ImageRFO(RestrictedStepRFO):
         # names reflect those used by Besalu and Bofill
         lower_b = 0
         upper_b = 2
-        de = 0.20
-        di = 0.25
+        de = 0.40
+        di = 0.60
 
         # The de, di, upper_b and lower_b are recommended by B&B.
         # Require that LB < rle < rli < rui < rue < UB
-        r_lower_e = lower_b + de  # 0.75
-        r_lower_i = lower_b + di  # 0.80
-        r_upper_e = upper_b - de  # 1.25
-        r_upper_i = upper_b - di  # 1.20
+                                  # original # current
+        r_lower_e = lower_b + de  # 0.75       0.40
+        r_lower_i = lower_b + di  # 0.80       0.60
+        r_upper_e = upper_b - de  # 1.25       1.60
+        r_upper_i = upper_b - di  # 1.20       1.40
 
         energy_ratio = energy_change / projected_change
         logger.info("\tEnergy ratio = %10.5lf" % energy_ratio)
@@ -1231,7 +1242,7 @@ class ImageRFO(RestrictedStepRFO):
                 logger.debug("Decreasing trust radius")
                 self.decrease_trust_radius()
                 decent = False
-            if r_lower_i < energy_ratio < r_upper_e and in_trust_region:
+            if r_lower_i < energy_ratio < r_upper_i and in_trust_region:
                 logger.debug("Increasing trust radius")
                 self.increase_trust_radius()
                 decent = True
@@ -1243,18 +1254,18 @@ class ImageRFO(RestrictedStepRFO):
 def step_matches_forces(dq: np.ndarray, fq: np.ndarray):
     """Check for eigenvectors from RFO matrix which don't qualitatively match
     the gradient. If the forces are zero along a given coordinate,
-    the eigenvector taken as a step should not displace along that coordinate
+    the eigenvector which will be taken as a step should have a component of 0 along that coordinate
     """
 
     temp = dq.copy()
     # Silence close to zero values in the eigenvectors
-    indices = np.argwhere(np.abs(temp) < 1e-7)
+    indices = np.argwhere(np.abs(temp) < 1e-10)
     temp[indices] = 0.0
 
-    # Check for eigenvector values that are are non-zero where
+    # Check for eigenvector values (dq) that are are non-zero where
     # the correspinding forces for that coordinate are zero
-    indices = np.argwhere(np.abs(fq) < 1e-8)
-    if not np.allclose(fq[indices], 0.0):
+    indices = np.argwhere(np.abs(fq) < 1e-10)
+    if not np.allclose(dq[indices], 0.0):
         return False
 
     return True

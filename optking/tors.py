@@ -6,6 +6,7 @@ import qcelemental as qcel
 
 from . import optparams as op
 from . import v3d
+from . import bend
 from .exceptions import AlgError, OptError
 from .misc import hguess_lindh_rho, string_math_fx
 from .simple import Simple
@@ -149,12 +150,16 @@ class Tors(Simple):
             ext_force = string_math_fx(fstr)
         return cls(a, b, c, d, constraint, near180, range_min, range_max, ext_force)
 
+    @property
+    def bends(self):
+        return [bend.Bend(*self.atoms[:-1]), bend.Bend(*self.atoms[1:])]
+
     # compute angle and return value in radians
     def q(self, geom):
         try:
             tau = v3d.tors(geom[self.A], geom[self.B], geom[self.C], geom[self.D])
         except AlgError as error:
-            raise AlgError("Tors.q: unable to compute torsion value") from error
+            raise AlgError("Tors.q: unable to compute torsion value", new_linear_torsion=[self]) from error
 
         # Extend values domain of torsion angles beyond pi or -pi, so that
         # delta(values) can be calculated
