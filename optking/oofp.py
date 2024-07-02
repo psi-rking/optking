@@ -6,6 +6,7 @@ import qcelemental as qcel
 from . import optparams as op
 from . import v3d
 from . import log_name
+from . import bend
 from .exceptions import AlgError
 from .misc import string_math_fx
 from .simple import Simple
@@ -118,6 +119,10 @@ class Oofp(Simple):
     @property
     def f_show_factor(self):
         return qcel.constants.hartree2aJ * math.pi / 180.0
+
+    @property
+    def bends(self):
+        return [bend.Bend(self.A, self.B, self.C), bend.Bend(self.A, self.B, self.D), bend.Bend(self.C, self.B, self.D)]
 
     def to_dict(self):
         d = {}

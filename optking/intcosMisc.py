@@ -39,9 +39,9 @@ def Bmat(intcos, geom, masses=None):
 def tors_contains_bend(b, t):
     return b.atoms in [
         t.atoms[0:3],
-        list(reversed(t.atoms[0:3])),
+        t.atoms[3::-1],
         t.atoms[1:4],
-        list(reversed(t.atoms[1:4])),
+        t.atoms[4:0:-1],
     ]
 
 

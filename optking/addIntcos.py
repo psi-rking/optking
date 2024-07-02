@@ -390,23 +390,39 @@ def add_oofp_from_connectivity(C, intcos, geom):
                 side.append(N)
 
         if len(side) >= 2:
-            n_oofp = 0
-            errored = False
+            errors = []
             for side1, side2 in combinations(side, 2):
                 try:
-                    val = v3d.oofp(geom[T], geom[V], geom[side1], geom[side2])
+                    _ = v3d.oofp(geom[T], geom[V], geom[side1], geom[side2])
                 except AlgError:
                     logger.warning("Skipping OOFP (%d, %d, %d, %d)", T, V, side1, side2)
-                    errored = True
+                    errors.append([T, V, side1, side2])
                     continue
                 else:
-                    n_oofp += 1
                     oneOofp = oofp.Oofp(T, V, side1, side2)
                     if oneOofp not in intcos:
                         intcos.append(oneOofp)
 
-            if n_oofp == 0 and errored:
-                raise OptError("Tried to add out-of-plane angles but couldn't evaluate any.")
+    # Check all torsions that could not be added. If one or more OOFPs were not added for that
+    # central atom, then place add an improper torsion. Not a fully redundant set but an improper
+    # torsion in addition to the linear bends should be sufficient
+    if errors:
+        covered = False
+        for coord in intcos:
+            if isinstance(coord, oofp.Oofp):
+                if V == coord.atoms[1]:
+                    covered = True
+                if not covered:
+                    try:
+                        im_tors = improper_torsion_around_oofp(
+                            coord.atoms[1],
+                            coord.atoms[0],
+                            coord.atoms[2],
+                            coord.atoms[3]
+                        )
+                        intcos.append(im_tors)
+                    except AlgError:
+                        raise AlgError("Tried to add out-of-plane angles but couldn't evaluate all of them.", oofp_failures=oofp.Oofp(T, V, side1, side2))
 
     return
 
@@ -470,10 +486,12 @@ def linear_bend_check(o_molsys):
                     linear_bends.append(bend.Bend(A, B, C, bend_type="COMPLEMENT"))
 
         missing_bends = [b for b in linear_bends if b not in frag.intcos]
-        bend_report = [f"{b}, already present.\n" if b in missing_bends else f"{b}, missing.\n" for b in linear_bends]
+        bend_report = [f"{b}, already present.\n" if b not in missing_bends else f"{b}, missing.\n" for b in linear_bends]
 
         if missing_bends:
             logger.warning("\n\tThe following linear bends should be present:\n %s", "\t".join(bend_report))
+        # Need to reset this or linear bends will be rechecked for alternate fragments
+        linear_bends = []
 
     return missing_bends
 
@@ -1040,3 +1058,15 @@ def add_dimer_frag_intcos(o_molsys):
         # print('end of add_dimer_frag_intcos')
         # print(o_molsys)
     return
+
+
+def improper_torsion_around_oofp(center, a, b, c, geom):
+    """ To help compensate for missing the oofp. Create an improper torsion which goes from
+    T1-T2-C-T3 where T denotes terminal atoms, C denotes the OOFP center, and T1-C-T3 is linear """
+
+    if v3d.are_collinear(geom[center], geom[a], geom[b]):
+        return tors.Tors(a, c, center, b)
+    elif v3d.are_collinear(geom[center], geom[b], geom[c]):
+        return tors.Tors(b, a, center, c)
+    else:
+        return tors.Tors(a, b, center, c)

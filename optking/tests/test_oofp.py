@@ -61,7 +61,7 @@ def test_ranged_oofp(check_iter):
     E = result["energies"][-1]
 
     assert psi4.compare_values(b3lyp_ranged_oop_30_energy, E, 5, "B3LYP energy")
-    utils.compare_iterations(result, 16, check_iter)
+    utils.compare_iterations(result, 3, check_iter)
 
 
 def test_ext_force_oofp(check_iter):

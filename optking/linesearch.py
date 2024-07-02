@@ -60,6 +60,7 @@ class LineSearch(OptimizationInterface):
         self.step_size = params.linesearch_step
         if params.linesearch_step is None:
             self.step_size = np.linalg.norm(self.history[-2].Dq) / 2
+        self.print_lvl = params.print_lvl
 
     def to_dict(self):
 
@@ -133,7 +134,13 @@ class LineSearch(OptimizationInterface):
             delta_energy = 0
 
         self.molsys.interfrag_dq_discontinuity_correction(dq)
-        achieved_dq, achieved_dx, return_str = displace_molsys(self.molsys, dq, fq, return_str=True)
+        achieved_dq, achieved_dx, return_str = displace_molsys(
+            self.molsys,
+            dq,
+            fq,
+            return_str=True,
+            print_lvl=self.print_lvl
+        )
         achieved_dq_norm = np.linalg.norm(achieved_dq)
         logger.info("\tNorm of achieved step-size %15.10f" % achieved_dq_norm)
 

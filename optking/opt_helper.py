@@ -173,7 +173,7 @@ class Helper(ABC):
         try:
             self.dq, self.step_str = self.opt_manager.take_step(self.fq, self._Hq, self.E, return_str=True)
         except AlgError as e:
-            self.opt_manager.alg_error_handler(e)
+            self.opt_manager.alg_error_handler(self._Hq, self.fq, e)
 
         self.new_geom = self.molsys.geom
         self.step_num += 1
@@ -288,7 +288,7 @@ class Helper(ABC):
             return "FAILED"
 
         if self.opt_manager.error == "AlgError":
-            self.HX = None
+            # self.HX = None
             self._Hq = None
             self.step_num = 0
             return "UNFINISHED-FAILED"
@@ -458,9 +458,11 @@ class CustomHelper(Helper):
 
     def calculations_needed(self):
         """Assume gradient is always needed. Provide tuple with keys for required properties"""
-        hessian_protocol = self.opt_manager.get_hessian_protocol()
+        hessian_protocol = self.opt_manager.get_hessian_protocol(self.step_num)
 
-        if hessian_protocol == "compute":
+        protocol = hessian_protocol.get("protocol")
+
+        if protocol == "compute":
             return "energy", "gradient", "hessian"
         else:
             return "energy", "gradient"
@@ -601,7 +603,8 @@ class EngineHelper(Helper):
 
     def _compute(self):
 
-        protocol = self.opt_manager.get_hessian_protocol()
+        hessian_protocol = self.opt_manager.get_hessian_protocol(self.step_num)
+        protocol = hessian_protocol["protocol"]
         requires = self.opt_manager.opt_method.requires()
 
         self._Hq, _, self.gX, self.E = get_pes_info(
