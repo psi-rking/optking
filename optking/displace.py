@@ -5,6 +5,7 @@ from itertools import compress
 
 from . import intcosMisc
 from .addIntcos import linear_bend_check
+from .molsys import Molsys
 from .exceptions import AlgError, OptError
 from .linearAlgebra import abs_max, rms, symm_mat_inv
 from . import log_name
@@ -24,7 +25,7 @@ logger = logging.getLogger(f"{log_name}{__name__}")
 
 # Displace molecular system
 def displace_molsys(
-        molsys,
+        molsys: Molsys,
         dq_in,
         fq=None,
         **kwargs
@@ -65,12 +66,12 @@ def displace_molsys(
     # Modify dq_in to account for frozen coordinates and ranged coordinates
     # These do not represent desired Delta(q)
     q_in = molsys.q_array()
-    for i, frag in enumerate(molsys.fragments):
+    for f, frag in enumerate(molsys.fragments):
         if frag.frozen:
             # For accounting only, since displace_frag is not called.
-            dq_in[molsys.frag_intco_range(i)] = 0
-            logger.info("\tFragment %d is frozen, so not displacing" % (i + 1))
-        start = molsys.frag_1st_intco(i)
+            dq_in[molsys.frag_intco_range(f)] = 0
+            logger.info("\tFragment %d is frozen, so not displacing" % (f + 1))
+        start = molsys.frag_1st_intco(f)
         for i, intco in enumerate(frag.intcos):
             if intco.frozen:
                 dq_in[start + i] = 0.0
@@ -89,13 +90,13 @@ def displace_molsys(
     q_in = molsys.q_array()  # recompute with limitations above
     q_target = q_in + dq_in
 
-    for i, frag in enumerate(molsys.fragments):
+    for f, frag in enumerate(molsys.fragments):
         if frag.frozen or frag.num_intcos == 0:
             continue
-        logger.info("\tDetermining Cartesian step for fragment %d." % (i + 1))
+        logger.info("\tDetermining Cartesian step for fragment %d." % (f + 1))
         dq_frag, conv = displace_frag(
             frag,
-            dq_in[molsys.frag_intco_slice(i)],
+            dq_in[molsys.frag_intco_slice(f)],
             **kwargs
         )
 
@@ -476,7 +477,7 @@ def dq_to_dx(intcos, geom, dq, **kwargs):
 
     print_details = kwargs.get("print_details", False)
     small_val_limit = kwargs.get("small_val_limit", 1e-6)
-    
+
     B = intcosMisc.Bmat(intcos, geom)
     G = B @ B.T
     Ginv = symm_mat_inv(G, redundant=True, small_val_limit=small_val_limit)
