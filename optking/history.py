@@ -12,7 +12,6 @@ from .molsys import Molsys
 from .linearAlgebra import abs_max, rms, sign_of_double
 from .printTools import print_array_string, print_mat_string
 from . import log_name
-from optking import molsys
 
 logger = logging.getLogger(f"{log_name}{__name__}")
 

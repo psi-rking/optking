@@ -7,10 +7,16 @@ import numpy as np
 import pytest
 import qcelemental as qcel
 
+from qcengine.testing import has_program
+
 au2kcal = qcel.constants.hartree2kcalmol
 
 
 @pytest.mark.dimers
+@pytest.mark.skipif(
+    (has_program("dftd3") or has_program("s-dftd3")) is False,
+    reason="Neither DFTD3 nor s-DFTD3 is findable"
+)
 def test_dimers_mt_tyr_Rscan():
     init_xyz = """
         C       -1.258686      0.546935      0.436840

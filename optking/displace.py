@@ -4,11 +4,10 @@ import numpy as np
 from itertools import compress
 
 from . import intcosMisc
-from . import optparams as op
 from .addIntcos import linear_bend_check
+from .molsys import Molsys
 from .exceptions import AlgError, OptError
 from .linearAlgebra import abs_max, rms, symm_mat_inv
-from .printTools import print_mat_string, print_array_string
 from . import log_name
 
 logger = logging.getLogger(f"{log_name}{__name__}")
@@ -25,41 +24,64 @@ logger = logging.getLogger(f"{log_name}{__name__}")
 
 
 # Displace molecular system
-def displace_molsys(molsys, dq_in, fq=None, ensure_convergence=False, return_str=False):
+def displace_molsys(
+        molsys: Molsys,
+        dq_in,
+        fq=None,
+        **kwargs
+    ):
     """Manage internal coordinate step for a molecular system
     Parameters
     ----------
     oMolsys : Molsys
-              input molecular system
-    dq      : ndarray
-              input coordinate step
-    fq      : forces in internal coordinates (used for printing).
-                passed in au. converted to aJ
+        input molecular system
+    dq : np.ndarray 
+        input coordinatestep
+    fq : np.ndarray
+        forces in internal coordinates (used for printing). passed in au. converted to aJ
+    ensure_convergence : bool (optional)
+        Whether to shrink step until backtransformation converges
+    return_str : bool (optional)
+        Whether to return a string to report (for OptHelper)
+    print_lvl : int (optional)
+        [1, 2, 3, 4, 5] How much output to show. May require DEBUG for logging
+    opt_type : str (optional)
+        default MIN. IRC requires convergence
+    small_val_limit : float (optional)
+        threshold for singular values to not invert
+    bt_dx_conv : float (optional)
+        default : 1.0e-12 how tightly to converge cartesian coordinates in backtransformation
+    bt_dx_rms_change_conv : float (optional)
+        default : 1.0e-12 How tightly to converge change in cartesian coordinates (rms)
+    bt_max_iter : int (optional)
+        default : 100
 
     Returns
     -------
     np.ndarray
     """
 
+    return_str = kwargs.get("return_str", False)
+
     # Modify dq_in to account for frozen coordinates and ranged coordinates
     # These do not represent desired Delta(q)
     q_in = molsys.q_array()
-    for iF, F in enumerate(molsys.fragments):
-        if F.frozen:
+    for f, frag in enumerate(molsys.fragments):
+        if frag.frozen:
             # For accounting only, since displace_frag is not called.
-            dq_in[molsys.frag_intco_range(iF)] = 0
-            logger.info("\tFragment %d is frozen, so not displacing" % (iF + 1))
-        start = molsys.frag_1st_intco(iF)
-        for i, I in enumerate(F.intcos):
-            if I.frozen:
+            dq_in[molsys.frag_intco_range(f)] = 0
+            logger.info("\tFragment %d is frozen, so not displacing" % (f + 1))
+        start = molsys.frag_1st_intco(f)
+        for i, intco in enumerate(frag.intcos):
+            if intco.frozen:
                 dq_in[start + i] = 0.0
-            elif I.ranged:
+            elif intco.ranged:
                 tentative = q_in[start + i] + dq_in[start + i]
-                if tentative > I.range_max:
-                    dq_in[start + i] = I.range_max - q_in[start + i]
+                if tentative > intco.range_max:
+                    dq_in[start + i] = intco.range_max - q_in[start + i]
                     logger.info("\tSetting to max: {:12.7f}".format(dq_in[start + i]))
-                elif tentative < I.range_min:
-                    dq_in[start + i] = I.range_min - q_in[start + i]
+                elif tentative < intco.range_min:
+                    dq_in[start + i] = intco.range_min - q_in[start + i]
                     logger.info("\tSetting to min: {:12.7f}".format(dq_in[start + i]))
                 else:
                     pass  # value within range
@@ -68,18 +90,22 @@ def displace_molsys(molsys, dq_in, fq=None, ensure_convergence=False, return_str
     q_in = molsys.q_array()  # recompute with limitations above
     q_target = q_in + dq_in
 
-    for iF, F in enumerate(molsys.fragments):
-        if F.frozen or F.num_intcos == 0:
+    for f, frag in enumerate(molsys.fragments):
+        if frag.frozen or frag.num_intcos == 0:
             continue
-        logger.info("\tDetermining Cartesian step for fragment %d." % (iF + 1))
-        dq_frag, conv = displace_frag(F, dq_in[molsys.frag_intco_slice(iF)], ensure_convergence)
+        logger.info("\tDetermining Cartesian step for fragment %d." % (f + 1))
+        dq_frag, conv = displace_frag(
+            frag,
+            dq_in[molsys.frag_intco_slice(f)],
+            **kwargs
+        )
 
     for i, DI in enumerate(molsys.dimer_intcos):
         logger.info("\tTaking step for dimer coordinates of fragments %d and %d." % (DI.A_idx + 1, DI.B_idx + 1))
 
-        Axyz = molsys.frag_geom(DI.A_idx)
-        Bxyz = molsys.frag_geom(DI.B_idx)
-        Bxyz[:] = DI.orient_fragment(Axyz, Bxyz, q_target[molsys.dimerfrag_intco_slice(i)])
+        axyz = molsys.frag_geom(DI.A_idx)
+        bxyz = molsys.frag_geom(DI.B_idx)
+        bxyz[:] = DI.orient_fragment(axyz, bxyz, q_target[molsys.dimerfrag_intco_slice(i)])
 
     geom_final = molsys.geom
     # Analyze relative to original input geometry
@@ -137,7 +163,7 @@ def displace_molsys(molsys, dq_in, fq=None, ensure_convergence=False, return_str
 
     linear_list = linear_bend_check(molsys)
     if linear_list:
-        raise AlgError("New linear angles", newLinearBends=linear_list)
+        raise AlgError("New linear angles", new_linear_bends=linear_list)
 
     # RAK TODO : remember why I want to return dx and what to do with it.
     if return_str:
@@ -146,7 +172,7 @@ def displace_molsys(molsys, dq_in, fq=None, ensure_convergence=False, return_str
         return dq, dx
 
 
-def displace_frag(F, dq_in, ensure_convergence=False):
+def displace_frag(frag, dq_in, **kwargs):
     """Converts internal coordinate step into the new cartesian geometry
     Parameters
     ----------
@@ -156,18 +182,37 @@ def displace_frag(F, dq_in, ensure_convergence=False):
     ensure_convergence : bool
         reduce the magntitude of the step size as necessary until the
         iterative back-transformation actually converges.
+    print_lvl : int (optional)
+        [1, 2, 3, 4, 5] How much output to show. May require DEBUG for logging
+    opt_type : str (optional)
+        default MIN. IRC requires convergence
+    small_val_limit : float (optional)
+        threshold for singular values to not invert
+    bt_dx_conv : float (optional)
+        default : 1.0e-12 how tightly to converge cartesian coordinates in backtransformation
+    bt_dx_rms_change_conv : float (optional)
+        default : 1.0e-12 How tightly to converge change in cartesian coordinates (rms)
+    bt_max_iter : int (optional)
+        default : 100
 
     Returns
     -------
-    tuple(np.ndarray, bool) : dq achieved, conv and frozen_conv
+    np.ndarray: dq achieved
+    bool : conv and frozen_conv
     """
-    geom = F.geom
+
+    ensure_convergence = kwargs.get(
+        "ensure_convergence",
+        kwargs.get("ensure_bt_convergence", False)
+    )
+    
+    geom = frag.geom
     dq = dq_in.copy()
-    if not F.num_intcos or not len(geom) or not len(dq_in):
-        return dq and True
+    if not frag.num_intcos or not len(geom) or not len(dq_in):
+        return dq, True
 
     geom_orig = np.copy(geom)
-    q_orig = F.q_array()
+    q_orig = frag.q_array()
 
     best_geom = np.zeros(geom_orig.shape)
     conv = False  # is back-transformation converged?
@@ -181,10 +226,10 @@ def displace_frag(F, dq_in, ensure_convergence=False):
                 logger.info("\tReducing step-size by a factor of %d." % (2 * cnt))
                 dq[:] = dq_in / (2.0 * cnt)
 
-            F.fix_bend_axes()
-            F.update_dihedral_orientations()
-            conv = back_transformation(F.intcos, geom, dq, op.Params.print_lvl)
-            F.unfix_bend_axes()
+            frag.fix_bend_axes()
+            frag.update_dihedral_orientations()
+            conv = back_transformation(frag.intcos, geom, dq, **kwargs)
+            frag.unfix_bend_axes()
 
             if not conv:
                 if cnt == 5:
@@ -205,9 +250,9 @@ def displace_frag(F, dq_in, ensure_convergence=False):
 
                 best_geom[:] = geom
 
-                F.fix_bend_axes()
-                conv = back_transformation(F.intcos, geom, dq, op.Params.print_lvl)
-                F.unfix_bend_axes()
+                frag.fix_bend_axes()
+                conv = back_transformation(frag.intcos, geom, dq, **kwargs)
+                frag.unfix_bend_axes()
 
                 if not conv:
                     logger.warning("\tCouldn't converge this mini-step; quitting with previous geometry.\n")
@@ -215,41 +260,41 @@ def displace_frag(F, dq_in, ensure_convergence=False):
                     break
 
     else:  # try to back-transform, but continue even if desired dq is not achieved
-        F.fix_bend_axes()
-        F.update_dihedral_orientations()
-        conv = back_transformation(F.intcos, geom, dq, op.Params.print_lvl)
-        F.unfix_bend_axes()
+        frag.fix_bend_axes()
+        frag.update_dihedral_orientations()
+        conv = back_transformation(frag.intcos, geom, dq, **kwargs)
+        frag.unfix_bend_axes()
 
-        if op.Params.opt_type == "IRC" and not conv:
+        if kwargs.get("opt_type", "MIN") == "IRC" and not conv:
             raise OptError("Could not take constrained step in an IRC computation.")
 
     # Fix drift/error in any frozen coordinates
     frozen_conv = True
-    if any(intco.frozen for intco in F.intcos) or any(intco.ranged for intco in F.intcos):
+    if any(intco.frozen for intco in frag.intcos) or any(intco.ranged for intco in frag.intcos):
 
-        F.update_dihedral_orientations()
-        F.fix_bend_axes()
-        qnow = intcosMisc.q_values(F.intcos, geom)
-        dq_adjust_frozen = np.zeros(len(F.intcos))
+        frag.update_dihedral_orientations()
+        frag.fix_bend_axes()
+        qnow = intcosMisc.q_values(frag.intcos, geom)
+        dq_adjust_frozen = np.zeros(len(frag.intcos))
 
-        intcosToConstrainBoolean = [0 for i in range(F.num_intcos)]
-        for i, intco in enumerate(F.intcos):
+        constrained_coord_selector = [0] * frag.num_intcos
+        for i, intco in enumerate(frag.intcos):
             if intco.frozen:  # cleanup step = -Dq
                 dq_adjust_frozen[i] = q_orig[i] - qnow[i]
-                intcosToConstrainBoolean[i] = 1
+                constrained_coord_selector[i] = 1
             elif intco.ranged:  # put within range
                 if qnow[i] > intco.range_max:
                     dq_adjust_frozen[i] = intco.range_max - qnow[i]
-                    intcosToConstrainBoolean[i] = 1
+                    constrained_coord_selector[i] = 1
                 elif qnow[i] < intco.range_min:
                     dq_adjust_frozen[i] = intco.range_min - qnow[i]
-                    intcosToConstrainBoolean[i] = 1
+                    constrained_coord_selector[i] = 1
 
         # Could be streamlined with above, but for now testing to see if helps
-        intcosToConstrain = list(compress(F.intcos, intcosToConstrainBoolean))
-        dqToConstrain = np.asarray(list(compress(dq_adjust_frozen, intcosToConstrainBoolean)))
+        constrained_intcos = list(compress(frag.intcos, constrained_coord_selector))
+        constrained_dq = np.asarray(list(compress(dq_adjust_frozen, constrained_coord_selector)))
         adjust_info = "\nAdjustments to Frozen/Ranged Coordinates Needed:\n"
-        for l,v in zip([str(i) for i in intcosToConstrain], dqToConstrain):
+        for l,v in zip([str(i) for i in constrained_intcos], constrained_dq):
             adjust_info += f'{l:>8s}{v:10.6f}\n'
         logger.info(adjust_info)
 
@@ -261,17 +306,18 @@ def displace_frag(F, dq_in, ensure_convergence=False):
 
         frozen_msg = "\tAdditional back-transformation to adjust frozen/ranged coordinates: "
 
+        # suppress printing for the next stage
+        kwargs.update({"print_lvl": kwargs.get("print_lvl", 1) - 1})
         frozen_conv = back_transformation(
-            intcosToConstrain, #F.intcos,
+            constrained_intcos, #F.intcos,
             geom,
-            dqToConstrain, # dq_adjust_frozen,
-            op.Params.print_lvl - 1,  # suppress printing
-            bt_dx_conv=1.0e-12,
-            bt_dx_rms_change_conv=1.0e-12,
-            bt_max_iter=100,
-        )
+            constrained_dq, # dq_adjust_frozen,
+            **kwargs
+            )
 
-        F.unfix_bend_axes()
+        # unsuppress printing for the next stage
+        kwargs.update({"print_lvl": kwargs.get("print_lvl", 0) + 1})
+        frag.unfix_bend_axes()
 
         if frozen_conv:
             frozen_msg += "successful.\n"
@@ -282,15 +328,15 @@ def displace_frag(F, dq_in, ensure_convergence=False):
             logger.warning(frozen_msg)
 
     # Make sure final Dq is actual change
-    q_final = intcosMisc.q_values(F.intcos, geom)
+    q_final = intcosMisc.q_values(frag.intcos, geom)
     dq[:] = q_final - q_orig
 
-    if op.Params.print_lvl >= 1:
+    if kwargs.get("print_lvl", 1) >= 1:
         frag_report = "\tReport of back-transformation: (au)\n"
         frag_report += "\n\t  int       q_final         q_target          Error\n"
         frag_report += "\t---------------------------------------------------\n"
         q_target = q_orig + dq_in
-        for i in range(F.num_intcos):
+        for i in range(frag.num_intcos):
             frag_report += "\t%5d%15.10lf%15.10f%15.10lf\n" % (
                 i + 1,
                 q_final[i],
@@ -307,20 +353,17 @@ def back_transformation(
     intcos,
     geom,
     dq,
-    print_lvl,
-    bt_dx_conv=None,
-    bt_dx_rms_change_conv=None,
-    bt_max_iter=None,
+    **kwargs
 ):
 
-    dx_rms_last = -1
-    if bt_dx_conv is None:
-        bt_dx_conv = op.Params.bt_dx_conv
-    if bt_dx_rms_change_conv is None:
-        bt_dx_rms_change_conv = op.Params.bt_dx_rms_change_conv
-    if bt_max_iter is None:
-        bt_max_iter = op.Params.bt_max_iter
+    print_lvl = kwargs.get("print_lvl", 1)
+    bt_dx_conv = kwargs.get("bt_dx_conv", 1.0e-12)
+    bt_dx_rms_change_conv = kwargs.get("bt_dx_rms_change_conv", 1.0e-12)
+    bt_max_iter = kwargs.get("bt_max_iter", 100)
+    kwargs.update({"print_details": print_lvl > 2})
 
+    dx_rms_last = -1
+    dq_rms, dx_rms, dx_max, best_dq_rms = 0.0, 0.0, 0.0, 0.0
     q_orig = intcosMisc.q_values(intcos, geom)
     q_target = q_orig + dq
 
@@ -334,6 +377,7 @@ def back_transformation(
                 dq[i],
             )
         logger.debug(target_step_str)
+    step_iter_str = ""
 
     if print_lvl > 0:
         step_iter_str = "\n\t             Back Transformation Report            "
@@ -351,7 +395,7 @@ def back_transformation(
     while bt_iter_continue:
 
         # dq_rms = rms(dq)
-        dx_rms, dx_max = dq_to_dx(intcos, geom, dq, print_lvl > 2)
+        dx_rms, dx_max = dq_to_dx(intcos, geom, dq, **kwargs)
 
         # Met convergence thresholds
         if dx_rms < bt_dx_conv and dx_max < bt_dx_conv:
@@ -362,18 +406,18 @@ def back_transformation(
             bt_converged = False
             bt_iter_continue = False
 
-        dx_rms_last = dx_rms
-
         new_q = intcosMisc.q_values(intcos, geom)
         dq[:] = q_target - new_q
         del new_q
 
+        dx_rms_last = dx_rms
         dq_rms = rms(dq)
         if bt_iter_cnt == 0 or dq_rms < best_dq_rms:  # short circuit evaluation
             best_geom[:] = geom
             best_dq_rms = dq_rms
 
-        if print_lvl > 2:
+        # if print_lvl > 2:
+        if step_iter_str:
             step_iter_str += "\t%5d %14.1e %14.1e %14.1e\n" % (
                 bt_iter_cnt + 1,
                 dx_rms,
@@ -408,7 +452,7 @@ def back_transformation(
 # B (dx) = B * [Bt (B Bt)^-1 dq]
 #   dx = Bt (B Bt)^-1 dq
 #   dx = Bt G^-1 dq, where G = B B^t.
-def dq_to_dx(intcos, geom, dq, printDetails):
+def dq_to_dx(intcos, geom, dq, **kwargs):
     """Convert dq to dx.  Geometry is updated
 
     Parameters
@@ -417,6 +461,11 @@ def dq_to_dx(intcos, geom, dq, printDetails):
     geom : ndarray
         cartesian geometry updated to new geometry
     dq : displacement in internal coordinates
+    print_details : bool
+        whether to print the attempted and achieved dq
+    small_val_limit : float
+        tolerance for inversion of singular values. This argument corresponds to rcond in
+        numpy.linalg.pinv()
 
     Returns
     -------
@@ -425,18 +474,50 @@ def dq_to_dx(intcos, geom, dq, printDetails):
     float :
         absolute maximum of cartesian displacement
     """
+
+    print_details = kwargs.get("print_details", False)
+    small_val_limit = kwargs.get("small_val_limit", 1e-6)
+
     B = intcosMisc.Bmat(intcos, geom)
     G = B @ B.T
-    Ginv = symm_mat_inv(G, redundant=True, smallValLimit = op.Params.bt_pinv_rcond)
+    Ginv = symm_mat_inv(G, redundant=True, small_val_limit=small_val_limit)
     dx = B.T @ Ginv @ dq
 
-    if printDetails:
-        qOld = intcosMisc.q_values(intcos, geom)
+    # If the step in cartesian coordinates is irregularly large,
+    # recompute the step in internal coordinates with a more agressive check for small singular
+    # values in the B matrix
+    dq_len = np.linalg.norm(dq)
+    dx_len = np.linalg.norm(dx)
+    if dx_len > 10 * dq_len:
+
+        logger.debug(
+            "Cartesian step is %f times larger than internal coordinate step",
+            dx_len / dq_len
+        )
+
+        eigvals = np.linalg.eigvalsh(G)
+        largest = np.max(eigvals)
+        threshold = largest * small_val_limit
+        smallest = np.min(eigvals[eigvals > threshold])
+        new_threshold = (smallest/largest + 1e-10)
+
+        # recompute step
+        Ginv = symm_mat_inv(G, redundant = True, small_val_limit=new_threshold)
+        dx = B.T @ Ginv @ dq
+
+        if np.linalg.norm(dx) > 10 * dq_len:
+            raise OptError(
+                "Back transformation failed. Cartesian Step size too large. Please restart from "
+                "the most recent geometry"
+            )
+
+    if print_details:
+        q_old = intcosMisc.q_values(intcos, geom)
 
     geom += dx.reshape(geom.shape)
 
-    if printDetails:
-        dq_achieved = intcosMisc.q_values(intcos, geom) - qOld
+    if print_details:
+        dq_achieved = intcosMisc.q_values(intcos, geom) - q_old
         displacement_str = "\n\t      Report of Single-step\n"
         displacement_str += "\t  int       dq_achieved     deviation from target\n"
         for i in range(len(intcos)):
