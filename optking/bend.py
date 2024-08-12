@@ -85,11 +85,11 @@ class Bend(Simple):
         return s
 
     def __eq__(self, other):
-        if self.atoms != other.atoms:
-            return False
-        elif not isinstance(other, Bend):
+        if not isinstance(other, Bend):
             return False
         elif self.bend_type != other.bend_type:
+            return False
+        elif self.atoms != other.atoms:
             return False
         else:
             return True

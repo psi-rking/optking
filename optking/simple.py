@@ -68,7 +68,6 @@ class Simple(ABC):
 
     @property
     def ext_force(self):
-        print(type(self._ext_force))
         return self._ext_force
 
     # could add checking here later

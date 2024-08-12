@@ -10,7 +10,6 @@ from .addIntcos import add_cartesian_intcos, connectivity_from_distances
 from .exceptions import OptError
 from .linearAlgebra import symm_mat_inv
 from .printTools import print_array_string, print_mat_string
-from . import optparams as op
 from . import log_name
 
 logger = logging.getLogger(f"{log_name}{__name__}")
@@ -660,9 +659,9 @@ class Molsys(object):
     # Returns mass-weighted Bmatrix if use_masses is True.
     def Bmat(self, massWeight=False):
         # Allocate memory for full system.
-        Nint = self.num_intcos
-        Ncart = 3 * self.natom
-        B = np.zeros((Nint, Ncart))
+        n_int = self.num_intcos
+        n_cart = 3 * self.natom
+        B = np.zeros((n_int, n_cart))
 
         for iF, F in enumerate(self._fragments):
             fB = F.Bmat()
@@ -677,14 +676,14 @@ class Molsys(object):
             # xyz = self.geom
             for i, DI in enumerate(self._dimer_intcos):
                 # print('Aidx:' + str(DI.A_idx) )
-                A1stAtom = self.frag_1st_atom(DI.A_idx)
-                B1stAtom = self.frag_1st_atom(DI.B_idx)
-                Axyz = self.frag_geom(DI.A_idx)
-                Bxyz = self.frag_geom(DI.B_idx)
-                DI.Bmat(Axyz, Bxyz, B[self.dimerfrag_intco_slice(i)], 3 * A1stAtom, 3 * B1stAtom)  # column offsets
+                a_atom1 = self.frag_1st_atom(DI.A_idx)
+                b_atom1 = self.frag_1st_atom(DI.B_idx)
+                a_xyz = self.frag_geom(DI.A_idx)
+                b_xyz = self.frag_geom(DI.B_idx)
+                DI.Bmat(a_xyz, b_xyz, B[self.dimerfrag_intco_slice(i)], 3 * a_atom1, 3 * b_atom1)  # column offsets
 
         if massWeight:
-            sqrtm = np.broadcast_to(np.repeat(np.sqrt(self.masses), 3), (Nint, Ncart))
+            sqrtm = np.broadcast_to(np.repeat(np.sqrt(self.masses), 3), (n_int, n_cart))
             B[:] = np.divide(B, sqrtm)
         return B
 
@@ -823,12 +822,11 @@ class Molsys(object):
         Hq = np.dot(Atranspose, np.dot(Hworking, Atranspose.T))
         return Hq
 
-    def project_redundancies_and_constraints(self, fq, H):
+    def project_redundancies_and_constraints(self, fq, H, small_val_limit=1e-6):
         """Project redundancies and constraints out of forces and Hessian"""
-        Nint = self.num_intcos
         # compute projection matrix = G G^-1
         G = self.Gmat()
-        G_inv = symm_mat_inv(G, redundant=True, smallValLimit=op.Params.bt_pinv_rcond)
+        G_inv = symm_mat_inv(G, redundant=True, small_val_limit=small_val_limit)
         Pprime = G @ G_inv
         # Add constraints to projection matrix
         # fq is passed to Supplement matrix with ranged variables that are at their limit
@@ -837,7 +835,7 @@ class Molsys(object):
         if C is not None:
             logger.debug("Adding constraints for projection.\n" + print_mat_string(C))
             CPC = C @ Pprime @ C
-            CPCInv = symm_mat_inv(CPC, redundant=True, smallValLimit=op.Params.bt_pinv_rcond)
+            CPCInv = symm_mat_inv(CPC, redundant=True, small_val_limit=small_val_limit)
             P = Pprime - Pprime @ C @ CPCInv @ C @ Pprime
         else:
             P = Pprime
@@ -846,7 +844,6 @@ class Molsys(object):
         # fq~ = P fq
         fq = P @ fq.T
 
-        # if op.Params.print_lvl >= 3:
         logger.debug(
             "\n\tInternal forces in au, after projection of redundancies"
             + " and constraints.\n"
@@ -925,14 +922,14 @@ class Molsys(object):
                 cart_offset = 3 * self.frag_1st_atom(iF)
                 intco_offset = self.frag_1st_intco(iF)
 
-                for iIntco, Intco in enumerate(F.intcos):
+                for i_intco, intco in enumerate(F.intcos):
                     dq2dx2[:] = 0
-                    Intco.Dq2Dx2(geom, dq2dx2)  # d^2(q_I)/ dx_i dx_j
+                    intco.Dq2Dx2(geom, dq2dx2)  # d^2(q_I)/ dx_i dx_j
 
                     # Loop over Cartesian pairs in fragment
                     for a in range(3 * F.natom):
                         for b in range(3 * F.natom):
-                            Hxy[cart_offset + a, cart_offset + b] += g_q[intco_offset + iIntco] * dq2dx2[a, b]
+                            Hxy[cart_offset + a, cart_offset + b] += g_q[intco_offset + i_intco] * dq2dx2[a, b]
 
             # TODO: dimer coordinates
             if self._dimer_intcos:
@@ -967,20 +964,19 @@ class Molsys(object):
         passes : boolean
             Returns True or False, doesn't raise exceptions
         """
-        Natom = self.natom
-        Nintco = self.num_intcos
+        natom = self.natom
+        nintco = self.num_intcos
         DISP_SIZE = 0.01
-        MAX_ERROR = 50 * DISP_SIZE * DISP_SIZE * DISP_SIZE * DISP_SIZE
+        MAX_ERROR = 50 * DISP_SIZE ** 4
 
         logger.info("\tTesting B-matrix numerically...")
 
         B_analytic = self.Bmat()
 
-        if op.Params.print_lvl >= 3:
-            logger.debug("Analytic B matrix in au")
-            logger.debug(print_mat_string(B_analytic))
+        logger.debug("Analytic B matrix in au")
+        logger.debug(print_mat_string(B_analytic))
 
-        B_fd = np.zeros((Nintco, 3 * Natom))
+        B_fd = np.zeros((nintco, 3 * natom))
 
         self.update_dihedral_orientations()
         self.fix_bend_axes()
@@ -988,7 +984,7 @@ class Molsys(object):
         geom_orig = self.geom  # to restore below
         coord = self.geom  # returns a copy
 
-        for atom in range(Natom):
+        for atom in range(natom):
             for xyz in range(3):
                 coord[atom, xyz] -= DISP_SIZE
                 self.geom = coord
@@ -1009,8 +1005,11 @@ class Molsys(object):
                 coord[atom, xyz] -= 2 * DISP_SIZE  # restore to original
                 B_fd[:, 3 * atom + xyz] = (q_m2 - 8 * q_m + 8 * q_p - q_p2) / (12.0 * DISP_SIZE)
 
-        if op.Params.print_lvl >= 3:
-            logger.debug("Numerical B matrix in au, DISP_SIZE = %lf\n" % DISP_SIZE + print_mat_string(B_fd))
+        logger.debug(
+            "Numerical B matrix in au, DISP_SIZE = %lf\n%s" ,
+            DISP_SIZE,
+            print_mat_string(B_fd)
+        )
 
         self.geom = geom_orig  # restore original
         self.unfix_bend_axes()
@@ -1044,7 +1043,7 @@ class Molsys(object):
     # Test the analytic derivative B matrix (d2q/dx2) via finite differences
     # The 5-point formula should be good to DISP_SIZE^4 -
     #  a few unfortunates will be slightly worse
-    def test_derivative_Bmat(self):
+    def test_derivative_Bmat(self, print_lvl=1):
         """Test the analytic derivative B matrix (d2q/dx2) via finite
         differences.  The 5-point formula should be good to DISP_SIZE^4 - a few
         unfortunates will be slightly worse.
@@ -1069,23 +1068,21 @@ class Molsys(object):
         for iF, F in enumerate(self._fragments):
             logger.info("\t\tTesting fragment %d." % (iF + 1))
 
-            Natom = F.natom
-            Nintco = F.num_intcos
+            natom = F.natom
             coord = F.geom  # not a copy
-            dq2dx2_fd = np.zeros((3 * Natom, 3 * Natom))
-            dq2dx2_analytic = np.zeros((3 * Natom, 3 * Natom))
+            dq2dx2_fd = np.zeros((3 * natom, 3 * natom))
+            dq2dx2_analytic = np.zeros((3 * natom, 3 * natom))
 
-            for i, I in enumerate(F._intcos):
+            for i, intco in enumerate(F._intcos):
                 logger.info("\t\tTesting internal coordinate %d :" % (i + 1))
 
                 dq2dx2_analytic.fill(0)
-                I.Dq2Dx2(coord, dq2dx2_analytic)
+                intco.Dq2Dx2(coord, dq2dx2_analytic)
 
-                if op.Params.print_lvl >= 3:
-                    logger.info("Analytic B' (Dq2Dx2) matrix in au\n" + print_mat_string(dq2dx2_analytic))
+                logger.info("Analytic B' (Dq2Dx2) matrix in au\n" + print_mat_string(dq2dx2_analytic))
 
                 # compute B' matrix from B matrices
-                for atom_a in range(Natom):
+                for atom_a in range(natom):
                     for xyz_a in range(3):
 
                         coord[atom_a, xyz_a] += DISP_SIZE
@@ -1102,7 +1099,7 @@ class Molsys(object):
 
                         coord[atom_a, xyz_a] += 2 * DISP_SIZE  # restore coord to orig
 
-                        for atom_b in range(Natom):
+                        for atom_b in range(natom):
                             for xyz_b in range(3):
                                 dq2dx2_fd[3 * atom_a + xyz_a, 3 * atom_b + xyz_b] = (
                                     B_m2[i, 3 * atom_b + xyz_b]
@@ -1111,19 +1108,18 @@ class Molsys(object):
                                     - B_p2[i][3 * atom_b + xyz_b]
                                 ) / (12.0 * DISP_SIZE)
 
-                if op.Params.print_lvl >= 3:
-                    logger.info(
-                        "\nNumerical B' (Dq2Dx2) matrix in au, DISP_SIZE = %f\n" % DISP_SIZE
-                        + print_mat_string(dq2dx2_fd)
-                    )
+                logger.debug(
+                    "\nNumerical B' (Dq2Dx2) matrix in au, DISP_SIZE = %f\n" % DISP_SIZE
+                    + print_mat_string(dq2dx2_fd)
+                )
 
                 max_error = -1.0
                 max_error_xyz = (-1, -1)
-                for I in range(3 * Natom):
-                    for J in range(3 * Natom):
-                        if np.fabs(dq2dx2_analytic[I, J] - dq2dx2_fd[I, J]) > max_error:
-                            max_error = np.fabs(dq2dx2_analytic[I][J] - dq2dx2_fd[I][J])
-                            max_error_xyz = (I, J)
+                for intco in range(3 * natom):
+                    for J in range(3 * natom):
+                        if np.fabs(dq2dx2_analytic[intco, J] - dq2dx2_fd[intco, J]) > max_error:
+                            max_error = np.fabs(dq2dx2_analytic[intco][J] - dq2dx2_fd[intco][J])
+                            max_error_xyz = (intco, J)
 
                 logger.info(
                     "\t\tMax. difference is %.1e; 2nd derivative wrt %d and %d."

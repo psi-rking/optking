@@ -1,11 +1,10 @@
 import logging
-from math import fabs, sqrt
+from math import sqrt
 
 import numpy as np
 from numpy.linalg import LinAlgError
 
 from .exceptions import OptError
-from .printTools import print_array_string
 from . import log_name
 
 logger = logging.getLogger(f"{log_name}{__name__}")
@@ -106,7 +105,7 @@ def asymm_mat_eig(mat):
     return evals.real, evects.real.T
 
 
-def symm_mat_inv(A, redundant=False, smallValLimit=1.0e-10):
+def symm_mat_inv(A, redundant=False, small_val_limit=1.0e-10):
     """
     Return the inverse of a real, symmetric matrix.
 
@@ -138,12 +137,12 @@ def symm_mat_inv(A, redundant=False, smallValLimit=1.0e-10):
                     raise OptError("symm_mat_inv: could not compute eigenvectors")
 
                 absEvals = np.abs(evals)
-                threshold = smallValLimit * np.max(absEvals)
+                threshold = small_val_limit * np.max(absEvals)
                 logger.debug("Singular | values | > %8.3e will be inverted." % threshold)
                 val = np.min(absEvals[absEvals > threshold])
                 logger.debug("Smallest inverted value is %8.3e." % val)
 
-            return np.linalg.pinv(A, rcond=smallValLimit)
+            return np.linalg.pinv(A, rcond=small_val_limit)
 
         else:
             return np.linalg.inv(A)
