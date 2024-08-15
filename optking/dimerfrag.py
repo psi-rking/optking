@@ -132,7 +132,7 @@ class DimerFrag(object):
         self._A_idx = A_idx
         self._B_idx = B_idx
 
-        if isinstance(A_atoms, list):
+        if not isinstance(A_atoms, list):
             raise OptError("Atoms argument for frag A should be a list")
         for i, a in enumerate(A_atoms):
             if not isinstance(a, list):
