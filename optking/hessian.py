@@ -68,14 +68,14 @@ def guess(oMolsys, connectivity=None, guessType="SIMPLE"):
     for DI in oMolsys._dimer_intcos:
         vals = DI.q()
         for i, intco in enumerate(DI._pseudo_frag._intcos):
-            if type(intco) == Stre:
+            if isinstance(intco, Stre):
                 h = 0.007
                 if intco.inverse:
                     h *= pow(1.0 / vals[i], 4)
                     # i should be 0=stretch
-            elif type(intco) == Bend:
+            elif isinstance(intco, Bend):
                 h = 0.003
-            elif type(intco) == Tors:
+            elif isinstance(intco, Tors):
                 h = 0.001
             else:
                 h = 0.111

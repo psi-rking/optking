@@ -132,16 +132,16 @@ class DimerFrag(object):
         self._A_idx = A_idx
         self._B_idx = B_idx
 
-        if type(A_atoms) != list:
+        if not isinstance(A_atoms, list):
             raise OptError("Atoms argument for frag A should be a list")
         for i, a in enumerate(A_atoms):
-            if type(a) != list:
+            if not isinstance(a, list):
                 raise OptError("Atoms argument for frag A, reference pt. %d should be a list" % (i + 1))
 
-        if type(B_atoms) != list:
+        if not isinstance(B_atoms, list):
             raise OptError("Atoms argument for frag B should be a list")
         for i, b in enumerate(B_atoms):
-            if type(b) != list:
+            if not isinstance(b, list):
                 raise OptError("Atoms argument for frag B, reference pt. %d should be a list" % (i + 1))
 
         if A_weights is None:
@@ -149,11 +149,11 @@ class DimerFrag(object):
             for i in range(len(A_atoms)):
                 A_weights.append(len(A_atoms[i]) * [1.0])
         else:
-            if type(A_weights) == list:
+            if isinstance(A_weights, list):
                 if len(A_weights) != len(A_atoms):
                     raise OptError("Number of reference atoms and weights on frag A are inconsistent")
                 for i, w in enumerate(A_weights):
-                    if type(w) != list:
+                    if not isinstance(w, list):
                         raise OptError("Weight for frag A, reference pt. %d should be a list" % (i + 1))
             else:
                 raise OptError("Weights for reference atoms on frag A should be a list")
@@ -163,11 +163,11 @@ class DimerFrag(object):
             for i in range(len(B_atoms)):
                 B_weights.append(len(B_atoms[i]) * [1.0])
         else:
-            if type(B_weights) == list:
+            if isinstance(B_weights, list):
                 if len(B_weights) != len(B_atoms):
                     raise OptError("Number of reference atoms and weights on frag B are inconsistent")
                 for i, w in enumerate(B_weights):
-                    if type(w) != list:
+                    if not isinstance(w, list):
                         raise OptError("Weight for frag B, reference pt. %d should be a list" % (i + 1))
             else:
                 raise OptError("Weights for reference atoms on frag B should be a list")
@@ -1107,10 +1107,10 @@ def test_orient(NA, NB, printInfo=False, randomSeed=None):
     t = 0.02  # threshold near pi
     q_tar += 0.2
     for i, intco in enumerate(Itest._pseudo_frag.intcos):
-        if type(intco) == bend.Bend:
+        if isinstance(intco, bend.Bend):
             if q_tar[i] > np.pi - t:
                 q_tar[i] -= 0.4
-        elif type(intco) == tors.Tors:
+        elif isinstance(intco, tors.Tors):
             if q_tar[i] > np.pi - t:
                 q_tar[i] -= 0.4
             elif q_tar[i] < -np.pi + t:
