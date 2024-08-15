@@ -23,7 +23,6 @@ def test_hooh_TS(check_iter, option, expected_steps):
         "basis": "cc-pvdz",
         "geom_maxiter": 30,
         "opt_type": "TS",
-        "step_type": option,
         "scf_type": "pk",
         "docc": [5, 4],
         "intrafrag_step_limit": 0.1,
@@ -31,7 +30,7 @@ def test_hooh_TS(check_iter, option, expected_steps):
     }
     psi4.set_options(psi4options)
 
-    json_output = optking.optimize_psi4("hf")
+    json_output = optking.optimize_psi4("hf", {"step_type": option})
 
     E = json_output["energies"][-1]  # TEST
     # print( '{:15.10f}'.format(E) )
@@ -59,7 +58,6 @@ def test_hooh_TS_zero(check_iter, option, expected_steps):
         "basis": "cc-pvdz",
         "geom_maxiter": 40,
         "opt_type": "TS",
-        "step_type": option,
         "scf_type": "pk",
         "docc": [5, 4],
         "intrafrag_step_limit": 0.1,
@@ -67,7 +65,7 @@ def test_hooh_TS_zero(check_iter, option, expected_steps):
     }
     psi4.set_options(psi4options)
 
-    json_output = optking.optimize_psi4("hf")
+    json_output = optking.optimize_psi4("hf", {"step_type": option})
 
     E = json_output["energies"][-1]  # TEST
     C2V_TS_ENERGY = -150.774009217562  # TEST

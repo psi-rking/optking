@@ -38,7 +38,9 @@ Running through QCEngine
 
 A basic driver has been implemented in QCEngine. QCEngine is built upon QCElemental which provides input
 validation and standardized input/output. To see the requirements for an Optimziation Input check MolSSI's
-`qcelemental documentation <http://docs.qcarchive.molssi.org/projects/QCElemental/en/stable/api/qcelemental.models.OptimizationInput.html#qcelemental.models.OptimizationInput>`_. NOTE QCElemental assumes atomic units by default::
+`qcelemental documentation <http://docs.qcarchive.molssi.org/projects/QCElemental/en/stable/api/qcelemental.models.OptimizationInput.html#qcelemental.models.OptimizationInput>`_. NOTE QCElemental assumes atomic units by default:
+
+.. code-block:: python
 
     import qcengine as qcng
 
@@ -73,7 +75,9 @@ validation and standardized input/output. To see the requirements for an Optimzi
     result = qcng.compute_procedure(opt_input, "optking")
 
 An explicit example of creating and running an OptimizationInput. Note: Molecule.from_data seems to be the only
-place Angstroms are expected::
+place Angstroms are expected:
+
+.. code-block:: python
 
     import qcengine as qcng
 
@@ -148,7 +152,9 @@ as attributes of the OptHelper instance.
 `CustomHelper` accepts `QCElemental` and `Psi4` molecules while requiring user provided gradients, energies, and possibly hessians. This may
 be useful for implementing a custom optimization driver or procedure using optking.
 
-EngineHelper::
+EngineHelper:
+
+.. code-block:: python
 
     import qcengine as qcng
 
@@ -197,7 +203,9 @@ EngineHelper::
     E = json_output["energies"][-1]
 
 `CustomHelper` can take `psi4` or `qcelemental` molecules. A simple example of a custom optimization loop is
-shown where the gradients are provided from a simple lennard jones potential::
+shown where the gradients are provided from a simple lennard jones potential:
+
+.. code-block:: python
 
     h2o = psi4.geometry(
     """ 
