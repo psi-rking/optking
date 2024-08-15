@@ -33,7 +33,9 @@ Parentheses can be added by the user for clarity and are avoided.
 The string parsing is more robust and forgiving than in the c++ version and multiline strings and strange spacing
 is allowed.
 
-For hydrogen peroxide the following coordinates could be frozen::
+For hydrogen peroxide the following coordinates could be frozen:
+
+.. code-block:: python
 
     hooh = psi4.geometry(
         """
@@ -56,7 +58,9 @@ freezing torsions::
 
     "frozen_dihedral": "1 2 3 4"
 
-The following strings are all acceptable to freeze the cartesian coordinates of the hydrogens::
+The following strings are all acceptable to freeze the cartesian coordinates of the hydrogens:
+
+.. code-block:: python
 
     """ 1 Xyz 4 xYz """
     """ 2 xyz 3 xyz """
@@ -72,13 +76,17 @@ Ranged Coordinates
 ~~~~~~~~~~~~~~~~~~
 
 The `ranged_<coord>` follows the basic format. `1 2 ... min max`. Multiple coordinates can be assigned
-ranges by specifying them sequentially in the string. Using the above example for `HOOH`::
-    
+ranges by specifying them sequentially in the string. Using the above example for `HOOH`:
+
+.. code-block:: python
+
     params = {
         "ranged_distance": "2 3 1.38 1.42"
     }
 
-or using parentheses for clarity::
+or using parentheses for clarity:
+
+.. code-block:: python
 
     params = {
         "ranged_bend": "(1 2 3 99.0 110.0) (2 3 4 99.0 110.0)"
@@ -115,7 +123,7 @@ The important keys are
       third hydrogen atom, and the center of the two hydrogens.
       Lists of multiple indices denote the mid-point between the specified atoms.
 
-::
+.. code-block:: python
 
     h2oA = psi4.geometry(
         """
