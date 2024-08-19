@@ -376,14 +376,14 @@ def add_oofp_from_connectivity(C, intcos, geom):
     # Find adjacent atoms
     vertex_atoms = []
     for T in terminal_atoms:
-        vertex_atoms.append(np.where(C[T] == True)[0][0])
+        vertex_atoms.append(np.where(C[T])[0][0])
 
     for (T, V) in zip(terminal_atoms, vertex_atoms):
         if Nneighbors[V] < 3:
             pass
         # Find at least 2 other/side atoms
         side = []
-        for N in np.where(C[V] == True)[0]:
+        for N in np.where(C[V])[0]:
             if N == T:
                 pass
             else:

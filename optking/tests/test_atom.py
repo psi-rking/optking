@@ -15,7 +15,7 @@ def test_atom():
     success = qc_output['success']
     Etraj = qc_output["trajectory"][-1]['extras']['qcvars']['CURRENT ENERGY']
 
-    assert qc_output['success'] == False
+    assert not qc_output['success']
     assert qc_output["error"]["error_message"] == "There is only 1 atom. Nothing to optimize. Computing energy."
     assert psi4.compare_values(E, RefEnergy, 6, "Atom energy (energies)")
     assert psi4.compare_values(Etraj, RefEnergy, 6, "Atom energy (trajectory)")
