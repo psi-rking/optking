@@ -939,6 +939,38 @@ def add_constrained_intcos(o_molsys):
     if op.Params.freeze_intrafrag:
         freeze_intrafrag(o_molsys)
 
+    if op.Params.freeze_all_dihedrals:
+        freeze_all_torsions(o_molsys, op.Params.unfreeze_dihedrals)
+
+def freeze_all_torsions(molsys, skipped_torsions=[]):
+    """ Freeze all intrafragment torsions.
+    Parameters
+    ----------
+    molsys: molsys.Molsys
+    skipped_torsions: list[list[int]]
+        each set of integers should be four integers denoting a dihedral angle / torsion
+    """
+
+    for frag in molsys.fragments:
+        for intco in frag.intcos:
+            if isinstance(intco, tors.Tors):
+                intco.freeze()
+
+    # Seems better to just unfreeze at end rather than check whether each torsion is in this list
+    for index_set in skipped_torsions:
+        atoms = [index - 1 for index in index_set]
+        f = check_fragment(atoms, molsys)
+        new_tors = tors.Tors(*atoms)
+
+        try:
+            index = molsys.fragments[f].intcos.index(new_tors)
+            frag.intcos[index].unfreeze()
+        except ValueError:
+            logger.info(
+                "dihedral angle %s was unfrozen but was not present - adding it.",
+                new_tors
+            )
+            frag.intcos.append(new_tors)
 
 def add_dimer_frag_intcos(o_molsys):
     # Look for coordinates in the following order:

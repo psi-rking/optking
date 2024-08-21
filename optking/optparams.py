@@ -190,6 +190,12 @@ class OptParams(object):
         frozen = uod.get("FROZEN_CARTESIAN", "")
         self.frozen_cartesian = int_xyz_float_list(tokenize_input_string(frozen), 1, 1, 0)
 
+        # constrain ALL torsions to be frozen.
+        self.freeze_all_dihedrals = uod.get("FREEZE_ALL_DIHEDRALS", False)
+        # For use only with `freeze_all_dihedrals` unfreeze a small subset of dihedrals
+        frozen = uod.get("UNFREEZE_DIHEDRALS", "")
+        self.unfreeze_dihedrals = int_list(tokenize_input_string(frozen), 4)
+
         # Specify distance between atoms to be ranged
         ranged = uod.get("RANGED_DISTANCE", "")
         self.ranged_distance = int_float_list(tokenize_input_string(ranged), 2, 2)
