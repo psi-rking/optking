@@ -20,10 +20,13 @@
 About
 =====
 
-optking (also known as pyoptking) is a rewrite of the c++ optking module in psi4. This rewrite was undertaken to enable future development
-and for use with recent interoperability efforts (e.g. MolSSI QCArchive and QCDB). optking is focused on
-optimization of molecular geometries: finding minima, transition states, and reaction paths. Current work
-is focused especially on expanding the reaction path methods. Contributions are welcome! Please fork this repository and open a PR!
+optking is a molecular geometry optimization program that began as a rewrite of the previous
+c++ module of the same name in psi4. The translation into python and subsequent development was
+undertaken to support more complex tasks, and to join with interoperability efforts such as 
+QCSchema, QCArchive and QCDB. optking supports the location of minima,
+transition states, and reaction paths on molecular potential surfaces. Current work is focused
+especially on expanding the available reaction path methods. Contributions are welcome!
+Please fork this repository and open a PR!
 
 ====
 
