@@ -144,7 +144,7 @@ class DimerFrag(object):
             if not isinstance(b, list):
                 raise OptError("Atoms argument for frag B, reference pt. %d should be a list" % (i + 1))
 
-        if A_weights is None:
+        if not A_weights:
             A_weights = []
             for i in range(len(A_atoms)):
                 A_weights.append(len(A_atoms[i]) * [1.0])
@@ -158,7 +158,7 @@ class DimerFrag(object):
             else:
                 raise OptError("Weights for reference atoms on frag A should be a list")
 
-        if B_weights is None:
+        if not B_weights:
             B_weights = []
             for i in range(len(B_atoms)):
                 B_weights.append(len(B_atoms[i]) * [1.0])
@@ -299,20 +299,26 @@ class DimerFrag(object):
             self.freeze(frozen)
 
     @classmethod
-    def fromUserDict(cls, userDict):
-        user = caseInsensitiveDict.CaseInsensitiveDict(userDict)
-        try:
-            N = user["Natoms per frag"]
-        except KeyError:
-            raise OptError('Missing "Natoms per frag"')
-        try:
-            A_idx = user["A Frag"] - 1
-        except KeyError:
-            raise OptError('Missing "A Frag"')
-        try:
-            B_idx = user["B Frag"] - 1
-        except KeyError:
-            raise OptError('Missing "B Frag"')
+    def from_user_dict(cls, user_dict):
+        """ Create instance of DimerFrag from dictionary.
+
+        Parameters
+        ----------
+        user_dict: dict
+            Dictionary representation of dimerfragment coordinates.
+            Required keys: NATOMS PER FRAG, A_REF_ATOMS, and B_REF_ATOMS 
+
+        Raises
+        ------
+        ValidationError
+            If `user_dict` does not adhere to InterfragCoords Schema
+        """
+
+        op.InterfragCoords.model_validate(user_dict)  # validate
+
+        N = user_dict["NATOMS PER FRAG"]
+        A_idx = user_dict["A FRAG"] - 1
+        B_idx = user_dict["B FRAG"] - 1
 
         fRange = [0] * len(N)
         fRange[0] = range(1, 1 + N[0])  # user numbering from 1
@@ -320,8 +326,9 @@ class DimerFrag(object):
             start = fRange[Ifrag - 1][-1] + 1
             fRange[Ifrag] = range(start, start + N[Ifrag])
 
-        A_atoms_in = user.get("A Ref Atoms", None)  # could be auto chosen in future
-        B_atoms_in = user.get("B Ref Atoms", None)  # so let pass here.
+        # Currently optparams requires the user to provide ref atoms if using interfrag_coords
+        A_atoms_in = user_dict.get("A REF ATOMS", None)  # could be auto chosen in future
+        B_atoms_in = user_dict.get("B REF ATOMS", None)  # so let pass here.
         A_atoms = None
         B_atoms = None
 
@@ -347,11 +354,11 @@ class DimerFrag(object):
                         raise OptError("Atom %d not in fragment %s" % (atom, str(fRange[B_idx])))
 
         # optional
-        A_weights = user.get("A Weights", None)
-        B_weights = user.get("B Weights", None)
-        A_lbl = user.get("A Label", None)
-        B_lbl = user.get("B Label", None)
-        frozen = user.get("Frozen", None)
+        A_weights = user_dict.get("A WEIGHTS", None)
+        B_weights = user_dict.get("B WEIGHTS", None)
+        A_lbl = user_dict.get("A LABEL", None)
+        B_lbl = user_dict.get("B LABEL", None)
+        frozen = user_dict.get("FROZEN", None)
         if frozen:  # user numbers from 1; internally from 0
             for coord in frozen:
                 if str(coord).isnumeric():

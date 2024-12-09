@@ -3,9 +3,12 @@
 import copy
 import json
 import logging
+import pprint
 
 from qcelemental.models import OptimizationInput, OptimizationResult
 from qcelemental.util.serialization import json_dumps
+from pydantic import ValidationError
+from pydantic.v1.error_wrappers import ValidationError as v1ValidationError
 
 import optking
 
@@ -49,22 +52,31 @@ def optimize_psi4(calc_name, program="psi4", dertype=None, **xtra_opt_params):
         op.Params, oMolsys, computer, opt_input = initialize_from_psi4(
             calc_name, program, computer_type="psi4", dertype=dertype, **xtra_opt_params
         )
-        opt_output = copy.deepcopy(opt_input)
         opt_output = optimize(oMolsys, computer)
-    except (OptError, KeyError, ValueError, AttributeError) as error:
+    except (ValidationError, v1ValidationError) as error:
+        logger.critical("A ValidationError has occured: %s", error, exc_info=True)
         opt_output = {
             "success": False,
-            "error": {"error_type": error.err_type, "error_message": error.mesg},
+            "error": {"error_type": "ValidationError", "error_message": str(error)}
         }
-        logger.critical(f"Error placed in qcschema: {opt_output}")
-        logger.debug(str(opt_output))
+    except TypeError as error:
+        logger.critical("A TypeError has occured: %s", error, exc_info=True)
+        logger.critical("This TypeError is likely related to option validation.")
+        opt_output = {
+            "success": False,
+            "error": {"error_type": "ValidationError", "error_message": str(error)}
+        }
     except Exception as error:
-        logger.critical("An unknown error has occured and evaded error checking")
+        logger.critical(
+            "A critical exception has occured:\n%s - %s",
+            type(error),
+            str(error),
+            exc_info=True
+        )
         opt_output = {
             "success": False,
-            "error": {"error_type": error, "error_message": str(error)},
+            "error": {"error_type": type(error), "error_message": str(error)},
         }
-        logger.critical(f"Error placed in qcschema: {opt_output}")
     finally:
         opt_input.update({"provenance": optking._optking_provenance_stamp})
         opt_input["provenance"]["routine"] = "optimize_psi4"
@@ -91,57 +103,62 @@ def initialize_from_psi4(calc_name, program, computer_type, dertype=None, **xtra
     o_molsys: molsys.Molsys
     computer: ComputeWrapper
     opt_input: qcelemental.models.OptimizationInput
-
     """
     import psi4
 
-    mol = psi4.core.get_active_molecule()
-    o_molsys, qc_mol = molsys.Molsys.from_psi4(mol)
+    # Get Molecule and Options from Psi4 as QCSchema
+    logger.debug("Setting up optimization from Psi4's current state: p4util.state_to_atomic_input")
+    atomic_input = psi4.driver.p4util.state_to_atomicinput(
+        driver="gradient",
+        method=calc_name,
+    ).dict()
 
-    # Get optking options and globals from psi4
-    # Look through optking module specific options first. If a global has already appeared
-    # in optking's options, don't include as a qc package option
-    logger.debug("Getting module and psi4 options for qcschema construction")
-    module_options = psi4.driver.p4util.prepare_options_for_modules()
-    all_options = psi4.core.get_global_option_list()
+    # QCEngine doesn't expect information to already have been validated
+    atomic_input.pop("id")
+    atomic_input.pop("provenance")
+    atomic_input.pop("protocols")
+    o_molsys = molsys.Molsys.from_schema(atomic_input.get("molecule"))
+
+    optking_canon = op.OptParams().model_dump(by_alias=True).keys()
     opt_keys = {"program": program}
 
-    qc_keys = {}
-    if dertype is not None:
-        qc_keys["dertype"] = 0
-
-    optking_options = module_options["OPTKING"]
-    for opt, optval in optking_options.items():
-        if optval["has_changed"]:
-            opt_keys[opt.lower()] = optval["value"]
+    # Psi4 options can get mixed in with optking's options in prepare_options_for_module anyway.
+    # Atomic_input will contain all set options so only accept options that are present in
+    # options dict. Assume everything else is for Psi4.
+    for opt, optval in atomic_input.get("keywords").items():
+        if opt.upper() in optking_canon:
+            opt_keys[opt] = optval
 
     if xtra_opt_params:
         for xtra_key, xtra_value in xtra_opt_params.items():
-            opt_keys[xtra_key.lower()] = xtra_value
-
-    for option in all_options:
-        if psi4.core.has_global_option_changed(option):
-            if option not in opt_keys:
-                qc_keys[option.lower()] = psi4.core.get_global_option(option)
+            opt_keys[xtra_key] = xtra_value
 
     # Make a qcSchema OptimizationInput
     opt_input = {
         "keywords": opt_keys,
-        "initial_molecule": qc_mol,
-        "input_specification": {
-            "model": {"basis": qc_keys.pop("basis"), "method": calc_name},
-            "driver": "gradient",
-            "keywords": qc_keys,
-        },
+        "initial_molecule": atomic_input.pop("molecule"),
+        "input_specification": atomic_input,
     }
-    logger.debug("Creating OptimizationInput")
 
-    opt_input = OptimizationInput(**opt_input)
-    # Remove numpy elements to allow at will json serialization
+    # in case user has selected a specific dertype
+    if dertype:
+        opt_input.get("input_specification").get("keywords").update("dertype", dertype)
+
+    try:
+        logger.debug("Creating OptimizationInput")
+        opt_input = OptimizationInput(**opt_input)
+    except (ValidationError, v1ValidationError) as error:
+        logger.critical("A Validation Error has occured while initializing optking: %s", error)
+        logger.critical("Could not create an OptimizationInput")
+        logger.critical(
+            """Note: `optimize_psi4` is not recommended for users. Consider calling `psi4.optimize`
+            or see `tests/test_opthelper` for an example of using the OptHelper interface."""
+    )
+
+    # Remove numpy elements that can appear from psi4 to allow at will json serialization
+    # Json cannot handle numpy types only python builtins
     opt_input = json.loads(json_dumps(opt_input))
-
-    initialize_options(opt_keys)
-    params = op.Params
+    params = initialize_options(opt_keys)
     computer = make_computer(opt_input, computer_type)
     return params, o_molsys, computer, opt_input
 
@@ -172,17 +189,11 @@ def optimize_qcengine(opt_input, computer_type="qc"):
         initialize_options(opt_input["keywords"])
         computer = make_computer(opt_input, computer_type)
         opt_output = optimize(oMolsys, computer)
-    except (OptError, KeyError, ValueError, AttributeError) as error:
-        opt_output = {
-            "success": False,
-            "error": {"error_type": error.err_type, "error_message": error.mesg},
-        }
-        logger.critical(f"Error placed in qcschema: {opt_output}")
     except Exception as error:
-        logger.critical("An unknown error has occured and evaded all error checking")
+        logger.critical("A critical error has occured: %s - %s", type(error), error, exc_info=True)
         opt_output = {
             "success": False,
-            "error": {"error_type": error, "error_message": str(error)},
+            "error": {"error_type": type(error), "error_message": str(error)},
         }
         logger.critical(f"Error placed in qcschema: {opt_output}")
     finally:
@@ -229,18 +240,20 @@ def initialize_options(opt_keys, silent=False):
     if not silent:
         logger.info(welcome())
 
-    userOptions = caseInsensitiveDict.CaseInsensitiveDict(opt_keys)
-    # Save copy of original user options. Commented out until it is used
-    # origOptions = copy.deepcopy(userOptions)
+    # Turn keys but not vals to upper. Optparams will handle lowercase values
+    opt_keys = {key.upper(): val for key, val in opt_keys.items()}
 
     # Create full list of parameters from user options plus defaults.
     try:
-        op.Params = op.OptParams(userOptions)
-    except (KeyError, ValueError, AttributeError) as e:
-        logger.error(str(e))
-        raise OptError("unable to parse params from userOptions")
+        params = op.OptParams(**opt_keys)
+    except (KeyError, ValueError, AttributeError, ValidationError) as e:
+        # logger.critical(str(e))
+        raise OptError("unable to parse params from userOptions") from e
 
     # TODO we should make this just be a normal object
     #  we should return it to the optimize method
     if not silent:
-        logger.info(str(op.Params))
+        logger.info(params)
+    op.Params = params
+
+    return params

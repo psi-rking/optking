@@ -1,14 +1,15 @@
 #! Linesearch tests
 # memory 8gb
+import optking
+import psi4
+import pytest
+from .utils import utils
+
 
 refnucenergy = 41.670589  # Eh
 refenergy = -1053.880393  # Eh
 
-import optking
-import psi4
-from .utils import utils
-
-
+@pytest.mark.long
 def test_linesearch(check_iter):
     Ar2 = psi4.geometry(
         """

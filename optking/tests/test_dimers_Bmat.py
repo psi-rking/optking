@@ -30,7 +30,10 @@ def test_dimers_bmat():
         "B Frag": 2,
         "B Ref Atoms": [[4], [5, 6], [6]],
     }
-    Itest = optking.dimerfrag.DimerFrag.fromUserDict(dimer)
+
+    # validate and standardize
+    dimer_model = optking.optparams.InterfragCoords(**dimer)
+    Itest = optking.dimerfrag.DimerFrag.from_user_dict(dimer_model.model_dump(by_alias=True))
 
     # Here is lower level method
     # Aref = [[0],[1,2],[2]]

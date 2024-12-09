@@ -73,7 +73,7 @@ class OptimizationInterface(ABC):
         self.history: History = history
 
         if not params:
-            params = op.OptParams({})
+            params = op.OptParams()
         self.print_lvl = params.print_lvl
 
     @abstractmethod
@@ -290,7 +290,7 @@ class OptimizationAlgorithm(OptimizationInterface):
             "iternum": step_number,
         }
         converged = convcheck.conv_check(
-            conv_info, self.params.__dict__, str_mode=str_mode
+            conv_info, self.params, str_mode=str_mode
         )
         if str_mode:
             return converged

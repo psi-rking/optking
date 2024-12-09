@@ -23,27 +23,27 @@ scalings[1:-1] = rng_vals
 # Values are copied from optkings documentation to compare against optking internals
 
 presets = {
-    "nwchem_loose": [None, 4.5e-3, 3.0e-3, 5.4e-3, 3.6e-3],
-    "gau_loose": [None, 2.5e-3, 1.7e-3, 1.0e-2, 6.7e-3],
-    # "gau": [None, 4.5e-4, 3.0e-4, 1.8e-3, 1.2e-3],
-    "cfour": [None, None, 1e-4, None, None],
-    "qchem": [1.0e-6, 3.0e-4, None, 1.2e-3, None],
-    # "molpro": [1.0e-6, 3.0e-4, None, 3.0e-4, None],
-    # "gau_tight": [None, 1.5e-5, 1.0e-5, 6.0e-5, 4.0e-5],
-    "gau_verytight": [None, 2.0e-6, 1.0e-6, 6.0e-6, 4.0e-6],
-    "turbomole": [1.0e-6, 1.0e-3, 5.0e-4, 1.0e-3, 5.0e-4],
+    "NWCHEM_LOOSE": [None, 4.5e-3, 3.0e-3, 5.4e-3, 3.6e-3],
+    "GAU_LOOSE": [None, 2.5e-3, 1.7e-3, 1.0e-2, 6.7e-3],
+    # "GAU": [None, 4.5e-4, 3.0e-4, 1.8e-3, 1.2e-3],
+    "CFOUR": [None, None, 1e-4, None, None],
+    "QCHEM": [1.0e-6, 3.0e-4, None, 1.2e-3, None],
+    # "MOLPRO": [1.0e-6, 3.0e-4, None, 3.0e-4, None],
+    # "GAU_TIGHT": [None, 1.5e-5, 1.0e-5, 6.0e-5, 4.0e-5],
+    "GAU_VERYTIGHT": [None, 2.0e-6, 1.0e-6, 6.0e-6, 4.0e-6],
+    "TURBOMOLE": [1.0e-6, 1.0e-3, 5.0e-4, 1.0e-3, 5.0e-4],
 }
 
 program_mappings = {
-    "gau_loose": "GAU",
-    "gau": "GAU",
-    "gau_tight": "GAU",
-    "gau_verytight": "GAU",
-    "cfour": "CFOUR",
-    "molpro": "Q-M",
-    "qchem": "Q-M",
-    "turbomole": "TURBO",
-    "nwchem_loose": "NWCHEM",
+    "GAU_LOOSE": "GAU",
+    "GAU": "GAU",
+    "GAU_TIGHT": "GAU",
+    "GAU_VERYTIGHT": "GAU",
+    "CFOUR": "CFOUR",
+    "MOLPRO": "Q-M",
+    "QCHEM": "Q-M",
+    "TURBOMOLE": "TURBO",
+    "NWCHEM_LOOSE": "NWCHEM",
 }
 
 tests = {
@@ -450,7 +450,7 @@ def test_convergence_presets(conv_test, conv_preset):
         criteria = _create_variations(defaults, changes, random_scale)
 
         optking.optwrapper.initialize_options({"g_convergence": conv_preset})
-        params_dict = optking.optparams.Params.__dict__
+        params_dict = optking.optparams.Params.conv_criteria()
 
         # Actual conv_check test.
         conv_met, conv_active = optking.convcheck._transform_criteria(criteria, params_dict)
@@ -484,7 +484,7 @@ conv_mapping = {
     "rms_disp_g_convergence": "rms_disp",
 }
 
-preset_subset = ["qchem", "gau_tight", "nwchem_loose"]
+preset_subset = ["QCHEM", "GAU_TIGHT", "NWCHEM_LOOSE"]
 
 # only testing up combinations of user settings up to 2
 combos = [

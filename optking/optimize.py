@@ -51,7 +51,6 @@ def optimize(o_molsys, computer):
     fq = 0
 
     opt_history = history.History(op.Params)
-
     # Try to optimize one structure OR set of IRC points. OptError and all Exceptions caught below.
     try:
         converged = False
@@ -194,7 +193,9 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
             logger.info("There is only 1 atom. Nothing to optimize. Computing energy.")
             E = get_pes_info(np.ndarray(0), self.computer, self.molsys,
                     self.history, self.params, "unneeded", ["energy"])[2]
-            raise OptError("There is only 1 atom. Nothing to optimize. Computing energy.","OptError")
+            raise OptError(
+                "There is only 1 atom. Nothing to optimize. Computing energy.", "OptError"
+            )
 
         # if optimization coordinates are absent, choose them. Could be erased after AlgError
         if not self.molsys.intcos_present:
@@ -417,7 +418,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
             # Convert the Hessian back into the new coordinate system
             self.H = self.molsys.hessian_to_internals(Hx, gx)
 
-        elif self.params.dynamic_level == self.params.dynamic_level_max:
+        elif self.params.dynamic_level == self.params.dynamic_lvl_max:
             logger.critical("\n\t Current algorithm/dynamic_level is %d.\n" % self.params.dynamic_level)
             logger.critical("\n\t Alternative approaches are not available or turned on.\n")
             raise OptError("Maximum dynamic_level reached.")
@@ -681,7 +682,7 @@ def make_internal_coords(o_molsys: Molsys, params: op.OptParams):
                 o_molsys.split_fragments_by_connectivity()
 
             if o_molsys.nfragments > 1:
-                addIntcos.add_dimer_frag_intcos(o_molsys)
+                addIntcos.add_dimer_frag_intcos(o_molsys, params)
                 # remove connectivity so that we don't add redundant coordinates
                 # between fragments
                 o_molsys.purge_interfragment_connectivity(connectivity)
@@ -703,7 +704,7 @@ def make_internal_coords(o_molsys: Molsys, params: op.OptParams):
             for F in o_molsys.fragments:
                 F.add_cartesian_intcos()
 
-    addIntcos.add_constrained_intcos(o_molsys)  # make sure these are in the set
+    addIntcos.add_constrained_intcos(o_molsys, params)  # make sure these are in the set
     return
 
 
@@ -724,7 +725,7 @@ def prepare_opt_output(o_molsys, computer, rxnpath=False, error=None):
     }
 
     if error:
-        qc_output.update({"success": False, "error": {"error_type": error.err_type, "error_message": error.mesg}})
+        qc_output.update({"success": False, "error": {"error_type": type(error), "error_message": str(error)}})
 
     if rxnpath:
         qc_output["extras"]["irc_rxn_path"] = rxnpath

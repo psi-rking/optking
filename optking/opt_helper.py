@@ -113,7 +113,7 @@ class Helper(ABC):
     def to_dict(self):
         d = {
             "step_num": self.step_num,
-            "params": self.params.__dict__,
+            "params": self.params.model_dump(by_alias=True),
             "molsys": self.molsys.to_dict(),
             "history": self.history.to_dict(),
             "computer": self.computer.__dict__,
@@ -158,14 +158,18 @@ class Helper(ABC):
     def compute(self):
         """Get the energy, gradient, and hessian. Project redundancies and apply constraints / forces"""
 
-        if not self.molsys.intcos_present:
-            # opt_manager.molsys is the same object as this molsys
-            make_internal_coords(self.molsys, self.params)
-            logger.debug("Molecular system after make_internal_coords:")
-            logger.info(str(self.molsys))
+        try:
+            if not self.molsys.intcos_present:
+                # opt_manager.molsys is the same object as this molsys
+                make_internal_coords(self.molsys, self.params)
+                logger.debug("Molecular system after make_internal_coords:")
+                logger.info(str(self.molsys))
 
-        self._compute()
-        logger.info("\n\t%s", print_geom_grad(self.geom, self.gX))
+            self._compute()
+            logger.info("\n\t%s", print_geom_grad(self.geom, self.gX))
+        except OptError as e:
+            logger.critical("A critical error has occured: %s - %s", type(e), e, exc_info=True)
+            raise e
 
     def take_step(self):
         """Must call compute before calling this method. Takes the next step."""
@@ -174,6 +178,9 @@ class Helper(ABC):
             self.dq, self.step_str = self.opt_manager.take_step(self.fq, self._Hq, self.E, return_str=True)
         except AlgError as e:
             self.opt_manager.alg_error_handler(self._Hq, self.fq, e)
+        except OptError as e:
+            logger.critical("A critical error has occured: %s - %s", type(e), e, exc_info=True)
+            raise e
 
         self.new_geom = self.molsys.geom
         self.step_num += 1
@@ -403,7 +410,15 @@ class CustomHelper(Helper):
 
     @classmethod
     def from_dict(cls, d):
-        helper = super().from_dict(d)
+        helper = cls(d.get("opt_input"), params=d.get("params"), silent=True)
+
+        op.Params = helper.params
+        # update with current information
+        helper.molsys = molsys.Molsys.from_dict(d.get("molsys"))
+        helper.history = history.History.from_dict(d.get("history"))
+        helper.step_num = d.get("step_num")
+        helper.irc_step_num = d.get("irc_step_num")
+        helper._Hq = d.get("hessian")
         helper.computer = compute_wrappers.make_computer_from_dict("user", d.get("computer"))
         helper.opt_manager = OptimizationManager.from_dict(
             d["opt_manager"], helper.molsys, helper.history, helper.params, helper.computer
@@ -594,7 +609,15 @@ class EngineHelper(Helper):
 
     @classmethod
     def from_dict(cls, d):
-        helper = super().from_dict(d)
+        helper = cls(d.get("opt_input"), params=d.get("params"), silent=True)
+
+        op.Params = helper.params
+        # update with current information
+        helper.molsys = molsys.Molsys.from_dict(d.get("molsys"))
+        helper.history = history.History.from_dict(d.get("history"))
+        helper.step_num = d.get("step_num")
+        helper.irc_step_num = d.get("irc_step_num")
+        helper._Hq = d.get("hessian")
         helper.computer = compute_wrappers.make_computer_from_dict("qc", d.get("computer"))
         helper.opt_manager = OptimizationManager.from_dict(
             d["opt_manager"], helper.molsys, helper.history, helper.params, helper.computer

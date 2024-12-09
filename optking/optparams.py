@@ -4,383 +4,490 @@
 # P = parameters ('self')
 # Option keys in the input dictionary are interpreted case-insensitively.
 # The enumerated string types are translated to all upper-case within the parameter object.
+import json
 import logging
+import pathlib
+from typing import Union
+from pprint import pformat
 
-from .exceptions import AlgError, OptError
-from .misc import int_float_list, int_fx_string, int_list, int_xyz_float_list, int_xyz_fx_string, tokenize_input_string
+from pydantic import (
+    BaseModel,
+    Field,
+    field_validator,
+    model_validator,
+    ConfigDict,
+    )
+
+from .exceptions import OptError
 from . import log_name
 
 logger = logging.getLogger(f"{log_name}{__name__}")
 
-# Class for enumerated string options.
-def string_option(storage_name):
-    def string_option_getter(instance):
-        return instance.__dict__[storage_name]
+CART_STR = r"(?:xyz|xy|yz|x|y|z)"
 
-    def string_option_setter(instance, value):
-        if value.upper() in allowedStringOptions[storage_name]:
-            instance.__dict__[storage_name] = value.upper()
-        else:
-            raise OptError("Invalid value for " + storage_name)
+class InterfragCoords(BaseModel):
+    """ Validate that the string input to create interfragment coords is mostly correct
+    (keys and types correct) """
 
-    return property(string_option_getter, string_option_setter)
+    model_config = ConfigDict()
+    natoms_per_frag: list[int] = Field(alias="NATOMS PER FRAG")
+    a_frag: int = Field(default=1, alias="A FRAG")
+    a_ref_atoms: list[list[int]] = Field(alias="A REF ATOMS")
+    a_label: str = Field(default="FRAGMENT A")
+    a_weights: list[list[float]] = Field(default=[], alias="A WEIGHTS")
+    b_frag: int = Field(default=2, alias="B FRAG")
+    b_ref_atoms: list[list[int]] = Field(alias="B REF ATOMS")
+    b_label: str = Field(default="FRAGMENT B")
+    b_weights: list[list[float]] = Field(default=[], alias="B WEIGHTS")
+
+    @model_validator(mode='before')
+    @classmethod
+    def to_upper(cls, data):
+        return {key.upper(): val for key, val in data.items()}
+
+class OptParams(BaseModel):
+    model_config = ConfigDict(
+            alias_generator=lambda field_name: field_name.upper(),
+            extra="forbid"
+    )
+
+    # SUBSECTION Optimization Algorithm
+    # Maximum number of geometry optimization steps
+    geom_maxiter: int = Field(gt=0, default=50)
+    # If user sets one, assume this.
+    alg_geom_maxiter: int = Field(gt=0, default=50)
+    # Print level.  1 = normal
+    print_lvl: int = Field(ge=1, le=5, default=1)
+    # Print all optimization parameters.
+    printxopt_params: bool = False
+    # output_type: str = Field(pattern=r"FILE|STDOUT|NULL", default="FILE")
+
+    # Specifies minimum search, transition-state search, or IRC following
+    opt_type: str = Field(pattern=r"MIN|TS|IRC", default="MIN")
+
+    # Geometry optimization step type, e.g., Newton-Raphson or Rational Function Optimization
+    step_type: str = Field(
+        pattern=r"RFO|RS_I_RFO|P_RFO|NR|SD|LINESEARCH|CONJUGATE", default="RFO"
+    )
+
+    # What program to use for evaluating gradients and energies
+    program: str = Field(default="psi4")
+
+    # variation of steepest descent step size
+    steepest_descent_type: str = Field(pattern="OVERLAP|BARZILAI_BORWEIN", default="OVERLAP")
+
+    # Conjugate gradient step types. See wikipedia on Nonlinear_conjugate_gradient
+    # "POLAK" for Polak-Ribiere. Polak, E.; Ribière, G. (1969).
+    # Revue Française d'Automatique, Informatique, Recherche Opérationnelle. 3 (1): 35–43.
+    # "FLETCHER" for Fletcher-Reeves.  Fletcher, R.; Reeves, C. M. (1964).
+    conjugate_gradient_type: str = Field(pattern=r"FLETCHER|DESCENT|POLAK", default="FLETCHER")
+    # Geometry optimization coordinates to use.
+    # REDUNDANT and INTERNAL are synonyms and the default.
+    # DELOCALIZED are the coordinates of Baker.
+    # NATURAL are the coordinates of Pulay.
+    # CARTESIAN uses only cartesian coordinates.
+    # BOTH uses both redundant and cartesian coordinates.
+    opt_coordinates: str = Field(
+        pattern=r"REDUNDANT|INTERNAL|DELOCALIZED|NATURAL|CARTESIAN|BOTH",
+        default="INTERNAL",
+    )
+
+    # Do follow the initial RFO vector after the first step?
+    rfo_follow_root: bool = False
+    # Root for RFO to follow, 0 being lowest (typical for a minimum)
+    rfo_root: int = Field(ge=0, default=0)
+    # Whether to accept geometry steps that lower the molecular point group. DEFAULT=False
+    accept_symmetry_breaking: bool = False
+
+    # TODO This needs a validator to check the allowed values as well as set dynamic_lvl_max depending
+    # upon dynamic_lvl
+    # Starting level for dynamic optimization (0=nondynamic, higher=>more conservative)
+    # `dynamic_lvl=0 prevents changes to algorithm`
+    dynamic_level: int = Field(ge=0, le=6, default=0, alias="DYNAMIC_LVL")
+    dynamic_lvl_max: int = Field(ge=0, le=6, default=0)
+
+    # IRC step size in bohr(amu)\ $^{1/2}$.
+    irc_step_size: float = Field(gt=0.0, default=0.2)
+
+    # IRC mapping direction
+    irc_direction: str = Field(pattern="FORWARD|BACKWARD", default="FORWARD")
+
+    # Decide when to stop IRC calculations
+    irc_points: int = Field(gt=0, default=20)
 
 
-# The keys on the left here should be lower-case, as should the storage name of the property.
-allowedStringOptions = {
-    "opt_type": ("MIN", "TS", "IRC"),
-    "step_type": ("RFO", "RS_I_RFO", "P_RFO", "NR", "SD", "LINESEARCH", "CONJUGATE"),
-    "opt_coordinates": (
-        "REDUNDANT",
-        "INTERNAL",
-        "DELOCALIZED",
-        "NATURAL",
-        "CARTESIAN",
-        "BOTH",
-    ),
-    "irc_direction": ("FORWARD", "BACKWARD"),
-    "g_convergence": (
-        "QCHEM",
-        "MOLPRO",
-        "GAU",
-        "GAU_LOOSE",
-        "GAU_TIGHT",
-        "GAU_VERYTIGHT",
-        "TURBOMOLE",
-        "CFOUR",
-        "NWCHEM_LOOSE",
-        "INTERFRAG_TIGHT",
-    ),
-    "hess_update": ("NONE", "BFGS", "MS", "POWELL", "BOFILL"),
-    "intrafrag_hess": ("SCHLEGEL", "FISCHER", "SCHLEGEL", "SIMPLE", "LINDH", "LINDH_SIMPLE"),
-    "frag_mode": ("SINGLE", "MULTI"),
-    "interfrag_mode": ("FIXED", "PRINCIPAL_AXES"),
-    "interfrag_hess": ("DEFAULT", "FISCHER_LIKE"),
-    "conjugate_gradient_type": ("FLETCHER", "DESCENT", "POLAK")
-}
+    # ------------- SUBSECTION ----------------
+    # trust radius - need to write custom validator to check for sane combination
+    # of values: One for intrafrag_trust, intrafrag_trust_min, and intrafrag_trust_max,
+    # Another for interfrag_trust, interfrag_trust_min, interfrag_trust_max
 
-# def enum_key( enum_type, value):
-#    printxopt([key for key, val in enum_type.__dir__.items() if val == value][0])
+    # Initial maximum step size in bohr or radian along an internal coordinate
+    intrafrag_trust: float = Field(gt=0.0, default=0.5, alias="INTRAFRAG_STEP_LIMIT")
 
+    # Lower bound for dynamic trust radius [a/u]
+    intrafrag_trust_min: float = Field(gt=0.0, default=0.001, alias="INTRAFRAG_STEP_LIMIT_MIN")
+    # self.intrafrag_trust_min = uod.get("INTRAFRAG_STEP_LIMIT_MIN", 0.001)
 
-class OptParams(object):
-    # define properties
-    opt_type = string_option("opt_type")
-    step_type = string_option("step_type")
-    opt_coordinates = string_option("opt_coordinates")
-    irc_direction = string_option("irc_direction")
-    g_convergence = string_option("g_convergence")
-    hess_update = string_option("hess_update")
-    intrafrag_hess = string_option("intrafrag_hess")
-    frag_mode = string_option("frag_mode")
-    conjugate_gradient_type = string_option("conjugate_gradient_type")
+    # Upper bound for dynamic trust radius [au]
+    intrafrag_trust_max: float = Field(gt=0.0, default=1.0, alias="INTRAFRAG_STEP_LIMIT_MAX")
 
-    # interfrag_mode  = stringOption( 'interfrag_mode' )
-    # interfrag_hess  = stringOption( 'interfrag_hess' )
+    # Initial maximum step size in bohr or radian along an interfragment coordinate
+    interfrag_trust: float = Field(gt=0.0, default=0.5)
+
+    # Lower bound for dynamic trust radius [a/u] for interfragment coordinates
+    interfrag_trust_min: float = Field(gt=0.0, default=0.001, alias="INTERFRAG_TRUST_MIN")
+    # Upper bound for dynamic trust radius [au] for interfragment coordinates
+    interfrag_trust_max: float = Field(gt=0.0, default=1.0, alias="INTERFRAG_TRUST_MAX")
+
+    # Reduce step size as necessary to ensure convergence of back-transformation of
+    # internal coordinate step to cartesian coordinates.
+    ensure_bt_convergence: float = False
+
+    # Do simple, linear scaling of internal coordinates to step limit (not RS-RFO)
+    simple_step_scaling: bool = False
+
+    # Set number of consecutive backward steps allowed in optimization
+    consecutive_backsteps_allowed: int = Field(ge=0, default=0, alias="CONSECUTIVE_BACKSTEPS")
+    _working_consecutive_backsteps = 0
+
+    # Eigenvectors of RFO matrix whose final column is smaller than this are ignored.
+    rfo_normalization_max: float = 100
+
+    # Absolute maximum value of step scaling parameter in RS-RFO.
+    rsrfo_alpha_max: float = 1e8
+
+    # New in python version
+    trajectory: bool = False
+
+    # Specify distances between atoms to be frozen (unchanged)
+    frozen_distance: str = Field(default="", pattern=r"(?:\d\s+){2}*")
+    # Specify angles between atoms to be frozen (unchanged)
+    frozen_bend: str = Field(default="", pattern=r"(?:\d\s+){3}*")
+    # Specify dihedral angles between atoms to be frozen (unchanged)
+    frozen_dihedral: str = Field(default="", pattern=r"(?:\d\s+){4}*")
+    # Specify out-of-plane angles between atoms to be frozen (unchanged)
+    frozen_oofp: str = Field(default="", pattern=r"(?:\d\s+){4}*")
+    # Specify atom and X, XY, XYZ, ... to be frozen (unchanged)
+
+    frozen_cartesian: str = Field(default="", pattern=rf"(?:\d\s{CART_STR}\s?)*")
+
+    # constrain ALL torsions to be frozen.
+    freeze_all_dihedrals: bool = False
+    # For use only with `freeze_all_dihedrals` unfreeze a small subset of dihedrals
+    unfreeze_dihedrals: str = Field(default="", pattern=r"(?:\d\s+){4}*")
+
+    # Specify distance between atoms to be ranged
+    ranged_distance: str = Field(default="", pattern=rf"(?:(?:\d\s*){2}(?:\d+\.\d+\s*){2})*")
+    # Specify angles between atoms to be ranged
+    ranged_bend: str = Field(default="", pattern=rf"(?:(?:\d\s*){3}(?:\d+\.\d+\s*){2})*")
+    # Specify dihedral angles between atoms to be ranged
+    ranged_dihedral: str = Field(default="", pattern=rf"(?:(?:\d\s*){4}(?:\d+\.\d+\s*){2})*")
+    # Specify out-of-plane angles between atoms to be ranged
+    ranged_oofp: str = Field(default="", pattern=rf"(?:(?:\d\s*){4}(?:\d+\.\d+\s*){2})*")
+    # Specify atom and X, XY, XYZ, ... to be ranged
+    ranged_cartesian: str = Field(
+        default="",
+        pattern=rf"(?:\d\s+{CART_STR}\s+(?:\d+\.\d+\s*){2})*"
+    )
+
+    # Specify distances for which extra force will be added
+    ext_force_distance: str = Field(default="", pattern=rf"(?:(?:\d\s*){2}\(.*?\))*")
+    # Specify angles for which extra force will be added
+    ext_force_bend: str = Field(default="", pattern=rf"(?:(?:\d\s*){3}\(.*?\))*")
+    # Specify dihedral angles for which extra force will be added
+    ext_force_dihedral: str = Field(default="", pattern=rf"(?:(?:\d\s*){4}\(.*?\))*")
+    # Specify out-of-plane angles for which extra force will be added
+    ext_force_oofp: str = Field(default="", pattern=rf"(?:(?:\d\s*){4}\(.*?\))*")
+    # Specify cartesian coordinates for which extra force will be added
+    ext_force_cartesian: str = Field(default="", pattern=rf"(?:(?:\d\s+{CART_STR})\(.*?\))*")
+
+    # Should an xyz trajectory file be kept (useful for visualization)?
+    # P.print_trajectory_xyz = uod.get('PRINT_TRAJECTORY_XYZ', False)
+    # Symmetry tolerance for testing whether a mode is symmetric.
+    # P.symm_tol("SYMM_TOL", 0.05)
+    #
+    # SUBSECTION Convergence Control.
+    # Set of optimization criteria. Specification of any MAX_*_G_CONVERGENCE
+    # RMS_*_G_CONVERGENCE options will append to overwrite the criteria set here
+    # |optking__flexible_g_convergence| is also on.
+    # See Table :ref:`Geometry Convergence <table:optkingconv>` for details.
+    g_convergence: str = Field(
+        pattern=r"QCHEM|MOLPRO|GAU|GAU_LOOSE|GAU_TIGHT|GAU_VERYTIGHT|TURBOMOLE|CFOUR|NWCHEM_LOOSE|INTERFRAG_TIGHT",
+        default="QCHEM"
+    )
+
+    # _conv_rms_force = -1
+    # _conv_rms_disp = -1
+    # _conv_max_DE = -1
+    # _conv_max_force = -1
+    # _conv_max_disp = -1
+    # Convergence criterion for geometry optmization: maximum force (internal coordinates, au)
+    conv_max_force: float = Field(default=3.0e-4, alias="MAX_FORCE_G_CONVERGENCE")
+    # Convergence criterion for geometry optmization: rms force  (internal coordinates, au)
+    conv_rms_force: float = Field(default=3.0e-4, alias="RMS_FORCE_G_CONVERGENCE")
+    # Convergence criterion for geometry optmization: maximum energy change
+    conv_max_DE: float = Field(default=1.0e-6, alias="MAX_ENERGY_G_CONVERGENCE")
+    # Convergence criterion for geometry optmization:
+    # maximum displacement (internal coordinates, au)
+    conv_max_disp: float = Field(default=1.2e-3, alias="MAX_DISP_G_CONVERGENCE")
+    # Convergence criterion for geometry optmization:
+    # rms displacement (internal coordinates, au)
+    conv_rms_disp: float = Field(default=1.2e-3, alias="RMS_DISP_G_CONVERGENCE")
+    # Even if a user-defined threshold is set, allow for normal, flexible convergence criteria
+    flexible_g_convergence: bool = False
+
+    #
+    # SUBSECTION Hessian Update
+    # Hessian update scheme
+    hess_update: str = Field(pattern=r"NONE|BFGS|MS|POWELL|BOFILL", default="BFGS")
+
+    # Number of previous steps to use in Hessian update, 0 uses all
+    hess_update_use_last: int = Field(ge=0, default=4)
+    # Do limit the magnitude of changes caused by the Hessian update?
+    hess_update_limit: bool = True
+    # If |hess_update_limit| is True, changes to the Hessian from the update are limited
+    # to the larger of |hess_update_limit_scale| * (current value) and
+    # |hess_update_limit_max| [au].  By default, a Hessian value cannot be changed by more
+    # than 50% and 1 au.
+    hess_update_limit_max: float = Field(ge=0.0, default=1.00)
+    hess_update_limit_scale: float = Field(ge=0.0, le=1.0, default=0.50)
+
+    # Denominator check for hessian update.
+    hess_update_den_tol: float = Field(gt=0.0, default=1e-7)
+
+    # Hessian update is avoided if any internal coordinate has changed by
+    # more than this in radians/au
+    _hess_update_dq_tol = 0.5
+
+    # SUBSECTION Using external Hessians
+    # Do read Cartesian Hessian?  Only for experts - use
+    # |optking__full_hess_every| instead.
+    cart_hess_read: bool = False
+    # accompanies cart_hess_read. The default is not validated
+    hessian_file: pathlib.Path = Field(default="")
+
+    # Frequency with which to compute the full Hessian in the course
+    # of a geometry optimization. 0 means to compute the initial Hessian only,
+    # 1 means recompute every step, and N means recompute every N steps. The
+    # default (-1) is to never compute the full Hessian.
+    full_hess_every: int = Field(ge=-1, default=-1)
+
+    # Model Hessian to guess intrafragment force constants
+    intrafrag_hess: str = Field(
+        pattern=r"SCHLEGEL|FISCHER|SIMPLE|LINDH|LINDH_SIMPLE",
+        default="SCHLEGEL"
+    )
+    # Re-estimate the Hessian at every step, i.e., ignore the currently stored Hessian.
+    h_guess_every: bool = False
+    _working_steps_since_last_H = 0
+
+    #
+    # SUBSECTION Backtransformation to Cartesian Coordinates Control
+    bt_max_iter: int = Field(gt=0, default=25)
+    bt_dx_conv: float = Field(gt=0.0, default=1.0e-7)
+    bt_dx_rms_change_conv: float = Field(gt=0.0, default=1.0e-12)
+    # The following should be used whenever redundancies in the coordinates
+    # are removed, in particular when forces and Hessian are projected and
+    # in back-transformation from delta(q) to delta(x).
+    bt_pinv_rcond: float = Field(gt=0.0, default=1.0e-6)
+
+    #
+    # For multi-fragment molecules, treat as single bonded molecule or via interfragment
+    # coordinates. A primary difference is that in ``MULTI`` mode, the interfragment
+    # coordinates are not redundant.
+    frag_mode: str = Field(pattern=r"SINGLE|MULTI", default="SINGLE")
+    # Which atoms define the reference points for interfragment coordinates?
+    frag_ref_atoms: list[list[list[int]]] = []
+    # Do freeze all fragments rigid?
+    freeze_intrafrag: bool = False
+    # Do freeze all interfragment modes?
+    # P.inter_frag = uod.get('FREEZE_INTERFRAG', False)
+    # When interfragment coordinates are present, use as reference points either
+    # principal axes or fixed linear combinations of atoms.
+    interfrag_mode: str = Field(pattern=r"FIXED|PRINCIPAL_AXES", default="FIXED")
+
+    # Do add bond coordinates at nearby atoms for non-bonded systems?
+    add_auxiliary_bonds: bool = False
+    # This factor times standard covalent distance is used to add extra stretch coordinates.
+    auxiliary_bond_factor: float = Field(gt=1.0, default=2.5)
+    # Do use 1/R for the interfragment stretching coordinate instead of R?
+    interfrag_dist_inv: bool = False
+    # Used for determining which atoms in a system are too collinear to
+    # be chosen as default reference atoms. We avoid collinearity. Greater
+    # is more restrictive.
+    interfrag_collinear_tol: float = Field(gt=0.0, default=0.01)
+
+    # Let the user submit a dictionary (or array of dictionaries) for
+    # the interfrag coordinates. Validation occurs below
+    interfrag_coords: list[dict] = []
+
+    # Model Hessian to guess interfragment force constants
+    interfrag_hess: str = Field(pattern=r"DEFAULT|FISCHER_LIKE", default="DEFAULT")
+    # P.interfrag_hess = uod.get('INTERFRAG_HESS', 'DEFAULT')
+    # When determining connectivity, a bond is assigned if interatomic distance
+    # is less than (this number) * sum of covalent radii.
+    covalent_connect: float = Field(gt=0.0, default=1.3)
+    # When connecting disparate fragments when frag_mode = SIMPLE, a "bond"
+    # is assigned if interatomic distance is less than (this number) * sum of covalent radii.
+    # The value is then increased until all the fragments are connected directly
+    # or indirectly.
+    interfragment_connect: float = Field(gt=0.0, default=1.8)
+    # General, maximum distance for the definition of H-bonds.
+    h_bond_connect: float = Field(gt=0.0, default=4.3)
+    # Add out-of-plane angles (usually not needed)
+    include_oofp: bool = False
+
+    #
+    #
+    # SUBSECTION Misc.
+    # Do save and print the geometry from the last projected step at the end
+    # of a geometry optimization? Otherwise (and by default), save and print
+    # the previous geometry at which was computed the gradient that satisfied
+    # the convergence criteria.
+    # P.final_geom_write = uod.get('FINAL_GEOM_WRITE', False)
+    # Do test B matrix?
+    test_B: bool = False
+    # Do test derivative B matrix?
+    test_derivative_B: bool = False
+    # Only generate the internal coordinates and then stop (boolean) UNUSED
+    # generate_intcos_exit: bool = False
+    # Keep internal coordinate definition file.
+    # keep_intcos: bool = False UNUSED
+    linesearch_step: float = Field(gt=0.0, default=0.100)
+    linesearch: bool = False
+    # Guess at Hessian in steepest-descent direction.
+    sd_hessian: float = Field(gt=0.0, default=1.0)
+
+    # # -- Items below are unlikely to need modified
+
+    # Boundary to guess if a torsion or out-of-plane angle has passed through 180
+    # during a step.
+    fix_val_near_pi: float = 1.57
+
+    # Torsional angles will not be computed if the contained bond angles are within
+    # this many radians of zero or 180. (< ~1 and > ~179 degrees)
+    # only used in v3d.py
+    v3d_tors_angle_lim: float = 0.017
+
+    # cos(torsional angle) must be this close to -1/+1 for angle to count as 0/pi
+    # only used in v3d.py
+    v3d_tors_cos_tol: float = 1e-10
+
+    # if bend exceeds this value, then also create linear bend complement
+    linear_bend_threshold: float = 3.05  # about 175 degrees
+
+    # If bend is smaller than this value, then never fix its associated vectors
+    # this allows iterative steps through and near zero degrees.
+    small_bend_fix_threshold: float = 0.35
+
+    # Threshold for which entries in diagonalized redundant matrix are kept and
+    # inverted while computing a generalized inverse of a matrix
+    redundant_eval_tol: float = 1.0e-10  # to be deprecated.
+
+    # --- SET INTERNAL OPTIMIZATION PARAMETERS ---
+    _i_max_force = False
+    _i_rms_force = False
+    _i_max_DE = False
+    _i_max_disp = False
+    _i_rms_disp = False
+    _i_untampered = False
+
+    # def __dict__(self):
+    #     return self.model_dump()
 
     def __str__(self):
         s = "\n\t\t -- Optimization Parameters --\n"
-        for attr in dir(self):
-            if not hasattr(getattr(self, attr), "__self__"):  # omit bound methods
-                if "__" not in attr:  # omit these methods
-                    s += "\t%-30s = %15s\n" % (attr, getattr(self, attr))
+        for name, value in self.model_dump(by_alias=True).items():
+            s += "\t%-30s = %15s\n" % (name, value)
         s += "\n"
         return s
 
-    def __init__(self, uod):
-        self.program = uod.get("program", "psi4")
+    @model_validator(mode='before')
+    @classmethod
+    def save_raw_input(cls, data):
+        """ model_set_fields is only set after validation so it can't be used to determine
+        what option B should be set to if option A is set by the user """
+        upper_data = {key.upper(): val for key, val in data.items()}
+        cls._raw_input = upper_data
+        return upper_data
 
-        # SUBSECTION Optimization Algorithm
+    @model_validator(mode='after')
+    def validate_algorithm(self):
+        """ Ensure that if the user has selected both an opt_type and step_type that they are
+        compatible. If the user has selected `opt_type=TS` OR a `step_type` consistent with `TS`
+        then change the other keyword to have the appropriate keyword """
 
-        # Maximum number of geometry optimization steps
-        self.geom_maxiter = uod.get("geom_maxiter", 50)
-        # If user sets one, assume this.
-        if "geom_maxiter" in uod and "alg_geom_maxiter" not in uod:
+        min_step_types = ["RFO", "NR", "SD", "CONJUGATE", "LINESEARCH"]
+        ts_step_types = ["RS_I_RFO", "P_RFO"]
+
+        if 'OPT_TYPE' in self._raw_input and 'STEP_TYPE' in self._raw_input:
+            if self.opt_type == "TS":
+                assert self.step_type not in min_step_types
+            elif self.opt_type == "MIN":
+                assert self.step_type not in ts_step_types
+        elif 'OPT_TYPE' in self._raw_input and self.opt_type == "TS":
+            # User has selected TS. Change algorithm to RS_I_RFO
+            self.step_type = "RS_I_RFO"
+        elif "STEP_TYPE" in self._raw_input and "STEP_TYPE" in ts_step_types:
+            self.opt_type = "TS"
+        return self
+
+    @model_validator(mode='after')
+    def validate_convergence(self):
+        """ Set active variables depending upon the PRESET that has been provided and whether any
+        specific values individually specified by the user. """
+
+        # stash so that __setattr__ doesn't affect which variables have been changed
+        # Start by setting each individual convergence option from preset
+        conv_spec = CONVERGENCE_PRESETS.get(self.g_convergence)
+
+        for key, val in conv_spec.items():
+            self.__setattr__(key, val)
+
+        keywords = [
+            ("MAX_FORCE_G_CONVERGENCE", 'conv_max_force', '_i_max_force'),
+            ("RMS_FORCE_G_CONVERGENCE", 'conv_rms_force', '_i_rms_force'),
+            ("MAX_ENERGY_G_CONVERGENCE", 'conv_max_DE', '_i_max_DE'),
+            ("MAX_DISP_G_CONVERGENCE", 'conv_max_disp', '_i_max_disp'),
+            ("RMS_DISP_G_CONVERGENCE", 'conv_rms_disp', '_i_rms_disp'),
+        ]
+
+        # if ANY convergence options were specified. Turn untampered on and set all options to
+        # inactive
+        logger.debug("raw_input %s", self._raw_input)
+        for keyword_set in keywords:
+            if keyword_set[0] in self._raw_input:
+                # mark keyword as "active" through _i_keyword variable
+                # mark untampered as False (tampering has occured!)
+                logger.debug("attribute value %s", self._raw_input.get(keyword_set[0]))
+                self.__setattr__(keyword_set[1], self._raw_input.get(keyword_set[0]))
+                self.__setattr__(keyword_set[2], True)
+                self._i_untampered = False
+                if not self.flexible_g_convergence:
+                    # use flexible conv criteria don't leave criteria preset active except for mods
+                    self._i_untampered = True
+                else:
+                    self._i_untampered = False
+                    # deactivate all criteria (this seems to have been missing in previous version)
+                    self.__setattr__(keyword_set[2], False)
+
+        logger.debug("Final convergence information:\n%s", self.conv_criteria())
+
+        return self
+
+    @model_validator(mode='after')
+    def validate_iter(self):
+        if self.opt_type == "IRC" and 'geom_maxiter' not in self._raw_input:
+            self.geom_maxiter = self.irc_points * 15
+        elif self.geom_maxiter < self.alg_geom_maxiter:
             self.alg_geom_maxiter = self.geom_maxiter
-        else:
-            # Maximum number of geometry optimization steps for one algorithm
-            self.alg_geom_maxiter = uod.get("alg_geom_maxiter", 50)
-        # Print level.  1 = normal
-        # P.print_lvl = uod.get('print_lvl', 1)
-        self.print_lvl = uod.get("print", 1)
-        # Print all optimization parameters.
-        # P.printxopt_params = uod.get('printxopt_PARAMS', False)
-        self.output_type = uod.get("OUTPUT_TYPE", "FILE")
-        # Specifies minimum search, transition-state search, or IRC following
-        # P.stringOptionsSetter(stringOption('opt_type')
-        self.opt_type = uod.get("OPT_TYPE", "MIN")
-        # Geometry optimization step type, e.g., Newton-Raphson or Rational Function Optimization
-        self.step_type = uod.get("STEP_TYPE", "RFO")
-        # variation of steepest descent step size
-        self.steepest_descent_type = uod.get("STEEPEST_DESCENT_TYPE", "OVERLAP")
-        # Conjugate gradient step types. See wikipedia on Nonlinear_conjugate_gradient
-        # "POLAK" for Polak-Ribiere. Polak, E.; Ribière, G. (1969). 
-        # Revue Française d'Automatique, Informatique, Recherche Opérationnelle. 3 (1): 35–43.
-        # "FLETCHER" for Fletcher-Reeves.  Fletcher, R.; Reeves, C. M. (1964).
-        self.conjugate_gradient_type = uod.get("CONJUGATE_GRADIENT_TYPE", "FLETCHER")
-        # Geometry optimization coordinates to use.
-        # REDUNDANT and INTERNAL are synonyms and the default.
-        # DELOCALIZED are the coordinates of Baker.
-        # NATURAL are the coordinates of Pulay.
-        # CARTESIAN uses only cartesian coordinates.
-        # BOTH uses both redundant and cartesian coordinates.
-        self.opt_coordinates = uod.get("OPT_COORDINATES", "REDUNDANT")
-        # Do follow the initial RFO vector after the first step?
-        self.rfo_follow_root = uod.get("RFO_FOLLOW_ROOT", False)
-        # Root for RFO to follow, 0 being lowest (typical for a minimum)
-        self.rfo_root = uod.get("RFO_ROOT", 0)
-        # Whether to accept geometry steps that lower the molecular point group.
-        self.accept_symmetry_breaking = uod.get("ACCEPT_SYMMETRY_BREAKING", False)
-        # Starting level for dynamic optimization (0=nondynamic, higher=>more conservative)
-        self.dynamic_level = uod.get("DYNAMIC_LEVEL", 0)
-        if self.dynamic_level == 0:  # don't change parameters
-            self.dynamic_level_max = 0
-        else:
-            self.dynamic_level_max = uod.get("DYNAMIC_LEVEL_MAX", 6)  # 6 currently defined
-        # IRC step size in bohr(amu)\ $^{1/2}$.
-        self.irc_step_size = uod.get("IRC_STEP_SIZE", 0.2)
-        # IRC mapping direction
-        self.irc_direction = uod.get("IRC_DIRECTION", "FORWARD")
-        # Decide when to stop IRC calculations
-        self.irc_points = uod.get("IRC_POINTS", 20)
-        #
-        # Initial maximum step size in bohr or radian along an internal coordinate
-        self.intrafrag_trust = uod.get("INTRAFRAG_STEP_LIMIT", 0.5)
-        # Lower bound for dynamic trust radius [a/u]
-        self.intrafrag_trust_min = uod.get("INTRAFRAG_STEP_LIMIT_MIN", 0.001)
-        # Upper bound for dynamic trust radius [au]
-        self.intrafrag_trust_max = uod.get("INTRAFRAG_STEP_LIMIT_MAX", 1.0)
-        # Maximum step size in bohr or radian along an interfragment coordinate
-        self.interfrag_trust = uod.get("INTERFRAG_TRUST", 0.5)
-        # Lower bound for dynamic trust radius [a/u]
-        self.interfrag_trust_min = uod.get("INTERFRAG_TRUST_MIN", 0.001)
-        # Upper bound for dynamic trust radius [au]
-        self.interfrag_trust_max = uod.get("INTERFRAG_TRUST_MAX", 1.0)
-        # Reduce step size as necessary to ensure convergence of back-transformation of
-        # internal coordinate step to cartesian coordinates.
-        self.ensure_bt_convergence = uod.get("ENSURE_BT_CONVERGENCE", False)
-        # Do simple, linear scaling of internal coordinates to step limit (not RS-RFO)
-        if self.intrafrag_trust_max < self.intrafrag_trust:
-            self.intrafrag_trust = self.intrafrag_trust_max
+        return self
 
-        self.simple_step_scaling = uod.get("SIMPLE_STEP_SCALING", False)
-        # Set number of consecutive backward steps allowed in optimization
-        self.consecutive_backsteps_allowed = uod.get("CONSECUTIVE_BACKSTEPS", 0)
-        self.working_consecutive_backsteps = 0
-        # Eigenvectors of RFO matrix whose final column is smaller than this are ignored.
-        self.rfo_normalization_max = uod.get("RFO_NORMALIZATION_MAX", 100)
-        # Absolute maximum value of RS-RFO.
-        self.rsrfo_alpha_max = uod.get("RSRFO_ALPHA_MAX", 1e8)
-        # New in python version
-        self.trajectory = uod.get("TRAJECTORY", False)
-
-        # Specify distances between atoms to be frozen (unchanged)
-        frozen = uod.get("FROZEN_DISTANCE", "")
-        self.frozen_distance = int_list(tokenize_input_string(frozen), 2)
-        # Specify angles between atoms to be frozen (unchanged)
-        frozen = uod.get("FROZEN_BEND", "")
-        self.frozen_bend = int_list(tokenize_input_string(frozen), 3)
-        # Specify dihedral angles between atoms to be frozen (unchanged)
-        frozen = uod.get("FROZEN_DIHEDRAL", "")
-        self.frozen_dihedral = int_list(tokenize_input_string(frozen), 4)
-        # Specify out-of-plane angles between atoms to be frozen (unchanged)
-        frozen = uod.get("FROZEN_OOFP", "")
-        self.frozen_oofp = int_list(tokenize_input_string(frozen), 4)
-        # Specify atom and X, XY, XYZ, ... to be frozen (unchanged)
-        frozen = uod.get("FROZEN_CARTESIAN", "")
-        self.frozen_cartesian = int_xyz_float_list(tokenize_input_string(frozen), 1, 1, 0)
-
-        # constrain ALL torsions to be frozen.
-        self.freeze_all_dihedrals = uod.get("FREEZE_ALL_DIHEDRALS", False)
-        # For use only with `freeze_all_dihedrals` unfreeze a small subset of dihedrals
-        frozen = uod.get("UNFREEZE_DIHEDRALS", "")
-        self.unfreeze_dihedrals = int_list(tokenize_input_string(frozen), 4)
-
-        # Specify distance between atoms to be ranged
-        ranged = uod.get("RANGED_DISTANCE", "")
-        self.ranged_distance = int_float_list(tokenize_input_string(ranged), 2, 2)
-        # Specify angles between atoms to be ranged
-        ranged = uod.get("RANGED_BEND", "")
-        self.ranged_bend = int_float_list(tokenize_input_string(ranged), 3, 2)
-        # Specify dihedral angles between atoms to be ranged
-        ranged = uod.get("RANGED_DIHEDRAL", "")
-        self.ranged_dihedral = int_float_list(tokenize_input_string(ranged), 4, 2)
-        # Specify out-of-plane angles between atoms to be ranged
-        ranged = uod.get("RANGED_OOFP", "")
-        self.ranged_oofp = int_float_list(tokenize_input_string(ranged), 4, 2)
-        # Specify atom and X, XY, XYZ, ... to be ranged
-        ranged = uod.get("RANGED_CARTESIAN", "")
-        self.ranged_cartesian = int_xyz_float_list(tokenize_input_string(ranged), 1, 1, 2)
-
-        # Specify distances for which extra force will be added
-        force = uod.get("EXT_FORCE_DISTANCE", "")
-        self.ext_force_distance = int_fx_string(force, 2)
-        # Specify angles for which extra force will be added
-        force = uod.get("EXT_FORCE_BEND", "")
-        self.ext_force_bend = int_fx_string(force, 3)
-        # Specify dihedral angles for which extra force will be added
-        force = uod.get("EXT_FORCE_DIHEDRAL", "")
-        self.ext_force_dihedral = int_fx_string(force, 4)
-        # Specify out-of-plane angles for which extra force will be added
-        force = uod.get("EXT_FORCE_OOFP", "")
-        self.ext_force_oofp = int_fx_string(force, 4)
-        # Specify cartesian coordinates for which extra force will be added
-        force = uod.get("EXT_FORCE_CARTESIAN", "")
-        self.ext_force_cartesian = int_xyz_fx_string(force, 1)
-
-        # Should an xyz trajectory file be kept (useful for visualization)?
-        # P.print_trajectory_xyz = uod.get('PRINT_TRAJECTORY_XYZ', False)
-        # Symmetry tolerance for testing whether a mode is symmetric.
-        # P.symm_tol("SYMM_TOL", 0.05)
-        #
-        # SUBSECTION Convergence Control.
-        # Set of optimization criteria. Specification of any MAX_*_G_CONVERGENCE
-        # RMS_*_G_CONVERGENCE options will append to overwrite the criteria set here
-        # |optking__flexible_g_convergence| is also on.
-        # See Table :ref:`Geometry Convergence <table:optkingconv>` for details.
-        self.g_convergence = uod.get("G_CONVERGENCE", "QCHEM")
-        # Convergence criterion for geometry optmization: maximum force (internal coordinates, au)
-        self.max_force_g_convergence = uod.get("MAX_FORCE_G_CONVERGENCE", 3.0e-4)
-        # Convergence criterion for geometry optmization: rms force  (internal coordinates, au)
-        self.rms_force_g_convergence = uod.get("RMS_FORCE_G_CONVERGENCE", 3.0e-4)
-        # Convergence criterion for geometry optmization: maximum energy change
-        self.max_energy_g_convergence = uod.get("MAX_ENERGY_G_CONVERGENCE", 1.0e-6)
-        # Convergence criterion for geometry optmization:
-        # maximum displacement (internal coordinates, au)
-        self.max_disp_g_convergence = uod.get("MAX_DISP_G_CONVERGENCE", 1.2e-3)
-        # Convergence criterion for geometry optmization:
-        # rms displacement (internal coordinates, au)
-        self.rms_disp_g_convergence = uod.get("RMS_DISP_G_CONVERGENCE", 1.2e-3)
-        # Even if a user-defined threshold is set, allow for normal, flexible convergence criteria
-        self.flexible_g_convergence = uod.get("FLEXIBLE_G_CONVERGENCE", False)
-        #
-        # SUBSECTION Hessian Update
-        # Hessian update scheme
-        self.hess_update = uod.get("HESS_UPDATE", "BFGS")
-        # Number of previous steps to use in Hessian update, 0 uses all
-        self.hess_update_use_last = uod.get("HESS_UPDATE_USE_LAST", 4)
-        # Do limit the magnitude of changes caused by the Hessian update?
-        self.hess_update_limit = uod.get("HESS_UPDATE_LIMIT", True)
-        # If |hess_update_limit| is True, changes to the Hessian from the update are limited
-        # to the larger of |hess_update_limit_scale| * (current value) and
-        # |hess_update_limit_max| [au].  By default, a Hessian value cannot be changed by more
-        # than 50% and 1 au.
-        self.hess_update_limit_max = uod.get("HESS_UPDATE_LIMIT_MAX", 1.00)
-        self.hess_update_limit_scale = uod.get("HESS_UPDATE_LIMIT_SCALE", 0.50)
-        # Denominator check for hessian update.
-        self.hess_update_den_tol = uod.get("HESS_UPDATE_DEN_TOL", 1e-7)
-        # Hessian update is avoided if any internal coordinate has changed by
-        # more than this in radians/au
-        self.hess_update_dq_tol = 0.5
-
-        # SUBSECTION Using external Hessians
-        # Do read Cartesian Hessian?  Only for experts - use
-        # |optking__full_hess_every| instead.
-        self.cart_hess_read = uod.get("CART_HESS_READ", False)
-        self.hessian_file = uod.get("HESSIAN_FILE", None)
-        # Frequency with which to compute the full Hessian in the course
-        # of a geometry optimization. 0 means to compute the initial Hessian only,
-        # 1 means recompute every step, and N means recompute every N steps. The
-        # default (-1) is to never compute the full Hessian.
-        self.full_hess_every = uod.get("FULL_HESS_EVERY", -1)
-        # Model Hessian to guess intrafragment force constants
-        self.intrafrag_hess = uod.get("INTRAFRAG_HESS", "SCHLEGEL")
-        # Re-estimate the Hessian at every step, i.e., ignore the currently stored Hessian.
-        # self.h_guess_every = uod.get("H_GUESS_EVERY", False)
-
-        self.working_steps_since_last_H = 0
-        #
-        # SUBSECTION Backtransformation to Cartesian Coordinates Control
-        self.bt_max_iter = uod.get("bt_max_iter", 25)
-        self.bt_dx_conv = uod.get("bt_dx_conv", 1.0e-7)
-        self.bt_dx_rms_change_conv = uod.get("bt_dx_rms_change_conv", 1.0e-12)
-        # The following should be used whenever redundancies in the coordinates
-        # are removed, in particular when forces and Hessian are projected and
-        # in back-transformation from delta(q) to delta(x).
-        self.bt_pinv_rcond = uod.get("bt_pinv_rcond", 1.0e-6)
-        #
-        # For multi-fragment molecules, treat as single bonded molecule or via interfragment
-        # coordinates. A primary difference is that in ``MULTI`` mode, the interfragment
-        # coordinates are not redundant.
-        self.frag_mode = uod.get("FRAG_MODE", "SINGLE")
-        # Which atoms define the reference points for interfragment coordinates?
-        self.frag_ref_atoms = uod.get("FRAG_REF_ATOMS", None)
-        # Do freeze all fragments rigid?
-        self.freeze_intrafrag = uod.get("FREEZE_INTRAFRAG", False)
-        # Do freeze all interfragment modes?
-        # P.inter_frag = uod.get('FREEZE_INTERFRAG', False)
-        # When interfragment coordinates are present, use as reference points either
-        # principal axes or fixed linear combinations of atoms.
-        self.interfrag_mode = uod.get("INTERFRAG_MODE", "FIXED")
-        # Do add bond coordinates at nearby atoms for non-bonded systems?
-        self.add_auxiliary_bonds = uod.get('ADD_AUXILIARY_BONDS', False)
-        # This factor times standard covalent distance is used to add extra stretch coordinates.
-        self.auxiliary_bond_factor = uod.get('AUXILIARY_BOND_FACTOR', 2.5)
-        # Do use 1/R for the interfragment stretching coordinate instead of R?
-        self.interfrag_dist_inv = uod.get("INTERFRAG_DIST_INV", False)
-        # Used for determining which atoms in a system are too collinear to
-        # be chosen as default reference atoms. We avoid collinearity. Greater
-        # is more restrictive.
-        self.interfrag_collinear_tol = uod.get("INTERFRAG_COLLINEAR_TOL", 0.01)
-
-        # Let the user submit a dictionary (or array of dictionaries) for
-        # the interfrag coordinates.
-        self.interfrag_coords = uod.get("INTERFRAG_COORDS", None)
-
-        # Finish multifragment option setup by forcing frag_mode: MULTI if DimerCoords are provided
-        if self.interfrag_coords is not None:
-            self.frag_mode = "MULTI"
-
-        # Model Hessian to guess interfragment force constants
-        # P.interfrag_hess = uod.get('INTERFRAG_HESS', 'DEFAULT')
-        # When determining connectivity, a bond is assigned if interatomic distance
-        # is less than (this number) * sum of covalent radii.
-        self.covalent_connect = uod.get("COVALENT_CONNECT", 1.3)
-        # When connecting disparate fragments when frag_mode = SIMPLE, a "bond"
-        # is assigned if interatomic distance is less than (this number) * sum of covalent radii.
-        # The value is then increased until all the fragments are connected directly
-        # or indirectly.
-        self.interfragment_connect = uod.get("INTERFRAGMENT_CONNECT", 1.8)
-        # General, maximum distance for the definition of H-bonds.
-        self.h_bond_connect = uod.get("h_bond_connect", 4.3)
-        # Only generate the internal coordinates and then stop (boolean)
-        self.generate_intcos_exit = uod.get("GENERATE_INTCOS_EXIT", False)
-        # Add out-of-plane angles (usually not needed)
-        self.include_oofp = uod.get("INCLUDE_OOFP", False)
-        #
-        #
-        # SUBSECTION Misc.
-        # Do save and print the geometry from the last projected step at the end
-        # of a geometry optimization? Otherwise (and by default), save and print
-        # the previous geometry at which was computed the gradient that satisfied
-        # the convergence criteria.
-        # P.final_geom_write = uod.get('FINAL_GEOM_WRITE', False)
-        # Do test B matrix?
-        self.test_B = uod.get("TEST_B", False)
-        # Do test derivative B matrix?
-        self.test_derivative_B = uod.get("TEST_DERIVATIVE_B", False)
-        # Keep internal coordinate definition file.
-        self.keep_intcos = uod.get("KEEP_INTCOS", False)
-        self.linesearch_step = uod.get("LINESEARCH_STEP", 0.100)
-        self.linesearch = uod.get("LINESEARCH", False)
-        # Guess at Hessian in steepest-descent direction.
-        self.sd_hessian = uod.get("SD_HESSIAN", 1.0)
-        #
-        # --- Complicated defaults ---
-        #
-        # Assume RFO means P-RFO for transition states.
-        if self.opt_type == "TS":
-            if self.step_type == "RFO" or "STEP_TYPE" not in uod:
-                self.step_type = "RS_I_RFO"
-                self.intrafrag_trust = 0.2
-
-        if "GEOM_MAXITER" not in uod:
-            if self.opt_type == "IRC":
-                self.geom_maxiter = self.irc_points * self.geom_maxiter
-
+    @model_validator(mode='after')
+    def validate_trustregion(self):
         # Initial Hessian guess for cartesians with coordinates BOTH is stupid, so don't scale
         #   step size down too much.  Steepest descent has no good hessian either.
-        if "INTRAFRAG_TRUST_MIN" not in uod:
+        if "intrafrag_trust_min" not in self._raw_input:
             if self.opt_coordinates == "BOTH":
                 self.intrafrag_trust_min = self.intrafrag_trust / 2.0
             elif self.step_type == "SD":  # steepest descent, use constant stepsize
@@ -398,214 +505,112 @@ class OptParams(object):
                 # so don't let minimum step get shrunk too much.
                 self.intrafrag_trust_min = self.intrafrag_trust / 2.0
 
+        if self.opt_type == "IRC" and "intrafrag_trust" not in self._raw_input:
+            self.intrafrag_trust = 0.2  # start with smaller intrafrag_trust
+
+        if self.intrafrag_trust_max < self.intrafrag_trust:
+            self.intrafrag_trust = self.intrafrag_trust_max
+        return self
+
+    @model_validator(mode='after')
+    def validate_hessian(self):
+
+        set_vars = self._raw_input
+
         # Original Lindh specification was to redo at every step.
-        if "H_GUESS_EVERY" not in uod and self.intrafrag_hess == "LINDH":
+        if "h_guess_every" not in set_vars and self.intrafrag_hess == "LINDH":
             self.h_guess_every = True
 
         # Default for cartesians: use Lindh force field for initial guess, then BFGS.
         if self.opt_coordinates == "CARTESIAN":
-            if "INTRAFRAG_HESS" not in uod:
+            if "intrafrag_hess" not in set_vars:
                 self.intrafrag_hess = "LINDH"
-                if "H_GUESS_EVERY" not in uod:
-                    self.H_guess_every = False
+                if "h_guess_every" not in set_vars:
+                    self.h_guess_every = False
 
         # Set Bofill as default for TS optimizations.
         if self.opt_type == "TS" or self.opt_type == "IRC":
-            if "HESS_UPDATE" not in uod:
+            if "hess_update" not in set_vars:
                 self.hess_update = "BOFILL"
 
         # Make trajectory file printing the default for IRC.
-        if self.opt_type == "IRC" and "PRINT_TRAJECTORY_XYZ_FILE" not in uod:
+        if self.opt_type == "IRC" and "print_trajectory_xyz_file" not in set_vars:
             self.print_trajectory_xyz_file = True
 
         # Read cartesian Hessian by default for IRC.
-        if self.opt_type == "IRC" and "CART_HESS_READ" not in uod:
+        if self.opt_type == "IRC" and "cart_hess_read" not in set_vars:
             self.read_cartesian_H = True
 
-        if self.generate_intcos_exit:
-            self.keep_intcos = True
+        # inactive option
+        # if self.generate_intcos_exit:
+        #     self.keep_intcos = True
 
-        # For IRC, we will need a Hessian.  Compute it if not provided.
+        # For IRC, we WILL need a Hessian.  Compute it if not provided.
         # Set full_hess_every to 0 if -1
         if self.opt_type == "IRC" and self.full_hess_every < 0:
             self.full_hess_every = 0
             # self.cart_hess_read = True  # not sure about this one - test
 
         # if steepest-descent, then make much larger default
-        if self.step_type == "SD" and "CONSECUTIVE_BACKSTEPS" not in uod:
+        if self.step_type == "SD" and "consecutive_backsteps" not in set_vars:
             self.consecutive_backsteps_allowed = 10
 
         # For RFO step, eigenvectors of augmented Hessian are divided by the last
         # element unless it is smaller than this value {double}.  Can be used to
         # eliminate asymmetric steps not otherwise detected (e.g. in degenerate
         # point groups). For multi-fragment modes, we presume that smaller
-        #  Delta-E's are possible, and this threshold should be made larger.
+        # Delta-E's are possible, and this threshold should be made larger.
         # if P.fragment_mode == 'MULTI' and 'RFO_NORMALIZATION_MAX' not in uod:
-        # P.rfo_normalization_max = 1.0e5
+        #     P.rfo_normalization_max = 1.0e5
         # If arbitrary user forces, don't shrink step_size if Delta(E) is poor.
+        return self
 
-        # -- Items below are unlikely to need modified
+    @model_validator(mode="after")
+    def validate_frag(self):
+        # Finish multifragment option setup by forcing frag_mode: MULTI if DimerCoords are provided
+        if self.interfrag_coords:
+            self.frag_mode = "MULTI"
+        return self
 
-        # Boundary to guess if a torsion or out-of-plane angle has passed through 180
-        # during a step.
-        self.fix_val_near_pi = 1.57
+    @field_validator('interfrag_coords', mode='before')
+    @classmethod
+    def check_interfrag_coords(cls, val):
+        """ Make sure required fields and types are sensible for interfrag_coords dict. """
 
-        # Torsional angles will not be computed if the contained bond angles are within
-        # this many radians of zero or 180. (< ~1 and > ~179 degrees)
-        # only used in v3d.py
-        self.v3d_tors_angle_lim = 0.017
+        tmp = val
+        if tmp:
+            def to_uppercase_key_str(tmp: dict):
+                """ Convert dict to string object with uppercase keys """
+                tmp = {key.upper(): item for key, item in tmp.items()}
+                return json.dumps(tmp)
 
-        # cos(torsional angle) must be this close to -1/+1 for angle to count as 0/pi
-        # only used in v3d.py
-        self.v3d_tors_cos_tol = 1e-10
+            # convert to (presumably) dict or list[dict]
+            if isinstance(tmp, str):
+                tmp = tmp.replace("'", '"')
+                tmp = json.loads(tmp)
+                logger.debug("%s", pformat(tmp))
 
-        # if bend exceeds this value, then also create linear bend complement
-        self.linear_bend_threshold = 3.05  # about 175 degrees
+            # ensure that keys are uppercase and check that 
+            if isinstance(tmp, dict):
+                tmp = [to_uppercase_key_str(tmp)]
+            elif isinstance(tmp, (list, tuple)):
+                tmp = [to_uppercase_key_str(item) for item in tmp]
 
-        # If bend is smaller than this value, then never fix its associated vectors
-        # this allows iterative steps through and near zero degrees.
-        self.small_bend_fix_threshold = 0.35
+            # Validate string as matching InterfragCoords Spec
+            for item in tmp:
+                assert InterfragCoords.model_validate_json(item)
 
-        # Threshold for which entries in diagonalized redundant matrix are kept and
-        # inverted while computing a generalized inverse of a matrix
-        self.redundant_eval_tol = 1.0e-10 # to be deprecated.
-        #
-        # --- SET INTERNAL OPTIMIZATION PARAMETERS ---
-        self.i_max_force = False
-        self.i_rms_force = False
-        self.i_max_DE = False
-        self.i_max_disp = False
-        self.i_rms_disp = False
-        self.i_untampered = False
-        self.conv_rms_force = -1
-        self.conv_rms_disp = -1
-        self.conv_max_DE = -1
-        self.conv_max_force = -1
-        self.conv_max_disp = -1
-        #
-        if self.g_convergence == "QCHEM":
-            self.i_untampered = True
-            self.conv_max_force = 3.0e-4
-            self.i_max_force = True
-            self.conv_max_DE = 1.0e-6
-            self.i_max_DE = True
-            self.conv_max_disp = 1.2e-3
-            self.i_max_disp = True
-        elif self.g_convergence == "MOLPRO":
-            self.i_untampered = True
-            self.conv_max_force = 3.0e-4
-            self.i_max_force = True
-            self.conv_max_DE = 1.0e-6
-            self.i_max_DE = True
-            self.conv_max_disp = 3.0e-4
-            self.i_max_disp = True
-        elif self.g_convergence == "GAU":
-            self.i_untampered = True
-            self.conv_max_force = 4.5e-4
-            self.i_max_force = True
-            self.conv_rms_force = 3.0e-4
-            self.i_rms_force = True
-            self.conv_max_disp = 1.8e-3
-            self.i_max_disp = True
-            self.conv_rms_disp = 1.2e-3
-            self.i_rms_disp = True
-        elif self.g_convergence == "GAU_TIGHT":
-            self.i_untampered = True
-            self.conv_max_force = 1.5e-5
-            self.i_max_force = True
-            self.conv_rms_force = 1.0e-5
-            self.i_rms_force = True
-            self.conv_max_disp = 6.0e-5
-            self.i_max_disp = True
-            self.conv_rms_disp = 4.0e-5
-            self.i_rms_disp = True
-        elif self.g_convergence == "GAU_VERYTIGHT":
-            self.i_untampered = True
-            self.conv_max_force = 2.0e-6
-            self.i_max_force = True
-            self.conv_rms_force = 1.0e-6
-            self.i_rms_force = True
-            self.conv_max_disp = 6.0e-6
-            self.i_max_disp = True
-            self.conv_rms_disp = 4.0e-6
-            self.i_rms_disp = True
-        elif self.g_convergence == "GAU_LOOSE":
-            self.i_untampered = True
-            self.conv_max_force = 2.5e-3
-            self.i_max_force = True
-            self.conv_rms_force = 1.7e-3
-            self.i_rms_force = True
-            self.conv_max_disp = 1.0e-2
-            self.i_max_disp = True
-            self.conv_rms_disp = 6.7e-3
-            self.i_rms_disp = True
-        elif self.g_convergence == "TURBOMOLE":
-            self.i_untampered = True
-            self.conv_max_force = 1.0e-3
-            self.i_max_force = True
-            self.conv_rms_force = 5.0e-4
-            self.i_rms_force = True
-            self.conv_max_DE = 1.0e-6
-            self.i_max_DE = True
-            self.conv_max_disp = 1.0e-3
-            self.i_max_disp = True
-            self.conv_rms_disp = 5.0e-4
-            self.i_rms_disp = True
-        elif self.g_convergence == "CFOUR":
-            self.i_untampered = True
-            self.conv_rms_force = 1.0e-4
-            self.i_rms_force = True
-        elif self.g_convergence == "NWCHEM_LOOSE":
-            self.i_untampered = True
-            self.conv_max_force = 4.5e-3
-            self.i_max_force = True
-            self.conv_rms_force = 3.0e-3
-            self.i_rms_force = True
-            self.conv_max_disp = 5.4e-3
-            self.i_max_disp = True
-            self.conv_rms_disp = 3.6e-3
-            self.i_rms_disp = True
-        elif self.g_convergence == "INTERFRAG_TIGHT":
-            self.i_untampered = True
-            self.conv_max_DE = 1.0e-5
-            self.i_max_DE = True
-            self.conv_max_force = 1.5e-5
-            self.i_max_force = True
-            self.conv_rms_force = 1.0e-5
-            self.i_rms_force = True
-            self.conv_max_disp = 6.0e-4
-            self.i_max_disp = True
-            self.conv_rms_disp = 4.0e-4
-            self.i_rms_disp = True
+            # Now that everything is validated. Convert to dict for storage
+            tmp = [json.loads(item) for item in tmp]
+            return tmp
+        else:
+            return [{}]
 
-
-
-        # ---  Specific optimization criteria
-        if "MAX_FORCE_G_CONVERGENCE" in uod:
-            self.i_untampered = False
-            self.i_max_force = True
-            self.conv_max_force = self.max_force_g_convergence
-        if "RMS_FORCE_G_CONVERGENCE" in uod:
-            self.i_untampered = False
-            self.i_rms_force = True
-            self.conv_rms_force = self.rms_force_g_convergence
-        if "MAX_ENERGY_G_CONVERGENCE" in uod:
-            self.i_untampered = False
-            self.i_max_DE = True
-            self.conv_max_DE = self.max_energy_g_convergence
-        if "MAX_DISP_G_CONVERGENCE" in uod:
-            self.i_untampered = False
-            self.i_max_disp = True
-            self.conv_max_disp = self.max_disp_g_convergence
-        if "RMS_DISP_G_CONVERGENCE" in uod:
-            self.i_untampered = False
-            self.i_rms_disp = True
-            self.conv_rms_disp = self.rms_disp_g_convergence
-
-        # Even if a specific threshold were given, allow for Molpro/Qchem/G03 flex criteria
-        if self.flexible_g_convergence:
-            self.i_untampered = True
-        # end __init__ finally !
+    @model_validator(mode='after')
+    def validate_case(self):
+        for attr in self.model_dump():
+            if isinstance(self.__getattribute__(attr), str):
+                self.__setattr__(attr, self.__getattribute__(attr).upper())
 
     @classmethod
     def from_internal_dict(cls, params):
@@ -624,8 +629,24 @@ class OptParams(object):
     def __setitem__(self, key, value):
         return setattr(self, key, value)
 
+    def conv_criteria(self) -> dict:
+        """ Returns the currently active values for each convegence criteria. Not the original
+        user input / presets """
+        return {
+            "conv_max_force": self.conv_max_force,
+            "conv_rms_force": self.conv_rms_force,
+            "conv_max_disp": self.conv_rms_disp,
+            "conv_rms_disp": self.conv_max_disp,
+            "conv_max_DE": self.conv_max_DE,
+            "i_max_force": self._i_max_force,
+            "i_rms_force": self._i_rms_force,
+            "i_max_disp": self._i_max_disp,
+            "i_rms_disp": self._i_rms_disp,
+            "i_max_DE": self._i_max_DE,
+        }
+
     def update_dynamic_level_params(self, run_level):
-        logger = logging.getLogger(__name__)                                                                                        #TODO?
+        logger = logging.getLogger(__name__)  # TODO?
         """
         *dynamic  step   coord   trust      backsteps         criteria
         * run_level                                           for downmove    for upmove
@@ -650,7 +671,9 @@ class OptParams(object):
             self.opt_coordinates = "REDUNDANT"
             self.consecutiveBackstepsAllowed = 0
             self.step_type = "RFO"
-            logger.info("Going to run_level 1: Red. Int., RFO, no backsteps, default, dynamic trust. ~")
+            logger.info(
+                "Going to run_level 1: Red. Int., RFO, no backsteps, default, dynamic trust. ~"
+            )
         elif run_level == 2:
             self.opt_coordinates = "REDUNDANT"
             self.consecutiveBackstepsAllowed = 2
@@ -658,7 +681,9 @@ class OptParams(object):
             self.intrafrag_trust = 0.2
             self.intrafrag_trust_min = 0.2
             self.intrafrag_trust_max = 0.2
-            logger.warning("Going to run_level 2: Red. Int., RFO, 2 backstep, smaller trust. ~")
+            logger.warning(
+                "Going to run_level 2: Red. Int., RFO, 2 backstep, smaller trust. ~"
+            )
         elif run_level == 3:
             self.opt_coordinates = "BOTH"
             self.consecutiveBackstepsAllowed = 2
@@ -666,7 +691,9 @@ class OptParams(object):
             self.intrafrag_trust = 0.1
             self.intrafrag_trust_min = 0.1
             self.intrafrag_trust_max = 0.1
-            logger.warning("Going to run_level 3: Red. Int. + XYZ, RFO, 2 backstep, smaller trust. ~")
+            logger.warning(
+                "Going to run_level 3: Red. Int. + XYZ, RFO, 2 backstep, smaller trust. ~"
+            )
         elif run_level == 4:
             self.opt_coordinates = "CARTESIAN"
             self.consecutiveBackstepsAllowed = 2
@@ -675,7 +702,9 @@ class OptParams(object):
             self.intrafrag_trust = 0.2
             self.intrafrag_trust_min = 0.2
             self.intrafrag_trust_max = 0.2
-            logger.warning("Going to run_level 4: XYZ, RFO, 2 backstep, smaller trust. ~")
+            logger.warning(
+                "Going to run_level 4: XYZ, RFO, 2 backstep, smaller trust. ~"
+            )
         elif run_level == 5:
             self.opt_coordinates = "CARTESIAN"
             self.consecutiveBackstepsAllowed = 2
@@ -684,7 +713,9 @@ class OptParams(object):
             self.intrafrag_trust = 0.3
             self.intrafrag_trust_min = 0.3
             self.intrafrag_trust_max = 0.3
-            logger.warning("Going to run_level 5: XYZ, SD, 2 backstep, average trust. ~")
+            logger.warning(
+                "Going to run_level 5: XYZ, SD, 2 backstep, average trust. ~"
+            )
         elif run_level == 6:
             self.opt_coordinates = "CARTESIAN"
             self.consecutiveBackstepsAllowed = 2
@@ -693,9 +724,127 @@ class OptParams(object):
             self.intrafrag_trust = 0.1
             self.intrafrag_trust_min = 0.1
             self.intrafrag_trust_max = 0.1
-            logger.warning("Moving to run_level 6: XYZ, SD, 2 backstep, smaller trust. ~")
+            logger.warning(
+                "Moving to run_level 6: XYZ, SD, 2 backstep, smaller trust. ~"
+            )
         else:
             raise OptError("Unknown value of run_level")
 
 
-Params = 0
+CONVERGENCE_PRESETS = {
+    "QCHEM": {
+        "_i_untampered": True,
+        "conv_max_force": 3.0e-4,
+        "_i_max_force": True,
+        "conv_max_DE": 1.0e-6,
+        "_i_max_DE": True,
+        "conv_max_disp": 1.2e-3,
+        "_i_max_disp": True,
+    },
+    "MOLPRO": {
+        "_i_untampered": True,
+        "conv_max_force": 3.0e-4,
+        "_i_max_force": True,
+        "conv_max_DE": 1.0e-6,
+        "_i_max_DE": True,
+        "conv_max_disp": 3.0e-4,
+        "_i_max_disp": True,
+    },
+    "GAU": {
+        "_i_untampered": True,
+        "conv_max_force": 4.5e-4,
+        "_i_max_force": True,
+        "conv_rms_force": 3.0e-4,
+        "_i_rms_force": True,
+        "conv_max_disp": 1.8e-3,
+        "_i_max_disp": True,
+        "conv_rms_disp": 1.2e-3,
+        "_i_rms_disp": True,
+    },
+    "GAU_TIGHT": {
+        "_i_untampered": True,
+        "conv_max_force": 1.5e-5,
+        "_i_max_force": True,
+        "conv_rms_force": 1.0e-5,
+        "_i_rms_force": True,
+        "conv_max_disp": 6.0e-5,
+        "_i_max_disp": True,
+        "conv_rms_disp": 4.0e-5,
+        "_i_rms_disp": True,
+    },
+    "GAU_VERYTIGHT": {
+        "_i_untampered": True,
+        "conv_max_force": 2.0e-6,
+        "_i_max_force": True,
+        "conv_rms_force": 1.0e-6,
+        "_i_rms_force": True,
+        "conv_max_disp": 6.0e-6,
+        "_i_max_disp": True,
+        "conv_rms_disp": 4.0e-6,
+        "_i_rms_disp": True,
+    },
+    "GAU_LOOSE": {
+        "_i_untampered": True,
+        "conv_max_force": 2.5e-3,
+        "_i_max_force": True,
+        "conv_rms_force": 1.7e-3,
+        "_i_rms_force": True,
+        "conv_max_disp": 1.0e-2,
+        "_i_max_disp": True,
+        "conv_rms_disp": 6.7e-3,
+        "_i_rms_disp": True,
+    },
+    "TURBOMOLE": {
+        "_i_untampered": True,
+        "conv_max_force": 1.0e-3,
+        "_i_max_force": True,
+        "conv_rms_force": 5.0e-4,
+        "_i_rms_force": True,
+        "conv_max_DE": 1.0e-6,
+        "_i_max_DE": True,
+        "conv_max_disp": 1.0e-3,
+        "_i_max_disp": True,
+        "conv_rms_disp": 5.0e-4,
+        "_i_rms_disp": True,
+    },
+    "CFOUR": {
+        "_i_untampered": True,
+        "conv_rms_force": 1.0e-4,
+        "_i_rms_force": True,
+    },
+    "NWCHEM_LOOSE": {
+        "_i_untampered": True,
+        "conv_max_force": 4.5e-3,
+        "_i_max_force": True,
+        "conv_rms_force": 3.0e-3,
+        "_i_rms_force": True,
+        "conv_max_disp": 5.4e-3,
+        "_i_max_disp": True,
+        "conv_rms_disp": 3.6e-3,
+        "_i_rms_disp": True,
+    },
+    "INTERFRAG_TIGHT": {
+        "conv_max_DE": 1.0e-5,
+        "_i_max_DE": True,
+        "conv_max_force": 1.5e-5,
+        "_i_max_force": True,
+        "conv_rms_force": 1.0e-5,
+        "_i_rms_force": True,
+        "conv_max_disp": 6.0e-4,
+        "_i_max_disp": True,
+        "conv_rms_disp": 4.0e-4,
+        "_i_rms_disp": True,
+    }
+}
+
+FLOATR = r"(:?\d+\.\d+)"
+INT = r"(:?\d)"
+SEP = r"(:?\d+\.\d+)"
+SEP2 = r"\d+\.\d+"
+SEP3 = r"\d+\.\d+"
+FLOATR = r"\d+\.\d+"
+CART_STR = r"(?:xyz|xy|yz|x|y|z)"
+LABEL = r"(?:[SRABTDO]|STRE|STRETCH|BOND|BEND|ANGLE|TORS|TORSION|DIHEDRAL)"
+
+# Create a module level, default, options object
+Params = OptParams(**{})

@@ -27,8 +27,6 @@ from .frag import Frag
 from .molsys import Molsys
 from .history import History
 
-op.Params = op.OptParams({})
-
 __version__ = get_versions()["version"]
 del get_versions
 _optking_provenance_stamp = {

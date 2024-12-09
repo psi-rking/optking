@@ -31,18 +31,18 @@ def test_dimerfrag_orient_h2o_dimers():
     # and one of the hydrogen atoms for each fragment.
 
     dimer = {
-        "Natoms per frag": [3, 3],
-        "A Frag": 1,
-        "A Ref Atoms": [[1], [2, 3], [3]],
-        "A Label": "Water-A",  # optional
-        "B Frag": 2,
-        "B Ref Atoms": [[4], [5, 6], [6]],
-        "B Label": "Water-B",  # optional
+        "NATOMS PER FRAG": [3, 3],
+        "A FRAG": 1,
+        "A REF ATOMS": [[1], [2, 3], [3]],
+        "A LABEL": "Water-A",  # optional
+        "B FRAG": 2,
+        "B REF ATOMS": [[4], [5, 6], [6]],
+        "B LABEL": "Water-B",  # optional
     }
 
     # The default weights are equal between involved atoms but
     # may be specified.  Fragment labels are optional.
-    Itest = optking.dimerfrag.DimerFrag.fromUserDict(dimer)
+    Itest = optking.dimerfrag.DimerFrag.from_user_dict(dimer)
     Itest.update_reference_geometry(Axyz, Bxyz)
     # print(Itest)
 

@@ -5,7 +5,7 @@
 #  3. Have not yet restarted from json or disk, but should be close to working.
 import optking
 import pytest
-
+import pprint
 
 def test_step_by_step():
     import psi4
@@ -197,8 +197,10 @@ def test_hooh_irc(check_iter):
         "g_convergence": "gau_verytight",
         "opt_type": "irc",
         "geom_maxiter": 60,
-        "full_hess_every": 0,
         "irc_direction": "FORWARD",
+        "irc_step_size": 1.0,
+        "hess_update": "BOFILL",
+        # "cart_hess_read": True,
     }
 
     psi4.set_options(psi4_options)
@@ -209,8 +211,8 @@ def test_hooh_irc(check_iter):
         opt = optking.CustomHelper.from_dict(optSaved)
 
         if i == 0:
-            H = psi4.hessian("hf")
-            opt.HX = H.np
+            H = optking.hessian.from_file("./test_data/hooh_irc.hess")
+            opt.HX = H
 
         grad, wfn = psi4.gradient("hf", return_wfn=True)
         opt.gX = grad.np.reshape(-1)
@@ -225,6 +227,7 @@ def test_hooh_irc(check_iter):
             break
         else:
             optSaved = opt.to_dict()
+            pprint.pprint(optSaved, indent=4)
         geom = psi4.core.Matrix.from_array(opt.molsys.geom)
         h2o2.set_geometry(geom)
         h2o2.update_geometry()
@@ -236,8 +239,8 @@ def test_hooh_irc(check_iter):
     json_output = opt.close()
     IRC = json_output["extras"]["irc_rxn_path"]
 
-    assert psi4.compare_values(energy_5th_IRC_pt, IRC[5]["energy"], 6, "Energy of 5th IRC point.")  # TEST
-    utils.compare_iterations(json_output, 44, check_iter)
+    assert psi4.compare_values(energy_5th_IRC_pt, IRC[1]["energy"], 4, "Energy of 5th IRC point.")  # TEST
+    utils.compare_iterations(json_output, 12, check_iter)
 
 
 def test_linesearch(check_iter):

@@ -13,9 +13,6 @@ def pytest_configure(config):
 def set_up():
     import optking
 
-    optking.optparams.Params = optking.optparams.OptParams({})
-
-
 def pytest_addoption(parser):
     parser.addoption(
         "--check_iter",

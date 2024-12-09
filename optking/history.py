@@ -96,7 +96,7 @@ class History(object):
         History.stepsSinceLastHessian = 0
 
         if params is None:
-            params = op.OptParams({})
+            params = op.OptParams()
 
         self.steps_since_last_hessian = 0
         self.consecutive_backsteps = 0
@@ -104,7 +104,7 @@ class History(object):
 
         self.hess_update = params.hess_update
         self.hess_update_use_last = params.hess_update_use_last
-        self.hess_update_dq_tol = params.hess_update_dq_tol
+        self.hess_update_dq_tol = params._hess_update_dq_tol
         self.hess_update_den_tol = params.hess_update_den_tol
         self.hess_update_limit = params.hess_update_limit
         self.hess_update_limit_max = params.hess_update_limit_max
@@ -160,7 +160,7 @@ class History(object):
 
     @classmethod
     def from_dict(cls, d):
-        params = op.OptParams(d.get("options", {}))
+        params = op.OptParams(**d.get("options", {}))
         new_history = cls(params)
 
         new_history.steps_since_last_hessian = d.get("steps_since_last_hessian", 0)

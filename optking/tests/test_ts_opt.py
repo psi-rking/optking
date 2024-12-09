@@ -30,7 +30,7 @@ def test_hooh_TS(check_iter, option, expected_steps):
     }
     psi4.set_options(psi4options)
 
-    json_output = optking.optimize_psi4("hf", {"step_type": option})
+    json_output = optking.optimize_psi4("hf", **{"step_type": option})
 
     E = json_output["energies"][-1]  # TEST
     # print( '{:15.10f}'.format(E) )
@@ -65,7 +65,7 @@ def test_hooh_TS_zero(check_iter, option, expected_steps):
     }
     psi4.set_options(psi4options)
 
-    json_output = optking.optimize_psi4("hf", {"step_type": option})
+    json_output = optking.optimize_psi4("hf", **{"step_type": option})
 
     E = json_output["energies"][-1]  # TEST
     C2V_TS_ENERGY = -150.774009217562  # TEST
