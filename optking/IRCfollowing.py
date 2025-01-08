@@ -1,6 +1,7 @@
 import logging
 from math import acos, sqrt, tan
 
+import copy
 import numpy as np
 
 from . import IRCdata, convcheck
@@ -18,6 +19,7 @@ logger = logging.getLogger(f"{log_name}{__name__}")
 class IntrinsicReactionCoordinate(OptimizationInterface):
     def __init__(self, molsys, history, params):
         super().__init__(molsys, history, params)
+        self.orig_molsys = copy.deepcopy(molsys)
 
         self.params = params
         # grab irc specific information
@@ -72,14 +74,18 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
 
                 # Lowest eigenvector of mass-weighted Hessian.
                 G = self.molsys.Gmat(massWeight=True)
-                G_root = symm_mat_root(G)
+                G_root = symm_mat_root(G, threshold=self.params.linear_algebra_tol)
                 H_q_m = G_root @ H @ G_root
                 logger.info(print_mat_string(H_q_m, title="Mass Weighted Hessian in Internals"))
                 vM = lowest_eigenvector_symm_mat(H_q_m)
                 logger.info(print_array_string(vM, title="Lowest eigenvector of Mass Weighted, Internal Hessian"))
 
                 # Un mass-weight vector.
-                G_root_inv = symm_mat_inv(G_root, redundant=True)
+                G_root_inv = symm_mat_inv(
+                                        G_root,
+                                        redundant=True,
+                                        small_val_limit=self.params.linear_algebra_tol
+                                    )
                 v = np.dot(G_root_inv, vM)
 
                 if self.params.irc_direction == "BACKWARD":
@@ -123,16 +129,24 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
         # behavior. It is also found that clearing the history negatively impacts hessian updating.
 
         energies = [step.E for step in self.history.steps]
+        fq_new = self.irc_history._project_forces(fq, self.molsys, self.params.linear_algebra_tol)
 
-        if self.sub_step_number < 1:
+        if self.sub_step_number < 2 and self.irc_step_number == 1:
             logger.debug("Too few steps. continue optimization")
             return False
 
-        if self.irc_history.test_for_irc_minimum(fq, energies[-1]):
-            logger.info("A minimum has been reached on the IRC.  Stopping here.\n")
-            return True
+        # On second irc_point. Have not begun sub optimization
+        if self.sub_step_number < 1:  # Just hit a new pivot point. Check for minimum
 
-        fq_new = self.irc_history._project_forces(fq, self.molsys)
+            if self.irc_history.test_for_irc_minimum(fq_new, energies[-1]):
+                logger.info("A minimum has been reached on the IRC.  Stopping here.\n")
+                return True
+
+            if self.params.irc_mode.upper() == "CONFIRM":
+                if self.irc_history.test_for_dissociation(self.molsys, self.orig_molsys):
+                    logger.info("A new fragment has been detected on the along the reaction path.\n"
+                                "IRC is running in 'confirm' mode. Stopping here.\n")
+                    return True
 
         # Need to communicate that we want to print an IRC report
         # Need not total_steps_taken but the irc_step_number and sub_step_number
@@ -217,16 +231,16 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
     def dq_irc(self, f_q, H_q):
         """Before dq_irc is called, the geometry must be updated to the guess point
         Returns Dq from qk+1 to gprime.
-        TODO: What is dqGuess for?  Remove it?
         """
 
         logger.debug("Starting IRC constrained optimization\n")
+        threshold = self.params.linear_algebra_tol  # shortcut
 
         G_prime = self.molsys.Gmat(massWeight=True)
         logger.debug("Mass-weighted Gmatrix at hypersphere point: \n" + print_mat_string(G_prime))
-        G_prime_root = symm_mat_root(G_prime)
-        G_prime_inv = symm_mat_inv(G_prime, redundant=True)
-        G_prime_root_inv = symm_mat_root(G_prime_inv)
+        G_prime_root = symm_mat_root(G_prime, threshold=threshold)
+        G_prime_inv = symm_mat_inv(G_prime, redundant=True, small_val_limit=threshold)
+        G_prime_root_inv = symm_mat_root(G_prime_inv, threshold=threshold)
 
         logger.debug("G prime root matrix: \n" + print_mat_string(G_prime_root))
 
@@ -359,7 +373,7 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
         # dq_M = (H_M - lambda I)^(-1) [lambda * p_M - g_M]
         LambdaI = np.identity(self.molsys.num_intcos)
         LambdaI = np.multiply(Lambda, LambdaI)
-        deltaQM = symm_mat_inv(np.subtract(H_M, LambdaI), redundant=True)
+        deltaQM = symm_mat_inv(np.subtract(H_M, LambdaI), redundant=True, small_val_limit=threshold)
         deltaQM = np.dot(deltaQM, np.subtract(np.multiply(Lambda, p_M), g_M))
         logger.debug("dq_M to next geometry\n" + print_array_string(deltaQM))
 
@@ -376,7 +390,7 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
         """mass-weighted distance from previous rxnpath point to new one"""
         G = self.molsys.Gmat(massWeight=True)
         G_root = symm_mat_root(G)
-        G_inv = symm_mat_inv(G_root, redundant=True)
+        G_inv = symm_mat_inv(G_root, redundant=True,small_val_limit=self.params.linear_algebra_tol)
         G_root_inv = symm_mat_root(G_inv)
 
         rxn_Dq = np.subtract(self.molsys.q_array(), self.irc_history.q())
@@ -385,8 +399,8 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
         return np.linalg.norm(rxn_Dq_M)
 
     def calc_arc_dist_step(self):
-        """Let q0 be last rxnpath point and q1 be new rxnpath point.  q* is the pivot
-        point (1/2)s from each of these.  Returns the length of circular arc connecting
+        """Let q0 be last rxnpath point and q1 be new rxnpath point. q* is the pivot
+        point (1/2)s from each of these. Returns the length of circular arc connecting
         q0 and q1, whose center is equidistant from q0 and q1, and for which line segments
         from q* to q0 and from q* to q1 are perpendicular to segments from the center
         to q0 and q1."""

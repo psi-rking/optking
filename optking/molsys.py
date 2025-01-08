@@ -11,6 +11,7 @@ from .exceptions import OptError
 from .linearAlgebra import symm_mat_inv
 from .printTools import print_array_string, print_mat_string
 from . import log_name
+from . import optparams as op
 
 logger = logging.getLogger(f"{log_name}{__name__}")
 
@@ -479,7 +480,7 @@ class Molsys(object):
         consolidatedFrag = frag.Frag(Z, g, m)
         self._fragments.append(consolidatedFrag)
 
-    def split_fragments_by_connectivity(self):
+    def split_fragments_by_connectivity(self, covalent_connect=1.3):
         """Split any fragment not connected by bond connectivity."""
         tempZ = np.copy(self.Z)
         tempGeom = np.copy(self.geom)
@@ -487,7 +488,7 @@ class Molsys(object):
 
         newFragments = []
         for F in self._fragments:
-            C = connectivity_from_distances(F.geom, F.Z)
+            C = connectivity_from_distances(F.geom, F.Z, covalent_connect)
             atomsToAllocate = list(reversed(range(F.natom)))
             while atomsToAllocate:
                 frag_atoms = [atomsToAllocate.pop()]
@@ -530,6 +531,20 @@ class Molsys(object):
     # Supplements a connectivity matrix to connect all fragments.  Assumes the
     # definition of the fragments has ALREADY been determined before function called.
     def augment_connectivity_to_single_fragment(self, C):
+        """ Take the current connectivity and add elements until a walk can be performed between
+        any two atoms
+
+        Parameters
+        ----------
+        C: np.ndarray
+            A previously determined connectivity
+
+        Returns
+        -------
+        scale_dist: float
+            The scalar of covalent radii required to achieve full connectivity
+        """
+
         logger.debug("\tAugmenting connectivity matrix to join fragments.")
         fragAtoms = []
         geom = self.geom
@@ -539,7 +554,7 @@ class Molsys(object):
         # Which fragments are connected?
         nF = self.nfragments
         if self.nfragments == 1:
-            return
+            return 1.3
 
         frag_connectivity = np.zeros((nF, nF))
         for iF in range(nF):
@@ -596,7 +611,7 @@ class Molsys(object):
             else:
                 scale_dist += 0.2
                 logger.info("\tIncreasing scaling to %6.3f to connect fragments." % scale_dist)
-        return
+        return scale_dist
 
     def distance_matrix(self):
         xyz = self.geom
@@ -706,7 +721,7 @@ class Molsys(object):
         B = self.Bmat(massWeight)
         return np.dot(B, B.T)
 
-    def gradient_to_internals(self, g_x, coeff=1.0, B=None, useMasses=False):
+    def gradient_to_internals(self, g_x, coeff=1.0, B=None, use_masses=False, threshold=1e-10):
         """Transform cartesian gradient to internals
         Parameters
         ----------
@@ -716,7 +731,7 @@ class Molsys(object):
             prefactor coefficient; -1 for forces
         B : np.ndarray, optional
             B matrix to use
-        useMasses : boolean
+        use_masses : boolean
             instead of identity, use u = 1/masses in transformation
 
         Returns
@@ -734,19 +749,19 @@ class Molsys(object):
         if B is None:
             B = self.Bmat()
 
-        if useMasses:
+        if use_masses:
             u = np.diag(np.repeat(1.0 / self.masses, 3))
-            G = np.dot(np.dot(B, u), B.T)
-            Ginv = symm_mat_inv(G, redundant=True)
-            g_q = coeff * np.dot(np.dot(np.dot(Ginv, B), u), g_x)
+            G = B @ u @ B.T
+            Ginv = symm_mat_inv(G, redundant=True, small_val_limit=threshold)
+            g_q = coeff * Ginv @ B @ u @ g_x
         else:
-            G = np.dot(B, B.T)
-            Ginv = symm_mat_inv(G, redundant=True)
-            g_q = coeff * np.dot(np.dot(Ginv, B), g_x)
+            G = B @ B.T
+            Ginv = symm_mat_inv(G, redundant=True, small_val_limit=threshold)
+            g_q = coeff * Ginv @ B @ g_x
 
         return g_q
 
-    def hessian_to_internals(self, H, g_x=None, useMasses=False):
+    def hessian_to_internals(self, H, g_x=None, use_masses=False):
         """converts the hessian from cartesian coordinates into internal coordinates
         Hq = A^t (Hxy - Kxy) A, where K_xy = sum_q ( grad_q[I] d^2(q_I)/(dx dy)
         and A = (BuB^t)^-1 Bu
@@ -771,7 +786,7 @@ class Molsys(object):
 
         B = self.Bmat()
 
-        if useMasses:
+        if use_masses:
             u = np.diag(np.repeat(1.0 / self.masses, 3))
             G = np.dot(np.dot(B, u), B.T)
             Ginv = symm_mat_inv(G, redundant=True)
@@ -787,7 +802,7 @@ class Molsys(object):
         else:  # A^t (Hxy - Kxy) A;    K_xy = sum_q ( grad_q[I] d^2(q_I)/(dx dy) )
             logger.info("Including force/B-matrix derivative term.\n")
 
-            g_q = self.gradient_to_internals(g_x, useMasses=useMasses)
+            g_q = self.gradient_to_internals(g_x, use_masses=use_masses)
 
             for iF, F in enumerate(self._fragments):
                 dq2dx2 = np.zeros((3 * F.natom, 3 * F.natom))

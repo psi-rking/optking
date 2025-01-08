@@ -1,6 +1,7 @@
 """ Class to store points on the IRC """
 import logging
 import os
+import copy
 
 import numpy as np
 
@@ -8,6 +9,9 @@ from .exceptions import OptError
 from .printTools import print_geom_string, print_array_string
 from .linearAlgebra import symm_mat_inv
 from . import log_name
+from . import addIntcos
+from . import molsys
+from . import frag
 
 logger = logging.getLogger(f"{log_name}{__name__}")
 
@@ -230,6 +234,41 @@ class IRCHistory(object):
         index = -1 if step is None else step
         return self.irc_points[index].step_dist
 
+    def test_for_dissociation(
+            self,
+            new_molsys: molsys.Molsys,
+            old_molsys: molsys.Molsys,
+            threshold=0.4
+        ):
+        """ Check whether or not the connectivity has changed and multiple fragments have
+        been created. This may be used to terminate the IRC. This method should only be
+        called if frag_mode == 'SINGLE'.
+
+        Returns
+        -------
+        bool
+            True if the molecular system has separated into 2 (or more) fragments from 1
+        """
+
+        logger.debug("Checking connectivity for whether dissociation has occured")
+
+        # Repeat the standard procedure for creating a single fragment molecular system
+        orig_connectivity = addIntcos.connectivity_from_distances(old_molsys.geom, old_molsys.Z)
+        orig_molsys = copy.deepcopy(old_molsys)
+        orig_molsys.split_fragments_by_connectivity()
+        scale_dist = orig_molsys.augment_connectivity_to_single_fragment(orig_connectivity)
+        orig_molsys.consolidate_fragments()
+
+        # Detect the number of fragments current molecular system using the old scale_dist plus
+        # 0.4 angstroms. Not bullet proof, just attempts to detect changes in conenctivity while
+        # not triggering for small increases in bond lengths
+        new_molsys = molsys.Molsys([frag.Frag(old_molsys.Z, new_molsys.geom, old_molsys.masses)])
+        new_molsys.split_fragments_by_connectivity(scale_dist + threshold)
+
+        if orig_molsys.nfragments != new_molsys.nfragments:
+            return True
+        return False
+
     def test_for_irc_minimum(self, f_q, energy):
         """Given current forces, checks if we are at/near a minimum
         Two checks are performed.
@@ -240,14 +279,14 @@ class IRCHistory(object):
             due to finite step size
         """
 
-        unit_f = f_q / np.linalg.norm(f_q)  # current forces
-        f_rxn = self.f_q()  # forces at most recent rxnpath point
+        unit_f = f_q / np.linalg.norm(f_q)  # current forces (pivot point)
+        f_rxn = self.f_q(step=-2)  # forces at most recent rxnpath point (q0)
         unit_f_rxn = f_rxn / np.linalg.norm(f_rxn)
         overlap = np.dot(unit_f, unit_f_rxn)
 
         logger.info("Overlap of forces with previous rxnpath point %8.4f" % overlap)
-        d_energy = energy - self.energy()
-        logger.info("Change in energy from last point %d", d_energy)
+        d_energy = energy - self.energy(step=-2)
+        logger.info("Change in energy from last point %.4e", d_energy)
         if overlap < -0.7:
             return True
         elif overlap < 0.0 and d_energy > 0.0:
@@ -358,7 +397,7 @@ class IRCHistory(object):
         rp = [self.irc_points[i].to_dict() for i in range(len(self.irc_points))]
         return rp
 
-    def _project_forces(self, f_q, o_molsys):
+    def _project_forces(self, f_q, o_molsys, threshold=1e-10):
         """Compute forces perpendicular to the second IRC halfstep and tangent to hypersphere
 
         Notes
@@ -373,7 +412,7 @@ class IRCHistory(object):
         logger.debug("Projecting out forces parallel to reaction path.")
 
         G_m = o_molsys.Gmat(massWeight=True)
-        G_m_inv = symm_mat_inv(G_m, redundant=True)
+        G_m_inv = symm_mat_inv(G_m, redundant=True, small_val_limit=threshold)
 
         q_vec = o_molsys.q_array()
         p_vec = q_vec - self.q_pivot()

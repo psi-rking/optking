@@ -1,5 +1,4 @@
 import logging
-from math import sqrt
 
 import numpy as np
 from numpy.linalg import LinAlgError
@@ -42,7 +41,7 @@ def symm_mat_eig(mat):
         evals, evects = np.linalg.eigh(mat)
         if abs(min(evects[:, 0])) > abs(max(evects[:, 0])):
             evects[:, 0] *= -1.0
-    except:
+    except np.LinAlgError:
         raise OptError("symm_mat_eig: could not compute eigenvectors")
         # could be ALG_FAIL ?
     evects = evects.T
@@ -68,7 +67,7 @@ def lowest_eigenvector_symm_mat(mat):
         evals, evects = np.linalg.eigh(mat)
         if abs(min(evects[:, 0])) > abs(max(evects[:, 0])):
             evects[:, 0] *= -1.0
-    except:
+    except np.LinAlgError:
         raise OptError("symm_mat_eig: could not compute eigenvectors")
     return evects[:, 0]
 
@@ -152,7 +151,7 @@ def symm_mat_inv(A, redundant=False, small_val_limit=1.0e-10):
         # could be LinAlgError?
 
 
-def symm_mat_root(A, Inverse=None):
+def symm_mat_root(A, Inverse=None, threshold=1e-10):
     """
     Compute A^(1/2) for a positive-definite matrix
 
@@ -174,17 +173,12 @@ def symm_mat_root(A, Inverse=None):
     except LinAlgError:
         raise OptError("symm_mat_root: could not compute eigenvectors")
 
-    evals[np.abs(evals) < 10 * np.finfo(float).resolution] = 0.0
-    evects[np.abs(evects) < 10 * np.finfo(float).resolution] = 0.0
+    evals[np.abs(evals) < threshold] = 0.0
+    evects[np.abs(evects) < threshold] = 0.0
 
-    rootMatrix = np.zeros((len(evals), len(evals)))
     if Inverse:
-        for i in range(0, len(evals)):
-            evals[i] = 1 / evals[i]
+        evals = 1 / evals
 
-    for i in range(0, len(evals)):
-        rootMatrix[i][i] = sqrt(evals[i])
-
-    A = np.dot(evects, np.dot(rootMatrix, evects.T))
-
+    root_matrix = np.diagflat(np.sqrt(evals))
+    A = evects @ root_matrix @ evects.T
     return A

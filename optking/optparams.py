@@ -56,7 +56,8 @@ allowedStringOptions = {
     "frag_mode": ("SINGLE", "MULTI"),
     "interfrag_mode": ("FIXED", "PRINCIPAL_AXES"),
     "interfrag_hess": ("DEFAULT", "FISCHER_LIKE"),
-    "conjugate_gradient_type": ("FLETCHER", "DESCENT", "POLAK")
+    "conjugate_gradient_type": ("FLETCHER", "DESCENT", "POLAK"),
+    "irc_mode": ("NORMAL", "CONFIRM")
 }
 
 # def enum_key( enum_type, value):
@@ -143,6 +144,9 @@ class OptParams(object):
         self.irc_direction = uod.get("IRC_DIRECTION", "FORWARD")
         # Decide when to stop IRC calculations
         self.irc_points = uod.get("IRC_POINTS", 20)
+        # Whether or not the rxn path needs to be followed until the bitter end. If "CONFIRM", stop
+        # once 1 or more fragments have been created.
+        self.irc_mode = uod.get("IRC_MODE", "NORMAL")
         #
         # Initial maximum step size in bohr or radian along an internal coordinate
         self.intrafrag_trust = uod.get("INTRAFRAG_STEP_LIMIT", 0.5)
@@ -376,7 +380,7 @@ class OptParams(object):
 
         if "GEOM_MAXITER" not in uod:
             if self.opt_type == "IRC":
-                self.geom_maxiter = self.irc_points * self.geom_maxiter
+                self.geom_maxiter = self.irc_points * 10
 
         # Initial Hessian guess for cartesians with coordinates BOTH is stupid, so don't scale
         #   step size down too much.  Steepest descent has no good hessian either.
@@ -469,6 +473,12 @@ class OptParams(object):
         # Threshold for which entries in diagonalized redundant matrix are kept and
         # inverted while computing a generalized inverse of a matrix
         self.redundant_eval_tol = 1.0e-10 # to be deprecated.
+
+        # threshold for which eigenvalues, eigenvector values, and other floating point
+        # values are considered to be zero. Silences numeric noise that can cause issues
+        # with matrix inversion. Replaces redundant_eval_tol
+        self.linear_algebra_tol = 1e-10
+
         #
         # --- SET INTERNAL OPTIMIZATION PARAMETERS ---
         self.i_max_force = False

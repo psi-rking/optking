@@ -19,7 +19,7 @@ from . import log_name
 logger = logging.getLogger(f"{log_name}{__name__}")
 
 
-def connectivity_from_distances(geom, Z):
+def connectivity_from_distances(geom, Z, covalent_connect=1.3):
     """
     Creates a matrix (1 or 0) to describe molecular connectivity based on
     nuclear distances
@@ -29,6 +29,8 @@ def connectivity_from_distances(geom, Z):
         (nat, 3) cartesian geometry
     Z : list[int]
         (nat) list of atomic numbers
+    covalent_connect: float, optional
+        Scalar for  the sum of atomic covalent radii to determine bonding (default is 1.3)
 
     Returns
     -------
@@ -41,9 +43,9 @@ def connectivity_from_distances(geom, Z):
     for i, j in combinations(range(nat), 2):
         R = v3d.dist(geom[i], geom[j])
         Rcov = qcel.covalentradii.get(Z[i], missing=4.0) + qcel.covalentradii.get(Z[j], missing=4.0)
-        #logger.debug("Checking atoms %d (Z=%d) and %d (Z=%d); R: %.3f; Rcov: %.3f; %s" %(i,
-        #             Z[i],j,Z[j],R,Rcov, 'Y' if (R<op.Params.covalent_connect*Rcov) else 'N'))
-        if R < op.Params.covalent_connect * Rcov:
+        # logger.debug("Checking atoms %d (Z=%d) and %d (Z=%d); R: %.3f; Rcov: %.3f; %s" %(i,
+        #              Z[i],j,Z[j],R,Rcov, 'Y' if (R<op.Params.covalent_connect*Rcov) else 'N'))
+        if R < covalent_connect * Rcov:
             C[i, j] = C[j, i] = True
 
     return C
@@ -372,6 +374,7 @@ def add_oofp_from_connectivity(C, intcos, geom):
     # Look for:  (terminal atom)-connected to-(tertiary atom)
     Nneighbors = [sum(C[i]) for i in range(len(C))]
     terminal_atoms = [i for i in range(len(Nneighbors)) if Nneighbors[i] == 1]
+    errors = []
 
     # Find adjacent atoms
     vertex_atoms = []
@@ -390,7 +393,6 @@ def add_oofp_from_connectivity(C, intcos, geom):
                 side.append(N)
 
         if len(side) >= 2:
-            errors = []
             for side1, side2 in combinations(side, 2):
                 try:
                     _ = v3d.oofp(geom[T], geom[V], geom[side1], geom[side2])
@@ -406,23 +408,23 @@ def add_oofp_from_connectivity(C, intcos, geom):
     # Check all torsions that could not be added. If one or more OOFPs were not added for that
     # central atom, then place add an improper torsion. Not a fully redundant set but an improper
     # torsion in addition to the linear bends should be sufficient
-    if errors:
+    for error in errors:
         covered = False
         for coord in intcos:
             if isinstance(coord, oofp.Oofp):
-                if V == coord.atoms[1]:
+                if error[1] == coord.atoms[1]:
                     covered = True
-                if not covered:
-                    try:
-                        im_tors = improper_torsion_around_oofp(
-                            coord.atoms[1],
-                            coord.atoms[0],
-                            coord.atoms[2],
-                            coord.atoms[3]
-                        )
-                        intcos.append(im_tors)
-                    except AlgError:
-                        raise AlgError("Tried to add out-of-plane angles but couldn't evaluate all of them.", oofp_failures=oofp.Oofp(T, V, side1, side2))
+            if not covered:
+                try:
+                    im_tors = improper_torsion_around_oofp(
+                        coord.atoms[1],
+                        coord.atoms[0],
+                        coord.atoms[2],
+                        coord.atoms[3]
+                    )
+                    intcos.append(im_tors)
+                except AlgError:
+                    raise AlgError("Tried to add out-of-plane angles but couldn't evaluate all of them.", oofp_failures=oofp.Oofp(T, V, side1, side2))
 
     return
 

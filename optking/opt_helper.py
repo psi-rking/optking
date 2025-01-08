@@ -102,7 +102,11 @@ class Helper(ABC):
                 irc_object: IntrinsicReactionCoordinate = self.opt_manager.opt_method
                 conv_info["sub_step_num"] = irc_object.sub_step_number
                 conv_info["iternum"] = irc_object.irc_step_number
-                conv_info["fq"] = irc_object.irc_history._project_forces(self.fq, self.molsys)
+                conv_info["fq"] = irc_object.irc_history._project_forces(
+                                                                    self.fq,
+                                                                    self.molsys,
+                                                                    self.params.linear_algebra_tol
+                                                                )
 
             string += conv_check(conv_info, self.params.__dict__, str_mode="table")
 
