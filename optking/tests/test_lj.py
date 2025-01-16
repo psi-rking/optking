@@ -1,9 +1,11 @@
 """
 Tests the LJ functions
 """
+
 import optking
 import pytest
 import numpy as np
+
 
 # Before 9-4-2020, these were in error because function expected
 # sigma first, then epsilon.
@@ -23,5 +25,6 @@ def test_lj_energy(R, ref):
 
     if not pytest.approx(ref) == energy:
         raise ValueError(
-            "test_lj_energy for R=%.2f did not match reference (comp = %12.10f, ref = %12.10f)." % (R, energy, ref)
+            "test_lj_energy for R=%.2f did not match reference (comp = %12.10f, ref = %12.10f)."
+            % (R, energy, ref)
         )

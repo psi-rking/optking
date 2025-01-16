@@ -8,6 +8,7 @@ from .utils import utils
 conv_RHF_OO_at_135 = -150.7853238  # minimum is 1.39
 init_OO_distance = [("1.28", 9), ("1.2999", 8), ("1.325", 8), ("1.35", 9), ("1.38", 8)]
 
+
 @pytest.mark.parametrize("option, num_steps", init_OO_distance)
 def test_ranged_stretch(option, num_steps, check_iter):
     geom_input_string = (
@@ -32,8 +33,10 @@ def test_ranged_stretch(option, num_steps, check_iter):
     assert psi4.compare_values(conv_RHF_OO_at_135, thisenergy, 6)
     utils.compare_iterations(json_output, num_steps, check_iter)
 
+
 conv_RHF_HOO_at_105 = -150.7861769  # minimum is 102 degrees
 init_HOO_bend = [("100", 8), ("105", 6), ("108", 7), ("110", 8), ("115", 9)]
+
 
 @pytest.mark.parametrize("option, num_steps", init_HOO_bend)
 def test_ranged_bend(option, num_steps, check_iter):
@@ -61,8 +64,10 @@ def test_ranged_bend(option, num_steps, check_iter):
     assert psi4.compare_values(conv_RHF_HOO_at_105, thisenergy, 6)
     utils.compare_iterations(json_output, num_steps, check_iter)
 
+
 conv_RHF_HOOH_at_110 = -150.7866419  # minimum is 115 degrees
 init_HOOH_tors = ["95", "100", "105", "110", "115"]
+
 
 @pytest.mark.parametrize("option", init_HOOH_tors)
 def test_ranged_tors(option):

@@ -142,13 +142,17 @@ class DimerFrag(object):
             raise OptError("Atoms argument for frag A should be a list")
         for i, a in enumerate(A_atoms):
             if not isinstance(a, list):
-                raise OptError("Atoms argument for frag A, reference pt. %d should be a list" % (i + 1))
+                raise OptError(
+                    "Atoms argument for frag A, reference pt. %d should be a list" % (i + 1)
+                )
 
         if not isinstance(B_atoms, list):
             raise OptError("Atoms argument for frag B should be a list")
         for i, b in enumerate(B_atoms):
             if not isinstance(b, list):
-                raise OptError("Atoms argument for frag B, reference pt. %d should be a list" % (i + 1))
+                raise OptError(
+                    "Atoms argument for frag B, reference pt. %d should be a list" % (i + 1)
+                )
 
         if not A_weights:
             A_weights = []
@@ -157,10 +161,14 @@ class DimerFrag(object):
         else:
             if isinstance(A_weights, list):
                 if len(A_weights) != len(A_atoms):
-                    raise OptError("Number of reference atoms and weights on frag A are inconsistent")
+                    raise OptError(
+                        "Number of reference atoms and weights on frag A are inconsistent"
+                    )
                 for i, w in enumerate(A_weights):
                     if not isinstance(w, list):
-                        raise OptError("Weight for frag A, reference pt. %d should be a list" % (i + 1))
+                        raise OptError(
+                            "Weight for frag A, reference pt. %d should be a list" % (i + 1)
+                        )
             else:
                 raise OptError("Weights for reference atoms on frag A should be a list")
 
@@ -171,10 +179,14 @@ class DimerFrag(object):
         else:
             if isinstance(B_weights, list):
                 if len(B_weights) != len(B_atoms):
-                    raise OptError("Number of reference atoms and weights on frag B are inconsistent")
+                    raise OptError(
+                        "Number of reference atoms and weights on frag B are inconsistent"
+                    )
                 for i, w in enumerate(B_weights):
                     if not isinstance(w, list):
-                        raise OptError("Weight for frag B, reference pt. %d should be a list" % (i + 1))
+                        raise OptError(
+                            "Weight for frag B, reference pt. %d should be a list" % (i + 1)
+                        )
             else:
                 raise OptError("Weights for reference atoms on frag B should be a list")
 
@@ -188,13 +200,17 @@ class DimerFrag(object):
 
         for i in range(len(A_atoms)):
             if len(A_atoms[i]) != len(A_weights[i]):
-                raise OptError("Number of atoms and weights for frag A, reference pt. %d differ" % (i + 1))
+                raise OptError(
+                    "Number of atoms and weights for frag A, reference pt. %d differ" % (i + 1)
+                )
             if len(A_atoms[i]) != len(set(A_atoms[i])):
                 raise OptError("Atom used more than once for frag A, reference pt. %d." % (i + 1))
             self._Arefs.append(RefPoint(A_atoms[i], A_weights[i]))
         for i in range(len(B_atoms)):
             if len(B_atoms[i]) != len(B_weights[i]):
-                raise OptError("Number of atoms and weights for frag B, reference pt. %d differ" % (i + 1))
+                raise OptError(
+                    "Number of atoms and weights for frag B, reference pt. %d differ" % (i + 1)
+                )
             if len(B_atoms[i]) != len(set(B_atoms[i])):
                 raise OptError("Atom used more than once for frag B, reference pt. %d." % (i + 1))
             self._Brefs.append(RefPoint(B_atoms[i], B_weights[i]))
@@ -405,7 +421,6 @@ class DimerFrag(object):
         return cls(A_idx, A_atoms, B_idx, B_atoms, A_weights, B_weights, A_lbl, B_lbl, frozen)
 
     def __str__(self):
-
         # Note that the "Dimer point" value defines the role of a point within the
         # interfragment coordinate.  For example, the stretch is always between dimer
         # points labeled 3 and 4; connectivity in terms of dimer points is
@@ -413,19 +428,21 @@ class DimerFrag(object):
         # ref. pt. 1 is required for an atom; only ref. pt. 1 and 2 for a diatomic. The
         # stretch occurs between ref. pt. 1 on each fragment.
         # Counting begins at 0 internally from 1 for user.
-        full_list = [f"\tFragment {self.A_idx+1:d} : {self._A_lbl}\n"]
+        full_list = [f"\tFragment {self.A_idx + 1:d} : {self._A_lbl}\n"]
         for i, refPt in enumerate(self._Arefs[::-1]):
-            full_list.append(f"\t\tDimer point {4-self.n_arefs+i} (Ref. pt. {self.n_arefs-i}):\n")
+            full_list.append(
+                f"\t\tDimer point {4 - self.n_arefs + i} (Ref. pt. {self.n_arefs - i}):\n"
+            )
             full_list.append(f"\t\t\t{'Atom':>8}\t{'Coeff':>10}\n")
             for wt in refPt:
-                full_list.append(f"\t\t\t{wt.atom+1:>8}\t{wt.weight:>10.5f}\n")
+                full_list.append(f"\t\t\t{wt.atom + 1:>8}\t{wt.weight:>10.5f}\n")
 
-        full_list.append(f"\tFragment {self.B_idx+1:d} : {self._B_lbl}\n")
+        full_list.append(f"\tFragment {self.B_idx + 1:d} : {self._B_lbl}\n")
         for i, refPt in enumerate(self._Brefs):
             full_list.append(f"\t\tDimer point {4 + i} (Ref. pt. {i + 1}):\n")
             full_list.append(f"\t\t\t{'Atom':>8}\t{'Coeff':>10}\n")
             for wt in refPt:
-                full_list.append(f"\t\t\t{wt.atom+1:>8}\t{wt.weight:>10.5f}\n")
+                full_list.append(f"\t\t\t{wt.atom + 1:>8}\t{wt.weight:>10.5f}\n")
 
         # This code does not work for reference points defined by linear
         # combination of multiple atoms.  Some reference points will need > 1
@@ -441,7 +458,9 @@ class DimerFrag(object):
         # line_by_line = itertools.chain(*zip(labels_a, labels_b, ref_labels_a, ref_labels_b, ref_vals_a, ref_vals_b))
         # full_list = title + list(line_by_line)
         add_on = f"{'(dimer pt. *connectivity* is ':>50}"
-        connectivity = add_on + "-".join([f"{i + 1}" for i in range(3 - self.n_arefs, 3 + self.n_brefs)]) + ")"
+        connectivity = (
+            add_on + "-".join([f"{i + 1}" for i in range(3 - self.n_arefs, 3 + self.n_brefs)]) + ")"
+        )
 
         dimer_frag_coords = str(self._pseudo_frag).replace("    Geom", "Ref Pts. Coords")
         return_str = connectivity + "\n\n" + "".join(full_list) + dimer_frag_coords
@@ -598,7 +617,9 @@ class DimerFrag(object):
                     self._pseudo_frag.intcos[j].q(geom)
                     j += 1
                 except AlgError as error:
-                    raise AlgError("Can't compute interfragment coord. {} at this geometry.".format(lbls[j]))
+                    raise AlgError(
+                        "Can't compute interfragment coord. {} at this geometry.".format(lbls[j])
+                    )
         return
 
         # @staticmethod
@@ -757,9 +778,13 @@ class DimerFrag(object):
         # Determine target location of reference pts for B in coordinate system of A
         ref_B_final[0][:] = orient.zmat_point(ref_A[2], ref_A[1], ref_A[0], R_AB, theta_A, phi_A)
         if nBrefs > 1:
-            ref_B_final[1][:] = orient.zmat_point(ref_A[1], ref_A[0], ref_B_final[0], R_B1B2, theta_B, tau)
+            ref_B_final[1][:] = orient.zmat_point(
+                ref_A[1], ref_A[0], ref_B_final[0], R_B1B2, theta_B, tau
+            )
         if nBrefs > 2:
-            ref_B_final[2][:] = orient.zmat_point(ref_A[0], ref_B_final[0], ref_B_final[1], R_B2B3, B_angle, phi_B)
+            ref_B_final[2][:] = orient.zmat_point(
+                ref_A[0], ref_B_final[0], ref_B_final[1], R_B2B3, B_angle, phi_B
+            )
 
         # print("ref_B_final target:")
         # print(ref_B_final)
@@ -818,7 +843,6 @@ class DimerFrag(object):
             B_angle = v3d.tors(ref_B[2], ref_B[0], ref_B[1], ref_B_final[2])
 
             if fabs(B_angle) > 1.0e-10:
-
                 # Move B to put B2 at origin
                 for i in range(nBatoms):
                     Bgeom[i] -= ref_B[1]
@@ -898,70 +922,110 @@ class DimerFrag(object):
             for xyz in range(3):
                 # Add contributions to each atom included in reference pt definition.
                 for el in self._Arefs[0]:
-                    Bmat_in[cnt, A_xyz_off + 3 * el.atom + xyz] += el.weight * B_ref[cnt, rf[0] + xyz]
+                    Bmat_in[cnt, A_xyz_off + 3 * el.atom + xyz] += (
+                        el.weight * B_ref[cnt, rf[0] + xyz]
+                    )
                 for el in self._Brefs[0]:
-                    Bmat_in[cnt, B_xyz_off + 3 * el.atom + xyz] += el.weight * B_ref[cnt, rf[1] + xyz]
+                    Bmat_in[cnt, B_xyz_off + 3 * el.atom + xyz] += (
+                        el.weight * B_ref[cnt, rf[1] + xyz]
+                    )
             cnt += 1
 
         if self.d_on(1):
             rf = [3 * i for i in self.pseudo_frag.intcos[cnt].atoms]
             for xyz in range(3):
                 for el in self._Arefs[1]:
-                    Bmat_in[cnt, A_xyz_off + 3 * el.atom + xyz] += el.weight * B_ref[cnt, rf[0] + xyz]
+                    Bmat_in[cnt, A_xyz_off + 3 * el.atom + xyz] += (
+                        el.weight * B_ref[cnt, rf[0] + xyz]
+                    )
                 for el in self._Arefs[0]:
-                    Bmat_in[cnt, A_xyz_off + 3 * el.atom + xyz] += el.weight * B_ref[cnt, rf[1] + xyz]
+                    Bmat_in[cnt, A_xyz_off + 3 * el.atom + xyz] += (
+                        el.weight * B_ref[cnt, rf[1] + xyz]
+                    )
                 for el in self._Brefs[0]:
-                    Bmat_in[cnt, B_xyz_off + 3 * el.atom + xyz] += el.weight * B_ref[cnt, rf[2] + xyz]
+                    Bmat_in[cnt, B_xyz_off + 3 * el.atom + xyz] += (
+                        el.weight * B_ref[cnt, rf[2] + xyz]
+                    )
             cnt += 1
 
         if self.d_on(2):
             rf = [3 * i for i in self.pseudo_frag.intcos[cnt].atoms]
             for xyz in range(3):
                 for el in self._Arefs[0]:
-                    Bmat_in[cnt, A_xyz_off + 3 * el.atom + xyz] += el.weight * B_ref[cnt, rf[0] + xyz]
+                    Bmat_in[cnt, A_xyz_off + 3 * el.atom + xyz] += (
+                        el.weight * B_ref[cnt, rf[0] + xyz]
+                    )
                 for el in self._Brefs[0]:
-                    Bmat_in[cnt, B_xyz_off + 3 * el.atom + xyz] += el.weight * B_ref[cnt, rf[1] + xyz]
+                    Bmat_in[cnt, B_xyz_off + 3 * el.atom + xyz] += (
+                        el.weight * B_ref[cnt, rf[1] + xyz]
+                    )
                 for el in self._Brefs[1]:
-                    Bmat_in[cnt, B_xyz_off + 3 * el.atom + xyz] += el.weight * B_ref[cnt, rf[2] + xyz]
+                    Bmat_in[cnt, B_xyz_off + 3 * el.atom + xyz] += (
+                        el.weight * B_ref[cnt, rf[2] + xyz]
+                    )
             cnt += 1
 
         if self.d_on(3):
             rf = [3 * i for i in self.pseudo_frag.intcos[cnt].atoms]
             for xyz in range(3):
                 for el in self._Arefs[1]:
-                    Bmat_in[cnt, A_xyz_off + 3 * el.atom + xyz] += el.weight * B_ref[cnt, rf[0] + xyz]
+                    Bmat_in[cnt, A_xyz_off + 3 * el.atom + xyz] += (
+                        el.weight * B_ref[cnt, rf[0] + xyz]
+                    )
                 for el in self._Arefs[0]:
-                    Bmat_in[cnt, A_xyz_off + 3 * el.atom + xyz] += el.weight * B_ref[cnt, rf[1] + xyz]
+                    Bmat_in[cnt, A_xyz_off + 3 * el.atom + xyz] += (
+                        el.weight * B_ref[cnt, rf[1] + xyz]
+                    )
                 for el in self._Brefs[0]:
-                    Bmat_in[cnt, B_xyz_off + 3 * el.atom + xyz] += el.weight * B_ref[cnt, rf[2] + xyz]
+                    Bmat_in[cnt, B_xyz_off + 3 * el.atom + xyz] += (
+                        el.weight * B_ref[cnt, rf[2] + xyz]
+                    )
                 for el in self._Brefs[1]:
-                    Bmat_in[cnt, B_xyz_off + 3 * el.atom + xyz] += el.weight * B_ref[cnt, rf[3] + xyz]
+                    Bmat_in[cnt, B_xyz_off + 3 * el.atom + xyz] += (
+                        el.weight * B_ref[cnt, rf[3] + xyz]
+                    )
             cnt += 1
 
         if self.d_on(4):
             rf = [3 * i for i in self.pseudo_frag.intcos[cnt].atoms]
             for xyz in range(3):
                 for el in self._Arefs[2]:
-                    Bmat_in[cnt, A_xyz_off + 3 * el.atom + xyz] += el.weight * B_ref[cnt, rf[0] + xyz]
+                    Bmat_in[cnt, A_xyz_off + 3 * el.atom + xyz] += (
+                        el.weight * B_ref[cnt, rf[0] + xyz]
+                    )
                 for el in self._Arefs[1]:
-                    Bmat_in[cnt, A_xyz_off + 3 * el.atom + xyz] += el.weight * B_ref[cnt, rf[1] + xyz]
+                    Bmat_in[cnt, A_xyz_off + 3 * el.atom + xyz] += (
+                        el.weight * B_ref[cnt, rf[1] + xyz]
+                    )
                 for el in self._Arefs[0]:
-                    Bmat_in[cnt, A_xyz_off + 3 * el.atom + xyz] += el.weight * B_ref[cnt, rf[2] + xyz]
+                    Bmat_in[cnt, A_xyz_off + 3 * el.atom + xyz] += (
+                        el.weight * B_ref[cnt, rf[2] + xyz]
+                    )
                 for el in self._Brefs[0]:
-                    Bmat_in[cnt, B_xyz_off + 3 * el.atom + xyz] += el.weight * B_ref[cnt, rf[3] + xyz]
+                    Bmat_in[cnt, B_xyz_off + 3 * el.atom + xyz] += (
+                        el.weight * B_ref[cnt, rf[3] + xyz]
+                    )
             cnt += 1
 
         if self.d_on(5):
             rf = [3 * i for i in self.pseudo_frag.intcos[cnt].atoms]
             for xyz in range(3):
                 for el in self._Arefs[0]:
-                    Bmat_in[cnt, A_xyz_off + 3 * el.atom + xyz] += el.weight * B_ref[cnt, rf[0] + xyz]
+                    Bmat_in[cnt, A_xyz_off + 3 * el.atom + xyz] += (
+                        el.weight * B_ref[cnt, rf[0] + xyz]
+                    )
                 for el in self._Brefs[0]:
-                    Bmat_in[cnt, B_xyz_off + 3 * el.atom + xyz] += el.weight * B_ref[cnt, rf[1] + xyz]
+                    Bmat_in[cnt, B_xyz_off + 3 * el.atom + xyz] += (
+                        el.weight * B_ref[cnt, rf[1] + xyz]
+                    )
                 for el in self._Brefs[1]:
-                    Bmat_in[cnt, B_xyz_off + 3 * el.atom + xyz] += el.weight * B_ref[cnt, rf[2] + xyz]
+                    Bmat_in[cnt, B_xyz_off + 3 * el.atom + xyz] += (
+                        el.weight * B_ref[cnt, rf[2] + xyz]
+                    )
                 for el in self._Brefs[2]:
-                    Bmat_in[cnt, B_xyz_off + 3 * el.atom + xyz] += el.weight * B_ref[cnt, rf[3] + xyz]
+                    Bmat_in[cnt, B_xyz_off + 3 * el.atom + xyz] += (
+                        el.weight * B_ref[cnt, rf[3] + xyz]
+                    )
             cnt += 1
 
     def test_B(self, Axyz, Bxyz, printInfo=False):
@@ -996,7 +1060,9 @@ class DimerFrag(object):
                 q_p2 = self.q()
                 coord[atom, xyz] -= 2 * DISP_SIZE  # restore to original
                 for i in range(self.num_intcos):
-                    B_fd[i, 3 * atom + xyz] = (q_m2[i] - 8 * q_m[i] + 8 * q_p[i] - q_p2[i]) / (12.0 * DISP_SIZE)
+                    B_fd[i, 3 * atom + xyz] = (q_m2[i] - 8 * q_m[i] + 8 * q_p[i] - q_p2[i]) / (
+                        12.0 * DISP_SIZE
+                    )
 
         if printInfo:
             logger.debug("Numerical B matrix in au, DISP_SIZE = %lf\n" % DISP_SIZE)
@@ -1010,7 +1076,10 @@ class DimerFrag(object):
                     max_error = fabs(B_analytic[i][j] - B_fd[i][j])
                     max_error_intco = i
 
-        logger.info("\t\tMaximum difference is %.1e for internal coordinate %d." % (max_error, max_error_intco + 1))
+        logger.info(
+            "\t\tMaximum difference is %.1e for internal coordinate %d."
+            % (max_error, max_error_intco + 1)
+        )
         logger.info("\t\tThis coordinate is %s" % str(self.pseudo_frag.intcos[max_error_intco]))
 
         if max_error > 1.0e-8:

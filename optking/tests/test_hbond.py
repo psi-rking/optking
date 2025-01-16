@@ -15,10 +15,10 @@ from optking import op
 # whether h bond should be detected
 @pytest.mark.skip
 @pytest.mark.parametrize(
-    "options, expected", [((0, 0), True), ((-0.375, 0), False), ((0, -np.pi / 8), False), ((0.8, 0), False)]
+    "options, expected",
+    [((0, 0), True), ((-0.375, 0), False), ((0, -np.pi / 8), False), ((0.8, 0), False)],
 )
 def test_hydrogen_bonds(options, expected):
-
     # Manually construct water dimer in single frag mode
     # Tests fail when run with entire suite due to op.Params missing
     op.Params = op.OptParams(**{})

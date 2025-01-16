@@ -52,7 +52,6 @@ class Oofp(Simple):
         range_max=None,
         ext_force=None,
     ):
-
         atoms = (a, b, c, d)
         if c < d:
             self.neg = 1
@@ -84,7 +83,9 @@ class Oofp(Simple):
 
         s += "(%d,%d,%d,%d)" % (self.A + 1, self.B + 1, self.C + 1, self.D + 1)
         if self.ranged:
-            s += "[{:.2f},{:.2f}]".format(self.range_min * self.q_show_factor, self.range_max * self.q_show_factor)
+            s += "[{:.2f},{:.2f}]".format(
+                self.range_min * self.q_show_factor, self.range_max * self.q_show_factor
+            )
         return s
 
     def __eq__(self, other):
@@ -122,7 +123,11 @@ class Oofp(Simple):
 
     @property
     def bends(self):
-        return [bend.Bend(self.A, self.B, self.C), bend.Bend(self.A, self.B, self.D), bend.Bend(self.C, self.B, self.D)]
+        return [
+            bend.Bend(self.A, self.B, self.C),
+            bend.Bend(self.A, self.B, self.D),
+            bend.Bend(self.C, self.B, self.D),
+        ]
 
     def to_dict(self):
         d = {}
@@ -185,7 +190,6 @@ class Oofp(Simple):
     # out-of-plane is m-o-p-n
     # Assume angle phi_CBD is OK, or we couldn't calculate the value anyway.
     def DqDx(self, geom, dqdx, mini=False):
-
         # self.DqDx_sympy(geom, dqdx)
         # return
 
@@ -252,16 +256,24 @@ class Oofp(Simple):
 
         elif guess_type == "FISCHER":  # my A-B-C-d is their x-a-b-c
             Rax = v3d.dist(geom[self.B], geom[self.A])
-            RCOVax = qcel.covalentradii.get(Z[self.B], missing=4.0) + qcel.covalentradii.get(Z[self.A], missing=4.0)
-            RCOVab = qcel.covalentradii.get(Z[self.B], missing=4.0) + qcel.covalentradii.get(Z[self.C], missing=4.0)
-            RCOVac = qcel.covalentradii.get(Z[self.B], missing=4.0) + qcel.covalentradii.get(Z[self.D], missing=4.0)
+            RCOVax = qcel.covalentradii.get(Z[self.B], missing=4.0) + qcel.covalentradii.get(
+                Z[self.A], missing=4.0
+            )
+            RCOVab = qcel.covalentradii.get(Z[self.B], missing=4.0) + qcel.covalentradii.get(
+                Z[self.C], missing=4.0
+            )
+            RCOVac = qcel.covalentradii.get(Z[self.B], missing=4.0) + qcel.covalentradii.get(
+                Z[self.D], missing=4.0
+            )
             a = 0.0025
             b = 0.0061
             c = 3.0
             d = 4.0
             e = 0.80
             val = self.q(geom)
-            rval = a + b * (RCOVab * RCOVac) ** e * math.cos(val) ** d * math.exp(-c * (Rax - RCOVax))
+            rval = a + b * (RCOVab * RCOVac) ** e * math.cos(val) ** d * math.exp(
+                -c * (Rax - RCOVax)
+            )
             logger.debug("fisher: {:12.6e}".format(rval))
             return rval
 

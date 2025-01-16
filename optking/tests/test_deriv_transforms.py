@@ -206,7 +206,13 @@ def test_stationary_forces_hooh():
     psi4.set_options(psi4_options)
     xyz = mol.geometry().to_array()
     Natom = mol.natom()
-    coords = [stre.Stre(0, 1), stre.Stre(2, 3), bend.Bend(0, 1, 2), bend.Bend(1, 2, 3), tors.Tors(0, 1, 2, 3)]
+    coords = [
+        stre.Stre(0, 1),
+        stre.Stre(2, 3),
+        bend.Bend(0, 1, 2),
+        bend.Bend(1, 2, 3),
+        tors.Tors(0, 1, 2, 3),
+    ]
     Z = [mol.Z(i) for i in range(0, Natom)]
     masses = [mol.mass(i) for i in range(0, Natom)]
     f1 = optking.frag.Frag(Z, xyz, masses, intcos=coords, frozen=False)
@@ -238,7 +244,13 @@ def test_stationary_hessian_hooh():
     psi4_options = {"basis": "cc-pvdz", "scf_type": "pk"}
     psi4.set_options(psi4_options)
     xyz = mol.geometry().to_array()
-    coords = [stre.Stre(0, 1), stre.Stre(2, 3), bend.Bend(0, 1, 2), bend.Bend(1, 2, 3), tors.Tors(0, 1, 2, 3)]
+    coords = [
+        stre.Stre(0, 1),
+        stre.Stre(2, 3),
+        bend.Bend(0, 1, 2),
+        bend.Bend(1, 2, 3),
+        tors.Tors(0, 1, 2, 3),
+    ]
     Z = [mol.Z(i) for i in range(0, Natom)]
     masses = [mol.mass(i) for i in range(0, Natom)]
     f1 = optking.frag.Frag(Z, xyz, masses, intcos=coords, frozen=False)
@@ -271,7 +283,13 @@ def test_nonstationary_hessian_hooh():
     psi4_options = {"basis": "cc-pvdz", "scf_type": "pk"}
     psi4.set_options(psi4_options)
     xyz = mol.geometry().to_array()
-    coords = [stre.Stre(0, 1), stre.Stre(2, 3), bend.Bend(0, 1, 2), bend.Bend(1, 2, 3), tors.Tors(0, 1, 2, 3)]
+    coords = [
+        stre.Stre(0, 1),
+        stre.Stre(2, 3),
+        bend.Bend(0, 1, 2),
+        bend.Bend(1, 2, 3),
+        tors.Tors(0, 1, 2, 3),
+    ]
     Z = [mol.Z(i) for i in range(0, Natom)]
     masses = [mol.mass(i) for i in range(0, Natom)]
     f1 = optking.frag.Frag(Z, xyz, masses, intcos=coords, frozen=False)

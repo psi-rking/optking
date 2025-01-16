@@ -35,16 +35,20 @@ benz_xyz = """
   H    2.1397760    1.2353675   10.0
 """
 
+
 # Potential energy scan with two benzenes.
 @pytest.mark.dimers
 @pytest.mark.long
 def test_dimers_benzene_pes():
-
     # Define the fragments and reference pts for dimers.
     dimer = {
         "Natoms per frag": [12, 12],
         "A Frag": 1,
-        "A Ref Atoms": [[1, 2, 3, 4, 5, 6], [3], [2]],  # COM (between Carbon's)  # carbon on x-axis  # another carbon
+        "A Ref Atoms": [
+            [1, 2, 3, 4, 5, 6],
+            [3],
+            [2],
+        ],  # COM (between Carbon's)  # carbon on x-axis  # another carbon
         "B Frag": 2,
         "B Ref Atoms": [
             [13, 14, 15, 16, 17, 18],  # COM (between Carbon's)
@@ -73,12 +77,8 @@ def test_dimers_benzene_pes():
     phi_B = -90.0  # Dihedral angle, A1-B1-B2-B3
 
     dimerMol = psi4.geometry(benz_xyz)
-    Axyz = dimerMol.geometry().np[
-        0:12,
-    ]
-    Bxyz = dimerMol.geometry().np[
-        12:,
-    ]
+    Axyz = dimerMol.geometry().np[0:12,]
+    Bxyz = dimerMol.geometry().np[12:,]
     # To see starting values:
     # dimerCoord.update_reference_geometry(Axyz, Bxyz)
     # print( dimerCoord.q_array() )
@@ -86,7 +86,9 @@ def test_dimers_benzene_pes():
     E_tau = []
     for tau in range(0, 181, 30):
         q_target = np.array([R, theta_A, theta_B, tau, phi_A, phi_B])
-        Bxyz[:] = dimerCoord.orient_fragment(Axyz, Bxyz, q_target, unit_angle="deg", unit_length="Angstrom")
+        Bxyz[:] = dimerCoord.orient_fragment(
+            Axyz, Bxyz, q_target, unit_angle="deg", unit_length="Angstrom"
+        )
         xyz = psi4.core.Matrix.from_array(np.concatenate((Axyz, Bxyz)))
         dimerMol.set_geometry(xyz)
         E_tau.append([tau, xyz.to_array(), psi4.energy("scf")])
@@ -123,7 +125,9 @@ def test_dimers_benzene_pes():
     E_theta_A = []
     for theta_A in range(1, 182, 30):
         q_target = np.array([R, theta_A, theta_B, tau, phi_A, phi_B])
-        Bxyz[:] = dimerCoord.orient_fragment(Axyz, Bxyz, q_target, unit_angle="deg", unit_length="Angstrom")
+        Bxyz[:] = dimerCoord.orient_fragment(
+            Axyz, Bxyz, q_target, unit_angle="deg", unit_length="Angstrom"
+        )
         xyz = psi4.core.Matrix.from_array(np.concatenate((Axyz, Bxyz)))
         dimerMol.set_geometry(xyz)
         E_theta_A.append([theta_A, xyz.to_array(), psi4.energy("scf")])
@@ -160,7 +164,9 @@ def test_dimers_benzene_pes():
     E_phi_A = []
     for phi_A in range(0, 181, 30):
         q_target = np.array([R, theta_A, theta_B, tau, phi_A, phi_B])
-        Bxyz[:] = dimerCoord.orient_fragment(Axyz, Bxyz, q_target, unit_angle="deg", unit_length="Angstrom")
+        Bxyz[:] = dimerCoord.orient_fragment(
+            Axyz, Bxyz, q_target, unit_angle="deg", unit_length="Angstrom"
+        )
         xyz = psi4.core.Matrix.from_array(np.concatenate((Axyz, Bxyz)))
         dimerMol.set_geometry(xyz)
         E_phi_A.append([phi_A, xyz.to_array(), psi4.energy("scf")])

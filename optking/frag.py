@@ -40,13 +40,13 @@ class Frag:
             self._intcos = intcos
 
     def __str__(self):
-
         np.set_printoptions(suppress=True, floatmode="fixed", sign=" ")
         s = f"\n\t {'Z (Atomic Numbers)':<20} {'Masses':^20} {'Geom':^40}"
 
         strip = lambda x: str(x).replace("[", "").replace("]", "")
         print_vals = [
-            f"\n\t {self._Z[i]: ^20f} {self._masses[i]:^20f} {strip(self._geom[i]):^40}" for i in range(self.natom)
+            f"\n\t {self._Z[i]: ^20f} {self._masses[i]:^20f} {strip(self._geom[i]):^40}"
+            for i in range(self.natom)
         ]
         s += "".join(print_vals)
 
@@ -246,7 +246,7 @@ class Frag:
             return True
         else:
             xyz = self.geom
-            for (i, j, k) in combinations(range(self.natom), r=3):
+            for i, j, k in combinations(range(self.natom), r=3):
                 if not are_collinear(xyz[i], xyz[j], xyz[k]):
                     return False
             return True

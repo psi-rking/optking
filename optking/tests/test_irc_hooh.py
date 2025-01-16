@@ -40,7 +40,10 @@ def test_hooh_irc(check_iter):
 
     print("%15s%15s%20s%15s" % ("Step Number", "Arc Distance", "Energy", "HOOH dihedral"))
     for step in IRC:
-        print("%15d%15.5f%20.10f%15.5f" % (step["step_number"], step["arc_dist"], step["energy"], step["q"][5]))
+        print(
+            "%15d%15.5f%20.10f%15.5f"
+            % (step["step_number"], step["arc_dist"], step["energy"], step["q"][5])
+        )
 
     assert psi4.compare_values(energy_5th_IRC_pt, IRC[5]["energy"], 6, "Energy of 5th IRC point.")  # TEST
     utils.compare_iterations(json_output, 20, check_iter)

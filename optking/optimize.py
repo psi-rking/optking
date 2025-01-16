@@ -181,9 +181,9 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
             )  # Can just recreate with current history and params
 
         if d.get("linesearch_method"):
-            manager.linesearch_method = OptimizationManager._LINESEARCHES[
-                "ENERGY"
-            ].from_dict(d["linesearch_method"], molsys, history, params)
+            manager.linesearch_method = OptimizationManager._LINESEARCHES["ENERGY"].from_dict(
+                d["linesearch_method"], molsys, history, params
+            )
 
         return manager
 
@@ -345,9 +345,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
                 % (iterations, self.params.geom_maxiter)
             )
             raise OptError(
-                "Maximum number of steps exceeded: {}.".format(
-                    self.params.geom_maxiter
-                ),
+                "Maximum number of steps exceeded: {}.".format(self.params.geom_maxiter),
                 "OptError",
             )
 
@@ -444,7 +442,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
             affected_frags = []
             for bend in bends:
                 # no need to repeat this code for "COMPLEMENT". Bend already removed for LINEAR
-                if (bend.bend_type != "COMPLEMENT"):
+                if bend.bend_type != "COMPLEMENT":
                     iF = addIntcos.check_fragment(bend.atoms, self.molsys)
                     F = self.molsys.fragments[iF]
                     affected_frags.append(F)
@@ -459,16 +457,14 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
             self.H = self.molsys.hessian_to_internals(Hx, gx)
         elif self.params.dynamic_level == self.params.dynamic_lvl_max:
             logger.critical(
-                "\n\t Current algorithm/dynamic_level is %d.\n"
-                % self.params.dynamic_level
+                "\n\t Current algorithm/dynamic_level is %d.\n" % self.params.dynamic_level
             )
             logger.critical("\n\t Alternative approaches are not available or turned on.\n")
             raise OptError("Maximum dynamic_level reached.")
         else:
             self.params.dynamic_level += 1
             logger.warning(
-                "\n\t Increasing dynamic_level algorithm to %d.\n"
-                % self.params.dynamic_level
+                "\n\t Increasing dynamic_level algorithm to %d.\n" % self.params.dynamic_level
             )
             logger.warning("\n\t Erasing old history, hessian, intcos.\n")
             eraseIntcos = True
@@ -514,7 +510,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
     def _exception_cleanup(self, error):
         logger.info(
             "\tDumping history: Warning last point not converged.\n %s",
-            self.history.summary_string()
+            self.history.summary_string(),
         )
 
         if self.params.opt_type == "IRC":

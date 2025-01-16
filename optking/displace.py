@@ -105,9 +105,7 @@ def displace_molsys(molsys: Molsys, dq_in, fq=None, **kwargs):
 
         axyz = molsys.frag_geom(DI.A_idx)
         bxyz = molsys.frag_geom(DI.B_idx)
-        bxyz[:] = DI.orient_fragment(
-            axyz, bxyz, q_target[molsys.dimerfrag_intco_slice(i)]
-        )
+        bxyz[:] = DI.orient_fragment(axyz, bxyz, q_target[molsys.dimerfrag_intco_slice(i)])
 
     geom_final = molsys.geom
     # Analyze relative to original input geometry
@@ -251,9 +249,7 @@ def displace_frag(frag, dq_in, **kwargs):
                     )
                     break
                 else:
-                    geom[:] = (
-                        geom_orig  # put original geometry back for next try at smaller step.
-                    )
+                    geom[:] = geom_orig  # put original geometry back for next try at smaller step.
 
         if conv and cnt > 0:  # We were able to take a modest step.  Try to complete it.
             logger.info(
@@ -288,9 +284,7 @@ def displace_frag(frag, dq_in, **kwargs):
 
     # Fix drift/error in any frozen coordinates
     frozen_conv = True
-    if any(intco.frozen for intco in frag.intcos) or any(
-        intco.ranged for intco in frag.intcos
-    ):
+    if any(intco.frozen for intco in frag.intcos) or any(intco.ranged for intco in frag.intcos):
         frag.update_dihedral_orientations()
         frag.fix_bend_axes()
         qnow = intcosMisc.q_values(frag.intcos, geom)
@@ -311,9 +305,7 @@ def displace_frag(frag, dq_in, **kwargs):
 
         # Could be streamlined with above, but for now testing to see if helps
         constrained_intcos = list(compress(frag.intcos, constrained_coord_selector))
-        constrained_dq = np.asarray(
-            list(compress(dq_adjust_frozen, constrained_coord_selector))
-        )
+        constrained_dq = np.asarray(list(compress(dq_adjust_frozen, constrained_coord_selector)))
         adjust_info = "\nAdjustments to Frozen/Ranged Coordinates Needed:\n"
         for l, v in zip([str(i) for i in constrained_intcos], constrained_dq):
             adjust_info += f"{l:>8s}{v:10.6f}\n"
@@ -325,9 +317,7 @@ def displace_frag(frag, dq_in, **kwargs):
             scale = 0.5 / np.linalg.norm(dq_adjust_frozen)
             dq_adjust_frozen *= scale
 
-        frozen_msg = (
-            "\tAdditional back-transformation to adjust frozen/ranged coordinates: "
-        )
+        frozen_msg = "\tAdditional back-transformation to adjust frozen/ranged coordinates: "
 
         # suppress printing for the next stage
         kwargs.update({"print_lvl": kwargs.get("print_lvl", 1) - 1})
@@ -446,9 +436,7 @@ def back_transformation(intcos, geom, dq, **kwargs):
             )
         bt_iter_cnt += 1
 
-    bt_final_step = (
-        f"\tRMS(dx): {dx_rms: .3e} \tMax(dx): {dx_max: .3e} \tRMS(dq): {dq_rms: .3e}"
-    )
+    bt_final_step = f"\tRMS(dx): {dx_rms: .3e} \tMax(dx): {dx_max: .3e} \tRMS(dq): {dq_rms: .3e}"
     if bt_converged:
         if print_lvl > 0:
             step_iter_str += "\t---------------------------------------------------\n"

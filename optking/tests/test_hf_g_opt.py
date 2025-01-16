@@ -93,7 +93,6 @@ def test_hf_g_h2o_large(check_iter):
 
 #! SCF cc-pVDZ geometry optimzation of ketene, starting from bent structure
 def test_hf_g_ketene(check_iter):
-
     ketene = psi4.geometry(
         """
         0 1

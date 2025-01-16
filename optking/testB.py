@@ -15,6 +15,7 @@ from . import op
 
 logger = logging.getLogger(f"{log_name}{__name__}")
 
+
 def test_b(oMolsys):
     Natom = oMolsys.natom
     Nintco = oMolsys.num_intcos
@@ -57,10 +58,14 @@ def test_b(oMolsys):
 
             coord[atom, xyz] -= 2 * DISP_SIZE  # restore to original
             for i in range(Nintco):
-                B_fd[i, 3 * atom + xyz] = (q_m2[i] - 8 * q_m[i] + 8 * q_p[i] - q_p2[i]) / (12.0 * DISP_SIZE)
+                B_fd[i, 3 * atom + xyz] = (q_m2[i] - 8 * q_m[i] + 8 * q_p[i] - q_p2[i]) / (
+                    12.0 * DISP_SIZE
+                )
 
     if op.Params.print_lvl >= 3:
-        logger.debug("Numerical B matrix in au, DISP_SIZE = %lf\n" % DISP_SIZE + print_mat_string(B_fd))
+        logger.debug(
+            "Numerical B matrix in au, DISP_SIZE = %lf\n" % DISP_SIZE + print_mat_string(B_fd)
+        )
 
     oMolsys.geom = geom_orig  # restore original
     oMolsys.unfix_bend_axes()
@@ -73,7 +78,10 @@ def test_b(oMolsys):
                 max_error = fabs(B_analytic[i][j] - B_fd[i][j])
                 max_error_intco = i
 
-    logger.info("\t\tMaximum difference is %.1e for internal coordinate %d." % (max_error, max_error_intco + 1))
+    logger.info(
+        "\t\tMaximum difference is %.1e for internal coordinate %d."
+        % (max_error, max_error_intco + 1)
+    )
     # logger.info("\t\tThis coordinate is %s" % str(intcos[max_error_intco]))
 
     if max_error > MAX_ERROR:
@@ -119,12 +127,13 @@ def test_derivative_b(oMolsys):
             I.Dq2Dx2(coord, dq2dx2_analytic)
 
             if op.Params.print_lvl >= 3:
-                logger.info("Analytic B' (Dq2Dx2) matrix in au\n" + print_mat_string(dq2dx2_analytic))
+                logger.info(
+                    "Analytic B' (Dq2Dx2) matrix in au\n" + print_mat_string(dq2dx2_analytic)
+                )
 
             # compute B' matrix from B matrices
             for atom_a in range(Natom):
                 for xyz_a in range(3):
-
                     coord[atom_a, xyz_a] += DISP_SIZE
                     B_p = intcosMisc.Bmat(F.intcos, coord)
 
@@ -150,7 +159,8 @@ def test_derivative_b(oMolsys):
 
             if op.Params.print_lvl >= 3:
                 logger.info(
-                    "\nNumerical B' (Dq2Dx2) matrix in au, DISP_SIZE = %f\n" % DISP_SIZE + print_mat_string(dq2dx2_fd)
+                    "\nNumerical B' (Dq2Dx2) matrix in au, DISP_SIZE = %f\n" % DISP_SIZE
+                    + print_mat_string(dq2dx2_fd)
                 )
 
             max_error = -1.0

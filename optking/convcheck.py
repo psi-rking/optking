@@ -1,11 +1,10 @@
-""" Functions for checking the convergence of the optimization procedure.
+"""Functions for checking the convergence of the optimization procedure.
 
 Methods
 -------
 conv_check: Primary wrapper. Take information (as dictionary) from previous step(s). print summary or return summary string
 
 """
-
 
 import logging
 import pprint
@@ -21,7 +20,11 @@ from . import op
 logger = logging.getLogger(f"{log_name}{__name__}")
 
 CONVERGENCE_PRESETS = {
-    "QCHEM_MOLPRO": {"required": ["max_force"], "one of": ["max_DE", "max_disp"], "alternate": [None]},
+    "QCHEM_MOLPRO": {
+        "required": ["max_force"],
+        "one of": ["max_DE", "max_disp"],
+        "alternate": [None],
+    },
     "GAUSSIAN": {
         "required": ["max_force", "rms_force", "max_disp", "rms_disp"],
         "one of": [None],
@@ -74,12 +77,16 @@ def conv_check(conv_info: dict, opt_params: op.OptParams, required=None, str_mod
 
     params = opt_params.conv_criteria()
 
-    criteria = _get_conv_criteria(conv_info.get("dq"), conv_info.get("fq"), conv_info.get("energies"), required)
+    criteria = _get_conv_criteria(
+        conv_info.get("dq"), conv_info.get("fq"), conv_info.get("energies"), required
+    )
     conv_met, conv_active = _transform_criteria(criteria, params)
-    conv_str = _print_convergence_table(conv_info, criteria, conv_met, conv_active, params, return_str)
+    conv_str = _print_convergence_table(
+        conv_info, criteria, conv_met, conv_active, params, return_str
+    )
 
     # flat potential cannot be activated by the user - purely an internal tool for gau_type convergence
-    conv_met.update({"flat_potential": 100 * criteria.get("rms_force") < opt_params.conv_rms_force})
+    conv_met.update({"flat_potential": 100 * criteria["rms_force"] < opt_params.conv_rms_force})
 
     if str_mode == "table":
         return conv_str
@@ -179,7 +186,10 @@ def _test_for_convergence(conv_met, conv_active, return_str=False, params=op.Par
 
     # mirrors the requirements but with booleans indicating whether each condition is met
     conv_status = {
-        key: [conv_met.get(item, True) if key == "one of" else conv_met.get(item, False) for item in val_list]
+        key: [
+            conv_met.get(item, True) if key == "one of" else conv_met.get(item, False)
+            for item in val_list
+        ]
         for key, val_list in conv_requirements.items()
     }
 
@@ -198,7 +208,9 @@ def _test_for_convergence(conv_met, conv_active, return_str=False, params=op.Par
     return converged
 
 
-def _print_convergence_table(conv_info, criteria, conv_met, conv_active, params_dict, return_str=False):
+def _print_convergence_table(
+    conv_info, criteria, conv_met, conv_active, params_dict, return_str=False
+):
     """Print a nice looking table for the current step"""
 
     # define all the variable strings that can get used below
@@ -221,7 +233,9 @@ def _print_convergence_table(conv_info, criteria, conv_met, conv_active, params_
     )
 
     # Get all the values for convergence critera and active criteria markers
-    conv_symbols = {key: _get_criteria_symbol(conv_met.get(key), conv_active.get(key)) for key in conv_met}
+    conv_symbols = {
+        key: _get_criteria_symbol(conv_met.get(key), conv_active.get(key)) for key in conv_met
+    }
     print_vals = (
         [conv_info.get("iternum"), conv_info.get("energies")[-1]]
         + list(criteria.values())
@@ -230,8 +244,10 @@ def _print_convergence_table(conv_info, criteria, conv_met, conv_active, params_
 
     # For each active criteria print the target value and the met/inactive/unmet symbol
     # easier to just redetermine instead of adapt conv_symbols above
-    active = lambda x: f"{params_dict.get('conv_' + x) :11.2e} {'*'}"
-    conv_active_str = [active(key) if conv_active.get(key) else f"{'o': >13}" for key in conv_active]
+    active = lambda x: f"{params_dict.get('conv_' + x):11.2e} {'*'}"
+    conv_active_str = [
+        active(key) if conv_active.get(key) else f"{'o': >13}" for key in conv_active
+    ]
 
     suffix = "~\n" if conv_info.get("iternum") == 1 else "\n"
 
@@ -241,7 +257,7 @@ def _print_convergence_table(conv_info, criteria, conv_met, conv_active, params_
     else:
         dash_length, extra_irc_space, header = 114, " " * 16, irc_header
 
-    conv_str = f"""\n\t{'==> Convergence Check <==': ^92}
+    conv_str = f"""\n\t{"==> Convergence Check <==": ^92}
     \n\tMeasures of convergence in internal coordinates in au.
     \n\tCriteria marked as inactive (o), active & met (*), and active & unmet ( ).\n\n"""
     conv_str += "\t" + "-" * dash_length + suffix
@@ -274,15 +290,14 @@ def _print_active_criteria(conv_status, conv_requirements):
     conv_str += "\n\t" + "-" * 76
 
     print_len = max(
-        len(conv_status.get("required")), max(len(conv_status.get("one of")), len(conv_status.get("alternate")))
+        len(conv_status.get("required")),
+        max(len(conv_status.get("one of")), len(conv_status.get("alternate"))),
     )
 
     for i in range(print_len):
-
         conv_str += "\n\t|"
 
         for key in conv_status:
-
             # conv_requirments[key] is an empty list if no criteria match (not guaranteed for conv_status)
             if conv_requirements.get(key)[0] is None or i >= len(conv_status.get(key)):
                 conv_str += f"{'': ^24}|"

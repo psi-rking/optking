@@ -4,6 +4,7 @@ import pytest
 from .utils import utils
 import numpy as np
 from qcelemental import constants
+
 bohr2angstroms = constants.bohr2angstroms
 
 #! Various constrained energy minimizations of HOOH with cc-pvdz RHF.
@@ -48,10 +49,15 @@ optking__freeze_params = [
     "options, expected, num_steps",
     # freeze_params,
     optking__freeze_params,
-    ids=["Only backstep", "freeze H", "freeze O", "freeze individual x,y,z", "freeze then change coord"],
+    ids=[
+        "Only backstep",
+        "freeze H",
+        "freeze O",
+        "freeze individual x,y,z",
+        "freeze then change coord",
+    ],
 )
 def test_hooh_freeze_xyz_Hs(check_iter, options, expected, num_steps):
-
     hooh = psi4.geometry(
         """
       H  0.90  0.80  0.5
@@ -82,7 +88,6 @@ def test_hooh_freeze_xyz_Hs(check_iter, options, expected, num_steps):
 
 #! test if we can keep oxygen atom from moving off of the point (1,1,1)
 def test_frozen_cart_h2o(check_iter):
-
     h2o = psi4.geometry(
         """
         O   1.000000   1.000000   1.000000
@@ -95,19 +100,24 @@ def test_frozen_cart_h2o(check_iter):
     )
 
     psi4.core.clean_options()
-    psi4_options = {"basis": "cc-pvdz", "reference": "rhf", "scf_type": "df", "max_energy_g_convergence": 7}
+    psi4_options = {
+        "basis": "cc-pvdz",
+        "reference": "rhf",
+        "scf_type": "df",
+        "max_energy_g_convergence": 7,
+    }
     psi4.set_options(psi4_options)
     psi4.set_options({"frozen_cartesian": """1 xyz"""})
 
     json_output = optking.optimize_psi4("hf")
 
-    optGeom = bohr2angstroms*np.asarray(json_output['final_molecule']['geometry']).reshape(-1,3)
+    optGeom = bohr2angstroms * np.asarray(json_output["final_molecule"]["geometry"]).reshape(-1, 3)
 
     thisenergy = json_output["energies"][-1]
     assert psi4.compare_values(-76.0270327834836, thisenergy, 6, "RHF Energy")
-    assert psi4.compare_values(optGeom[0,0], 1.0, 6, "X Frozen coordinate")
-    assert psi4.compare_values(optGeom[0,1], 1.0, 6, "Y Frozen coordinate")
-    assert psi4.compare_values(optGeom[0,2], 1.0, 6, "Z Frozen coordinate")
+    assert psi4.compare_values(optGeom[0, 0], 1.0, 6, "X Frozen coordinate")
+    assert psi4.compare_values(optGeom[0, 1], 1.0, 6, "Y Frozen coordinate")
+    assert psi4.compare_values(optGeom[0, 2], 1.0, 6, "Z Frozen coordinate")
 
     utils.compare_iterations(json_output, 6, check_iter)
 
@@ -127,7 +137,7 @@ def test_frozen_cart_h2o_dimer(check_iter):
         no_reorient
         """
     )
-    inputGeom= np.asarray(h2oDimer.geometry())
+    inputGeom = np.asarray(h2oDimer.geometry())
 
     psi4.core.clean_options()
     psi4_options = {
@@ -140,18 +150,17 @@ def test_frozen_cart_h2o_dimer(check_iter):
 
     json_output = optking.optimize_psi4("mp2")
 
-    optGeom = np.asarray(json_output['final_molecule']['geometry']).reshape(-1,3)
+    optGeom = np.asarray(json_output["final_molecule"]["geometry"]).reshape(-1, 3)
 
     thisenergy = json_output["energies"][-1]  # TEST
     assert psi4.compare_values(-152.47381494, thisenergy, 8, "MP2 Energy")
 
-    assert psi4.compare_values(inputGeom[0,0], optGeom[0,0], 6, "O1 X Frozen coordinate")
-    assert psi4.compare_values(inputGeom[0,1], optGeom[0,1], 6, "O1 Y Frozen coordinate")
-    assert psi4.compare_values(inputGeom[0,2], optGeom[0,2], 6, "O1 Z Frozen coordinate")
-    assert psi4.compare_values(inputGeom[3,0], optGeom[3,0], 6, "O2 X Frozen coordinate")
-    assert psi4.compare_values(inputGeom[3,1], optGeom[3,1], 6, "O2 Y Frozen coordinate")
-    assert psi4.compare_values(inputGeom[3,2], optGeom[3,2], 6, "O2 Z Frozen coordinate")
-    assert np.abs(inputGeom[1,0] - optGeom[1,0]) > 0.01 # Check a not-frozen coordinate.
+    assert psi4.compare_values(inputGeom[0, 0], optGeom[0, 0], 6, "O1 X Frozen coordinate")
+    assert psi4.compare_values(inputGeom[0, 1], optGeom[0, 1], 6, "O1 Y Frozen coordinate")
+    assert psi4.compare_values(inputGeom[0, 2], optGeom[0, 2], 6, "O1 Z Frozen coordinate")
+    assert psi4.compare_values(inputGeom[3, 0], optGeom[3, 0], 6, "O2 X Frozen coordinate")
+    assert psi4.compare_values(inputGeom[3, 1], optGeom[3, 1], 6, "O2 Y Frozen coordinate")
+    assert psi4.compare_values(inputGeom[3, 2], optGeom[3, 2], 6, "O2 Z Frozen coordinate")
+    assert np.abs(inputGeom[1, 0] - optGeom[1, 0]) > 0.01  # Check a not-frozen coordinate.
 
     utils.compare_iterations(json_output, 25, True)
-

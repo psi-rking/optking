@@ -3,9 +3,9 @@ import optking
 import json
 from .utils import utils
 
+
 #! SCS-OMP2 cc-pVDZ geometry optimization for the H2O molecule.
 def test_scsmp2_opt(check_iter):
-
     h2o = psi4.geometry(
         """
         0 1
@@ -39,7 +39,6 @@ def test_scsmp2_opt(check_iter):
 
 #! SCS-OMP3 cc-pVDZ geometry optimization for the H2O molecule.
 def test_scsmp3_opt(check_iter):
-
     h2o = psi4.geometry(
         """
         0 1
@@ -74,7 +73,6 @@ def test_scsmp3_opt(check_iter):
 
 #! SOS-OMP2 cc-pVDZ geometry optimization for the H2O molecule.
 def test_sosmp2_opt(check_iter):
-
     h2o = psi4.geometry(
         """
         0 1
@@ -109,7 +107,6 @@ def test_sosmp2_opt(check_iter):
 
 #! SOS-OMP3 cc-pVDZ geometry optimization for the H2O molecule.
 def test_sosmp3_opt(check_iter):
-
     h2o = psi4.geometry(
         """
         0 1

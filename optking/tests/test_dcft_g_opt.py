@@ -2,6 +2,7 @@ import psi4
 import optking
 from .utils import utils
 
+
 #! DC-06 calculation for the O2 molecule (triplet ground state). This performs
 #! geometry optimization using two-step and simultaneous solution of the
 #! response equations for the analytic gradient.

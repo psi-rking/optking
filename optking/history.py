@@ -214,24 +214,32 @@ class History(object):
             )
 
             if max_force is None or rms_force is None:
-                opt_summary += "\t  %4d %20.12lf  %18.12f    %12s    %12s    %12.8lf    %12.8lf" "  ~\n" % (
-                    (i + 1),
-                    self.steps[i].E,
-                    DE,
-                    "o",
-                    "o",
-                    max_disp,
-                    rms_disp,
+                opt_summary += (
+                    "\t  %4d %20.12lf  %18.12f    %12s    %12s    %12.8lf    %12.8lf"
+                    "  ~\n"
+                    % (
+                        (i + 1),
+                        self.steps[i].E,
+                        DE,
+                        "o",
+                        "o",
+                        max_disp,
+                        rms_disp,
+                    )
                 )
             else:
-                opt_summary += "\t  %4d %20.12lf  %18.12lf    %12.8lf    %12.8lf    %12.8lf    %12.8lf" "  ~\n" % (
-                    (i + 1),
-                    self.steps[i].E,
-                    DE,
-                    max_force,
-                    rms_force,
-                    max_disp,
-                    rms_disp,
+                opt_summary += (
+                    "\t  %4d %20.12lf  %18.12lf    %12.8lf    %12.8lf    %12.8lf    %12.8lf"
+                    "  ~\n"
+                    % (
+                        (i + 1),
+                        self.steps[i].E,
+                        DE,
+                        max_force,
+                        rms_force,
+                        max_disp,
+                        rms_disp,
+                    )
                 )
 
         opt_summary += "\t" + "-" * 112 + "\n\n"
@@ -253,7 +261,6 @@ class History(object):
 
     # Use History to update Hessian
     def hessian_update(self, H, f_q, molsys):
-
         if self.hess_update == "NONE" or len(self.steps) < 1:
             return H
 
@@ -281,7 +288,10 @@ class History(object):
             # If there is only one left, take it no matter what.
             if len(use_steps) == 0 and i_step == 0:
                 use_steps.append(i_step)
-            elif math.fabs(dqdg) < self.hess_update_den_tol or math.fabs(dqdq) < self.hess_update_den_tol:
+            elif (
+                math.fabs(dqdg) < self.hess_update_den_tol
+                or math.fabs(dqdq) < self.hess_update_den_tol
+            ):
                 logger.warning("\tDenominators (dg)(dq) or (dq)(dq) are very small.")
                 logger.warning("\tSkipping Hessian update for step %d.", i_step + 1)
                 pass
@@ -344,7 +354,9 @@ class History(object):
                 for i in range(Nintco):
                     for j in range(Nintco):
                         H_new[i, j] = (
-                            H[i, j] - qz / (dqdq * dqdq) * dq[i] * dq[j] + (Z[i] * dq[j] + dq[i] * Z[j]) / dqdq
+                            H[i, j]
+                            - qz / (dqdq * dqdq) * dq[i] * dq[j]
+                            + (Z[i] * dq[j] + dq[i] * Z[j]) / dqdq
                         )
 
             elif self.hess_update == "BOFILL":
@@ -366,7 +378,8 @@ class History(object):
                 for i in range(Nintco):  # (phi * Powell)
                     for j in range(Nintco):
                         H_new[i, j] += phi * (
-                            -1.0 * qz / (dqdq * dqdq) * dq[i] * dq[j] + (Z[i] * dq[j] + dq[i] * Z[j]) / dqdq
+                            -1.0 * qz / (dqdq * dqdq) * dq[i] * dq[j]
+                            + (Z[i] * dq[j] + dq[i] * Z[j]) / dqdq
                         )
 
             # If the cooordinate is constrained. Don't allow the update to occur.

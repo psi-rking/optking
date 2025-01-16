@@ -1074,9 +1074,7 @@ class Molsys(object):
                 q_p2 = np.array(self.q())
 
                 coord[atom, xyz] -= 2 * DISP_SIZE  # restore to original
-                B_fd[:, 3 * atom + xyz] = (q_m2 - 8 * q_m + 8 * q_p - q_p2) / (
-                    12.0 * DISP_SIZE
-                )
+                B_fd[:, 3 * atom + xyz] = (q_m2 - 8 * q_m + 8 * q_p - q_p2) / (12.0 * DISP_SIZE)
 
         logger.debug(
             "Numerical B matrix in au, DISP_SIZE = %lf\n%s",
@@ -1156,8 +1154,7 @@ class Molsys(object):
                 intco.Dq2Dx2(coord, dq2dx2_analytic)
 
                 logger.info(
-                    "Analytic B' (Dq2Dx2) matrix in au\n"
-                    + print_mat_string(dq2dx2_analytic)
+                    "Analytic B' (Dq2Dx2) matrix in au\n" + print_mat_string(dq2dx2_analytic)
                 )
 
                 # compute B' matrix from B matrices

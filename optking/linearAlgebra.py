@@ -128,7 +128,6 @@ def symm_mat_inv(A, redundant=False, threshold=1.0e-10):
 
     try:
         if redundant:
-
             try:
                 evals, evects = np.linalg.eigh(A)
             except LinAlgError:
@@ -144,9 +143,7 @@ def symm_mat_inv(A, redundant=False, threshold=1.0e-10):
             # logger.debug("Singular | values | > %8.3e will be inverted." % threshold)
             val = np.min(absEvals[absEvals > threshold])
             if val < 1e-8:
-                logger.warning(
-                    "Inverting a small eigenvalue. System may include redundancies"
-                )
+                logger.warning("Inverting a small eigenvalue. System may include redundancies")
                 logger.warning("Smallest inverted value is %8.3e." % val)
 
             return np.linalg.pinv(A, rcond)

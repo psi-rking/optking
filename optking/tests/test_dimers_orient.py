@@ -13,7 +13,9 @@ import pytest
 
 
 @pytest.mark.dimers
-@pytest.mark.parametrize("NA,NB,seed", [(i, j, s) for i in range(1, 5) for j in range(1, 5) for s in range(1, 5)])
+@pytest.mark.parametrize(
+    "NA,NB,seed", [(i, j, s) for i in range(1, 5) for j in range(1, 5) for s in range(1, 5)]
+)
 def test_dimerfrag_orient(NA, NB, seed):
     rms_error = optking.dimerfrag.test_orient(NA, NB, randomSeed=seed)
     print("Error: {:10.5e}".format(rms_error))

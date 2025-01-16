@@ -32,7 +32,6 @@ def test_step_by_step():
     opt = optking.CustomHelper(h2o)
 
     for step in range(30):
-
         grad, wfn = psi4.gradient("hf", return_wfn=True)
         opt.gX = grad.np.reshape(-1)
         opt.E = wfn.energy()

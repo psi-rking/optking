@@ -66,9 +66,7 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
             if self.irc_step_number == 0:
                 logger.info("\tBeginning IRC from the transition state.")
                 logger.info("\tStepping along lowest Hessian eigenvector.")
-                logger.debug(
-                    print_mat_string(H, title="Transformed Hessian in internals.")
-                )
+                logger.debug(print_mat_string(H, title="Transformed Hessian in internals."))
 
                 # Add the transition state as the first IRC point
                 q_0 = self.molsys.q_array()
@@ -84,9 +82,7 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
                 # eigenvector of H
                 v = lowest_eigenvector_symm_mat(H)
                 logger.info(
-                    print_array_string(
-                        v, title="Lowest eigenvector of Internal Coordinate Hessian"
-                    )
+                    print_array_string(v, title="Lowest eigenvector of Internal Coordinate Hessian")
                 )
 
                 if self.params.irc_direction == "BACKWARD":
@@ -142,9 +138,7 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
         # behavior. It is also found that clearing the history negatively impacts hessian updating.
 
         energies = [step.E for step in self.history.steps]
-        fq_new = self.irc_history._project_forces(
-            fq, self.molsys, self.params.linear_algebra_tol
-        )
+        fq_new = self.irc_history._project_forces(fq, self.molsys, self.params.linear_algebra_tol)
 
         if self.sub_step_number < 1 and self.irc_step_number <= 1:
             logger.debug("Too few steps. continue optimization")
@@ -189,9 +183,7 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
                 return True
 
             if self.params.irc_mode.upper() == "CONFIRM":
-                if self.irc_history.test_for_dissociation(
-                    self.molsys, self.orig_molsys
-                ):
+                if self.irc_history.test_for_dissociation(self.molsys, self.orig_molsys):
                     logger.info(
                         "A new fragment has been detected on the along the reaction path.\n"
                         "IRC is running in 'confirm' mode. Stopping here.\n"
@@ -335,9 +327,7 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
 
         while abs(Lambda - prev_lambda) > 10**-15:
             prev_lagrangian = lagrangian
-            L_derivs = self.calc_lagrangian_derivs(
-                Lambda, HMEigValues, HMEigVects, g_M, p_M
-            )
+            L_derivs = self.calc_lagrangian_derivs(Lambda, HMEigValues, HMEigVects, g_M, p_M)
             lagrangian = L_derivs[0]
 
             h_f = -1 * L_derivs[0] / L_derivs[1]
@@ -359,11 +349,7 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
                 prev_lambda = Lambda
                 Lambda += (
                     h_f
-                    * (
-                        24 * L_derivs[1]
-                        + 24 * L_derivs[2] * h_f
-                        + 4 * L_derivs[3] * h_f**2
-                    )
+                    * (24 * L_derivs[1] + 24 * L_derivs[2] * h_f + 4 * L_derivs[3] * h_f**2)
                     / (
                         24 * L_derivs[1]
                         + 36 * h_f * L_derivs[2]
@@ -376,9 +362,7 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
             lagIter += 1
             if lagIter > 50:
                 prev_lambda = Lambda
-                Lambda = (
-                    lb_lambda + up_lambda
-                ) / 2  # Try a bisection after 50 attempts
+                Lambda = (lb_lambda + up_lambda) / 2  # Try a bisection after 50 attempts
 
             if lagIter > 200:
                 err_msg = "Could not converge Lagrangian multiplier for constrained rxnpath search."
@@ -409,9 +393,7 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
         """mass-weighted distance from previous rxnpath point to new one"""
         G = self.molsys.Gmat(massWeight=True)
         G_root = symm_mat_root(G)
-        G_inv = symm_mat_inv(
-            G_root, redundant=True, threshold=self.params.linear_algebra_tol
-        )
+        G_inv = symm_mat_inv(G_root, redundant=True, threshold=self.params.linear_algebra_tol)
         G_root_inv = symm_mat_root(G_inv)
 
         rxn_Dq = np.subtract(self.molsys.q_array(), self.irc_history.q())

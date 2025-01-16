@@ -3,9 +3,9 @@ import optking
 import pytest
 from .utils import utils
 
+
 #! RHF-CCSD 6-31G** all-electron opt of H2O, default convergence
 def test_ccsd_h2o(check_iter):
-
     h2o = psi4.geometry(
         """
         O
@@ -36,7 +36,6 @@ def test_ccsd_h2o(check_iter):
 
 #! ROHF-CCSD/cc-pVDZ $^{3}B@@1$ CH2 geometry opt, analytic gradients, tight
 def test_ccsd_ch2(check_iter):
-
     ch2 = psi4.geometry(
         """
         0 3
@@ -76,7 +75,6 @@ def test_ccsd_ch2(check_iter):
 
 #! UHF-CCSD/cc-pVDZ $^{3}B@@1$ CH2 geometry opt via analytic gradients, tight
 def test_uccsd_ch2(check_iter):
-
     ch2 = psi4.geometry(
         """
         0 3
@@ -117,7 +115,6 @@ def test_uccsd_ch2(check_iter):
 #! UHF-CCSD(T)/cc-pVDZ $^{3}B@@1$ CH2 geometry optimization via analytic gradients
 @pytest.mark.long
 def test_uccsdpt_ch2(check_iter):
-
     ch2 = psi4.geometry(
         """
         0 3
@@ -151,4 +148,3 @@ def test_uccsdpt_ch2(check_iter):
     assert psi4.compare_values(REF_total, this_total, 6, "Total CCSD(T) energy")  # TEST
 
     utils.compare_iterations(result, 9, check_iter)
-
