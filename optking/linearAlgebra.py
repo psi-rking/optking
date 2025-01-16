@@ -104,7 +104,7 @@ def asymm_mat_eig(mat):
     return evals.real, evects.real.T
 
 
-def symm_mat_inv(A, redundant=False, small_val_limit=1.0e-10):
+def symm_mat_inv(A, redundant=False, threshold=1.0e-10):
     """
     Return the inverse of a real, symmetric matrix.
 
@@ -113,7 +113,7 @@ def symm_mat_inv(A, redundant=False, small_val_limit=1.0e-10):
     A : np.ndarray
     redundant : bool
         allow generalized inverse
-    smallValLimit : float
+    threshold : float
         specifies how small of singular values to invert
 
     Returns
@@ -128,7 +128,6 @@ def symm_mat_inv(A, redundant=False, small_val_limit=1.0e-10):
 
     try:
         if redundant:
-
             if logger.isEnabledFor(logging.DEBUG):
                 try:
                     evals, evects = np.linalg.eigh(A)
@@ -136,12 +135,22 @@ def symm_mat_inv(A, redundant=False, small_val_limit=1.0e-10):
                     raise OptError("symm_mat_inv: could not compute eigenvectors")
 
                 absEvals = np.abs(evals)
-                threshold = small_val_limit * np.max(absEvals)
-                logger.debug("Singular | values | > %8.3e will be inverted." % threshold)
-                val = np.min(absEvals[absEvals > threshold])
-                logger.debug("Smallest inverted value is %8.3e." % val)
 
-            return np.linalg.pinv(A, rcond=small_val_limit)
+                # numpy uses a relative size comparison anything less than rcond * largest val
+                # is zeroed out. Therefore larger values of rcond tighten the critera.
+                # We want a `threshold` (params.linear_algebra_tol) to tighten the criteria
+                # compute rcond such that any eigenvalues smaller than threshold are zeroed
+                rcond = threshold / np.max(absEvals)
+
+                # logger.debug("Singular | values | > %8.3e will be inverted." % threshold)
+                val = np.min(absEvals[absEvals > threshold])
+                if val < 1e-8:
+                    logger.warning(
+                        "Inverting a small eigenvalue. System may include redundancies"
+                    )
+                    logger.warning("Smallest inverted value is %8.3e." % val)
+
+            return np.linalg.pinv(A, rcond)
 
         else:
             return np.linalg.inv(A)

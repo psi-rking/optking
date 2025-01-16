@@ -2,7 +2,6 @@
 looking to add features to the code to familarize themselves with the overall workings of OptKing.
 Functions may be useful to users seeking greater control over the inner workings of OptKing than provided by the
 ``OptHelpers``. For instance, if manually creating a molecular system or manually controlling / switching algorithms
-on the fly.
 
 See Also
 --------
@@ -101,7 +100,13 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
 
     _LINESEARCHES = {"ENERGY": linesearch.ThreePointEnergy}
 
-    def __init__(self, molsys: Molsys, history_object: history.History, params: op.OptParams, computer: ComputeWrapper):
+    def __init__(
+        self,
+        molsys: Molsys,
+        history_object: history.History,
+        params: op.OptParams,
+        computer: ComputeWrapper,
+    ):
         super().__init__(molsys, history_object, params)
         self.direction: Union[np.ndarray, None] = None
 
@@ -113,7 +118,9 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         self.stashed_hessian = None
 
         if params.linesearch:
-            self.linesearch_method = OptimizationManager._LINESEARCHES["ENERGY"](molsys, self.history, params)
+            self.linesearch_method = OptimizationManager._LINESEARCHES["ENERGY"](
+                molsys, self.history, params
+            )
             self.opt_method.trust_radius_on = False
         self.requires = self.update_requirements()
         self.current_requirements = self.update_requirements()
@@ -121,7 +128,10 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         self.erase_hessian = False
         self.check_linesearch = True
         self.error = None
-        self.protocol = {"protocol": None, "step_number": -100} # Just a number that will never occur naturally
+        self.protocol = {
+            "protocol": None,
+            "step_number": -100,
+        }  # Just a number that will never occur naturally
 
     def to_dict(self):
         """Convert attributes to serializable form."""
@@ -171,9 +181,9 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
             )  # Can just recreate with current history and params
 
         if d.get("linesearch_method"):
-            manager.linesearch_method = OptimizationManager._LINESEARCHES["ENERGY"].from_dict(
-                d["linesearch_method"], molsys, history, params
-            )
+            manager.linesearch_method = OptimizationManager._LINESEARCHES[
+                "ENERGY"
+            ].from_dict(d["linesearch_method"], molsys, history, params)
 
         return manager
 
@@ -212,7 +222,15 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         requirements = self.opt_method.requires()
         hessian_protocol = self.get_hessian_protocol(self.step_number)
         protocol = hessian_protocol["protocol"]
-        H, g_q, g_x, E = get_pes_info(H, self.computer, self.molsys, self.history, self.params, protocol, requirements)
+        H, g_q, g_x, E = get_pes_info(
+            H,
+            self.computer,
+            self.molsys,
+            self.history,
+            self.params,
+            protocol,
+            requirements,
+        )
 
         logger.info("%s", print_geom_grad(self.molsys.geom, g_x))
 
@@ -252,15 +270,24 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
                 self.linesearch_method.start(self.direction)
 
                 if self.check_linesearch:
-                    self.history.append(self.molsys.geom, energy, fq, self.molsys.gradient_to_cartesians(-1 * fq))
+                    self.history.append(
+                        self.molsys.geom,
+                        energy,
+                        fq,
+                        self.molsys.gradient_to_cartesians(-1 * fq),
+                    )
                     ls_energy = self.linesearch_method.expected_energy
-                    dq_norm, unit_dq, grad, hess = self.opt_method.step_metrics(self.direction, fq, H)
+                    dq_norm, unit_dq, grad, hess = self.opt_method.step_metrics(
+                        self.direction, fq, H
+                    )
                     self.history.append_record(ls_energy, self.direction, unit_dq, grad, hess)
 
                 self.stashed_hessian = H
                 self.check_linesearch = False
 
-            achieved_dq, returned_str = self.linesearch_method.take_step(fq, H, energy, return_str=True)
+            achieved_dq, returned_str = self.linesearch_method.take_step(
+                fq, H, energy, return_str=True
+            )
 
             if self.linesearch_method.minimized:
                 logger.info("Linesearch complete. Next step will compute a new direction")
@@ -314,10 +341,13 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         # Hard quit if too many total steps taken (inc. all IRC points and algorithms).
         if iterations >= self.params.geom_maxiter:
             logger.error(
-                "\tTotal number of steps (%d) exceeds maximum allowed (%d).\n" % (iterations, self.params.geom_maxiter)
+                "\tTotal number of steps (%d) exceeds maximum allowed (%d).\n"
+                % (iterations, self.params.geom_maxiter)
             )
             raise OptError(
-                "Maximum number of steps exceeded: {}.".format(self.params.geom_maxiter),
+                "Maximum number of steps exceeded: {}.".format(
+                    self.params.geom_maxiter
+                ),
                 "OptError",
             )
 
@@ -349,7 +379,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         if self.erase_hessian is True:
             self.erase_hessian = False
             action = "compute" if self.params.full_hess_every > 0 else "update"
-            self.protocol.update({"protocol": action}) 
+            self.protocol.update({"protocol": action})
             return self.protocol
 
         if self.params.cart_hess_read:
@@ -413,7 +443,8 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
 
             affected_frags = []
             for bend in bends:
-                if bend.bend_type != "COMPLEMENT":  # no need to repeat this code for "COMPLEMENT"
+                # no need to repeat this code for "COMPLEMENT". Bend already removed for LINEAR
+                if (bend.bend_type != "COMPLEMENT"):
                     iF = addIntcos.check_fragment(bend.atoms, self.molsys)
                     F = self.molsys.fragments[iF]
                     affected_frags.append(F)
@@ -426,14 +457,19 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
 
             # Convert the Hessian back into the new coordinate system
             self.H = self.molsys.hessian_to_internals(Hx, gx)
-
         elif self.params.dynamic_level == self.params.dynamic_lvl_max:
-            logger.critical("\n\t Current algorithm/dynamic_level is %d.\n" % self.params.dynamic_level)
+            logger.critical(
+                "\n\t Current algorithm/dynamic_level is %d.\n"
+                % self.params.dynamic_level
+            )
             logger.critical("\n\t Alternative approaches are not available or turned on.\n")
             raise OptError("Maximum dynamic_level reached.")
         else:
             self.params.dynamic_level += 1
-            logger.warning("\n\t Increasing dynamic_level algorithm to %d.\n" % self.params.dynamic_level)
+            logger.warning(
+                "\n\t Increasing dynamic_level algorithm to %d.\n"
+                % self.params.dynamic_level
+            )
             logger.warning("\n\t Erasing old history, hessian, intcos.\n")
             eraseIntcos = True
             eraseHistory = True
@@ -452,8 +488,11 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
             self.clear()
             self.erase_hessian = True
 
+            if isinstance(self.opt_method, IRCfollowing.IntrinsicReactionCoordinate):
+                self.opt_method.irc_history.recompute_all_internals(self.molsys)
+
         self.error = "AlgError"
-    
+
     def opt_error_handler(self, error):
         """OptError indicates an unrecoverable error. Print information and trigger cleanup."""
         logger.critical("\tA critical optimization-specific error has occured.")
@@ -473,8 +512,10 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         return self._exception_cleanup(error)
 
     def _exception_cleanup(self, error):
-
-        logger.info("\tDumping history: Warning last point not converged.\n" + self.history.summary_string())
+        logger.info(
+            "\tDumping history: Warning last point not converged.\n %s",
+            self.history.summary_string()
+        )
 
         if self.params.opt_type == "IRC":
             logging.debug("\tDumping IRC points completed")
@@ -484,7 +525,6 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         return self.finish(error)
 
     def finish(self, error=None):
-
         rxnpath = None
         if self.params.opt_type == "IRC":
             self.opt_method.irc_history.progress_report()
@@ -556,7 +596,7 @@ def get_pes_info(
     Notes
     -----
     Some functionality from start_step has now been placed here. external forces are added into the forces.
-    Redundancies and constraints are projected out of the forces and hessian. 
+    Redundancies and constraints are projected out of the forces and hessian.
 
     """
 
@@ -723,7 +763,7 @@ def make_internal_coords(o_molsys: Molsys, params: op.OptParams):
     return
 
 
-def prepare_opt_output(o_molsys, computer, rxnpath=False, error=None):
+def prepare_opt_output(o_molsys, computer, rxnpath=[], error=None):
     logger.info("Preparing OptimizationResult")
     # Get molecule from most recent step. Add provenance and fill in non-required fills.
     # Turn back to dict
@@ -740,11 +780,28 @@ def prepare_opt_output(o_molsys, computer, rxnpath=False, error=None):
     }
 
     if error:
-        qc_output.update({"success": False, "error": {"error_type": type(error), "error_message": str(error)}})
+        qc_output.update(
+            {
+                "success": False,
+                "error": {"error_type": error.err_type, "error_message": error.mesg},
+            }
+        )
 
     if rxnpath:
         qc_output["extras"]["irc_rxn_path"] = rxnpath
-        qc_output["final_geometry"] = rxnpath[-2]["x"]
-        qc_output["extras"]["final_irc_energy"] = rxnpath[-2]["energy"]
+        if rxnpath[-2]:
+            qc_output["final_geometry"] = rxnpath[-2]["x"]
+            qc_output["extras"]["final_irc_energy"] = rxnpath[-2]["energy"]
+        else:
+            qc_output.update({
+                "success": False,
+                "error": {
+                    "error_type": "OptError",
+                    "error": """IRC calculation has terminated before taking a single step. Please
+                        ensure that the starting point is a transition state at the level of theory
+                        being utilized. If issues continue, decrease ``irc_convergence`` and/or
+                        ``irc_step_size``"""}
+                }
+            )
 
     return qc_output

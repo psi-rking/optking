@@ -1,4 +1,3 @@
-""" Class to store points on the IRC """
 import logging
 import os
 import copy
@@ -6,7 +5,7 @@ import copy
 import numpy as np
 
 from .exceptions import OptError
-from .printTools import print_geom_string, print_array_string
+from .printTools import print_geom_string
 from .linearAlgebra import symm_mat_inv
 from . import log_name
 from . import addIntcos
@@ -106,7 +105,7 @@ class IRCHistory(object):
 
     def __init__(self):
         self.go = True
-        self.irc_points = []
+        self.irc_points: [IRCpoint] = []
         self.atom_symbols = None
 
     def set_atom_symbols(self, atom_symbols):  # just for printing
@@ -117,7 +116,6 @@ class IRCHistory(object):
         self.__direction = direction
 
     def to_dict(self):
-
         d = {
             "irc_points": [point.to_dict() for point in self.irc_points],
             "go": self.go,
@@ -129,7 +127,6 @@ class IRCHistory(object):
 
     @classmethod
     def from_dict(cls, d):
-
         irc_history = cls()
         irc_history.irc_points = [IRCpoint.from_dict(point) for point in d["irc_points"]]
         irc_history.go = d["go"]
@@ -179,7 +176,10 @@ class IRCHistory(object):
     def add_pivot_point(self, q_p, x_p, step=None):
         index = -1 if step is None else step
         pindex = (len(self.irc_points) - 1) if step is None else step
-        logger.debug("Adding pivot point (index %d) for finding rxnpath point %d" % (pindex, pindex + 1))
+        logger.debug(
+            "Adding pivot point (index %d) for finding rxnpath point %d"
+            % (pindex, pindex + 1)
+        )
         self.irc_points[index].add_pivot(q_p, x_p)
 
     # Return most recent IRC step data unless otherwise specified
@@ -235,12 +235,9 @@ class IRCHistory(object):
         return self.irc_points[index].step_dist
 
     def test_for_dissociation(
-            self,
-            new_molsys: molsys.Molsys,
-            old_molsys: molsys.Molsys,
-            threshold=0.4
-        ):
-        """ Check whether or not the connectivity has changed and multiple fragments have
+        self, new_molsys: molsys.Molsys, old_molsys: molsys.Molsys, threshold=0.4
+    ):
+        """Check whether or not the connectivity has changed and multiple fragments have
         been created. This may be used to terminate the IRC. This method should only be
         called if frag_mode == 'SINGLE'.
 
@@ -288,8 +285,6 @@ class IRCHistory(object):
         Two checks are performed.
         1. If forces are opposite those are previous pivot point
             - The forces point in opposite directions due to stepping over the minima
-        2. If forces are have any negative overlap and the energy has increased.
-            - The minima has been stepped over but the forces are not exactly opposite
             due to finite step size
 
         At the time this function is called, the point/geometry is assumed to not have been added
@@ -298,7 +293,7 @@ class IRCHistory(object):
         optimization has been completed.
         """
 
-        unit_f = f_q / np.linalg.norm(f_q)  # current forces (pivot point)
+        unit_f = f_q / np.linalg.norm(f_q)  # current forces (at guess_point)
         f_rxn = self.f_q(step=-2)  # forces at most recent rxnpath point (q0)
         unit_f_rxn = f_rxn / np.linalg.norm(f_rxn)
         overlap = np.dot(unit_f, unit_f_rxn)
@@ -309,13 +304,11 @@ class IRCHistory(object):
 
         if overlap < irc_conv:
             return True
-        elif overlap < 0.0 and d_energy > 0.0:
+        if (abs(self.line_dist(step=-1) - self.line_dist(step=-2)) < self.step_size * 1e-3):
             return True
-
-        # TODO  Look at line distance criterion when distances are working.
-        # elif:
-        #    g_line_dist(p_irc_data->size()-1) - g_line_dist(p_irc_data->size()-2)) < s*10e-03)
-        #    return True
+        # AH Found to cause early termination in some test cases
+        # elif overlap < 0.0 and d_energy > 0.0 :
+        #     return True
 
         return False
 
@@ -429,19 +422,28 @@ class IRCHistory(object):
 
         """
 
-        logger.debug("Projecting out forces parallel to reaction path.")
-
         G_m = o_molsys.Gmat(massWeight=True)
-        G_m_inv = symm_mat_inv(G_m, redundant=True, small_val_limit=threshold)
+        G_m_inv = symm_mat_inv(G_m, redundant=True, threshold=threshold)
 
         q_vec = o_molsys.q_array()
         p_vec = q_vec - self.q_pivot()
-        logger.info(
-            "\ncurrent step from IRC pivot point (not previous point on rxnpath):\n %s", print_array_string(p_vec)
-        )
-        logger.info("\nForces at current point on hypersphere\n %s", print_array_string(f_q))
 
         G_m_inv_p = G_m_inv @ p_vec
         orthog_f = f_q - (f_q @ p_vec) / (p_vec @ G_m_inv_p) * G_m_inv_p
-        logger.debug("\nForces perpendicular to hypersphere.\n %s", print_array_string(orthog_f))
         return orthog_f
+
+    def recompute_all_internals(self, molsys: molsys.Molsys):
+        # make a independent copy of molecular system to change all internal coordinate values
+        # into the new internal basis set
+        tmp_molsys = copy.deepcopy(molsys)
+
+        # For each step update the irc_point coords, forces coords, and pivot points coords
+        for step in self.irc_points:
+            tmp_molsys.geom = step.x
+            step.q = tmp_molsys.q_array()
+            step.f_q = tmp_molsys.gradient_to_internals(step.f_x)
+
+            # Last point may not be fully set (could be none)
+            if isinstance(step.x_pivot, np.ndarray):
+                tmp_molsys.geom = step.x_pivot
+                step.q_pivot = tmp_molsys.q_array()
