@@ -128,27 +128,26 @@ def symm_mat_inv(A, redundant=False, threshold=1.0e-10):
 
     try:
         if redundant:
-            if logger.isEnabledFor(logging.DEBUG):
-                try:
-                    evals, evects = np.linalg.eigh(A)
-                except LinAlgError:
-                    raise OptError("symm_mat_inv: could not compute eigenvectors")
 
-                absEvals = np.abs(evals)
+            try:
+                evals, evects = np.linalg.eigh(A)
+            except LinAlgError:
+                raise OptError("symm_mat_inv: could not compute eigenvectors")
 
-                # numpy uses a relative size comparison anything less than rcond * largest val
-                # is zeroed out. Therefore larger values of rcond tighten the critera.
-                # We want a `threshold` (params.linear_algebra_tol) to tighten the criteria
-                # compute rcond such that any eigenvalues smaller than threshold are zeroed
-                rcond = threshold / np.max(absEvals)
+            absEvals = np.abs(evals)
+            # numpy uses a relative size comparison anything less than rcond * largest val
+            # is zeroed out. Therefore larger values of rcond tighten the critera.
+            # We want a `threshold` (params.linear_algebra_tol) to tighten the criteria
+            # compute rcond such that any eigenvalues smaller than threshold are zeroed
+            rcond = threshold / np.max(absEvals)
 
-                # logger.debug("Singular | values | > %8.3e will be inverted." % threshold)
-                val = np.min(absEvals[absEvals > threshold])
-                if val < 1e-8:
-                    logger.warning(
-                        "Inverting a small eigenvalue. System may include redundancies"
-                    )
-                    logger.warning("Smallest inverted value is %8.3e." % val)
+            # logger.debug("Singular | values | > %8.3e will be inverted." % threshold)
+            val = np.min(absEvals[absEvals > threshold])
+            if val < 1e-8:
+                logger.warning(
+                    "Inverting a small eigenvalue. System may include redundancies"
+                )
+                logger.warning("Smallest inverted value is %8.3e." % val)
 
             return np.linalg.pinv(A, rcond)
 
