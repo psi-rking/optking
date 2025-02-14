@@ -372,6 +372,7 @@ def add_oofp_from_connectivity(C, intcos, geom):
     # Look for:  (terminal atom)-connected to-(tertiary atom)
     Nneighbors = [sum(C[i]) for i in range(len(C))]
     terminal_atoms = [i for i in range(len(Nneighbors)) if Nneighbors[i] == 1]
+    errors = []
 
     # Find adjacent atoms
     vertex_atoms = []
@@ -390,7 +391,6 @@ def add_oofp_from_connectivity(C, intcos, geom):
                 side.append(N)
 
         if len(side) >= 2:
-            errors = []
             for side1, side2 in combinations(side, 2):
                 try:
                     _ = v3d.oofp(geom[T], geom[V], geom[side1], geom[side2])
