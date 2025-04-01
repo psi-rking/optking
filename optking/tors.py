@@ -158,10 +158,18 @@ class Tors(Simple):
     # compute angle and return value in radians
     def q(self, geom):
         try:
-            tau = v3d.tors(geom[self.A], geom[self.B], geom[self.C], geom[self.D])
+            tau = v3d.tors(geom[self.A], geom[self.B], geom[self.C], geom[self.D], self.atoms)
         except AlgError as error:
+            # Turn the indices from v3d tors into real bends
+            old_bends = [bend.Bend(*atoms) for atoms in error.old_bends]
+            linear_bends = [bend.Bend(*atoms, bend_type='LINEAR') for atoms in error.linear_bends]
+            linear_bends += [
+                bend.Bend(*atoms, bend_type='COMPLEMENT') for atoms in error.linear_bends
+            ]
             raise AlgError(
-                "Tors.q: unable to compute torsion value", new_linear_torsion=[self]
+                "Tors.q: unable to compute torsion value",
+                old_bends=old_bends,
+                new_linear_bends=linear_bends
             ) from error
 
         # Extend values domain of torsion angles beyond pi or -pi, so that

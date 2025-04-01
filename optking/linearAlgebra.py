@@ -23,7 +23,11 @@ def abs_min(V):
 
 
 def rms(V):
-    return np.sqrt(np.mean(V**2))
+    try:
+        return np.sqrt(np.mean(V**2))
+    except FloatingPointError as error:
+        print(V)
+        raise error
 
 
 def sign_of_double(d):
@@ -104,7 +108,7 @@ def asymm_mat_eig(mat):
     return evals.real, evects.real.T
 
 
-def symm_mat_inv(A, redundant=False, threshold=1.0e-10):
+def symm_mat_inv(A, redundant=False, threshold=1.0e-8):
     """
     Return the inverse of a real, symmetric matrix.
 
@@ -130,6 +134,7 @@ def symm_mat_inv(A, redundant=False, threshold=1.0e-10):
         if redundant:
             try:
                 evals, evects = np.linalg.eigh(A)
+                logger.debug("Eigenvalues for matrix to invert\n%s", evals)
             except LinAlgError:
                 raise OptError("symm_mat_inv: could not compute eigenvectors")
 
@@ -142,7 +147,7 @@ def symm_mat_inv(A, redundant=False, threshold=1.0e-10):
 
             # logger.debug("Singular | values | > %8.3e will be inverted." % threshold)
             val = np.min(absEvals[absEvals > threshold])
-            if val < 1e-8:
+            if val < 1e-6:
                 logger.warning("Inverting a small eigenvalue. System may include redundancies")
                 logger.warning("Smallest inverted value is %8.3e." % val)
 

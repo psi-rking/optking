@@ -37,12 +37,13 @@ def Bmat(intcos, geom, masses=None):
 
 
 def tors_contains_bend(b, t):
-    return b.atoms in [
+    tors_bends = [
         t.atoms[0:3],
-        t.atoms[3::-1],
+        t.atoms[2::-1],
         t.atoms[1:4],
         t.atoms[4:0:-1],
     ]
+    return b.atoms in tors_bends
 
 
 def remove_old_now_linear_bend(atoms, intcos):

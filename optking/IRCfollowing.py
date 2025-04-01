@@ -110,6 +110,9 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
                 self.molsys.gradient_to_cartesians(-1 * fq),
             )
             dq = self.dq_irc(fq, H)
+            logger.info("Dq with full precision %s", print_array_string(dq, form=":.6e"))
+            fq_tan = self.irc_history._project_forces(fq, self.molsys)
+            logger.info("\nTrue forces: %s\nHypersphere forces:%s", fq, fq_tan)
             dq, dx, return_str = displace_molsys(
                 self.molsys,
                 dq,
@@ -190,6 +193,17 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
                     )
                     return True
 
+        if self.sub_step_number > 50:
+            logger.warning(
+                "Exceeded 50 steps in constrained optimization for reaction point %s",
+                self.irc_step_number
+            )
+            raise AlgError(
+                "Exceeded 50 iterations for a single IRC point. Check whether the IRC has reached"
+                "the desired area of the PES. If not, check that the coordinate system is"
+                "reasonable consider adding or removing coordinates"
+            )
+
         if str_mode:
             return substep_convergence
         return False  # return True means we're finished
@@ -207,7 +221,6 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
         -----
         At the end of function, molsys should correspond to the first guess point. This is where
         properties will be computed
-
         """
 
         # Compute and save pivot point
@@ -216,6 +229,8 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
         dq_pivot = -0.5 * N * self.params.irc_step_size * G @ v
 
         # revisit
+        # Don't allow for displace to fix overstepping 180 for bends here
+        # only allowed during the constrained optimization.
         dq1, dx1, return_str1 = displace_molsys(
             self.molsys,
             dq_pivot,
@@ -223,6 +238,7 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
             **self.params.__dict__,
             ensure_convergence=self.params.ensure_bt_convergence,
             return_str=True,
+            # allow_bend_adjustment=False
         )
         x_pivot = self.molsys.geom
         q_pivot = self.molsys.q_array()
@@ -236,6 +252,7 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
             ensure_convergence=self.params.ensure_bt_convergence,
             return_str=return_str,
             print_lvl=self.params.print_lvl,
+            # allow_bend_adjustment=False
         )
         # self.molsys.geom = x_guess
         if return_str:
@@ -378,6 +395,7 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
 
         tmp = symm_mat_inv(H_M - LambdaI, redundant=True, threshold=threshold)
         dq_M = -tmp @ (g_M - Lambda * p_M)
+        logger.debug("g_M - Lambda p_M %s", (g_M - Lambda * p_M))
         logger.debug("dq_M to next geometry\n" + print_array_string(dq_M))
 
         # Find dq = G^(1/2) dq_M and do displacements.

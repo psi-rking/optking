@@ -9,6 +9,7 @@ See Also
 :py:class:`stepalgorithms.OptimizationInterface`
 """
 
+import copy
 import logging
 import pathlib
 from typing import Union
@@ -421,7 +422,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         logger.error(" Caught AlgError exception\n")
         eraseIntcos = False
 
-        if error.linear_bends or error.linear_torsions or error.oofp_failures:
+        if error.linear_bends:
             # New linear bends detected; Add them, and continue at current level.
             # from . import bend # import not currently being used according to IDE
 
@@ -430,27 +431,42 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
             gx = self.molsys.gradient_to_cartesians(-1 * fq)
 
             # This takes a more heavy handed approach:
-            # Collect all the bends involved in our problematic coordinates
-            # Then remove all the bends involved in these problematic coordinates as well as the oofps and
-            # torsions. Rely on the add_intcos routine to judge which coordinates should be added back
-            bends = [bend for dihedral in error.linear_torsions for bend in dihedral.bends]
-            bends += [bend for oofp in error.oofp_failures for bend in oofp.bends]
-            bends += error.linear_bends
+            # Collect all the bends involved in our problematic coordinates (oofp or dihedral)
+            # Then remove all the bends involved in these coordinates as well as the
+            # oofps and torsions themselves.
+            # bends = [bend for dihedral in error.linear_torsions for bend in dihedral.bends]
+            # bends += [bend for oofp in error.oofp_failures for bend in oofp.bends]
+            # The algerror includes bends to remove and bends to add seperately
+            # bends += error.old_bends
 
-            logger.info(f"Current bends considered for removal: {bends}")
+            logger.info(
+                f"Current bends considered for removal: {[str(bend) for bend in error.old_bends]}"
+            )
 
             affected_frags = []
-            for bend in bends:
+            for bend in error.old_bends:
                 # no need to repeat this code for "COMPLEMENT". Bend already removed for LINEAR
+                # Needed to ensure that bends that become zero get removed and Don't get accidently
+                # readded when they're not quite linear, but will be on the next step.
                 if bend.bend_type != "COMPLEMENT":
                     iF = addIntcos.check_fragment(bend.atoms, self.molsys)
                     F = self.molsys.fragments[iF]
                     affected_frags.append(F)
                     intcosMisc.remove_old_now_linear_bend(bend.atoms, F.intcos)
 
-            # problematic coordinates are now all removed. Add new coordinates
+            # Add the new linear bends if not already added (here its easy to know which bends
+            # need to be added back)
+            for bend in error.linear_bends:
+                iF = addIntcos.check_fragment(bend.atoms, self.molsys)
+                F = self.molsys.fragments[iF]
+                if bend not in F.intcos:
+                    F.intcos.append(bend)
+
+            # problematic coordinates are now all removed. linear bends should be taken care of.
+            # add bends and any appropriate four index coordinates  to complete coord set.
             for frag in set(affected_frags):
-                frag.add_intcos_from_connectivity()
+                frag.add_intcos_from_connectivity(ignore_coords=error.old_bends)
+
             eraseHistory = True
 
             # Convert the Hessian back into the new coordinate system
@@ -486,6 +502,8 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
 
             if isinstance(self.opt_method, IRCfollowing.IntrinsicReactionCoordinate):
                 self.opt_method.irc_history.recompute_all_internals(self.molsys)
+                # prevent overcounting steps that couldn't be completed
+                self.opt_method.irc_step_number -= 1
 
         self.error = "AlgError"
 

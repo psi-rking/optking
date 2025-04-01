@@ -27,7 +27,7 @@ class Simple(ABC):
                 if int(v) < 0:
                     raise OptError("Atom identifier cannot be negative.")
         except TypeError:
-            raise OptError("Atoms must be iterable list of whole numbers.")
+            raise OptError("Atoms must be iterable list of whole numbers. Received %s instead", values)
         self._atoms = values
 
     @property

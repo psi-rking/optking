@@ -153,11 +153,16 @@ class Frag:
         """Determine the connectivity of the fragment based on covalent radii and distance matrix"""
         return addIntcos.connectivity_from_distances(self._geom, self._Z)
 
-    def add_intcos_from_connectivity(self, connectivity=None):
+    def add_intcos_from_connectivity(self, connectivity=None, ignore_coords=[]):
         """Automatically add a set of internal coordinates to the fragment based on connectivity"""
         if connectivity is None:
             connectivity = self.connectivity_from_distances()
-        addIntcos.add_intcos_from_connectivity(connectivity, self._intcos, self._geom)
+        addIntcos.add_intcos_from_connectivity(
+            connectivity,
+            self._intcos,
+            self._geom,
+            ignore_coords=ignore_coords
+        )
         self.add_h_bonds()
 
     def add_auxiliary_bonds(self, connectivity=None):

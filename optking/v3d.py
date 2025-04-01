@@ -15,6 +15,7 @@ from . import op
 #  tors_cos_tol = op.Params.v3d_tors_cos_tol
 
 DOT_PARALLEL_LIMIT = 1.0e-10
+logger = logging.getLogger(__name__)
 
 
 def norm(v):
@@ -127,7 +128,6 @@ def angle(A, B, C, tol=1.0e-14):
     double
         angle in radians
     """
-    logger = logging.getLogger(__name__)
     try:
         eBA = eAB(B, A)
     except AlgError as error:
@@ -172,7 +172,7 @@ def _calc_angle(vec_1, vec_2, tol=1.0e-14):
     return phi
 
 
-def tors(A, B, C, D):
+def tors(A, B, C, D, indices):
     """
     Compute and return angle in dihedral angle in radians A-B-C-d
     Raises AlgError exception if bond angles are too large for good torsion definition
@@ -183,13 +183,14 @@ def tors(A, B, C, D):
     B : np.ndarray
     C : np.ndarray
     D : np.ndarray
+    indices: [int]
+        atomic indices of the torsion to be computed (used for printing)
 
     Returns
     -------
     float
 
     """
-    logger = logging.getLogger(__name__)
     phi_lim = op.Params.v3d_tors_angle_lim
     tors_cos_tol = op.Params.v3d_tors_cos_tol
 
@@ -197,23 +198,23 @@ def tors(A, B, C, D):
     try:
         EBA = eAB(B, A)
         EAB = -1 * EBA
-    except AlgError as error:
+    except AlgError: # as error:
         logger.warning(f"Could not normalize {A}, {B} vector in tors()\n")
         raise
     try:
         EBC = eAB(B, C)
-    except AlgError as error:
+    except AlgError: # as error:
         logger.warning(f"Could not normalize {B}, {C} vector in tors()\n")
         raise
     try:
         ECB = eAB(C, B)
         EBC = -1 * ECB
-    except AlgError as error:
+    except AlgError: # as error:
         logger.warning(f"Could not normalize {C}, {B} vector in tors()\n")
         raise
     try:
         ECD = eAB(C, D)
-    except AlgError as error:
+    except AlgError: # as error:
         logger.warning(f"Could not normalize {C}, {D} vector in tors()\n")
         raise
 
@@ -221,15 +222,7 @@ def tors(A, B, C, D):
     phi_123 = _calc_angle(EBA, EBC)
     phi_234 = _calc_angle(ECB, ECD)
 
-    up_lim = acos(-1) - phi_lim
-
-    if phi_123 < phi_lim or phi_123 > up_lim or phi_234 < phi_lim or phi_234 > up_lim:
-        raise AlgError(
-            "Interior angle of {:5.1f} or {:5.1f}  can't work in good torsion.".format(
-                180.0 * phi_123 / np.pi, 180.0 * phi_234 / np.pi
-            )
-        )
-
+    linear_torsion_check(phi_123, phi_234, phi_lim, indices)
     tmp = cross(EAB, EBC)
     tmp2 = cross(EBC, ECD)
     tval = dot(tmp, tmp2) / (sin(phi_123) * sin(phi_234))
@@ -250,6 +243,56 @@ def tors(A, B, C, D):
 
     return tau
 
+def linear_torsion_check(phi_123, phi_234, phi_lim, indices):
+
+    up_lim = acos(-1) - phi_lim
+
+    # Check that both bends are within range
+    phi_123_bad = not phi_lim < phi_123 < up_lim
+    phi_234_bad = not phi_lim < phi_234 < up_lim
+    bad_bends = []
+    linear_bends = []
+    old_bends = []
+
+    # Print specific message of which bend has become problematic in torsion
+    if phi_123_bad:
+        val = phi_123 * 180.0 / np.pi
+        logger.warning(
+            f"Interior angle of {val:5.1f} for bend B({indices[:-1]}) can't work in good torsion"
+        )
+        bad_bends.append(phi_123)
+        a, b, c = indices[:-1]
+        linear_bends.append(indices[:-1])
+        # Just add all combinations to be safe (avoids checking connectivity)
+        old_bends.append([a, b, c])
+        old_bends.append([a, c, b])
+        old_bends.append([a, b, c])
+
+    if phi_234_bad:
+        val = phi_234 * 180.0 / np.pi
+        logger.warning(
+            f"Interior angle of {val:5.1f} for bend B({indices[1:]}) can't work in good torsion"
+        )
+        bad_bends.append(phi_234)
+        linear_bends.append(indices[1:])
+        # Just add all combinations to be safe (avoids checking connectivity)
+        old_bends.append([a, b, c])
+        old_bends.append([a, c, b])
+        old_bends.append([a, b, c])
+
+    if bad_bends:
+        raise AlgError(
+            f"Could not compute T({indices}). Problem computing interior bend.",
+            new_linear_bends=linear_bends,
+            old_bends=old_bends,
+        )
+
+    # if phi_123 < phi_lim or phi_123 > up_lim or phi_234 < phi_lim or phi_234 > up_lim:
+    #     raise AlgError(
+    #         "Interior angle of {:5.1f} or {:5.1f}  can't work in good torsion.".format(
+    #             180.0 * phi_123 / np.pi, 180.0 * phi_234 / np.pi
+    #         )
+    #     )
 
 def oofp(A, B, C, D):
     """
@@ -268,7 +311,6 @@ def oofp(A, B, C, D):
     float
 
     """
-    logger = logging.getLogger(__name__)
     try:
         eBA = eAB(B, A)
     except AlgError as error:

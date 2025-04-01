@@ -123,7 +123,7 @@ def add_auxiliary_bonds(connectivity, intcos, geom, Z):
     return Nadded
 
 
-def add_intcos_from_connectivity(C, intcos, geom):
+def add_intcos_from_connectivity(C, intcos, geom, ignore_coords=[]):
     """
     Calls add_x_FromConnectivity for each internal coordinate type
     Parameters
@@ -138,7 +138,7 @@ def add_intcos_from_connectivity(C, intcos, geom):
 
     """
     add_stre_from_connectivity(C, intcos)
-    add_bend_from_connectivity(C, intcos, geom)
+    add_bend_from_connectivity(C, intcos, geom, ignore_coords=ignore_coords)
     add_tors_from_connectivity(C, intcos, geom)
     if op.Params.include_oofp or check_if_oofp_needed(C, intcos, geom):
         add_oofp_from_connectivity(C, intcos, geom)
@@ -218,7 +218,7 @@ def add_h_bonds(geom, zs: list, num_atoms):
     return h_bonds
 
 
-def add_bend_from_connectivity(C, intcos, geom):
+def add_bend_from_connectivity(C, intcos, geom, ignore_coords=[]):
     """
     Adds Bends from connectivity
 
@@ -255,8 +255,9 @@ def add_bend_from_connectivity(C, intcos, geom):
                             if b2 not in intcos:
                                 intcos.append(b2)
                         else:
+                            b_linear = bend.Bend(i, j, k, bend_type="LINEAR")
                             b = bend.Bend(i, j, k)
-                            if b not in intcos:
+                            if b not in intcos and b not in ignore_coords and b_linear not in intcos:
                                 intcos.append(b)
     # return len(intcos) - Norig
 
@@ -366,9 +367,28 @@ def check_if_oofp_needed(C, intcos, geom):
     # This catches cases like BF3, and CH4.
     Natom = len(C)
     maxNneighbors = max([sum(C[i]) for i in range(Natom)])
+    # num_neighbors = sum([row for row in C])
+    # central_atoms = np.argwhere(num_neighbors > 2).flatten()
+    # central atoms that could take a oofp
+
+    # torsions_covered = True
+    # for atom in central_atoms:
+    #     atom_covered = False
+    #     for intco in intcos:
+    #         if isinstance(intco, tors.Tors):
+    #             if atom in intco.atoms[1:-1]:
+    #                 atom_covered = True
+
+    #     # A central atom is not covered by any torsions. Worrying unless there is a single
+    #     # central atom
+    #     if not atom_covered:
+    #         torsions_covered = False
+
     if maxNneighbors == Natom - 1 and maxNneighbors > 2:
         logger.debug("check_if_oofp_needed() is turning oofp ON")
         return True
+    # elif not torsions_covered:
+    #     return True
     else:
         return False
 
@@ -417,29 +437,18 @@ def add_oofp_from_connectivity(C, intcos, geom):
             if isinstance(coord, oofp.Oofp):
                 if error[1] == coord.atoms[1]:
                     covered = True
-            if not covered:
-                try:
-                    im_tors = improper_torsion_around_oofp(
-<<<<<<< HEAD
-                        coord.atoms[1],
-                        coord.atoms[0],
-                        coord.atoms[2],
-                        coord.atoms[3]
-                    )
-                    intcos.append(im_tors)
-                except AlgError:
-                    raise AlgError("Tried to add out-of-plane angles but couldn't evaluate all of them.", oofp_failures=oofp.Oofp(T, V, side1, side2))
+                if not covered:
+                    try:
+                        im_tors = improper_torsion_around_oofp(
+                            coord.atoms[1], coord.atoms[0], coord.atoms[2], coord.atoms[3],
+                        )
+                        intcos.append(im_tors)
+                    except AlgError:
+                        raise AlgError(
+                            "Tried to add out-of-plane angles but couldn't evaluate all of them.",
+                            oofp_failures=oofp.Oofp(T, V, side1, side2),
+                        )
 
-=======
-                        coord.atoms[1], coord.atoms[0], coord.atoms[2], coord.atoms[3]
-                    )
-                    intcos.append(im_tors)
-                except AlgError:
-                    raise AlgError(
-                        "Tried to add out-of-plane angles but couldn't evaluate all of them.",
-                        oofp_failures=oofp.Oofp(T, V, side1, side2),
-                    )
->>>>>>> 1b3497d (IRC bug fixes. Steps not being added to history, incorrect massweighting of first step, incorrect sign when scaling pivot point step, incorrect massweighting during hypersphere opt, allows linear_bend error handling by force updating IRC history, adds step length check from old c++ optking)
     return
 
 
@@ -470,7 +479,8 @@ def add_cartesian_intcos(intcos, geom):
 def linear_bend_check(o_molsys):
     """
     Searches fragments to identify bends which are quasi-linear but not
-    previously identified as "linear bends". Called in displace after fragments are adjusted (post backtransform)
+    previously identified as "linear bends". Called in displace after fragments are adjusted
+    (post backtransform)
     Parameters
     ---------
     o_molsys : MOLSYS class
@@ -478,12 +488,22 @@ def linear_bend_check(o_molsys):
 
     Returns
     -------
-    list
-        missing linear bends
+    list: missing_bends
+        linear bends that have not been previously added to the coordinate system. Should be added.
+    list: bends_to_remove
+        Bends to be explicitly removed. If recomputing the internal coordinate system (as optking)
+        normally does - ensure these coordinates don't get added back.
+
+    Notes
+    -----
+    The step that caused linear_bend_check to execute will not be taken if there are linear bends
+    found. This is why any bends in bends_to_remove need to be explicitly excluded from the coord
+    system. The molecule will still be in a configuration where these bends may be valid.
     """
 
     linear_bends = []
     missing_bends = []
+    bends_to_remove = []
 
     for frag_index, frag in enumerate(o_molsys.fragments):
         for i, intco in enumerate(frag.intcos):
@@ -491,15 +511,38 @@ def linear_bend_check(o_molsys):
                 new_val = intco.q(frag.geom)
                 A, B, C = intco.A, intco.B, intco.C
 
-                # <ABC < 0.  A-C-B should be linear bends.
+                # Task 1. Add the linear versions of the appropriate bend. Try permutation of atoms
+                # if needed
+                # Task 2. Make note of the "Regular" version of any permutation and the old
+                # permutation to ensure they're removed and not added back.
+
+                # <ABC < 0.  A-C-B or B-A-C should be linear bends.
                 if new_val < np.pi - op.Params.linear_bend_threshold:
-                    linear_bends.append(bend.Bend(A, C, B, bend_type="LINEAR"))
-                    linear_bends.append(bend.Bend(A, C, B, bend_type="COMPLEMENT"))
+
+                    # A-C-B doesn't always work. If A(A, B, C) is 0 A(A, C, B) could also be zero
+                    # Need to check connectivity to find the most natural set of bends for the
+                    # current connectivity.
+                    connect = frag.connectivity_from_distances()
+                    all_bends = []
+                    add_bend_from_connectivity(connect, all_bends, frag._geom)
+
+                    # Now check for permutations of the newly found linear bend
+                    if bend.Bend(A, C, B) in all_bends:
+                        linear_bends.append(bend.Bend(A, C, B, bend_type="LINEAR"))
+                        linear_bends.append(bend.Bend(A, C, B, bend_type="COMPLEMENT"))
+                        bends_to_remove.append(bend.Bend(A, B, C))
+                        bends_to_remove.append(bend.Bend(A, C, B))
+                    elif bend.Bend(B, A, C) in all_bends:
+                        linear_bends.append(bend.Bend(B, A, C, bend_type="LINEAR"))
+                        linear_bends.append(bend.Bend(B, A, C, bend_type="COMPLEMENT"))
+                        bends_to_remove.append(bend.Bend(A, B, C))
+                        bends_to_remove.append(bend.Bend(B, A, C))
 
                 # <ABC~pi. Add A-B-C linear bends.
                 elif new_val > op.Params.linear_bend_threshold:
                     linear_bends.append(bend.Bend(A, B, C, bend_type="LINEAR"))
                     linear_bends.append(bend.Bend(A, B, C, bend_type="COMPLEMENT"))
+                    bends_to_remove.append(bend.Bend(A, B, C))
 
         missing_bends = [b for b in linear_bends if b not in frag.intcos]
         bend_report = [
@@ -509,13 +552,13 @@ def linear_bend_check(o_molsys):
 
         if missing_bends:
             logger.warning(
-                "\n\tThe following linear bends should be present:\n %s",
+                "\n\tThe following linear bends have been detected:\n%s",
                 "\t".join(bend_report),
             )
         # Need to reset this or linear bends will be rechecked for alternate fragments
         linear_bends = []
 
-    return missing_bends
+    return missing_bends, bends_to_remove
 
 
 def frozen_stre_from_input(frozen_stre_list, o_molsys):

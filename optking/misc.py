@@ -1,5 +1,6 @@
 import logging
 import math
+import os
 
 import numpy as np
 import qcelemental as qcel
@@ -133,6 +134,7 @@ def int_float_list(inList, Nint=1, Nfloat=1):
 # of which is Nint integers, Nxyz lists (probably 1), and Nfloat floats
 # e.g., ['2', 'xz', '1', '3'] => [2, ['x','z'], 1.0, 3.0]
 def int_xyz_float_list(inList, Nint=1, Nxyz=1, Nfloat=1):
+    print(inList)
     entry_length = Nint + Nxyz + Nfloat
     if len(inList) % entry_length != 0:
         raise OptError("List does not have {}*n entries as expected".format(entry_length))
@@ -288,3 +290,80 @@ def int_xyz_fx_string(inString, Nint=1):
         logger.debug(entry)
 
     return outList
+
+
+def trajectory_string(symbols, geom, comment_str):
+    """ Piece together the geom and symbols into xyz string format 
+    
+    Raises
+    ------
+    ValueError
+        from zip(..., strict=True) if lengths of inputs do not match
+    """
+
+    def coord_str(x):
+        return f"{x[0]:10f} {x[1]:10f} {x[2]:10f}"
+
+    strings = [f"{symbol} " + coord_str(coords) for symbol, coords in zip(symbols, geom, strict=True)]
+    header = [f"{len(symbols)}", comment_str]
+    return "\n".join(header + strings) + "\n"
+
+
+def write_molecules(molecules, filename="", type=""):
+    """Takes an iterator of xyz molecule strings and writes to filename. If filename is empty
+    writes to type.<pid>.xyz
+    """
+    if not filename:
+        filename = f"{type}.{os.getpid()}.xyz"
+
+    with open(filename, 'w+') as f:
+        f.writelines(molecules)
+
+def irc_q_trajectory(optimization_output, coord_str):
+    # make internal coord system. Find requested coordinate. Return lists of energies and coords
+    pass
+
+
+def write_irc_xyz_trajectory(optimization_output, filename=""):
+    """ Write an xyz file with the reaction path trajectory from an OptimizationResult.
+    If filename is not provided defaults to irc_traj.<pid>.json` 
+
+    Raises
+    ------
+    ValueError
+        if the key: "irc_rxn_path" does not exist within "extras"
+    """
+
+    rxn_path = optimization_output["extras"]["irc_rxn_path"]
+    geometries = [step["x"] for step in rxn_path]
+    comments = (
+        f"IRC trajectory step: {step['step_number']}. E: {step["energy"]}" for step in rxn_path
+    )
+    symbols = optimization_output["final_molecule"]["symbols"]
+    mol_strs = (
+        trajectory_string(symbols, geom, comment) for geom, comment in zip(geometries, comments)
+    )
+    write_molecules(mol_strs, filename, "irc_traj")
+
+
+def write_opt_xyz_trajectory(optimization_output, filename=""):
+    """ Write an xyz file with the optimization trajectory from an OptimizationResult.
+    If filename is not provided defaults to `opt_traj.<pid>.json` 
+    
+    Raises
+    ------
+    ValueError
+        if the key: "trajectory" does not exist within "extras"
+    """
+
+    trajectory = optimization_output["extras"]["trajectory"]
+    geometries = [step["geometry"] for step in trajectory]
+    comments = (
+        f"Optimization step: {step['step_number']}. E: {step["energy"]}" for step in trajectory
+    )
+    symbols = optimization_output["final_molecule"]["symbols"]
+    mol_strs = (
+        trajectory_string(symbols, geom, comment) for geom, comment in zip(geometries, comments)
+    )
+    write_molecules(mol_strs, filename, "opt_traj")
+
