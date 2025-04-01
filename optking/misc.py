@@ -134,7 +134,6 @@ def int_float_list(inList, Nint=1, Nfloat=1):
 # of which is Nint integers, Nxyz lists (probably 1), and Nfloat floats
 # e.g., ['2', 'xz', '1', '3'] => [2, ['x','z'], 1.0, 3.0]
 def int_xyz_float_list(inList, Nint=1, Nxyz=1, Nfloat=1):
-    print(inList)
     entry_length = Nint + Nxyz + Nfloat
     if len(inList) % entry_length != 0:
         raise OptError("List does not have {}*n entries as expected".format(entry_length))
