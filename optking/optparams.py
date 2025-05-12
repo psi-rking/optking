@@ -12,12 +12,12 @@ from typing import Union
 from pprint import pformat
 
 from pydantic import (
-                BaseModel,
-                Field,
-                field_validator,
-                model_validator,
-                ConfigDict,
-            )
+    BaseModel,
+    Field,
+    field_validator,
+    model_validator,
+    ConfigDict,
+)
 
 from .exceptions import OptError
 from . import log_name
@@ -26,9 +26,10 @@ logger = logging.getLogger(f"{log_name}{__name__}")
 
 CART_STR = r"(?:xyz|xy|yz|x|y|z)"
 
+
 class InterfragCoords(BaseModel):
-    """ Validate that the string input to create interfragment coords is mostly correct
-    (keys and types correct) """
+    """Validate that the string input to create interfragment coords is mostly correct
+    (keys and types correct)"""
 
     model_config = ConfigDict()
     natoms_per_frag: list[int] = Field(alias="NATOMS PER FRAG")
@@ -41,7 +42,7 @@ class InterfragCoords(BaseModel):
     b_label: str = Field(default="FRAGMENT B")
     b_weights: list[list[float]] = Field(default=[], alias="B WEIGHTS")
 
-    @model_validator(mode='before')
+    @model_validator(mode="before")
     @classmethod
     def to_upper(cls, data):
         return {key.upper(): val for key, val in data.items()}
@@ -49,13 +50,14 @@ class InterfragCoords(BaseModel):
     def to_dict(self):
         return self.model_dump(by_alias=True)
 
+
 class OptParams(BaseModel):
     model_config = ConfigDict(
-            alias_generator=lambda field_name: field_name.upper(),
-            extra="forbid",
-            str_to_upper=True,
-            # regexes need to use IGNORECASE flag since inputs won't be standardized until after
-            # validation
+        alias_generator=lambda field_name: field_name.upper(),
+        extra="forbid",
+        str_to_upper=True,
+        # regexes need to use IGNORECASE flag since inputs won't be standardized until after
+        # validation
     )
 
     # SUBSECTION Optimization Algorithm
@@ -74,20 +76,25 @@ class OptParams(BaseModel):
 
     # Geometry optimization step type, e.g., Newton-Raphson or Rational Function Optimization
     step_type: str = Field(
-        pattern=re.compile(r"RFO|RS_I_RFO|P_RFO|NR|SD|LINESEARCH|CONJUGATE", flags=re.IGNORECASE), default="RFO"
+        pattern=re.compile(r"RFO|RS_I_RFO|P_RFO|NR|SD|LINESEARCH|CONJUGATE", flags=re.IGNORECASE),
+        default="RFO",
     )
 
     # What program to use for evaluating gradients and energies
     program: str = Field(default="psi4")
 
     # variation of steepest descent step size
-    steepest_descent_type: str = Field(pattern=re.compile(r"OVERLAP|BARZILAI_BORWEIN", flags=re.IGNORECASE), default="OVERLAP")
+    steepest_descent_type: str = Field(
+        pattern=re.compile(r"OVERLAP|BARZILAI_BORWEIN", flags=re.IGNORECASE), default="OVERLAP"
+    )
 
     # Conjugate gradient step types. See wikipedia on Nonlinear_conjugate_gradient
     # "POLAK" for Polak-Ribiere. Polak, E.; Ribière, G. (1969).
     # Revue Française d'Automatique, Informatique, Recherche Opérationnelle. 3 (1): 35–43.
     # "FLETCHER" for Fletcher-Reeves.  Fletcher, R.; Reeves, C. M. (1964).
-    conjugate_gradient_type: str = Field(pattern=re.compile(r"FLETCHER|DESCENT|POLAK", flags=re.IGNORECASE), default="FLETCHER")
+    conjugate_gradient_type: str = Field(
+        pattern=re.compile(r"FLETCHER|DESCENT|POLAK", flags=re.IGNORECASE), default="FLETCHER"
+    )
     # Geometry optimization coordinates to use.
     # REDUNDANT and INTERNAL are synonyms and the default.
     # DELOCALIZED are the coordinates of Baker.
@@ -95,7 +102,9 @@ class OptParams(BaseModel):
     # CARTESIAN uses only cartesian coordinates.
     # BOTH uses both redundant and cartesian coordinates.
     opt_coordinates: str = Field(
-        pattern=re.compile(r"REDUNDANT|INTERNAL|DELOCALIZED|NATURAL|CARTESIAN|BOTH", flags=re.IGNORECASE),
+        pattern=re.compile(
+            r"REDUNDANT|INTERNAL|DELOCALIZED|NATURAL|CARTESIAN|BOTH", flags=re.IGNORECASE
+        ),
         default="INTERNAL",
     )
 
@@ -117,11 +126,12 @@ class OptParams(BaseModel):
     irc_step_size: float = Field(gt=0.0, default=0.2)
 
     # IRC mapping direction
-    irc_direction: str = Field(pattern=re.compile("FORWARD|BACKWARD", flags=re.IGNORECASE), default="FORWARD")
+    irc_direction: str = Field(
+        pattern=re.compile("FORWARD|BACKWARD", flags=re.IGNORECASE), default="FORWARD"
+    )
 
     # Decide when to stop IRC calculations
     irc_points: int = Field(gt=0, default=20)
-
 
     # ------------- SUBSECTION ----------------
     # trust radius - need to write custom validator to check for sane combination
@@ -192,10 +202,7 @@ class OptParams(BaseModel):
     # Specify out-of-plane angles between atoms to be ranged
     ranged_oofp: str = Field(default="", pattern=rf"(?:(?:\d\s*){4}(?:\d+\.\d+\s*){2})*")
     # Specify atom and X, XY, XYZ, ... to be ranged
-    ranged_cartesian: str = Field(
-        default="",
-        pattern=rf"(?:\d\s+{CART_STR}\s+(?:\d+\.\d+\s*){2})*"
-    )
+    ranged_cartesian: str = Field(default="", pattern=rf"(?:\d\s+{CART_STR}\s+(?:\d+\.\d+\s*){2})*")
 
     # Specify distances for which extra force will be added
     ext_force_distance: str = Field(default="", pattern=rf"(?:(?:\d\s*){2}\(.*?\))*")
@@ -220,10 +227,10 @@ class OptParams(BaseModel):
     # See Table :ref:`Geometry Convergence <table:optkingconv>` for details.
     g_convergence: str = Field(
         pattern=re.compile(
-                        r"QCHEM|MOLPRO|GAU|GAU_LOOSE|GAU_TIGHT|GAU_VERYTIGHT|TURBOMOLE|CFOUR|NWCHEM_LOOSE|INTERFRAG_TIGHT",
-                        flags=re.IGNORECASE
-                    ),
-        default="QCHEM"
+            r"QCHEM|MOLPRO|GAU|GAU_LOOSE|GAU_TIGHT|GAU_VERYTIGHT|TURBOMOLE|CFOUR|NWCHEM_LOOSE|INTERFRAG_TIGHT",
+            flags=re.IGNORECASE,
+        ),
+        default="QCHEM",
     )
 
     # _conv_rms_force = -1
@@ -288,7 +295,7 @@ class OptParams(BaseModel):
     # Model Hessian to guess intrafragment force constants
     intrafrag_hess: str = Field(
         pattern=re.compile(r"SCHLEGEL|FISCHER|SIMPLE|LINDH|LINDH_SIMPLE", flags=re.IGNORECASE),
-        default="SCHLEGEL"
+        default="SCHLEGEL",
     )
     # Re-estimate the Hessian at every step, i.e., ignore the currently stored Hessian.
     h_guess_every: bool = False
@@ -308,7 +315,9 @@ class OptParams(BaseModel):
     # For multi-fragment molecules, treat as single bonded molecule or via interfragment
     # coordinates. A primary difference is that in ``MULTI`` mode, the interfragment
     # coordinates are not redundant.
-    frag_mode: str = Field(pattern=re.compile(r"SINGLE|MULTI", flags=re.IGNORECASE), default="SINGLE")
+    frag_mode: str = Field(
+        pattern=re.compile(r"SINGLE|MULTI", flags=re.IGNORECASE), default="SINGLE"
+    )
     # Which atoms define the reference points for interfragment coordinates?
     frag_ref_atoms: list[list[list[int]]] = []
     # Do freeze all fragments rigid?
@@ -317,7 +326,9 @@ class OptParams(BaseModel):
     # P.inter_frag = uod.get('FREEZE_INTERFRAG', False)
     # When interfragment coordinates are present, use as reference points either
     # principal axes or fixed linear combinations of atoms.
-    interfrag_mode: str = Field(pattern=re.compile(r"FIXED|PRINCIPAL_AXES", re.IGNORECASE), default="FIXED")
+    interfrag_mode: str = Field(
+        pattern=re.compile(r"FIXED|PRINCIPAL_AXES", re.IGNORECASE), default="FIXED"
+    )
 
     # Do add bond coordinates at nearby atoms for non-bonded systems?
     add_auxiliary_bonds: bool = False
@@ -335,7 +346,9 @@ class OptParams(BaseModel):
     interfrag_coords: list[dict] = []
 
     # Model Hessian to guess interfragment force constants
-    interfrag_hess: str = Field(pattern=re.compile(r"DEFAULT|FISCHER_LIKE", flags=re.IGNORECASE), default="DEFAULT")
+    interfrag_hess: str = Field(
+        pattern=re.compile(r"DEFAULT|FISCHER_LIKE", flags=re.IGNORECASE), default="DEFAULT"
+    )
     # P.interfrag_hess = uod.get('INTERFRAG_HESS', 'DEFAULT')
     # When determining connectivity, a bond is assigned if interatomic distance
     # is less than (this number) * sum of covalent radii.
@@ -415,17 +428,17 @@ class OptParams(BaseModel):
         s += "\n"
         return s
 
-    @model_validator(mode='before')
+    @model_validator(mode="before")
     @classmethod
     def save_raw_input(cls, data):
-        """ Stash user input before any user input checking or transformations are performed (for
+        """Stash user input before any user input checking or transformations are performed (for
         instance str_to_upper)
 
         Notes
         -----
         model_set_fields is only set after validation so it can't be used to determine
         what option B should be set to if option A is set by the user.
-        
+
         By running this before
         validation we can cache all the user inputs and then compare against later. Need to be
         careful that any of validation is before after
@@ -436,31 +449,31 @@ class OptParams(BaseModel):
         cls._raw_input = upper_data
         return upper_data
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_algorithm(self):
-        """ Ensure that if the user has selected both an opt_type and step_type that they are
+        """Ensure that if the user has selected both an opt_type and step_type that they are
         compatible. If the user has selected `opt_type=TS` OR a `step_type` consistent with `TS`
-        then change the other keyword to have the appropriate keyword """
+        then change the other keyword to have the appropriate keyword"""
 
         min_step_types = ["RFO", "NR", "SD", "CONJUGATE", "LINESEARCH"]
         ts_step_types = ["RS_I_RFO", "P_RFO"]
 
-        if 'OPT_TYPE' in self._raw_input and 'STEP_TYPE' in self._raw_input:
+        if "OPT_TYPE" in self._raw_input and "STEP_TYPE" in self._raw_input:
             if self.opt_type == "TS":
                 assert self.step_type not in min_step_types
             elif self.opt_type == "MIN":
                 assert self.step_type not in ts_step_types
-        elif 'OPT_TYPE' in self._raw_input and self.opt_type == "TS":
+        elif "OPT_TYPE" in self._raw_input and self.opt_type == "TS":
             # User has selected TS. Change algorithm to RS_I_RFO
             self.step_type = "RS_I_RFO"
         elif "STEP_TYPE" in self._raw_input and "STEP_TYPE" in ts_step_types:
             self.opt_type = "TS"
         return self
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_convergence(self):
-        """ Set active variables depending upon the PRESET that has been provided and whether any
-        specific values were individually specified by the user. """
+        """Set active variables depending upon the PRESET that has been provided and whether any
+        specific values were individually specified by the user."""
 
         # stash so that __setattr__ doesn't affect which variables have been changed
         # Start by setting each individual convergence option from preset
@@ -472,11 +485,11 @@ class OptParams(BaseModel):
         # Table to easily correlate the user / psi4 name, internal keyword name,
         # and internal active flag for keyword
         keywords = [
-            ("MAX_FORCE_G_CONVERGENCE", 'conv_max_force', '_i_max_force'),
-            ("RMS_FORCE_G_CONVERGENCE", 'conv_rms_force', '_i_rms_force'),
-            ("MAX_ENERGY_G_CONVERGENCE", 'conv_max_DE', '_i_max_DE'),
-            ("MAX_DISP_G_CONVERGENCE", 'conv_max_disp', '_i_max_disp'),
-            ("RMS_DISP_G_CONVERGENCE", 'conv_rms_disp', '_i_rms_disp'),
+            ("MAX_FORCE_G_CONVERGENCE", "conv_max_force", "_i_max_force"),
+            ("RMS_FORCE_G_CONVERGENCE", "conv_rms_force", "_i_rms_force"),
+            ("MAX_ENERGY_G_CONVERGENCE", "conv_max_DE", "_i_max_DE"),
+            ("MAX_DISP_G_CONVERGENCE", "conv_max_disp", "_i_max_disp"),
+            ("RMS_DISP_G_CONVERGENCE", "conv_rms_disp", "_i_rms_disp"),
         ]
 
         # if ANY convergence options were specified by the user,  turn untampered on and set all
@@ -495,15 +508,15 @@ class OptParams(BaseModel):
                     self._i_untampered = False
         return self
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_iter(self):
-        if self.opt_type == "IRC" and 'geom_maxiter' not in self._raw_input:
+        if self.opt_type == "IRC" and "geom_maxiter" not in self._raw_input:
             self.geom_maxiter = self.irc_points * 15
         elif self.geom_maxiter < self.alg_geom_maxiter:
             self.alg_geom_maxiter = self.geom_maxiter
         return self
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_trustregion(self):
         # Initial Hessian guess for cartesians with coordinates BOTH is stupid, so don't scale
         #   step size down too much.  Steepest descent has no good hessian either.
@@ -532,9 +545,8 @@ class OptParams(BaseModel):
             self.intrafrag_trust = self.intrafrag_trust_max
         return self
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_hessian(self):
-
         set_vars = self._raw_input
 
         # Original Lindh specification was to redo at every step.
@@ -588,7 +600,7 @@ class OptParams(BaseModel):
         # If arbitrary user forces, don't shrink step_size if Delta(E) is poor.
         return self
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_hessian_file(self):
         # Stash value of hessian_file in _hessian_file for internal use
         # mode before required so that we stash before str_to_upper is called
@@ -611,15 +623,16 @@ class OptParams(BaseModel):
             self.frag_mode = "MULTI"
         return self
 
-    @field_validator('interfrag_coords', mode='before')
+    @field_validator("interfrag_coords", mode="before")
     @classmethod
     def check_interfrag_coords(cls, val):
-        """ Make sure required fields and types are sensible for interfrag_coords dict. """
+        """Make sure required fields and types are sensible for interfrag_coords dict."""
 
         tmp = val
         if tmp:
+
             def to_uppercase_key_str(tmp: dict):
-                """ Convert dict to string object with uppercase keys """
+                """Convert dict to string object with uppercase keys"""
                 tmp = {key.upper(): item for key, item in tmp.items()}
                 return json.dumps(tmp)
 
@@ -636,7 +649,7 @@ class OptParams(BaseModel):
 
             # Validate string as matching InterfragCoords Spec
             for item in tmp:
-                if item and item != '{}':
+                if item and item != "{}":
                     assert InterfragCoords.model_validate_json(item)
 
             # Now that everything is validated. Convert to dict for storage
@@ -645,7 +658,7 @@ class OptParams(BaseModel):
         else:
             return [{}]
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_case(self):
         for attr in self.model_dump():
             if isinstance(self.__getattribute__(attr), str):
@@ -655,7 +668,7 @@ class OptParams(BaseModel):
     def from_internal_dict(cls, params):
         """Assumes that params does not use the input key and syntax, but uses the internal names and
         internal syntax. Meant to be used for recreating options object after dump to dict
-        It's probably preferable to dump by alias and then recreate instead of using this """
+        It's probably preferable to dump by alias and then recreate instead of using this"""
         options = cls({})  # basic default options
         opt_dict = options.__dict__
 
@@ -672,8 +685,8 @@ class OptParams(BaseModel):
         return setattr(self, key, value)
 
     def conv_criteria(self) -> dict:
-        """ Returns the currently active values for each convegence criteria. Not the original
-        user input / presets """
+        """Returns the currently active values for each convegence criteria. Not the original
+        user input / presets"""
         return {
             "conv_max_force": self.conv_max_force,
             "conv_rms_force": self.conv_rms_force,
@@ -723,9 +736,7 @@ class OptParams(BaseModel):
             self.intrafrag_trust = 0.2
             self.intrafrag_trust_min = 0.2
             self.intrafrag_trust_max = 0.2
-            logger.warning(
-                "Going to run_level 2: Red. Int., RFO, 2 backstep, smaller trust. ~"
-            )
+            logger.warning("Going to run_level 2: Red. Int., RFO, 2 backstep, smaller trust. ~")
         elif run_level == 3:
             self.opt_coordinates = "BOTH"
             self.consecutiveBackstepsAllowed = 2
@@ -744,9 +755,7 @@ class OptParams(BaseModel):
             self.intrafrag_trust = 0.2
             self.intrafrag_trust_min = 0.2
             self.intrafrag_trust_max = 0.2
-            logger.warning(
-                "Going to run_level 4: XYZ, RFO, 2 backstep, smaller trust. ~"
-            )
+            logger.warning("Going to run_level 4: XYZ, RFO, 2 backstep, smaller trust. ~")
         elif run_level == 5:
             self.opt_coordinates = "CARTESIAN"
             self.consecutiveBackstepsAllowed = 2
@@ -755,9 +764,7 @@ class OptParams(BaseModel):
             self.intrafrag_trust = 0.3
             self.intrafrag_trust_min = 0.3
             self.intrafrag_trust_max = 0.3
-            logger.warning(
-                "Going to run_level 5: XYZ, SD, 2 backstep, average trust. ~"
-            )
+            logger.warning("Going to run_level 5: XYZ, SD, 2 backstep, average trust. ~")
         elif run_level == 6:
             self.opt_coordinates = "CARTESIAN"
             self.consecutiveBackstepsAllowed = 2
@@ -766,9 +773,7 @@ class OptParams(BaseModel):
             self.intrafrag_trust = 0.1
             self.intrafrag_trust_min = 0.1
             self.intrafrag_trust_max = 0.1
-            logger.warning(
-                "Moving to run_level 6: XYZ, SD, 2 backstep, smaller trust. ~"
-            )
+            logger.warning("Moving to run_level 6: XYZ, SD, 2 backstep, smaller trust. ~")
         else:
             raise OptError("Unknown value of run_level")
 
@@ -876,7 +881,7 @@ CONVERGENCE_PRESETS = {
         "_i_max_disp": True,
         "conv_rms_disp": 4.0e-4,
         "_i_rms_disp": True,
-    }
+    },
 }
 
 FLOATR = r"(:?\d+\.\d+)"
