@@ -145,7 +145,7 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
             "fq": fq_new,
         }
 
-        substep_convergence = convcheck.conv_check(conv_data, self.params.__dict__, self.requires(), str_mode=str_mode)
+        substep_convergence = convcheck.conv_check(conv_data, self.params, self.requires(), str_mode=str_mode)
         if not str_mode:
             logger.info("\tConvergence check returned %s for constrained optimization." % substep_convergence)
 

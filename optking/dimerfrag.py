@@ -314,7 +314,8 @@ class DimerFrag(object):
             If `user_dict` does not adhere to InterfragCoords Schema
         """
 
-        op.InterfragCoords.model_validate(user_dict)  # validate
+        user_dict = op.InterfragCoords.model_validate(user_dict).to_dict()  # validate
+        logger.debug("Provided information: %s", user_dict)
 
         N = user_dict["NATOMS PER FRAG"]
         A_idx = user_dict["A FRAG"] - 1

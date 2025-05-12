@@ -247,7 +247,6 @@ def initialize_options(opt_keys, silent=False):
     try:
         params = op.OptParams(**opt_keys)
     except (KeyError, ValueError, AttributeError, ValidationError) as e:
-        # logger.critical(str(e))
         raise OptError("unable to parse params from userOptions") from e
 
     # TODO we should make this just be a normal object

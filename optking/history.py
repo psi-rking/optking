@@ -104,7 +104,7 @@ class History(object):
 
         self.hess_update = params.hess_update
         self.hess_update_use_last = params.hess_update_use_last
-        self.hess_update_dq_tol = params._hess_update_dq_tol
+        self.hess_update_dq_tol = params.hess_update_dq_tol
         self.hess_update_den_tol = params.hess_update_den_tol
         self.hess_update_limit = params.hess_update_limit
         self.hess_update_limit_max = params.hess_update_limit_max

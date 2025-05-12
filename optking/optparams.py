@@ -7,16 +7,17 @@
 import json
 import logging
 import pathlib
+import re
 from typing import Union
 from pprint import pformat
 
 from pydantic import (
-    BaseModel,
-    Field,
-    field_validator,
-    model_validator,
-    ConfigDict,
-    )
+                BaseModel,
+                Field,
+                field_validator,
+                model_validator,
+                ConfigDict,
+            )
 
 from .exceptions import OptError
 from . import log_name
@@ -45,10 +46,16 @@ class InterfragCoords(BaseModel):
     def to_upper(cls, data):
         return {key.upper(): val for key, val in data.items()}
 
+    def to_dict(self):
+        return self.model_dump(by_alias=True)
+
 class OptParams(BaseModel):
     model_config = ConfigDict(
             alias_generator=lambda field_name: field_name.upper(),
-            extra="forbid"
+            extra="forbid",
+            str_to_upper=True,
+            # regexes need to use IGNORECASE flag since inputs won't be standardized until after
+            # validation
     )
 
     # SUBSECTION Optimization Algorithm
@@ -63,24 +70,24 @@ class OptParams(BaseModel):
     # output_type: str = Field(pattern=r"FILE|STDOUT|NULL", default="FILE")
 
     # Specifies minimum search, transition-state search, or IRC following
-    opt_type: str = Field(pattern=r"MIN|TS|IRC", default="MIN")
+    opt_type: str = Field(pattern=re.compile(r"MIN|TS|IRC", flags=re.IGNORECASE), default="MIN")
 
     # Geometry optimization step type, e.g., Newton-Raphson or Rational Function Optimization
     step_type: str = Field(
-        pattern=r"RFO|RS_I_RFO|P_RFO|NR|SD|LINESEARCH|CONJUGATE", default="RFO"
+        pattern=re.compile(r"RFO|RS_I_RFO|P_RFO|NR|SD|LINESEARCH|CONJUGATE", flags=re.IGNORECASE), default="RFO"
     )
 
     # What program to use for evaluating gradients and energies
     program: str = Field(default="psi4")
 
     # variation of steepest descent step size
-    steepest_descent_type: str = Field(pattern="OVERLAP|BARZILAI_BORWEIN", default="OVERLAP")
+    steepest_descent_type: str = Field(pattern=re.compile(r"OVERLAP|BARZILAI_BORWEIN", flags=re.IGNORECASE), default="OVERLAP")
 
     # Conjugate gradient step types. See wikipedia on Nonlinear_conjugate_gradient
     # "POLAK" for Polak-Ribiere. Polak, E.; Ribière, G. (1969).
     # Revue Française d'Automatique, Informatique, Recherche Opérationnelle. 3 (1): 35–43.
     # "FLETCHER" for Fletcher-Reeves.  Fletcher, R.; Reeves, C. M. (1964).
-    conjugate_gradient_type: str = Field(pattern=r"FLETCHER|DESCENT|POLAK", default="FLETCHER")
+    conjugate_gradient_type: str = Field(pattern=re.compile(r"FLETCHER|DESCENT|POLAK", flags=re.IGNORECASE), default="FLETCHER")
     # Geometry optimization coordinates to use.
     # REDUNDANT and INTERNAL are synonyms and the default.
     # DELOCALIZED are the coordinates of Baker.
@@ -88,7 +95,7 @@ class OptParams(BaseModel):
     # CARTESIAN uses only cartesian coordinates.
     # BOTH uses both redundant and cartesian coordinates.
     opt_coordinates: str = Field(
-        pattern=r"REDUNDANT|INTERNAL|DELOCALIZED|NATURAL|CARTESIAN|BOTH",
+        pattern=re.compile(r"REDUNDANT|INTERNAL|DELOCALIZED|NATURAL|CARTESIAN|BOTH", flags=re.IGNORECASE),
         default="INTERNAL",
     )
 
@@ -110,7 +117,7 @@ class OptParams(BaseModel):
     irc_step_size: float = Field(gt=0.0, default=0.2)
 
     # IRC mapping direction
-    irc_direction: str = Field(pattern="FORWARD|BACKWARD", default="FORWARD")
+    irc_direction: str = Field(pattern=re.compile("FORWARD|BACKWARD", flags=re.IGNORECASE), default="FORWARD")
 
     # Decide when to stop IRC calculations
     irc_points: int = Field(gt=0, default=20)
@@ -157,7 +164,7 @@ class OptParams(BaseModel):
     rsrfo_alpha_max: float = 1e8
 
     # New in python version
-    trajectory: bool = False
+    print_trajectory_xyz_file: bool = False
 
     # Specify distances between atoms to be frozen (unchanged)
     frozen_distance: str = Field(default="", pattern=r"(?:\d\s+){2}*")
@@ -212,7 +219,10 @@ class OptParams(BaseModel):
     # |optking__flexible_g_convergence| is also on.
     # See Table :ref:`Geometry Convergence <table:optkingconv>` for details.
     g_convergence: str = Field(
-        pattern=r"QCHEM|MOLPRO|GAU|GAU_LOOSE|GAU_TIGHT|GAU_VERYTIGHT|TURBOMOLE|CFOUR|NWCHEM_LOOSE|INTERFRAG_TIGHT",
+        pattern=re.compile(
+                        r"QCHEM|MOLPRO|GAU|GAU_LOOSE|GAU_TIGHT|GAU_VERYTIGHT|TURBOMOLE|CFOUR|NWCHEM_LOOSE|INTERFRAG_TIGHT",
+                        flags=re.IGNORECASE
+                    ),
         default="QCHEM"
     )
 
@@ -257,14 +267,17 @@ class OptParams(BaseModel):
 
     # Hessian update is avoided if any internal coordinate has changed by
     # more than this in radians/au
-    _hess_update_dq_tol = 0.5
+    hess_update_dq_tol: float = Field(ge=0.0, default=0.5)
 
     # SUBSECTION Using external Hessians
     # Do read Cartesian Hessian?  Only for experts - use
     # |optking__full_hess_every| instead.
     cart_hess_read: bool = False
     # accompanies cart_hess_read. The default is not validated
-    hessian_file: pathlib.Path = Field(default="")
+    # Need two options here because str_to_upper cannot be turned of for members of the Model
+    # _hessian_file avoids str_to_upper
+    hessian_file: pathlib.Path = Field(default=pathlib.Path(""), validate_default=False)
+    _hessian_file = pathlib.Path("")
 
     # Frequency with which to compute the full Hessian in the course
     # of a geometry optimization. 0 means to compute the initial Hessian only,
@@ -274,7 +287,7 @@ class OptParams(BaseModel):
 
     # Model Hessian to guess intrafragment force constants
     intrafrag_hess: str = Field(
-        pattern=r"SCHLEGEL|FISCHER|SIMPLE|LINDH|LINDH_SIMPLE",
+        pattern=re.compile(r"SCHLEGEL|FISCHER|SIMPLE|LINDH|LINDH_SIMPLE", flags=re.IGNORECASE),
         default="SCHLEGEL"
     )
     # Re-estimate the Hessian at every step, i.e., ignore the currently stored Hessian.
@@ -295,7 +308,7 @@ class OptParams(BaseModel):
     # For multi-fragment molecules, treat as single bonded molecule or via interfragment
     # coordinates. A primary difference is that in ``MULTI`` mode, the interfragment
     # coordinates are not redundant.
-    frag_mode: str = Field(pattern=r"SINGLE|MULTI", default="SINGLE")
+    frag_mode: str = Field(pattern=re.compile(r"SINGLE|MULTI", flags=re.IGNORECASE), default="SINGLE")
     # Which atoms define the reference points for interfragment coordinates?
     frag_ref_atoms: list[list[list[int]]] = []
     # Do freeze all fragments rigid?
@@ -304,7 +317,7 @@ class OptParams(BaseModel):
     # P.inter_frag = uod.get('FREEZE_INTERFRAG', False)
     # When interfragment coordinates are present, use as reference points either
     # principal axes or fixed linear combinations of atoms.
-    interfrag_mode: str = Field(pattern=r"FIXED|PRINCIPAL_AXES", default="FIXED")
+    interfrag_mode: str = Field(pattern=re.compile(r"FIXED|PRINCIPAL_AXES", re.IGNORECASE), default="FIXED")
 
     # Do add bond coordinates at nearby atoms for non-bonded systems?
     add_auxiliary_bonds: bool = False
@@ -322,7 +335,7 @@ class OptParams(BaseModel):
     interfrag_coords: list[dict] = []
 
     # Model Hessian to guess interfragment force constants
-    interfrag_hess: str = Field(pattern=r"DEFAULT|FISCHER_LIKE", default="DEFAULT")
+    interfrag_hess: str = Field(pattern=re.compile(r"DEFAULT|FISCHER_LIKE", flags=re.IGNORECASE), default="DEFAULT")
     # P.interfrag_hess = uod.get('INTERFRAG_HESS', 'DEFAULT')
     # When determining connectivity, a bond is assigned if interatomic distance
     # is less than (this number) * sum of covalent radii.
@@ -405,8 +418,20 @@ class OptParams(BaseModel):
     @model_validator(mode='before')
     @classmethod
     def save_raw_input(cls, data):
-        """ model_set_fields is only set after validation so it can't be used to determine
-        what option B should be set to if option A is set by the user """
+        """ Stash user input before any user input checking or transformations are performed (for
+        instance str_to_upper)
+
+        Notes
+        -----
+        model_set_fields is only set after validation so it can't be used to determine
+        what option B should be set to if option A is set by the user.
+        
+        By running this before
+        validation we can cache all the user inputs and then compare against later. Need to be
+        careful that any of validation is before after
+
+        """
+
         upper_data = {key.upper(): val for key, val in data.items()}
         cls._raw_input = upper_data
         return upper_data
@@ -435,7 +460,7 @@ class OptParams(BaseModel):
     @model_validator(mode='after')
     def validate_convergence(self):
         """ Set active variables depending upon the PRESET that has been provided and whether any
-        specific values individually specified by the user. """
+        specific values were individually specified by the user. """
 
         # stash so that __setattr__ doesn't affect which variables have been changed
         # Start by setting each individual convergence option from preset
@@ -444,6 +469,8 @@ class OptParams(BaseModel):
         for key, val in conv_spec.items():
             self.__setattr__(key, val)
 
+        # Table to easily correlate the user / psi4 name, internal keyword name,
+        # and internal active flag for keyword
         keywords = [
             ("MAX_FORCE_G_CONVERGENCE", 'conv_max_force', '_i_max_force'),
             ("RMS_FORCE_G_CONVERGENCE", 'conv_rms_force', '_i_rms_force'),
@@ -452,27 +479,20 @@ class OptParams(BaseModel):
             ("RMS_DISP_G_CONVERGENCE", 'conv_rms_disp', '_i_rms_disp'),
         ]
 
-        # if ANY convergence options were specified. Turn untampered on and set all options to
-        # inactive
-        logger.debug("raw_input %s", self._raw_input)
+        # if ANY convergence options were specified by the user,  turn untampered on and set all
+        # options to inactive
         for keyword_set in keywords:
             if keyword_set[0] in self._raw_input:
                 # mark keyword as "active" through _i_keyword variable
                 # mark untampered as False (tampering has occured!)
-                logger.debug("attribute value %s", self._raw_input.get(keyword_set[0]))
                 self.__setattr__(keyword_set[1], self._raw_input.get(keyword_set[0]))
                 self.__setattr__(keyword_set[2], True)
                 self._i_untampered = False
-                if not self.flexible_g_convergence:
+                if self.flexible_g_convergence:
                     # use flexible conv criteria don't leave criteria preset active except for mods
                     self._i_untampered = True
                 else:
                     self._i_untampered = False
-                    # deactivate all criteria (this seems to have been missing in previous version)
-                    self.__setattr__(keyword_set[2], False)
-
-        logger.debug("Final convergence information:\n%s", self.conv_criteria())
-
         return self
 
     @model_validator(mode='after')
@@ -538,8 +558,11 @@ class OptParams(BaseModel):
             self.print_trajectory_xyz_file = True
 
         # Read cartesian Hessian by default for IRC.
+        # Changed to turn cart_hess_read on only if a file path was provided.
+        # otherwise full_hess_every will handle providing hessian
         if self.opt_type == "IRC" and "cart_hess_read" not in set_vars:
-            self.read_cartesian_H = True
+            if self._hessian_file != pathlib.Path(""):
+                self.cart_hess_read = True
 
         # inactive option
         # if self.generate_intcos_exit:
@@ -565,10 +588,26 @@ class OptParams(BaseModel):
         # If arbitrary user forces, don't shrink step_size if Delta(E) is poor.
         return self
 
+    @model_validator(mode='after')
+    def validate_hessian_file(self):
+        # Stash value of hessian_file in _hessian_file for internal use
+        # mode before required so that we stash before str_to_upper is called
+        orig_vars = self._raw_input
+        if orig_vars.get("HESSIAN_FILE"):
+            self._hessian_file = pathlib.Path(orig_vars.get("HESSIAN_FILE"))
+        return self
+
     @model_validator(mode="after")
     def validate_frag(self):
         # Finish multifragment option setup by forcing frag_mode: MULTI if DimerCoords are provided
-        if self.interfrag_coords:
+
+        input = self.interfrag_coords
+        if input:
+            # if interfrag_coords is not empty. Consider whether it is just [{}]
+            if isinstance(input, list) and len(input) > 0:
+                if isinstance(input[0], dict) and len(input[0]) == 0:
+                    # empty dict in list
+                    return self
             self.frag_mode = "MULTI"
         return self
 
@@ -588,9 +627,8 @@ class OptParams(BaseModel):
             if isinstance(tmp, str):
                 tmp = tmp.replace("'", '"')
                 tmp = json.loads(tmp)
-                logger.debug("%s", pformat(tmp))
 
-            # ensure that keys are uppercase and check that 
+            # ensure that keys are uppercase and standardize to list of dict
             if isinstance(tmp, dict):
                 tmp = [to_uppercase_key_str(tmp)]
             elif isinstance(tmp, (list, tuple)):
@@ -598,7 +636,8 @@ class OptParams(BaseModel):
 
             # Validate string as matching InterfragCoords Spec
             for item in tmp:
-                assert InterfragCoords.model_validate_json(item)
+                if item and item != '{}':
+                    assert InterfragCoords.model_validate_json(item)
 
             # Now that everything is validated. Convert to dict for storage
             tmp = [json.loads(item) for item in tmp]
@@ -616,12 +655,15 @@ class OptParams(BaseModel):
     def from_internal_dict(cls, params):
         """Assumes that params does not use the input key and syntax, but uses the internal names and
         internal syntax. Meant to be used for recreating options object after dump to dict
-        """
+        It's probably preferable to dump by alias and then recreate instead of using this """
         options = cls({})  # basic default options
         opt_dict = options.__dict__
 
         for key, val in opt_dict.items():
-            options.__dict__[key] = params.get(key, val)
+            option = params.get(key, val)
+            if isinstance(option, str):
+                option = option.upper()
+            options.__dict__[key] = option
 
         return options
 
@@ -635,8 +677,8 @@ class OptParams(BaseModel):
         return {
             "conv_max_force": self.conv_max_force,
             "conv_rms_force": self.conv_rms_force,
-            "conv_max_disp": self.conv_rms_disp,
-            "conv_rms_disp": self.conv_max_disp,
+            "conv_max_disp": self.conv_max_disp,
+            "conv_rms_disp": self.conv_rms_disp,
             "conv_max_DE": self.conv_max_DE,
             "i_max_force": self._i_max_force,
             "i_rms_force": self._i_rms_force,

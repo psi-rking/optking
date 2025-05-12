@@ -5,6 +5,7 @@ EngineHelper runs calculations through QCEngine. CustomHelper adds the abilility
 
 import logging
 import json
+import pathlib
 from abc import ABC, abstractmethod
 from typing import Union
 
@@ -91,7 +92,7 @@ class Helper(ABC):
 
         if status == "CONVERGED" and len(energies) > 0:
             if self.params.opt_type != "IRC":
-                conv_table, criteria_table = conv_check(conv_info, self.params.__dict__, str_mode="both")
+                conv_table, criteria_table = conv_check(conv_info, self.params, str_mode="both")
                 string += conv_table
                 string += criteria_table
                 string += self.history.summary_string()
@@ -104,7 +105,7 @@ class Helper(ABC):
                 conv_info["iternum"] = irc_object.irc_step_number
                 conv_info["fq"] = irc_object.irc_history._project_forces(self.fq, self.molsys)
 
-            string += conv_check(conv_info, self.params.__dict__, str_mode="table")
+            string += conv_check(conv_info, self.params, str_mode="table")
 
         string += "Next Geometry in Ang \n"
         string += self.molsys.show_geom()
@@ -129,9 +130,8 @@ class Helper(ABC):
         # creates the initial configuration of the OptHelper. Some options might
         # have changed over the course of the optimization (eg trust radius)
 
-        helper = cls(d.get("opt_input"), params={}, silent=True)
+        helper = cls(d.get("opt_input"), params=d.get("params"), silent=True)
 
-        helper.params = op.OptParams.from_internal_dict(d.get("params"))
         op.Params = helper.params
         # update with current information
         helper.molsys = molsys.Molsys.from_dict(d.get("molsys"))
@@ -432,7 +432,7 @@ class CustomHelper(Helper):
         if self.HX is None:
             if "hessian" in self.calculations_needed():
                 if self.params.cart_hess_read:
-                    self.HX = hessian.from_file(self.params.hessian_file)  # set ourselves if file
+                    self.HX = hessian.from_file(self.params._hessian_file)  # set ourselves if file
                     _ = self.computer.compute(self.geom, driver="hessian")
                     self.gX = self.computer.external_gradient
                     self.fq = self.molsys.gradient_to_internals(self.gX, -1.0)
@@ -441,7 +441,7 @@ class CustomHelper(Helper):
                     self.fq, self._Hq = self.molsys.project_redundancies_and_constraints(self.fq, self._Hq)
                     self.HX = None
                     self.params.cart_hess_read = False
-                    self.params.hessian_file = None
+                    self.params._hessian_file = pathlib.Path("")
                 else:
                     raise RuntimeError(
                         "Optking requested a hessian but was not provided one. " "This could be a driver issue"
@@ -468,13 +468,19 @@ class CustomHelper(Helper):
             self.fq = self.molsys.gradient_to_internals(self.gX, -1.0)
             self._Hq = self.molsys.hessian_to_internals(self.HX)
             self.HX = None  # set back to None
+            self.params.cart_hess_read = False
             self.fq, self._Hq = self.molsys.apply_external_forces(self.fq, self._Hq)
             self.fq, self._Hq = self.molsys.project_redundancies_and_constraints(self.fq, self._Hq)
 
     def calculations_needed(self):
         """Assume gradient is always needed. Provide tuple with keys for required properties"""
-        hessian_protocol = self.opt_manager.get_hessian_protocol(self.step_num)
 
+        # TODO revist once multiple opt_managers have been finalized. For now assume opt_helper
+        # is correct since it knows the behavior of _compute().
+        if self.params.cart_hess_read != self.opt_manager.params.cart_hess_read:
+            self.opt_manager.params.cart_hess_read = self.params.cart_hess_read
+
+        hessian_protocol = self.opt_manager.get_hessian_protocol(self.step_num)
         protocol = hessian_protocol.get("protocol")
 
         if protocol == "compute":

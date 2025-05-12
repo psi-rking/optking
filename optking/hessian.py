@@ -92,7 +92,7 @@ def from_file(filename: Path):
     """Read user provided hessian from disk"""
 
     if not filename.exists():
-        raise OptError("The specified file in `hessian_file` does not exist")
+        raise OptError(f"The specified file {filename} in `hessian_file` does not exist")
 
     with filename.open() as f:
         if ".json" == filename.suffix:

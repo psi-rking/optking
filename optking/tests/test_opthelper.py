@@ -6,6 +6,7 @@
 import optking
 import pytest
 import pprint
+import pathlib
 
 def test_step_by_step():
     import psi4
@@ -200,7 +201,7 @@ def test_hooh_irc(check_iter):
         "irc_direction": "FORWARD",
         "irc_step_size": 1.0,
         "hess_update": "BOFILL",
-        # "cart_hess_read": True,
+        "cart_hess_read": True,
     }
 
     psi4.set_options(psi4_options)
@@ -211,7 +212,7 @@ def test_hooh_irc(check_iter):
         opt = optking.CustomHelper.from_dict(optSaved)
 
         if i == 0:
-            H = optking.hessian.from_file("./test_data/hooh_irc.hess")
+            H = optking.hessian.from_file(pathlib.Path("./test_data/hooh_irc.hess"))
             opt.HX = H
 
         grad, wfn = psi4.gradient("hf", return_wfn=True)
@@ -227,7 +228,6 @@ def test_hooh_irc(check_iter):
             break
         else:
             optSaved = opt.to_dict()
-            pprint.pprint(optSaved, indent=4)
         geom = psi4.core.Matrix.from_array(opt.molsys.geom)
         h2o2.set_geometry(geom)
         h2o2.update_geometry()

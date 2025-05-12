@@ -12,7 +12,6 @@ import numpy as np
 import optking
 
 # Generate values over 2 orders of magnitude which approach the convergence threshold
-
 rng = np.random.default_rng()
 rng_vals = rng.integers(2, 98, size=10)
 scalings = np.zeros(12)
@@ -449,23 +448,16 @@ def test_convergence_presets(conv_test, conv_preset):
     for random_scale in rng_vals:
         criteria = _create_variations(defaults, changes, random_scale)
 
-        optking.optwrapper.initialize_options({"g_convergence": conv_preset})
-        params_dict = optking.optparams.Params.conv_criteria()
+        params = optking.optwrapper.initialize_options({"g_convergence": conv_preset})
+        params_dict = params.conv_criteria()
 
         # Actual conv_check test.
         conv_met, conv_active = optking.convcheck._transform_criteria(criteria, params_dict)
         conv_met.update({"flat_potential": 100 * criteria.get("rms_force") < params_dict.get("conv_rms_force")})
-        state = optking.convcheck._test_for_convergence(conv_met, conv_active)
+        state = optking.convcheck._test_for_convergence(conv_met, conv_active, params=params)
         expected = tests.get(conv_test).get(program_mappings.get(conv_preset))
 
-        try:
-            assert state == expected
-        except AssertionError:
-            print(changes)
-            print(f"test values {criteria}")
-            print(f"thresholds {defaults}")
-            print(random_scale)
-            raise
+        assert state == expected
 
 
 options = [
@@ -508,11 +500,11 @@ def test_user_tampering(conv_options, test_name, preset, flexible_on):
     print(conv_options)
     options_dict = {key: 1e-5 for key in conv_options}
     options_dict.update({"flexible_g_convergence": flexible_on, "g_convergence": preset})
-    optking.optwrapper.initialize_options(options_dict)
+    params = optking.optwrapper.initialize_options(options_dict)
 
     keys = ["max_DE", "max_force", "rms_force", "max_disp", "rms_disp"]
 
-    opt_params = optking.optparams.Params.__dict__
+    opt_params = params.conv_criteria()
     thresh1 = [opt_params.get(f"conv_{key}") for key in keys]
     thresholds = [val if val > 0 else 0.1 for val in thresh1]
 
@@ -521,7 +513,7 @@ def test_user_tampering(conv_options, test_name, preset, flexible_on):
 
         conv_met, conv_active = optking.convcheck._transform_criteria(criteria, opt_params)
         conv_met.update({"flat_potential": 100 * criteria.get("rms_force") < opt_params.get("conv_rms_force")})
-        state = optking.convcheck._test_for_convergence(conv_met, conv_active)
+        state = optking.convcheck._test_for_convergence(conv_met, conv_active, params=params)
 
         extra_requirements = [conv_mapping.get(val) for val in conv_options]
         # all keys that should be met based on changes
@@ -568,6 +560,6 @@ def _create_variations(thresholds, changes, coefficient):
             # for random_scale = 1 and below original for random_scale = 99
             temp = thresholds[index] / 100 + rng.random() * (10 ** (magnitudes[index] - 5))
             criteria[conv_criteria_names[index]] = temp * coefficient
-            assert thresholds[index] / 100 < temp < thresholds[index]
+            assert thresholds[index] / 100 < temp * coefficient < thresholds[index]
 
     return criteria

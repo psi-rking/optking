@@ -331,7 +331,8 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         # flags like self.erase_hessian will be reset once a protocol is created.
         # Saving the protocol allows for this method to be called
         # multiple times for a single step with consistent output
-        if step_number == self.protocol.get("step_number"):
+        # This doesn't work for IRCs since step_number tracks IRC points not individual steps
+        if step_number == self.protocol.get("step_number") and self.params.opt_type != "IRC":
             return self.protocol
 
         # Have not called method yet for this step. Create new protocol
@@ -357,8 +358,10 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
                     action = "compute"
                 else:
                     action = "guess"
-            else:  # IRC
-                action = "compute"
+            else:
+                # IRC
+                if self.opt_method.sub_step_num == 0:
+                    action = "compute"
         else:
             if self.params.full_hess_every < 1:
                 action = "update"
@@ -579,10 +582,10 @@ def get_pes_info(
             logger.info("Reading hessian from file")
             result = computer.compute(o_molsys.geom, driver=driver, return_full=False)
             g_x = np.asarray(result) if driver == "gradient" else None
-            Hx = hessian.from_file(params.hessian_file)
+            Hx = hessian.from_file(params._hessian_file)
             H = o_molsys.hessian_to_internals(Hx)
             params.cart_hess_read = False
-            params.hessian_file = None
+            params._hessian_file = ""
         else:
             raise OptError("Encountered unknown value from get_hessian_protocol()")
 
@@ -674,7 +677,6 @@ def make_internal_coords(o_molsys: Molsys, params: op.OptParams):
             o_molsys.fragments[0].add_cartesian_intcos()
 
     elif params.frag_mode == "MULTI":
-
         try:
             # if provided multiple frags, then we use these.
             # if not, then split them (if not connected).
