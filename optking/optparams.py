@@ -41,6 +41,7 @@ class InterfragCoords(BaseModel):
     b_ref_atoms: list[list[int]] = Field(alias="B REF ATOMS")
     b_label: str = Field(default="FRAGMENT B")
     b_weights: list[list[float]] = Field(default=[], alias="B WEIGHTS")
+    frozen: list[str] = Field(default=[], alias="FROZEN")
 
     @model_validator(mode="before")
     @classmethod
@@ -66,7 +67,7 @@ class OptParams(BaseModel):
     # If user sets one, assume this.
     alg_geom_maxiter: int = Field(gt=0, default=50)
     # Print level.  1 = normal
-    print_lvl: int = Field(ge=1, le=5, default=1)
+    print_lvl: int = Field(ge=1, le=5, default=1, alias="PRINT")
     # Print all optimization parameters.
     printxopt_params: bool = False
     # output_type: str = Field(pattern=r"FILE|STDOUT|NULL", default="FILE")
@@ -418,8 +419,20 @@ class OptParams(BaseModel):
     _i_rms_disp = False
     _i_untampered = False
 
-    # def __dict__(self):
-    #     return self.model_dump()
+    def to_dict(self):
+        """ Specialized form of __dict__. Makes sure to include convergence keys that are hidden """
+        save = self.model_dump()
+        include = {
+            "_i_max_force": self._i_max_force,
+            "_i_rms_force": self._i_rms_force,
+            "_i_max_DE": self._i_max_DE,
+            "_i_max_disp": self._i_max_disp,
+            "_i_rms_disp": self._i_rms_disp,
+            "_i_untampered": self._i_untampered,
+        }
+        for key in include:
+            save.update(include)
+        return save
 
     def __str__(self):
         s = "\n\t\t -- Optimization Parameters --\n"
@@ -447,6 +460,8 @@ class OptParams(BaseModel):
 
         upper_data = {key.upper(): val for key, val in data.items()}
         cls._raw_input = upper_data
+        cls._special_defaults = {}
+        # create a special dict to hold keywords that were changed by validation
         return upper_data
 
     @model_validator(mode="after")
@@ -510,7 +525,7 @@ class OptParams(BaseModel):
 
     @model_validator(mode="after")
     def validate_iter(self):
-        if self.opt_type == "IRC" and "geom_maxiter" not in self._raw_input:
+        if self.opt_type == "IRC" and "GEOM_MAXITER" not in self._raw_input:
             self.geom_maxiter = self.irc_points * 15
         elif self.geom_maxiter < self.alg_geom_maxiter:
             self.alg_geom_maxiter = self.geom_maxiter
@@ -520,7 +535,7 @@ class OptParams(BaseModel):
     def validate_trustregion(self):
         # Initial Hessian guess for cartesians with coordinates BOTH is stupid, so don't scale
         #   step size down too much.  Steepest descent has no good hessian either.
-        if "intrafrag_trust_min" not in self._raw_input:
+        if "INTRAFRAG_TRUST_MIN" not in self._raw_input:
             if self.opt_coordinates == "BOTH":
                 self.intrafrag_trust_min = self.intrafrag_trust / 2.0
             elif self.step_type == "SD":  # steepest descent, use constant stepsize
@@ -538,7 +553,7 @@ class OptParams(BaseModel):
                 # so don't let minimum step get shrunk too much.
                 self.intrafrag_trust_min = self.intrafrag_trust / 2.0
 
-        if self.opt_type == "IRC" and "intrafrag_trust" not in self._raw_input:
+        if self.opt_type in ["IRC", "TS"] and "INTRAFRAG_STEP_LIMIT" not in self._raw_input:
             self.intrafrag_trust = 0.2  # start with smaller intrafrag_trust
 
         if self.intrafrag_trust_max < self.intrafrag_trust:
@@ -669,9 +684,9 @@ class OptParams(BaseModel):
         """Assumes that params does not use the input key and syntax, but uses the internal names and
         internal syntax. Meant to be used for recreating options object after dump to dict
         It's probably preferable to dump by alias and then recreate instead of using this"""
-        options = cls({})  # basic default options
-        opt_dict = options.__dict__
 
+        options = cls()  # basic default options
+        opt_dict = options.__dict__
         for key, val in opt_dict.items():
             option = params.get(key, val)
             if isinstance(option, str):

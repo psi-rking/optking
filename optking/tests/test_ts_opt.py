@@ -5,7 +5,7 @@ import pytest
 from .utils import utils
 
 #! Optimization to 180 degree torsion from 120
-@pytest.mark.parametrize("option, expected_steps", [("P_RFO", 14), ("RS_I_RFO", 10)])
+@pytest.mark.parametrize("option, expected_steps", [("P_RFO", 14), ("RS_I_RFO", 13)])
 def test_hooh_TS(check_iter, option, expected_steps):
 
     hooh = psi4.geometry(
@@ -40,7 +40,7 @@ def test_hooh_TS(check_iter, option, expected_steps):
 
 
 #! Optimization to 0 degree torsion from 100
-@pytest.mark.parametrize("option, expected_steps", [("P_RFO", 21), ("RS_I_RFO", 10)])
+@pytest.mark.parametrize("option, expected_steps", [("P_RFO", 21), ("RS_I_RFO", 11)])
 def test_hooh_TS_zero(check_iter, option, expected_steps):
 
     hooh = psi4.geometry(

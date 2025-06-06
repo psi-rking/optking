@@ -595,8 +595,15 @@ def get_pes_info(
 
     f_q, H = o_molsys.project_redundancies_and_constraints(f_q, H)
     g_q = -f_q
+
+    # Remove incredibly small values. This primarly helps makes tests more consistent.
+    # eigensolvers give consistent eigenvectors.
+    g_q[np.abs(g_q) < np.finfo(float).resolution] = 0
+    H[np.abs(H) < np.finfo(float).resolution] = 0
+
     if H.size:
         logger.info(print_mat_string(H, title="Hessian matrix"))
+
     return H, g_q, g_x, computer.energies[-1]
 
 

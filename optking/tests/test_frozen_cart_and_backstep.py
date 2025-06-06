@@ -40,7 +40,7 @@ optking__freeze_params = [
     (opt1, HOOH_E_frozen_H_xyz, 13),
     (opt2, HOOH_E_frozen_O_xyz, 13),
     (opt3, HOOH_E_frozen_H_xyz, 13),
-    (opt4, HOOH_E_frozen_H_xyz, 13),
+    (opt4, HOOH_E_frozen_H_xyz, 7),
 ]
 
 

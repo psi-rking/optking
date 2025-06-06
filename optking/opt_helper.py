@@ -114,7 +114,7 @@ class Helper(ABC):
     def to_dict(self):
         d = {
             "step_num": self.step_num,
-            "params": self.params.model_dump(by_alias=True),
+            "params": self.params.to_dict(),
             "molsys": self.molsys.to_dict(),
             "history": self.history.to_dict(),
             "computer": self.computer.__dict__,
@@ -130,8 +130,12 @@ class Helper(ABC):
         # creates the initial configuration of the OptHelper. Some options might
         # have changed over the course of the optimization (eg trust radius)
 
-        helper = cls(d.get("opt_input"), params=d.get("params"), silent=True)
+        helper = cls(d.get("opt_input"), params={}, silent=True)
 
+        # We need to make sure that the new params EXACTLY matches what was exported.
+        # No validation should occur after export as validation will interpret each exported
+        # options as having been set explicitly by the user.
+        helper.params = op.OptParams.from_internal_dict(d.get("params"))
         op.Params = helper.params
         # update with current information
         helper.molsys = molsys.Molsys.from_dict(d.get("molsys"))
@@ -410,8 +414,12 @@ class CustomHelper(Helper):
 
     @classmethod
     def from_dict(cls, d):
-        helper = cls(d.get("opt_input"), params=d.get("params"), silent=True)
+        helper = cls(d.get("opt_input"), params={}, silent=True)
 
+        # We need to make sure that the new params EXACTLY matches what was exported.
+        # No validation should occur after export as validation will interpret each exported
+        # options as having been set explicitly by the user.
+        helper.params = op.OptParams.from_internal_dict(d.get("params"))
         op.Params = helper.params
         # update with current information
         helper.molsys = molsys.Molsys.from_dict(d.get("molsys"))
@@ -615,8 +623,13 @@ class EngineHelper(Helper):
 
     @classmethod
     def from_dict(cls, d):
-        helper = cls(d.get("opt_input"), params=d.get("params"), silent=True)
 
+        helper = cls(d.get("opt_input"), params={}, silent=True)
+
+        # We need to make sure that the new params EXACTLY matches what was exported.
+        # No validation should occur after export as validation will interpret each exported
+        # options as having been set explicitly by the user.
+        helper.params = op.OptParams.from_internal_dict(d.get("params"))
         op.Params = helper.params
         # update with current information
         helper.molsys = molsys.Molsys.from_dict(d.get("molsys"))
