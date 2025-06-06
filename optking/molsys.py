@@ -1,6 +1,6 @@
 import logging
 from itertools import combinations, permutations
-from typing import List
+from typing import List, Tuple
 
 import numpy as np
 import qcelemental as qcel
@@ -53,8 +53,11 @@ class Molsys(object):
             s += str(dimer)
         return s
 
+    # The following methods use the old workaround for using annotations for classes from modules
+    # that have not been fully initialized by the python interpreter. Python 3.14 introduces
+    # better annotation support, this should work just fine for now.
     @classmethod
-    def from_schema(cls, qc_molecule):
+    def from_schema(cls, qc_molecule: dict) -> 'Molsys':
         """Creates optking molecular system from JSON input.
 
         Parameters
@@ -89,24 +92,26 @@ class Molsys(object):
         return cls(frags)
 
     @staticmethod
-    def from_psi4(mol):
+    def from_psi4(mol) -> Tuple['Molsys', dict]:
         """Creates a optking molecular system from psi4 mol. Note that not all information
         is preserved.
         Parameters
         ----------
-        mol: object
+        mol: (psi4.core.Molecule, psi4.qcdb.Molecule)
             psi4 mol
         Returns
         -------
-        cls :
+        Molsys:
             optking molecular system: list of fragments
+        dict:
+            qcschema representation of molecule.
         """
 
         import psi4
 
         logger.debug("\tConverting psi4 molecular system to schema")
 
-        if not isinstance(mol, psi4.core.Molecule):
+        if not isinstance(mol, (psi4.core.Molecule, psi4.qcdb.Molecule)):
             logger.critical("from_psi4 cannot handle a non psi4 molecule")
             raise OptError("Cannot make molecular system from this molecule")
 
@@ -115,7 +120,7 @@ class Molsys(object):
         opt_mol = Molsys.from_schema(qc_mol)
         return opt_mol, qc_mol
 
-    def to_schema(self):
+    def to_schema(self) -> qcel.models.Molecule:
         mol_dict = {
             "symbols": self.atom_symbols,
             "geometry": self.geom.flat,
@@ -134,7 +139,7 @@ class Molsys(object):
         return d
 
     @classmethod
-    def from_dict(cls, d):
+    def from_dict(cls, d) -> 'Molsys':
         if "fragments" not in d:
             raise OptError("'fragments' key missing from input dict")
         frags = [frag.Frag.from_dict(F) for F in d["fragments"]]
@@ -343,7 +348,12 @@ class Molsys(object):
 
     def constraint_matrix(self, fq):
         """Returns constraint matrix with 1 on diagonal for frozen coordinates.
-        Tis method used to check for forces being passed in but wasn't being used. Forces now need to be passed in
+        This method used to check for forces being passed in but wasn't being used. Forces now need to be passed in
+
+        Parameters
+        ----------
+        fq: np.ndarray forces
+
         """
         frozen = self.frozen_intco_list
 

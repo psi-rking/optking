@@ -25,6 +25,8 @@ class ComputeWrapper:
     def __init__(self, molecule, model, keywords, program):
 
         self.molecule = molecule
+        # ensure molecule orientation does not differ from optking regardless of how mol was created
+        self.molecule.update({'fix_com': True, 'fix_orientation': True})
         self.model = model
         self.keywords = keywords
         self.program = program
