@@ -9,7 +9,7 @@ import logging
 import json
 import pathlib
 from abc import ABC, abstractmethod
-from typing import Union
+from typing import Union, Tuple
 
 import numpy as np
 from optking.IRCfollowing import IntrinsicReactionCoordinate
@@ -25,7 +25,6 @@ from .optimize import (
     prepare_opt_output,
     OptimizationManager,
 )
-from .misc import import_psi4
 from .printTools import print_geom_grad, welcome
 from . import log_name
 from . import op
@@ -401,35 +400,18 @@ class CustomHelper(Helper):
 
         """
 
-        opt_input = {
-            "initial_molecule": {"symbols": [], "geometry": []},
-            "input_specification": {"keywords": {}, "model": {}},
-        }
-        self.computer = optwrapper.make_computer(opt_input, "user")
+        self.computer = optwrapper.make_computer(OPT_INPUT_TEMPLATE, "user")
         super().__init__(params, **kwargs)
 
-        if isinstance(mol_src, qcel.models.Molecule):
-            self.opt_input = mol_src.dict()
-            self.molsys = molsys.Molsys.from_schema(self.opt_input)
-        elif isinstance(mol_src, dict):
-            tmp = qcel.models.Molecule(**mol_src).dict()
-            self.opt_input = json.loads(qcel.util.serialization.json_dumps(tmp))
-            self.molsys = molsys.Molsys.from_schema(self.opt_input)
+        if isinstance(mol_src, (qcel.models.basemodels.ProtoModel, dict)):
+            # from_dict will call from_schema as neeeded
+            self.opt_input = from_dict(mol_src)
+            self.molsys = molsys.Molsys.from_schema(self.opt_input["initial_molecule"])
         else:
-            import_psi4("Attempting to create molsys from psi4 molecule")
-            import psi4
+            # If Psi4 molecule doesn't work as a backup error out
+            self.molsys, self.opt_input = from_psi4(mol_src)
 
-            if isinstance(mol_src, (psi4.qcdb.Molecule, psi4.core.Molecule)):
-                self.molsys, self.opt_input = molsys.Molsys.from_psi4(mol_src)
-            else:
-                try:
-                    self.molsys, self.opt_input = molsys.Molsys.from_psi4(
-                        psi4.core.get_active_molecule()
-                    )
-                except Exception as error:
-                    raise OptError("Failed to grab psi4 molecule as last resort") from error
-
-        self.computer.molecule = self.opt_input
+        self.computer.molecule = self.opt_input["initial_molecule"]
         self.build_coordinates()
         self.opt_manager = OptimizationManager(
             self.molsys, self.history, self.params, self.computer
@@ -464,6 +446,7 @@ class CustomHelper(Helper):
         if self.HX is None:
             if "hessian" in self.calculations_needed():
                 if self.params.cart_hess_read:
+                    logger.debug("Reading hessian from file")
                     self.HX = hessian.from_file(self.params.hessian_file)  # set ourselves if file
                     _ = self.computer.compute(self.geom, driver="hessian")
                     self.gX = self.computer.external_gradient
@@ -501,6 +484,7 @@ class CustomHelper(Helper):
                     self.fq, self._Hq
                 )
         else:
+            logger.debug("Reading hessian from user")
             result = self.computer.compute(self.geom, driver="hessian")
             self.HX = self.computer.external_hessian
             self.gX = self.computer.external_gradient
@@ -625,12 +609,9 @@ class EngineHelper(Helper):
         optimization_input: Union[qcelemental.procedures.OptimizationInput, dict]
 
         """
-        if isinstance(optimization_input, qcel.models.OptimizationInput):
-            self.opt_input = optimization_input.dict()
-        elif isinstance(optimization_input, dict):
-            tmp = qcel.models.OptimizationInput(**optimization_input).dict()
-            self.opt_input = json.loads(qcel.util.serialization.json_dumps(tmp))
-        # self.calc_name = self.opt_input['input_specification']['model']['method']
+
+        # Just call from_dict for brevity. If schema, will be cast to dict
+        self.opt_input = from_dict(optimization_input)
 
         super().__init__(self.opt_input["keywords"], **kwargs)
         self.molsys = molsys.Molsys.from_schema(self.opt_input["initial_molecule"])
@@ -683,3 +664,125 @@ class EngineHelper(Helper):
         # set E, g_x, and hessian to have their last values
         # set step_number
         # set self.history to match history.
+
+
+MODEL_TYPES = {
+    "qcschema_optimization_input": qcel.models.OptimizationInput,
+    "qcschema_molecule": qcel.models.Molecule,
+}
+
+OPT_INPUT_TEMPLATE = {
+    "initial_molecule": {},
+    "input_specification": {"model": {"method": "", "basis": ""}, "keywords": {}},
+}
+
+
+def from_schema(input_obj: Union[qcel.models.Molecule, qcel.models.OptimizationInput]):
+    """Initialize opt_helper's molecule from QCSchema Input"""
+    if isinstance(input_obj, qcel.models.Molecule):
+        return from_dict(input_obj.dict(), type="qcschema_molecule")
+    elif isinstance(input_obj, qcel.models.OptimizationInput):
+        return from_dict(input_obj.dict(), type="qcschema_optimization_input")
+    elif isinstance(input_obj, dict):
+        # Be nice and attempt to run dictionary through from_dict checks
+        return from_dict(input_obj, type="")
+    else:
+        raise ValueError(
+            "Provided a qcschema of unsupported type. Should be `Molecule` or `OptimizationInput`"
+        )
+
+
+def from_dict(input_obj: dict, type="") -> dict:
+    """Attempt to create a dictionary with required elements of an OptimizationInput from user
+    input. User is not required to specify a full OptimizationInput. Used by OptHelper classes
+    If input is of wrong type, will attempt to identify type of input and create schema.
+
+    Parameters
+    ----------
+    input_obj: dict
+        A dictionary formatted according to either `qcel.models.Molecule` or
+        `qcel.models.OptimizationInput`
+    type: str (optional)
+        A hint at which type of schema is being provided. Corresponds to 'schema_name' field.
+
+    Returns
+    -------
+    opt_input: dict
+        An OptimizationInput with at least an `initial_molecule`. `input_specification` may be
+        empty. This is not an issue for CustomHelper where no input_spec is needed.
+    """
+
+    # I have done my best to account for a user providing any form of acceptable schema-like input
+    def check_name_and_validate(name, input_obj):
+        """Can raise a ValidationError if input_obj is incorrectly formatted"""
+        if input_obj.get("schema_name") != name or not input_obj.get("validated"):
+            return MODEL_TYPES[name](**input_obj).dict()
+        return input_obj
+
+    if not isinstance(input_obj, dict):
+        if isinstance(input_obj, qcel.models.basemodels.ProtoModel):
+            return from_schema(input_obj)
+        else:
+            raise RuntimeError(
+                "Attempted to initialize helper from dictionary input, but `input_obj` was not a"
+                "dictionary or a qcschema"
+            )
+
+    opt_input = OPT_INPUT_TEMPLATE.copy()
+
+    if not type:
+        if "schema_name" in input_obj.keys():
+            # use to determine type
+            if input_obj.get("schema_name") == "qcschema_molecule":
+                type = "molecule"
+            elif input_obj.get("schema_name") == "qcschema_optimization_input":
+                type = "optimization"
+
+        if "geometry" in input_obj.keys():
+            type = "molecule"
+        if "initial_molecule" in input_obj.keys():
+            type = "optimization"
+
+        if not type:
+            raise RuntimeError(
+                "Dictionary input does not appear to be either a Molecule or OptimizationInput"
+            )
+
+    if "molecule" in type:
+        input_obj = check_name_and_validate("qcschema_molecule", input_obj)
+        opt_input.update({"initial_molecule": input_obj})
+    elif "optimization" in type:
+        input_obj = check_name_and_validate("qcschema_optimization_input", input_obj)
+        opt_input = input_obj
+    else:
+        raise RuntimeError(
+            f"Unrecognized type: {type}. If you have manually set a type, must use either"
+            "`qcschema_optimization_input` or `qcschema_molecule`"
+        )
+    return opt_input
+
+
+def from_psi4(mol_src) -> Tuple[molsys.Molsys, dict]:
+    try:
+        import psi4
+    except ImportError:
+        logger.error(
+            "Could not import Psi4. Please install psi4 or check that PYTHONPATH is configured"
+        )
+        raise
+
+    if isinstance(mol_src, (psi4.qcdb.Molecule, psi4.core.Molecule)):
+        opt_mol, qc_mol = molsys.Molsys.from_psi4(mol_src)
+    else:
+        logger.warning(
+            "The user provided molecule is not a psi4.core.Molecule or psi4.qcdb.Molecule"
+        )
+        logger.warning("Checking for an active psi4 molecule")
+        try:
+            opt_mol, qc_mol = molsys.Molsys.from_psi4(psi4.core.get_active_molecule())
+        except Exception as error:
+            raise OptError("Failed to grab psi4 molecule as last resort") from error
+
+    opt_input = OPT_INPUT_TEMPLATE.copy()
+    opt_input.update({"initial_molecule": qc_mol})
+    return opt_mol, opt_input

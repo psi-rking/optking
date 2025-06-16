@@ -336,7 +336,7 @@ def write_irc_xyz_trajectory(optimization_output, filename=""):
     rxn_path = optimization_output["extras"]["irc_rxn_path"]
     geometries = [step["x"] for step in rxn_path]
     comments = (
-        f"IRC trajectory step: {step['step_number']}. E: {step["energy"]}" for step in rxn_path
+        f"IRC trajectory step: {step['step_number']}. E: {step['energy']}" for step in rxn_path
     )
     symbols = optimization_output["final_molecule"]["symbols"]
     mol_strs = (
@@ -358,7 +358,7 @@ def write_opt_xyz_trajectory(optimization_output, filename=""):
     trajectory = optimization_output["extras"]["trajectory"]
     geometries = [step["geometry"] for step in trajectory]
     comments = (
-        f"Optimization step: {step['step_number']}. E: {step["energy"]}" for step in trajectory
+        f"Optimization step: {step['step_number']}. E: {step['energy']}" for step in trajectory
     )
     symbols = optimization_output["final_molecule"]["symbols"]
     mol_strs = (

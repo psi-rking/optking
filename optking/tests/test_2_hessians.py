@@ -19,7 +19,7 @@ hess_guess = [
 ]
 hess_update = [("MS", final_energy, 10), ("powell", final_energy, 11), ("bofill", final_energy, 10)]
 
-logger = optking.logger
+# logger = optking.logger
 
 
 @pytest.mark.parametrize(

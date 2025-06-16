@@ -348,6 +348,7 @@ def add_tors_from_connectivity(C, intcos, geom):
                                                         geom[J],
                                                         geom[K],
                                                         geom[L],
+                                                        indices=[I, J, K, L]
                                                     )
                                                 except AlgError:
                                                     pass

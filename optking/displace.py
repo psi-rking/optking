@@ -558,7 +558,8 @@ def adjust_unmet_constraints(frag, constrained_intcos, constrained_dq, geom, **k
     """ Perform additional backtransformation to correct for constrained coordinates that
     do not meet the constraint """
 
-    if any(constrained_intcos):
+    if not any(constrained_intcos):
+        logger.debug("\tAll constraints met. No additional adjustments needed.")
         return True  # No unmet constrained so all frozen coordinates are converged
 
     # For stability try scaling the adjustment if its quite long.
@@ -568,8 +569,6 @@ def adjust_unmet_constraints(frag, constrained_intcos, constrained_dq, geom, **k
         constrained_dq *= scale
 
     frozen_msg = "\tAdditional back-transformation to adjust frozen/ranged coordinates: "
-
-    breakpoint()
 
     # suppress printing for the next stage
     kwargs.update({"print_lvl": kwargs.get("print_lvl", 1) - 1})

@@ -840,7 +840,7 @@ class DimerFrag(object):
             erot = v3d.eAB(ref_B[0], ref_B[1])  # B1 -> B2 is rotation axis
 
             # Calculate B3-B1-B2-B3' torsion angle
-            B_angle = v3d.tors(ref_B[2], ref_B[0], ref_B[1], ref_B_final[2])
+            B_angle = v3d.tors(ref_B[2], ref_B[0], ref_B[1], ref_B_final[2], indices=[2, 0, 1, 2])
 
             if fabs(B_angle) > 1.0e-10:
                 # Move B to put B2 at origin

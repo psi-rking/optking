@@ -621,7 +621,7 @@ def get_pes_info(
 
     if hessian_protocol == "update":
         # For update. Compute new gradient. Update with external forces if present. Update the hessian
-        logger.info(f"Updating Hessian with {str(params.hess_update)}")
+        logger.debug(f"Updating Hessian with {str(params.hess_update)}")
         result = computer.compute(o_molsys.geom, driver=driver, return_full=False)
         g_x = np.asarray(result) if driver == "gradient" else None
         f_q = o_molsys.gradient_to_internals(g_x, -1.0)
@@ -629,17 +629,18 @@ def get_pes_info(
         H = opt_history.hessian_update(H, f_q, o_molsys)
     else:
         if hessian_protocol == "compute" and not params.cart_hess_read:
+            logger.debug("Computing Hessian")
             H, g_x = get_hess_grad(computer, o_molsys)  # get gradient from hessian
 
         elif hessian_protocol in ["guess", "unneeded"]:
             # guess hessian compute gradient
-            logger.info(f"Guessing Hessian with {str(params.intrafrag_hess)}")
+            logger.debug(f"Guessing Hessian with {str(params.intrafrag_hess)}")
             H = hessian.guess(o_molsys, guessType=params.intrafrag_hess)
             result = computer.compute(o_molsys.geom, driver=driver, return_full=False)
             g_x = np.asarray(result) if driver == "gradient" else None
         elif params.cart_hess_read:
             # read hessian from file. calculate gradient. Update params to not read from disk again
-            logger.info("Reading hessian from file")
+            logger.debug("Reading hessian from file")
             result = computer.compute(o_molsys.geom, driver=driver, return_full=False)
             g_x = np.asarray(result) if driver == "gradient" else None
             Hx = hessian.from_file(params.hessian_file)

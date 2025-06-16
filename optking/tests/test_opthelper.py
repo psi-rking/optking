@@ -196,11 +196,10 @@ def test_hooh_irc(check_iter):
     params = {
         "g_convergence": "gau_verytight",
         "opt_type": "irc",
-        "geom_maxiter": 60,
         "irc_direction": "FORWARD",
         "irc_step_size": 1.0,
-        "hess_update": "BOFILL",
         "cart_hess_read": True,
+        "irc_points": 5,
     }
 
     psi4.set_options(psi4_options)

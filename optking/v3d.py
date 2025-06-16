@@ -274,6 +274,7 @@ def linear_torsion_check(phi_123, phi_234, phi_lim, indices):
             f"Interior angle of {val:5.1f} for bend B({indices[1:]}) can't work in good torsion"
         )
         bad_bends.append(phi_234)
+        a, b, c = indices[1:]
         linear_bends.append(indices[1:])
         # Just add all combinations to be safe (avoids checking connectivity)
         old_bends.append([a, b, c])

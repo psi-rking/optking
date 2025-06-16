@@ -1,6 +1,7 @@
 import logging
 import os
 import copy
+from typing import List
 
 import numpy as np
 
@@ -97,31 +98,34 @@ class IRCHistory(object):
     """Stores obtained points along the IRC as well as information about
     the status of the IRC computation"""
 
-    __step_size = 0.0
-    __direction = None
-    __running_step_dist = 0.0
-    __running_arc_dist = 0.0
-    __running_line_dist = 0.0
+    _step_size = 0.0
+    _direction = None
+    _running_step_dist = 0.0
+    _running_arc_dist = 0.0
+    _running_line_dist = 0.0
 
     def __init__(self):
         self.go = True
-        self.irc_points: [IRCpoint] = []
+        self.irc_points: List[IRCpoint] = []
         self.atom_symbols = None
 
     def set_atom_symbols(self, atom_symbols):  # just for printing
         self.atom_symbols = atom_symbols.copy()  # just for printing
 
     def set_step_size_and_direction(self, step_size, direction):
-        self.__step_size = step_size
-        self.__direction = direction
+        self._step_size = step_size
+        self._direction = direction
 
     def to_dict(self):
         d = {
             "irc_points": [point.to_dict() for point in self.irc_points],
             "go": self.go,
             "atom_symbols": self.atom_symbols,
-            "direction": self.__direction,
-            "step_size": self.__step_size,
+            "direction": self._direction,
+            "step_size": self._step_size,
+            "running_step_dist": self._running_step_dist,
+            "running_arc_dist": self._running_arc_dist,
+            "running_line_dist": self._running_line_dist,
         }
         return d
 
@@ -131,27 +135,30 @@ class IRCHistory(object):
         irc_history.irc_points = [IRCpoint.from_dict(point) for point in d["irc_points"]]
         irc_history.go = d["go"]
         irc_history.atom_symbols = d["atom_symbols"]
-        irc_history.__direction = d["direction"]
-        irc_history.__step_size = d["step_size"]
+        irc_history._direction = d["direction"]
+        irc_history._step_size = d["step_size"]
+        irc_history._running_step_dist = d["running_step_dist"]
+        irc_history._running_arc_dist = d["running_arc_dist"]
+        irc_history._running_line_dist = d["running_line_dist"]
         return irc_history
 
     def add_irc_point(self, step_number, q_in, x_in, f_q, f_x, E, lineDistStep=0, arcDistStep=0):
         if len(self.irc_points) != 0:
-            if self.__direction == "FORWARD":
+            if self._direction == "FORWARD":
                 sign = 1
-            elif self.__direction == "BACKWARD":
+            elif self._direction == "BACKWARD":
                 sign = -1
                 step_number *= -1
             else:
                 raise OptError("IRC direction must be set to FORWARD or BACKWARD")
             # step_dist = sum of all steps to and from pivot points, a multiple of
             # the step_size
-            self.__running_step_dist += sign * self.__step_size
+            self._running_step_dist += sign * self._step_size
             # line distance is sum of all steps directly between rxnpath points, ignoring
             # pivot points
-            self.__running_line_dist += sign * lineDistStep
+            self._running_line_dist += sign * lineDistStep
             # distance along a circular arc connecting rxnpath points
-            self.__running_arc_dist += sign * arcDistStep
+            self._running_arc_dist += sign * arcDistStep
 
         onepoint = IRCpoint(
             step_number,
@@ -162,9 +169,9 @@ class IRCHistory(object):
             E,
             None,
             None,
-            self.__running_step_dist,
-            self.__running_arc_dist,
-            self.__running_line_dist,
+            self._running_step_dist,
+            self._running_arc_dist,
+            self._running_line_dist,
         )
         self.irc_points.append(onepoint)
 
@@ -188,7 +195,7 @@ class IRCHistory(object):
 
     @property
     def step_size(self):
-        return self.__step_size
+        return self._step_size
 
     def current_step_number(self):
         return len(self.irc_points)
