@@ -55,7 +55,7 @@ class InterfragCoords(BaseModel):
 class OptParams(BaseModel):
     model_config = ConfigDict(
         alias_generator=lambda field_name: field_name.upper(),
-        extra="forbid",
+        # extra="forbid",
         str_to_upper=True,
         # regexes need to use IGNORECASE flag since inputs won't be standardized until after
         # validation
@@ -159,7 +159,7 @@ class OptParams(BaseModel):
 
     # Reduce step size as necessary to ensure convergence of back-transformation of
     # internal coordinate step to cartesian coordinates.
-    ensure_bt_convergence: float = False
+    ensure_bt_convergence: bool = False
 
     # Do simple, linear scaling of internal coordinates to step limit (not RS-RFO)
     simple_step_scaling: bool = False
