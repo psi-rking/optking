@@ -360,8 +360,10 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
                     action = "guess"
             else:
                 # IRC
-                if self.opt_method.sub_step_num == 0:
+                if self.opt_method.sub_step_number == 0:
                     action = "compute"
+                else:
+                    action = "update"
         else:
             if self.params.full_hess_every < 1:
                 action = "update"
