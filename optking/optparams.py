@@ -678,6 +678,7 @@ class OptParams(BaseModel):
         for attr in self.model_dump():
             if isinstance(self.__getattribute__(attr), str):
                 self.__setattr__(attr, self.__getattribute__(attr).upper())
+        return self
 
     @classmethod
     def from_internal_dict(cls, params):
