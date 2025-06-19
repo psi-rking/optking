@@ -212,7 +212,8 @@ def test_hooh_irc(check_iter):
         opt = optking.CustomHelper.from_dict(optSaved)
 
         if i == 0:
-            H = optking.hessian.from_file(pathlib.Path("./test_data/hooh_irc.hess"))
+            test_dir = pathlib.Path(f"{__file__}").parent
+            H = optking.hessian.from_file(pathlib.Path(f"{test_dir}/test_data/hooh_irc.hess"))
             opt.HX = H
 
         grad, wfn = psi4.gradient("hf", return_wfn=True)

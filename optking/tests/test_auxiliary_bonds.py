@@ -10,6 +10,7 @@
 # B3LYP/6-31+G* 10 ->  9   B3LYP/6-31+G* 12 -> 11   B3LYP/6-31+G* 14 -> 14
 # TODO: explore FISCHER Hessian guess alongside auxiliary bonds performance
 
+import pathlib
 import psi4
 import optking
 import pytest
@@ -148,7 +149,8 @@ def test_aux_opt(check_iter):
                 "cart_hess_read": True,
     })
 
-    result = optking.optimize_psi4("HF", **{"hessian_file": "./test_data/C4H9NO2.hess"})
+    test_dir = pathlib.Path(__file__).parent
+    result = optking.optimize_psi4("HF", **{"hessian_file": f"{test_dir}/test_data/C4H9NO2.hess"})
     utils.compare_iterations(result, 8, check_iter)
     E = result["energies"][-1]
     assert psi4.compare_values(HF_E["ACHTAR10"], E, 5, "HF energy")
