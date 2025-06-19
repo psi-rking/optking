@@ -1,4 +1,5 @@
 #  IRC for HOOH from cis confirmation.
+import pathlib
 import psi4
 import optking
 import json
@@ -6,6 +7,8 @@ from .utils import utils
 
 psi4.set_memory("2 GB")
 
+# ... optking/optking/tests/
+test_dir = pathlib.Path(__file__).parent
 
 def test_hooh_irc(check_iter):
     energy_5th_IRC_pt = -150.812913276783  # TEST
@@ -32,7 +35,7 @@ def test_hooh_irc(check_iter):
     }
 
     psi4.set_options(psi4_options)
-    json_output = optking.optimize_psi4("hf", **{"hessian_file": "./test_data/hooh_irc.hess"})
+    json_output = optking.optimize_psi4("hf", **{"hessian_file": f"{test_dir}/test_data/hooh_irc.hess"})
     IRC = json_output["extras"]["irc_rxn_path"]
 
     print("%15s%15s%20s%15s" % ("Step Number", "Arc Distance", "Energy", "HOOH dihedral"))
@@ -67,7 +70,7 @@ def test_hooh_irc_quick(check_iter):
     }
 
     psi4.set_options(psi4_options)
-    json_output = optking.optimize_psi4("hf", **{"hessian_file": "./test_data/hooh_irc.hess"})
+    json_output = optking.optimize_psi4("hf", **{"hessian_file": f"{test_dir}/test_data/hooh_irc.hess"})
     IRC = json_output["extras"]["irc_rxn_path"]
 
     # Does not match perfectly; however, the true "arc distance" is slightly different between the
