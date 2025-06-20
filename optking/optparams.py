@@ -55,6 +55,7 @@ class InterfragCoords(BaseModel):
 class OptParams(BaseModel):
     model_config = ConfigDict(
         alias_generator=lambda field_name: field_name.upper(),
+        # validate_assignment=True,
         # extra="forbid",
         str_to_upper=True,
         # regexes need to use IGNORECASE flag since inputs won't be standardized until after
@@ -62,77 +63,162 @@ class OptParams(BaseModel):
     )
 
     # SUBSECTION Optimization Algorithm
+    # NOTE Internal (in some cases legacy documentation) goes above fields as a commend.
+    # User documentation goes below as a string
+
     # Maximum number of geometry optimization steps
     geom_maxiter: int = Field(gt=0, default=50)
+    """The maximum number of geometry optimization steps allowed - this is effectively
+    the maximum number of gradients that Optking is allowed to calculate."""
+
     # If user sets one, assume this.
     alg_geom_maxiter: int = Field(gt=0, default=50)
+
     # Print level.  1 = normal
     print_lvl: int = Field(ge=1, le=5, default=1, alias="PRINT")
+    """An integer between 1 (least printing) and 5 (most printing). This has been largely, but not
+    entirely, replaced by using the logging modules `DEBUG` and `INFO` levels.
+    Consider changing the logging handler in the `loggingconfig.py` or if using a program like
+    as Psi4 change the logging level from the command line. `psi4 --loglevel=10...`"""
+
     # Print all optimization parameters.
     printxopt_params: bool = False
     # output_type: str = Field(pattern=r"FILE|STDOUT|NULL", default="FILE")
 
     # Specifies minimum search, transition-state search, or IRC following
     opt_type: str = Field(pattern=re.compile(r"MIN|TS|IRC", flags=re.IGNORECASE), default="MIN")
+    """One of `["MIN", "TS", or "IRC"]`. `OPT_TYPE` will be changed if `OPT_TYPE` is not provided, but
+	`STEP_TYPE` is provided, and the two are inconsistent. If both are provided but are
+	inconsistent, an error will be raised.
+
+    +--------------------------------------------------------------+
+    | Allowed `opt_type` and `step_type` values                    |
+    +============+=================================================+
+    | `opt_type` | compatible `step_type`                          |
+    +------------+--------------+----+----+------------+-----------+
+    | MIN        | **RFO**      | NR | SD | LINESEARCH | Conjugate |
+    +------------+--------------+----+----+------------+-----------+
+    | TS         | **RS_I_RFO** | P_RFO                            |
+    +------------+--------------+----------------------------------+
+    | IRC        | N/A                                             |
+    +------------+-------------------------------------------------+
+
+    """
 
     # Geometry optimization step type, e.g., Newton-Raphson or Rational Function Optimization
     step_type: str = Field(
         pattern=re.compile(r"RFO|RS_I_RFO|P_RFO|NR|SD|LINESEARCH|CONJUGATE", flags=re.IGNORECASE),
         default="RFO",
     )
+    """One of `["RFO", "RS_I_RFO", "P_RFO", "NR", "SD", "LINESEARCH", "CONJUGATE"]`. If `OPT_TYPE`
+    is set to `TS` and `STEP_TYPE` is not specified. `STEP_TYPE` will be set to `RS_I_RFO`."""
 
     # What program to use for evaluating gradients and energies
     program: str = Field(default="psi4")
+    """What program to use for running gradient and energy calculations through qcengine."""
 
     # variation of steepest descent step size
     steepest_descent_type: str = Field(
         pattern=re.compile(r"OVERLAP|BARZILAI_BORWEIN", flags=re.IGNORECASE), default="OVERLAP"
     )
+    """One of "OVERLAP", or "BARZILAI_BORWEIN". Change how the `SD` is calculated (scaled)"""
 
-    # Conjugate gradient step types. See wikipedia on Nonlinear_conjugate_gradient
+    # Conjugate gradient step types. See Wikipedia on Nonlinear_conjugate_gradient
     # "POLAK" for Polak-Ribiere. Polak, E.; Ribière, G. (1969).
     # Revue Française d'Automatique, Informatique, Recherche Opérationnelle. 3 (1): 35–43.
     # "FLETCHER" for Fletcher-Reeves.  Fletcher, R.; Reeves, C. M. (1964).
     conjugate_gradient_type: str = Field(
         pattern=re.compile(r"FLETCHER|DESCENT|POLAK", flags=re.IGNORECASE), default="FLETCHER"
     )
+    """One of "POLAK", "FLETCHER", or "DESCENT". Change how the step direction is calculated."""
+
     # Geometry optimization coordinates to use.
     # REDUNDANT and INTERNAL are synonyms and the default.
     # DELOCALIZED are the coordinates of Baker.
     # NATURAL are the coordinates of Pulay.
-    # CARTESIAN uses only cartesian coordinates.
-    # BOTH uses both redundant and cartesian coordinates.
+    # CARTESIAN uses only Cartesian coordinates.
+    # BOTH uses both redundant and Cartesian coordinates.
     opt_coordinates: str = Field(
         pattern=re.compile(
             r"REDUNDANT|INTERNAL|DELOCALIZED|NATURAL|CARTESIAN|BOTH", flags=re.IGNORECASE
         ),
         default="INTERNAL",
     )
+    """One of `["REDUNDANT", "INTERNAL", "CARTESIAN", "BOTH"]`. `"INTERNAL"` is just a synonym for
+    `"REDUNDANT"`. `"BOTH"` utilizes a full set of redundant internal coordinates (3N - 6+) +
+    Cartesian (3N) = (6N - 6+) coordinates."""
 
     # Do follow the initial RFO vector after the first step?
     rfo_follow_root: bool = False
+    """Whether or not to optimize along the previously chosen mode of the augmented hessian matrix"""
+
     # Root for RFO to follow, 0 being lowest (typical for a minimum)
     rfo_root: int = Field(ge=0, default=0)
+    """root for `RFO` or `RS_I_RFO` to follow. Changing rfo_root for a `TS` may lead to a
+    higher-order stationary point."""
+
     # Whether to accept geometry steps that lower the molecular point group. DEFAULT=False
     accept_symmetry_breaking: bool = False
+    """Whether to accept geometry steps that lower the molecular point group. Note - as of 0.3.0,
+    this is only effective when running through Psi4"""
 
     # TODO This needs a validator to check the allowed values as well as set dynamic_lvl_max depending
     # upon dynamic_lvl
     # Starting level for dynamic optimization (0=nondynamic, higher=>more conservative)
     # `dynamic_lvl=0 prevents changes to algorithm`
     dynamic_level: int = Field(ge=0, le=6, default=0, alias="DYNAMIC_LVL")
-    dynamic_lvl_max: int = Field(ge=0, le=6, default=0)
+    """An integer between 0 and 6. Larger values reflect less aggressive optimization techniques
+    If dynamic_lvl is not set, `Optking` will not change the `dynamic_lvl`. The dynamic_lvl
+    must be > 0 for alternative approaches to be tried.
+    A backstep will be triggered (if allowed) by DE > 0 in minimization
+    A step is considered "bad"
+        * if DE > 0, no more backsteps are allowed
+        * and iterations > 5
+        * or there are badly defined internal coordinates or derivatives.
+    Default = 0
+    +-----------+------+-------+------------+--------------+-------------------------------+
+    | dynamic   | step | coord | trust      | backsteps    | criteria to change dynamic_lvl|
+    +-----------+------+-------+------------+--------------+----------------+--------------+
+    | run_level |      |       |            |              | decrease       |  increase    |
+    +-----------+------+-------+------------+--------------+----------------+--------------+
+    |   0       | RFO  | RI    | dynamic    | no           |     none       | none         |
+    +-----------+------+-------+------------+--------------+----------------+--------------+
+    |   1       | RFO  | RI    | dynamic(d) | no           |     1 bad step | none         |
+    +-----------+------+-------+------------+--------------+----------------+--------------+
+    |   2       | RFO  | RI    | smaller    | yes (1)      |     1 bad step | none         |
+    +-----------+------+-------+------------+--------------+----------------+--------------+
+    |   3       | RFO  | BOTH  | small      | yes (1)      |     1 bad step | none         |
+    +-----------+------+-------+------------+--------------+----------------+--------------+
+    |   4       | RFO  | XYZ   | large      | yes (1)      |     1 bad step | none         |
+    +-----------+------+-------+------------+--------------+----------------+--------------+
+    |   5       | RFO  | XYZ   | small      | yes (1)      |     1 bad step | none         |
+    +-----------+------+-------+------------+--------------+----------------+--------------+
+    |   6       | SD   | XYZ   | large      | yes (1)      |     1 bad step | none         |
+    +-----------+------+-------+------------+--------------+----------------+--------------+
+    |   7       | SD   | XYZ   | small      | yes (1)      |     1 bad step | none         |
+    +-----------+------+-------+------------+--------------+----------------+--------------+
+    """
 
-    # IRC step size in bohr(amu)\ $^{1/2}$.
+    dynamic_lvl_max: int = Field(ge=0, le=6, default=0)
+    """How large `dynamic_lvl` is allowed to grow. If `dynamic_lvl` $> 0$, `dynamic_lvl`
+    will default to 6"""
+
+    # IRC step size in bohr(amu)^{1/2}$.
     irc_step_size: float = Field(gt=0.0, default=0.2)
+    """Specifies the distance between each converged point along the IRC reaction path in $bohr amu^{1/2}$"""
 
     # IRC mapping direction
     irc_direction: str = Field(
         pattern=re.compile("FORWARD|BACKWARD", flags=re.IGNORECASE), default="FORWARD"
     )
+    """One of "forward" or "backward". Whether to step in the forward (+) direction along
+    the transition state mode (smallest mode of hessian) or backward (-)"""
 
     # Decide when to stop IRC calculations
     irc_points: int = Field(gt=0, default=20)
+    """Maximum number of converged points along the IRC path to map out before quitting.
+    For dissociation reactions, where the reaction path may not terminate in
+    a minimum, this is needed to cap the number of step's Optking is allowed to take"""
 
     # ------------- SUBSECTION ----------------
     # trust radius - need to write custom validator to check for sane combination
@@ -141,80 +227,175 @@ class OptParams(BaseModel):
 
     # Initial maximum step size in bohr or radian along an internal coordinate
     intrafrag_trust: float = Field(gt=0.0, default=0.5, alias="INTRAFRAG_STEP_LIMIT")
+    """Initial maximum step size in bohr or radian along an internal coordinate for trust region
+    methods (RFO and RS_I_RFO)"""
 
     # Lower bound for dynamic trust radius [a/u]
     intrafrag_trust_min: float = Field(gt=0.0, default=0.001, alias="INTRAFRAG_STEP_LIMIT_MIN")
-    # self.intrafrag_trust_min = uod.get("INTRAFRAG_STEP_LIMIT_MIN", 0.001)
+    """Lower bound for dynamic trust radius [au]"""
 
     # Upper bound for dynamic trust radius [au]
     intrafrag_trust_max: float = Field(gt=0.0, default=1.0, alias="INTRAFRAG_STEP_LIMIT_MAX")
+    """Upper bound for dynamic trust radius [au]"""
 
     # Initial maximum step size in bohr or radian along an interfragment coordinate
     interfrag_trust: float = Field(gt=0.0, default=0.5)
+    """Initial maximum step size in bohr or radian along an interfragment coordinate"""
 
     # Lower bound for dynamic trust radius [a/u] for interfragment coordinates
-    interfrag_trust_min: float = Field(gt=0.0, default=0.001, alias="INTERFRAG_TRUST_MIN")
+    interfrag_trust_min: float = Field(gt=0.0, default=0.001, alias="INTERFRAG_STEP_LIMIT_MIN")
+    """Lower bound for dynamic trust radius [au] for interfragment coordinates"""
+
     # Upper bound for dynamic trust radius [au] for interfragment coordinates
-    interfrag_trust_max: float = Field(gt=0.0, default=1.0, alias="INTERFRAG_TRUST_MAX")
+    interfrag_trust_max: float = Field(gt=0.0, default=1.0, alias="INTERFRAG_STEP_LIMIT_MAX")
+    """Upper bound for dynamic trust radius [au] for interfragment coordinates"""
 
     # Reduce step size as necessary to ensure convergence of back-transformation of
-    # internal coordinate step to cartesian coordinates.
+    # internal coordinate step to Cartesian coordinates.
     ensure_bt_convergence: bool = False
+    """Reduces step size as necessary to ensure convergence of back-transformation of
+    internal coordinate step to Cartesian coordinates."""
 
     # Do simple, linear scaling of internal coordinates to step limit (not RS-RFO)
     simple_step_scaling: bool = False
+    """Do simple, linear scaling of internal coordinates to step limit instead of restricted-step
+	(dynamic trust radius) approaches like `RS_RFO` or `RS_I_RFO`"""
 
     # Set number of consecutive backward steps allowed in optimization
     consecutive_backsteps_allowed: int = Field(ge=0, default=0, alias="CONSECUTIVE_BACKSTEPS")
+    """Set number of consecutive backward steps allowed in an optimization. This option can be
+    modified by `Optking` if `dynamic_lvl` is > 0. Not recommended for general use."""
+
     _working_consecutive_backsteps = 0
 
     # Eigenvectors of RFO matrix whose final column is smaller than this are ignored.
     rfo_normalization_max: float = 100
+    """Eigenvectors of RFO matrix with elements greater than this are ignored as candidates for
+	the step direction."""
 
     # Absolute maximum value of step scaling parameter in RS-RFO.
     rsrfo_alpha_max: float = 1e8
+    """Absolute maximum value of step scaling parameter in `RFO` and `RS_I_RFO`."""
 
     # New in python version
     print_trajectory_xyz_file: bool = False
 
     # Specify distances between atoms to be frozen (unchanged)
     frozen_distance: str = Field(default="", pattern=r"(?:\d\s+){2}*")
+    """A string of white-space separated atomic indices to specify that the distances between the
+    atoms should be frozen (unchanged).
+    Example: `"1 2 3 4"` --> Freezes `Stre(1, 2)` and `Stre(3, 4)`"""
+
     # Specify angles between atoms to be frozen (unchanged)
     frozen_bend: str = Field(default="", pattern=r"(?:\d\s+){3}*")
+    """A string of white-space separated atomic indices to specify that the distances between the
+    atoms should be frozen (unchanged).
+    Example: `"1 2 3 4"` --> Freezes `Stre(1, 2)` and `Stre(3, 4)`"""
+
     # Specify dihedral angles between atoms to be frozen (unchanged)
     frozen_dihedral: str = Field(default="", pattern=r"(?:\d\s+){4}*")
+    """
+    A string of white-space separated atomic indices to specify that the corresponding dihedral
+    angle should be frozen (unchanged).
+    Example: `"1 2 3  3 2 3 4 5"` --> Freezes `TORS(1, 2, 3, 4)` and `TORS(2, 3, 4, 5)`"""
+
     # Specify out-of-plane angles between atoms to be frozen (unchanged)
     frozen_oofp: str = Field(default="", pattern=r"(?:\d\s+){4}*")
-    # Specify atom and X, XY, XYZ, ... to be frozen (unchanged)
+    """A string of white-space separated atomic indices to specify that the corresponding
+    out-of-plane angle should be frozen.
+    atoms should be frozen (unchanged).
+    Example: `"1 2 3 4 2 3 4 5"` --> Freezes `OOFP(1, 2, 3, 4)` and `OOFP(2, 3, 4, 5)`"""
 
-    frozen_cartesian: str = Field(default="", pattern=rf"(?:\d\s{CART_STR}\s?)*")
+    # Specify atom and X, XY, XYZ, ... to be frozen (unchanged)
+    frozen_Cartesian: str = Field(default="", pattern=rf"(?:\d\s{CART_STR}\s?)*")
+    """A string of white-space separated atomic indices and Cartesian labels to specify that the
+    Cartesian coordinates for a given atom should be frozen (unchanged).
+    Example: `"1 XYZ 2 XY 2 Z"` --> Freezes `CART(1, X)`, `CART(1, Y)`, `CART(1, Z)`, `CART(2, X)`,
+    etc..."""
 
     # constrain ALL torsions to be frozen.
     freeze_all_dihedrals: bool = False
+    """A shortcut to request that all dihedrals should be frozen."""
+
     # For use only with `freeze_all_dihedrals` unfreeze a small subset of dihedrals
     unfreeze_dihedrals: str = Field(default="", pattern=r"(?:\d\s+){4}*")
+    """A string of white-space separated atomic indices to specify that the corresponding dihedral
+    angle should be unfrozen. This keyword is meant to be used in conjunction with
+    `FREEZE_ALL_DIHEDRALS`"""
 
     # Specify distance between atoms to be ranged
     ranged_distance: str = Field(default="", pattern=rf"(?:(?:\d\s*){2}(?:\d+\.\d+\s*){2})*")
+    """A string of white-space separated atomic indices and bounds for the distance between two
+    atoms.
+    Example: `"1 2 2.3 2.4"` --> Forces `Stre(1, 2)` to remain between 2.3 and 2.4 Angstroms"""
+
     # Specify angles between atoms to be ranged
     ranged_bend: str = Field(default="", pattern=rf"(?:(?:\d\s*){3}(?:\d+\.\d+\s*){2})*")
+    """A string of white-space separated atomic indices and bounds for the angle between three
+    atoms.
+    Example: `"1 2 3 100 110"` --> Forces `Bend(1, 2, 3)` to remain between 100 and 110 degrees"""
+
     # Specify dihedral angles between atoms to be ranged
     ranged_dihedral: str = Field(default="", pattern=rf"(?:(?:\d\s*){4}(?:\d+\.\d+\s*){2})*")
+    """A string of white-space separated atomic indices and bounds for the torsion angle of four
+    atoms. The order of specification determines whether the dihedral is a proper or improper
+    torsion/dihedral.
+    Example: `"1 2 3 4 100 110"` --> Forces `TORS(1, 2, 3, 4)` to remain between 100 and 110
+    degrees"""
+
     # Specify out-of-plane angles between atoms to be ranged
     ranged_oofp: str = Field(default="", pattern=rf"(?:(?:\d\s*){4}(?:\d+\.\d+\s*){2})*")
+    """A string of white-space separated atomic indices and bounds for the out of plane angle
+    defined by four atoms where the second atom is the central atom.
+    Example: `"1 2 3 4 100 110"` --> Forces `OOFP(1, 2, 3, 4)` to remain between 100 and 110
+    degrees"""
+
     # Specify atom and X, XY, XYZ, ... to be ranged
     ranged_cartesian: str = Field(default="", pattern=rf"(?:\d\s+{CART_STR}\s+(?:\d+\.\d+\s*){2})*")
+    """A string of white-space separated atomic indices, Cartesian labels, and bounds for the
+    Cartesian coordinates of a given atom.
+    Example: `"1 XYZ 2.0 2.1"` --> Forces the X Y and Z coordinates of atom 1 to remain
+    between 2.0 and 2.1 angstroms"""
 
     # Specify distances for which extra force will be added
     ext_force_distance: str = Field(default="", pattern=rf"(?:(?:\d\s*){2}\(.*?\))*")
+    """A string of white-space separated atomic indices (2) followed by a single variable equation
+    surrounded in either a single or double quotation mark.
+    Example: `"1 2 'Sin(x)'"` or `'1 2 "Sin(x)"'` --> Evaluate the force along the coordinate
+    as a 1-dimensional sinusoidal function where x is the "value" (distance [bohr]) of the
+    coordinate (stretch)."""
+
     # Specify angles for which extra force will be added
     ext_force_bend: str = Field(default="", pattern=rf"(?:(?:\d\s*){3}\(.*?\))*")
+    """A string of white-space separated atomic indices (3) followed by a single variable equation
+    surrounded in either a single or double quotation mark.
+    Example: `"1 2 3 'Sin(x)'"` --> Evaluate the force along the coordinate as a 1-D
+    sinusoidal function where x is the "value" () of the coordinate (angle [radians]) of the
+    coordinate (bend)"""
+
     # Specify dihedral angles for which extra force will be added
     ext_force_dihedral: str = Field(default="", pattern=rf"(?:(?:\d\s*){4}\(.*?\))*")
+    """A string of white-space separated atomic indices (4) followed by a single variable equation
+    surrounded in either a single or double quotation mark.
+    Example: `"1 2 3 4 'Sin(x)'"` --> Evaluate the force along the coordinate as a 1-D
+    sinusoidal function where x is the "value" () of the coordinate (angle [radians]) of the
+    coordinate (torsion)"""
+    
     # Specify out-of-plane angles for which extra force will be added
     ext_force_oofp: str = Field(default="", pattern=rf"(?:(?:\d\s*){4}\(.*?\))*")
-    # Specify cartesian coordinates for which extra force will be added
+    """A string of white-space separated atomic indices (4) followed by a single variable equation
+    surrounded in either a single or double quotation mark.
+    Example: `"1 2 3 4 'Sin(x)'"` --> Evaluate the force along the coordinate as a 1-D
+    sinusoidal function where x is the "value" () of the coordinate (angle [radians]) of the
+    coordinate (oofp)"""
+
+    # Specify Cartesian coordinates for which extra force will be added
     ext_force_cartesian: str = Field(default="", pattern=rf"(?:(?:\d\s+{CART_STR})\(.*?\))*")
+    """A string of whitecaps separated atomic indices (1) and Cartesian labels, followed by a
+    single variable equation surrounded in either a single or double quotation mark.
+    Example: `"1 X 'Sin(x)'"` --> Evaluate the force along the coordinate as 1 1-D sinusoidal
+    function where x is the "value" () of the coordinate (angle [bohr]) of the coordinate
+    (bohr)"""
 
     # Should an xyz trajectory file be kept (useful for visualization)?
     # P.print_trajectory_xyz = uod.get('PRINT_TRAJECTORY_XYZ', False)
@@ -222,10 +403,7 @@ class OptParams(BaseModel):
     # P.symm_tol("SYMM_TOL", 0.05)
     #
     # SUBSECTION Convergence Control.
-    # Set of optimization criteria. Specification of any MAX_*_G_CONVERGENCE
-    # RMS_*_G_CONVERGENCE options will append to overwrite the criteria set here
-    # |optking__flexible_g_convergence| is also on.
-    # See Table :ref:`Geometry Convergence <table:optkingconv>` for details.
+
     g_convergence: str = Field(
         pattern=re.compile(
             r"QCHEM|MOLPRO|GAU|GAU_LOOSE|GAU_TIGHT|GAU_VERYTIGHT|TURBOMOLE|CFOUR|NWCHEM_LOOSE|INTERFRAG_TIGHT",
@@ -233,58 +411,94 @@ class OptParams(BaseModel):
         ),
         default="QCHEM",
     )
+    """A set of optimization criteria covering the change in energy, magnitude of the forces and
+    the step_size. One of ["QCHEM", "MOLPRO", "GAU", "GAU_LOOSE", "GAU_TIGHT", "GAU_VERYTIGHT",
+    "TURBOMOLE", "CFOUR", "NWCHEM_LOOSE", "INTERFRAG_TIGHT"].
+    Set of optimization criteria. Specification of any MAX_*_G_CONVERGENCE
+    RMS_*_G_CONVERGENCE options will append to overwrite the criteria set here if
+    |flexible_g_convergence| is also on.
+    See Table :ref:`Geometry Convergence <table:optkingconv>` for details."""
 
     # _conv_rms_force = -1
     # _conv_rms_disp = -1
     # _conv_max_DE = -1
     # _conv_max_force = -1
     # _conv_max_disp = -1
-    # Convergence criterion for geometry optmization: maximum force (internal coordinates, au)
     conv_max_force: float = Field(default=3.0e-4, alias="MAX_FORCE_G_CONVERGENCE")
-    # Convergence criterion for geometry optmization: rms force  (internal coordinates, au)
+    """Convergence criterion for geometry optimization: maximum force (internal coordinates, au)"""
+
     conv_rms_force: float = Field(default=3.0e-4, alias="RMS_FORCE_G_CONVERGENCE")
-    # Convergence criterion for geometry optmization: maximum energy change
+    """Convergence criterion for geometry optimization: maximum force (internal coordinates, au)"""
+
     conv_max_DE: float = Field(default=1.0e-6, alias="MAX_ENERGY_G_CONVERGENCE")
-    # Convergence criterion for geometry optmization:
-    # maximum displacement (internal coordinates, au)
+    """Convergence criterion for geometry optimization: maximum energy change"""
+
     conv_max_disp: float = Field(default=1.2e-3, alias="MAX_DISP_G_CONVERGENCE")
-    # Convergence criterion for geometry optmization:
-    # rms displacement (internal coordinates, au)
+    """Convergence criterion for geometry optimization: maximum displacement (internal coordinates, au)"""
+
     conv_rms_disp: float = Field(default=1.2e-3, alias="RMS_DISP_G_CONVERGENCE")
+    """Convergence criterion for geometry optimization: rms displacement (internal coordinates, au)"""
     # Even if a user-defined threshold is set, allow for normal, flexible convergence criteria
+
     flexible_g_convergence: bool = False
+    """Normally, any specified *_G_CONVERGENCE keyword like `MAX_FORCE_G_CONVERGENCE` will be obeyed
+    exclusively. If active, `FLEXIBLE_G_CONVERGENCE` appends to `G_CONVERGENCE` with the value from
+    `*_G_CONVERGENCE` instead of overriding.
+    """
 
     #
     # SUBSECTION Hessian Update
     # Hessian update scheme
     hess_update: str = Field(pattern=r"NONE|BFGS|MS|POWELL|BOFILL", default="BFGS")
+    """one of: [NONE, "BFGS", "MS", "POWELL", "BOFILL"]
+    Update scheme for the hessian. Default depends on `OPT_TYPE`"""
 
     # Number of previous steps to use in Hessian update, 0 uses all
     hess_update_use_last: int = Field(ge=0, default=4)
+    """Number of previous steps to use in Hessian update, 0 uses all steps."""
+
     # Do limit the magnitude of changes caused by the Hessian update?
     hess_update_limit: bool = True
+    """Do limit the magnitude of changes caused by the Hessian update?
+    If |hess_update_limit| is True, changes to the Hessian from the update are limited
+    to the larger of |hess_update_limit_scale| * (current value) and
+    |hess_update_limit_max| [au].  By default, a Hessian value cannot be changed by more
+    than 50% and 1 au."""
+
     # If |hess_update_limit| is True, changes to the Hessian from the update are limited
     # to the larger of |hess_update_limit_scale| * (current value) and
     # |hess_update_limit_max| [au].  By default, a Hessian value cannot be changed by more
     # than 50% and 1 au.
     hess_update_limit_max: float = Field(ge=0.0, default=1.00)
+    """Absolute upper limit for how much any given Hessian value can be changed when updating"""
+
     hess_update_limit_scale: float = Field(ge=0.0, le=1.0, default=0.50)
+    """Relative upper limit for how much any given Hessian value can be changed when updating"""
 
-    # Denominator check for hessian update.
     hess_update_den_tol: float = Field(gt=0.0, default=1e-7)
+    """Denominator check for hessian update."""
 
-    # Hessian update is avoided if any internal coordinate has changed by
-    # more than this in radians/au
     hess_update_dq_tol: float = Field(ge=0.0, default=0.5)
+    """Hessian update is avoided if any internal coordinate has changed by more than this in
+    radians/au"""
 
     # SUBSECTION Using external Hessians
     # Do read Cartesian Hessian?  Only for experts - use
-    # |optking__full_hess_every| instead.
+    # |Optking__full_hess_every| instead.
     cart_hess_read: bool = False
+    """Do read Cartesian Hessian? Recommended to use |full_hess_every| instead.
+    cfour format or `.json` file (AtomicOutput) allowed. The filetype is determined by the presence
+    of a `.json` extension. The cfour hessian format specifies that the first line contains the
+    number of atoms. Each subsequent line contains three hessian values provided in
+    [row-major order](https://en.wikipedia.org/wiki/Row-_and_column-major_order).
+    see psi4 docs for details on [cfour format]"""
+    
     # accompanies cart_hess_read. The default is not validated
     # Need two options here because str_to_upper cannot be turned of for members of the Model
     # _hessian_file avoids str_to_upper
     hessian_file: pathlib.Path = Field(default=pathlib.Path(""), validate_default=False)
+    """Accompanies |CART_HESS_READ|. path to file where hessian has been saved."""
+
     _hessian_file = pathlib.Path("")
 
     # Frequency with which to compute the full Hessian in the course
@@ -292,25 +506,46 @@ class OptParams(BaseModel):
     # 1 means recompute every step, and N means recompute every N steps. The
     # default (-1) is to never compute the full Hessian.
     full_hess_every: int = Field(ge=-1, default=-1)
+    """Frequency with which to compute the full Hessian in the course
+    of a geometry optimization. 0 means to compute the initial Hessian only,
+    1 means recompute every step, and N means recompute every N steps. -1 indicates that the
+    full hessian should never be computed."""
 
     # Model Hessian to guess intrafragment force constants
     intrafrag_hess: str = Field(
         pattern=re.compile(r"SCHLEGEL|FISCHER|SIMPLE|LINDH|LINDH_SIMPLE", flags=re.IGNORECASE),
         default="SCHLEGEL",
     )
+    """Model Hessian to guess intrafragment force constants. One of `["SCHLEGEL", "FISCHER",
+    "SIMPLE", "LINDH", "LINDH_SIMPLE"]`"""
+
     # Re-estimate the Hessian at every step, i.e., ignore the currently stored Hessian.
     h_guess_every: bool = False
+    """Re-estimate the Hessian at every step, i.e., ignore the currently stored Hessian. This is NOT
+    recommended"""
     _working_steps_since_last_H = 0
 
     #
-    # SUBSECTION Backtransformation to Cartesian Coordinates Control
+    # SUBSECTION Back-transformation to Cartesian Coordinates Control
     bt_max_iter: int = Field(gt=0, default=25)
+    """Maximum number of iterations allowed to converge back-transformation"""
+
     bt_dx_conv: float = Field(gt=0.0, default=1.0e-7)
+    """Threshold for the change in any given Cartesian coordinate during iterative
+    back-transformation."""
+
     bt_dx_rms_change_conv: float = Field(gt=0.0, default=1.0e-12)
+    """Threshold for RMS change in Cartesian coordinates during iterative back-transformation."""
+
     # The following should be used whenever redundancies in the coordinates
     # are removed, in particular when forces and Hessian are projected and
     # in back-transformation from delta(q) to delta(x).
     bt_pinv_rcond: float = Field(gt=0.0, default=1.0e-6)
+    """Threshold to remove redundancies from generalized inverse. Corresponds to the `rcond` from
+    [numpy](https://numpy.org/doc/stable/reference/generated/numpy.linalg.pinv.html)
+    The following should be used whenever redundancies in the coordinates
+    are removed, in particular when forces and Hessian are projected and
+    in back-transformation from delta(q) to delta(x)."""
 
     #
     # For multi-fragment molecules, treat as single bonded molecule or via interfragment
@@ -319,10 +554,21 @@ class OptParams(BaseModel):
     frag_mode: str = Field(
         pattern=re.compile(r"SINGLE|MULTI", flags=re.IGNORECASE), default="SINGLE"
     )
+    """For multi-fragment molecules, treat as single bonded molecule or via interfragment
+    coordinates. A primary difference is that in ``MULTI`` mode, the interfragment
+    coordinates are not redundant."""
+
     # Which atoms define the reference points for interfragment coordinates?
     frag_ref_atoms: list[list[list[int]]] = []
+    """Which atoms define the reference points for interfragment coordinates?
+    Example for a simple diatomic dimer like Ne2 [[[1]], [[2]]]. Please see the section on
+    multi-fragment optimizations for more information. """
+
     # Do freeze all fragments rigid?
     freeze_intrafrag: bool = False
+    """Whether to freeze all intrafragment coordinates (rigid molecules). Only optimize the
+    interfragment coordinates."""
+
     # Do freeze all interfragment modes?
     # P.inter_frag = uod.get('FREEZE_INTERFRAG', False)
     # When interfragment coordinates are present, use as reference points either
@@ -330,39 +576,53 @@ class OptParams(BaseModel):
     interfrag_mode: str = Field(
         pattern=re.compile(r"FIXED|PRINCIPAL_AXES", re.IGNORECASE), default="FIXED"
     )
+    """One of ['FIXED', 'PRINCIPAL_AXES']. Use either principal axes or fixed linear combinations
+    of atoms as reference points for generating the interfragment coordinates."""
 
-    # Do add bond coordinates at nearby atoms for non-bonded systems?
     add_auxiliary_bonds: bool = False
-    # This factor times standard covalent distance is used to add extra stretch coordinates.
+    """Do add bond coordinates at nearby atoms for non-bonded systems?"""
+
     auxiliary_bond_factor: float = Field(gt=1.0, default=2.5)
-    # Do use 1/R for the interfragment stretching coordinate instead of R?
+    """This factor times the standard covalent distance is used to add extra stretch coordinates."""
+
     interfrag_dist_inv: bool = False
-    # Used for determining which atoms in a system are too collinear to
-    # be chosen as default reference atoms. We avoid collinearity. Greater
-    # is more restrictive.
+    """Do use 1/R for the interfragment stretching coordinate instead of R?"""
+
     interfrag_collinear_tol: float = Field(gt=0.0, default=0.01)
+    """Used for determining which atoms in a system are too collinear to be chosen as default
+    reference atoms. We avoid collinearity. Greater is more restrictive."""
 
     # Let the user submit a dictionary (or array of dictionaries) for
     # the interfrag coordinates. Validation occurs below
     interfrag_coords: list[dict] = []
+    """Let the user submit a dictionary (or array of dictionaries) for
+    the interfrag coordinates. The string input must be "loadable" as a python dictionary.
+    See input examples."""
 
-    # Model Hessian to guess interfragment force constants
     interfrag_hess: str = Field(
         pattern=re.compile(r"DEFAULT|FISCHER_LIKE", flags=re.IGNORECASE), default="DEFAULT"
     )
-    # P.interfrag_hess = uod.get('INTERFRAG_HESS', 'DEFAULT')
-    # When determining connectivity, a bond is assigned if interatomic distance
-    # is less than (this number) * sum of covalent radii.
+    """Model Hessian to guess interfragment force constants. One of ["DEFAULT", "FISCHER_LIKE"]"""
+
     covalent_connect: float = Field(gt=0.0, default=1.3)
-    # When connecting disparate fragments when frag_mode = SIMPLE, a "bond"
-    # is assigned if interatomic distance is less than (this number) * sum of covalent radii.
-    # The value is then increased until all the fragments are connected directly
-    # or indirectly.
+    """When determining connectivity, a bond is assigned if interatomic distance
+    is less than (this number) * sum of covalent radii.
+    When connecting disparate fragments when frag_mode = SIMPLE, a "bond"
+    is assigned if interatomic distance is less than (this number) * sum of covalent radii.
+    The value is then increased until all the fragments are connected directly
+    or indirectly."""
+
     interfragment_connect: float = Field(gt=0.0, default=1.8)
-    # General, maximum distance for the definition of H-bonds.
+    """When connecting disparate fragments when frag_mode = SIMPLE, a "bond"
+    is assigned if interatomic distance is less than (this number) * sum of covalent radii.
+    The value is then increased until all the fragments are connected directly
+    or indirectly."""
+
     h_bond_connect: float = Field(gt=0.0, default=4.3)
-    # Add out-of-plane angles (usually not needed)
+    """General, maximum distance for the definition of H-bonds."""
+
     include_oofp: bool = False
+    """Add out-of-plane angles (usually not needed)"""
 
     #
     #
@@ -372,18 +632,25 @@ class OptParams(BaseModel):
     # the previous geometry at which was computed the gradient that satisfied
     # the convergence criteria.
     # P.final_geom_write = uod.get('FINAL_GEOM_WRITE', False)
-    # Do test B matrix?
+
     test_B: bool = False
-    # Do test derivative B matrix?
+    """Do test B matrix?"""
     test_derivative_B: bool = False
+    """Do test derivative B matrix?"""
+
     # Only generate the internal coordinates and then stop (boolean) UNUSED
     # generate_intcos_exit: bool = False
     # Keep internal coordinate definition file.
     # keep_intcos: bool = False UNUSED
     linesearch_step: float = Field(gt=0.0, default=0.100)
+    """stepsize to start with when displacing to perform linesearch"""
+
     linesearch: bool = False
     # Guess at Hessian in steepest-descent direction.
+    """perform linesearch on top of current |step_type|."""
+
     sd_hessian: float = Field(gt=0.0, default=1.0)
+    """Guess at Hessian in steepest-descent direction (acts as a stepsize control)."""
 
     # # -- Items below are unlikely to need modified
 
@@ -512,7 +779,7 @@ class OptParams(BaseModel):
         for keyword_set in keywords:
             if keyword_set[0] in self._raw_input:
                 # mark keyword as "active" through _i_keyword variable
-                # mark untampered as False (tampering has occured!)
+                # mark untampered as False (tampering has occurred!)
                 self.__setattr__(keyword_set[1], self._raw_input.get(keyword_set[0]))
                 self.__setattr__(keyword_set[2], True)
                 self._i_untampered = False
@@ -533,7 +800,7 @@ class OptParams(BaseModel):
 
     @model_validator(mode="after")
     def validate_trustregion(self):
-        # Initial Hessian guess for cartesians with coordinates BOTH is stupid, so don't scale
+        # Initial Hessian guess for Cartesian's with coordinates BOTH is stupid, so don't scale
         #   step size down too much.  Steepest descent has no good hessian either.
         if "INTRAFRAG_TRUST_MIN" not in self._raw_input:
             if self.opt_coordinates == "BOTH":
@@ -626,7 +893,7 @@ class OptParams(BaseModel):
 
     @model_validator(mode="after")
     def validate_frag(self):
-        # Finish multifragment option setup by forcing frag_mode: MULTI if DimerCoords are provided
+        # Finish multi-fragment option setup by forcing frag_mode: MULTI if DimerCoords are provided
 
         input = self.interfrag_coords
         if input:
@@ -701,7 +968,7 @@ class OptParams(BaseModel):
         return setattr(self, key, value)
 
     def conv_criteria(self) -> dict:
-        """Returns the currently active values for each convegence criteria. Not the original
+        """Returns the currently active values for each convergence criteria. Not the original
         user input / presets"""
         return {
             "conv_max_force": self.conv_max_force,

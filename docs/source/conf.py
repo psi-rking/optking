@@ -59,6 +59,7 @@ extensions = [
     # from Psi4
     # "sphinx_psi_theme.ext.psidomain",
     # "sphinx_psi_theme.ext.relbar_toc",
+    'sphinxcontrib.autodoc_pydantic',
 ]
 
 autosummary_generate = True
@@ -194,4 +195,11 @@ intersphinx_mapping = {"https://docs.python.org/": None}
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = True
+
+autodoc_pydantic_model_show_config_summary=True
+autodoc_pydantic_model_show_field_summary=True
+autodoc_pydantic_field_swap_name_and_alias=True
+autodoc_pydantic_model_show_validator_summary=False
+autodoc_pydantic_model_show_validator_members=False
+autodoc_pydantic_field_list_validators=False
 
