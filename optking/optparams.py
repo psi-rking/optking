@@ -68,7 +68,7 @@ class OptParams(BaseModel):
 
     # Maximum number of geometry optimization steps
     geom_maxiter: int = Field(gt=0, default=50)
-    """The maximum number of geometry optimization steps allowed - this is effectively
+    """The maximum number of geometry optimization steps allowed - Technically this is
     the maximum number of gradients that Optking is allowed to calculate."""
 
     # If user sets one, assume this.
@@ -607,13 +607,13 @@ class OptParams(BaseModel):
     covalent_connect: float = Field(gt=0.0, default=1.3)
     """When determining connectivity, a bond is assigned if interatomic distance
     is less than (this number) * sum of covalent radii.
-    When connecting disparate fragments when frag_mode = SIMPLE, a "bond"
+    When connecting disparate fragments when frag_mode = SINGLE, a "bond"
     is assigned if interatomic distance is less than (this number) * sum of covalent radii.
     The value is then increased until all the fragments are connected directly
     or indirectly."""
 
     interfragment_connect: float = Field(gt=0.0, default=1.8)
-    """When connecting disparate fragments when frag_mode = SIMPLE, a "bond"
+    """When connecting disparate fragments when frag_mode = SINGLE, a "bond"
     is assigned if interatomic distance is less than (this number) * sum of covalent radii.
     The value is then increased until all the fragments are connected directly
     or indirectly."""
