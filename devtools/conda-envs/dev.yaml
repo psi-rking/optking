@@ -21,6 +21,7 @@ dependencies:
   - sphinx
   - sphinx-automodapi
   - sphinx_material
+  - autodoc_pydantic
   - graphviz
   - black
   - isort
