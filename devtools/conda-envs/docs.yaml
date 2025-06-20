@@ -11,4 +11,4 @@ dependencies:
   - sphinx-automodapi=0.16
   - sphinx_rtd_theme=2.0.0
   - graphviz=9.0.0
-  - autodoc_pydantic
+  - autodoc-pydantic
