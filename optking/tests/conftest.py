@@ -7,6 +7,7 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "long")
     config.addinivalue_line("markers", "dimers")
     config.addinivalue_line("markers", "multimers")
+    config.addinivalue_line("markers", "dftd3")
 
 
 @pytest.fixture(scope="function", autouse=True)
