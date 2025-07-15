@@ -19,8 +19,8 @@ from pydantic import (
 )
 from pydantic import __version__ as pydantic_version
 
-from .exceptions import OptError
-from . import log_name
+from optking.exceptions import OptError
+from optking import log_name
 
 logger = logging.getLogger(f"{log_name}{__name__}")
 
@@ -55,14 +55,13 @@ class InterfragCoords(BaseModel):
     b_weights: list[list[float]] = Field(default=[], alias="B WEIGHTS")
     frozen: list[str] = Field(default=[], alias="FROZEN")
 
-    # @pydantic_model_validator(**eval_time_before)
     @model_validator(mode="before")
     @classmethod
     def to_upper(cls, data):
         return {key.upper(): val for key, val in data.items()}
 
-    def to_dict(self):
-        return self.model_dump(by_alias=True)
+    def to_dict(self, by_alias=True):
+        return self.model_dump(by_alias=by_alias)
 
     @classmethod
     def from_dict(cls, dict_obj):
@@ -515,7 +514,7 @@ class OptParams(BaseModel):
     hessian_file: pathlib.Path = Field(default=pathlib.Path(""), validate_default=False)
     """Accompanies |CART_HESS_READ|. path to file where hessian has been saved."""
 
-    _hessian_file = pathlib.Path("")
+    # _hessian_file = pathlib.Path("")
 
     # Frequency with which to compute the full Hessian in the course
     # of a geometry optimization. 0 means to compute the initial Hessian only,
@@ -702,9 +701,9 @@ class OptParams(BaseModel):
     _i_rms_disp = False
     _i_untampered = False
 
-    def to_dict(self):
+    def to_dict(self, by_alias=True):
         """ Specialized form of __dict__. Makes sure to include convergence keys that are hidden """
-        save = self.model_dump()
+        save = self.model_dump(by_alias=by_alias)
         include = {
             "_i_max_force": self._i_max_force,
             "_i_rms_force": self._i_rms_force,
@@ -724,7 +723,6 @@ class OptParams(BaseModel):
         s += "\n"
         return s
 
-    # @pydantic_model_validator(**eval_time_before)
     @model_validator(mode="before")
     @classmethod
     def save_raw_input(cls, data):
@@ -748,37 +746,37 @@ class OptParams(BaseModel):
         # create a special dict to hold keywords that were changed by validation
         return upper_data
 
-    # @pydantic_model_validator(**eval_time_after)
     @model_validator(mode="after")
     def validate_algorithm(self):
         """Ensure that if the user has selected both an opt_type and step_type that they are
         compatible. If the user has selected `opt_type=TS` OR a `step_type` consistent with `TS`
         then change the other keyword to have the appropriate keyword"""
 
+        set_vars = self._raw_input
         min_step_types = ["RFO", "NR", "SD", "CONJUGATE", "LINESEARCH"]
         ts_step_types = ["RS_I_RFO", "P_RFO"]
 
-        if "OPT_TYPE" in self._raw_input and "STEP_TYPE" in self._raw_input:
+        if "OPT_TYPE" in set_vars and "STEP_TYPE" in set_vars:
             if self.opt_type == "TS":
                 assert self.step_type not in min_step_types
             elif self.opt_type == "MIN":
                 assert self.step_type not in ts_step_types
-        elif "OPT_TYPE" in self._raw_input and self.opt_type == "TS":
+        elif "OPT_TYPE" in set_vars and self.opt_type == "TS":
             # User has selected TS. Change algorithm to RS_I_RFO
             self.step_type = "RS_I_RFO"
-        elif "STEP_TYPE" in self._raw_input and "STEP_TYPE" in ts_step_types:
+        elif "STEP_TYPE" in set_vars and self.step_type in ts_step_types:
             self.opt_type = "TS"
         return self
 
-    # @pydantic_model_validator(**eval_time_after)
     @model_validator(mode="after")
     def validate_convergence(self):
         """Set active variables depending upon the PRESET that has been provided and whether any
         specific values were individually specified by the user."""
 
+        set_vars = self._raw_input
         # stash so that __setattr__ doesn't affect which variables have been changed
         # Start by setting each individual convergence option from preset
-        conv_spec = CONVERGENCE_PRESETS.get(self.g_convergence)
+        conv_spec = CONVERGENCE_PRESETS[self.g_convergence]
 
         for key, val in conv_spec.items():
             self.__setattr__(key, val)
@@ -793,23 +791,32 @@ class OptParams(BaseModel):
             ("RMS_DISP_G_CONVERGENCE", "conv_rms_disp", "_i_rms_disp"),
         ]
 
+        keys_present = [True if keyword_set[0] in set_vars else False for keyword_set in keywords]
+
         # if ANY convergence options were specified by the user,  turn untampered on and set all
         # options to inactive
-        for keyword_set in keywords:
-            if keyword_set[0] in self._raw_input:
-                # mark keyword as "active" through _i_keyword variable
-                # mark untampered as False (tampering has occurred!)
-                self.__setattr__(keyword_set[1], self._raw_input.get(keyword_set[0]))
-                self.__setattr__(keyword_set[2], True)
-                self._i_untampered = False
-                if self.flexible_g_convergence:
-                    # use flexible conv criteria don't leave criteria preset active except for mods
-                    self._i_untampered = True
-                else:
+        if any(keys_present):
+            # Summary: If ANY convergence options were specified by the user
+            # (without flexible convergence being on), turn untampered on and set all options to inactive
+            for keyword_set in keywords:
+                if keyword_set[0] in set_vars:
+                    # mark keyword as "active" through _i_keyword variable
+                    # mark untampered as False (tampering has occurred!)
+                    self.__setattr__(keyword_set[1], set_vars[keyword_set[0]])
+                    self.__setattr__(keyword_set[2], True)
                     self._i_untampered = False
+                    if self.flexible_g_convergence:
+                        # use flexible conv criteria don't leave criteria preset active except for mods
+                        self._i_untampered = True
+                    else:
+                        self._i_untampered = False
+                else:
+                    # Keyword was not specified by user. Deactivate all other keywords if running in normal mode
+                    # if in flexible mode, leave other criteria active
+                    if not self.flexible_g_convergence:
+                        self.__setattr__(keyword_set[2], False)
         return self
 
-    # @pydantic_model_validator(**eval_time_after)
     @model_validator(mode="after")
     def validate_iter(self):
         if self.opt_type == "IRC" and "GEOM_MAXITER" not in self._raw_input:
@@ -818,7 +825,6 @@ class OptParams(BaseModel):
             self.alg_geom_maxiter = self.geom_maxiter
         return self
 
-    # @pydantic_model_validator(**eval_time_before)
     @model_validator(mode="after")
     def validate_trustregion(self):
         # Initial Hessian guess for Cartesian's with coordinates BOTH is stupid, so don't scale
@@ -841,14 +847,13 @@ class OptParams(BaseModel):
                 # so don't let minimum step get shrunk too much.
                 self.intrafrag_trust_min = self.intrafrag_trust / 2.0
 
-        if self.opt_type in ["IRC", "TS"] and "INTRAFRAG_STEP_LIMIT" not in self._raw_input:
+        if (self.opt_type in ["IRC", "TS"] or self.step_type == "RS_I_RFO") and "INTRAFRAG_STEP_LIMIT" not in self._raw_input:
             self.intrafrag_trust = 0.2  # start with smaller intrafrag_trust
 
         if self.intrafrag_trust_max < self.intrafrag_trust:
             self.intrafrag_trust = self.intrafrag_trust_max
         return self
 
-    # @pydantic_model_validator(**eval_time_after)
     @model_validator(mode="after")
     def validate_hessian(self):
         set_vars = self._raw_input
@@ -877,7 +882,7 @@ class OptParams(BaseModel):
         # Changed to turn cart_hess_read on only if a file path was provided.
         # otherwise full_hess_every will handle providing hessian
         if self.opt_type == "IRC" and "cart_hess_read" not in set_vars:
-            if self._hessian_file != pathlib.Path(""):
+            if self.hessian_file != pathlib.Path(""):
                 self.cart_hess_read = True
 
         # inactive option
@@ -904,17 +909,15 @@ class OptParams(BaseModel):
         # If arbitrary user forces, don't shrink step_size if Delta(E) is poor.
         return self
 
-    # @pydantic_model_validator(**eval_time_after)
     @model_validator(mode='after')
     def validate_hessian_file(self):
         # Stash value of hessian_file in _hessian_file for internal use
         # mode before required so that we stash before str_to_upper is called
-        orig_vars = self._raw_input
-        if orig_vars.get("HESSIAN_FILE"):
-            self._hessian_file = pathlib.Path(orig_vars.get("HESSIAN_FILE"))
+        hess_file = self._raw_input.get("HESSIAN_FILE")
+        if hess_file:
+            self.hessian_file = pathlib.Path(hess_file)
         return self
 
-    # @pydantic_model_validator(**eval_time_after)
     @model_validator(mode="after")
     def validate_frag(self):
         # Finish multi-fragment option setup by forcing frag_mode: MULTI if DimerCoords are provided
@@ -965,7 +968,6 @@ class OptParams(BaseModel):
         else:
             return [{}]
 
-    # @pydantic_model_validator(**eval_time_after)
     @model_validator(mode="after")
     def validate_case(self):
         for attr in self.model_dump():
