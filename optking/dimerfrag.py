@@ -7,11 +7,11 @@ import numpy as np
 import qcelemental as qcel
 
 from . import bend, caseInsensitiveDict, frag
-from . import optparams as op
 from . import orient, stre, tors, v3d
 from .exceptions import AlgError, OptError
 from .printTools import print_mat_string
 from . import log_name
+from . import op
 
 logger = logging.getLogger(f"{log_name}{__name__}")
 
@@ -314,7 +314,7 @@ class DimerFrag(object):
             If `user_dict` does not adhere to InterfragCoords Schema
         """
 
-        user_dict = op.InterfragCoords.model_validate(user_dict).to_dict()  # validate
+        user_dict = op.InterfragCoords.from_dict(user_dict)  # provides validation whenever we load
         logger.debug("Provided information: %s", user_dict)
 
         N = user_dict["NATOMS PER FRAG"]

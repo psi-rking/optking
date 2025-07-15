@@ -9,9 +9,9 @@ from math import fabs
 import numpy as np
 
 from . import intcosMisc
-from . import optparams as op
 from .printTools import print_mat_string
 from . import log_name
+from . import op
 
 logger = logging.getLogger(f"{log_name}{__name__}")
 

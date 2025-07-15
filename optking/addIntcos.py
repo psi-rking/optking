@@ -7,11 +7,11 @@ import numpy as np
 import qcelemental as qcel
 
 from . import bend, cart, dimerfrag, oofp
-from . import optparams as op
 from . import stre, tors, v3d
 from .exceptions import AlgError, OptError
 from .v3d import are_collinear
 from . import log_name
+from . import op
 from . import misc
 
 # Functions related to freezing, fixing, determining, and
@@ -951,7 +951,7 @@ def add_constrained_intcos(o_molsys, params):
     }
 
     for key, val in constraints.items():
-        option = params.model_dump().get(key)  # lookup option
+        option = params.to_dict(by_alias=False).get(key)  # lookup option
         if option:
             # parser converts string to list. constrainer adds constrained coords to molsys
             natom, parser, constrainer = val

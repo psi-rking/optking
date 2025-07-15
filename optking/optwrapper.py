@@ -13,12 +13,12 @@ from pydantic.v1.error_wrappers import ValidationError as v1ValidationError
 import optking
 
 from . import caseInsensitiveDict, molsys
-from . import optparams as op
 from .compute_wrappers import ComputeWrapper, Psi4Computer, QCEngineComputer, UserComputer
 from .exceptions import OptError
 from .optimize import optimize
 from .printTools import welcome
 from . import log_name
+from . import op
 
 logger = logging.getLogger(f"{log_name}{__name__}")
 
@@ -119,7 +119,7 @@ def initialize_from_psi4(calc_name, program, computer_type, dertype=None, **xtra
     atomic_input.pop("protocols")
     o_molsys = molsys.Molsys.from_schema(atomic_input.get("molecule"))
 
-    optking_canon = op.OptParams().model_dump(by_alias=True).keys()
+    optking_canon = op.OptParams().to_dict(by_alias=True).keys()
     opt_keys = {"program": program}
 
     # Psi4 options can get mixed in with optking's options in prepare_options_for_module anyway.

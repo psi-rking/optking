@@ -14,9 +14,9 @@ from pydantic import BaseModel
 
 import numpy as np
 
-from . import optparams as op
 from .linearAlgebra import abs_max, rms
 from . import log_name
+from . import op
 
 logger = logging.getLogger(f"{log_name}{__name__}")
 

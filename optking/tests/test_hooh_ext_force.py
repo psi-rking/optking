@@ -30,7 +30,7 @@ f5 = (
 
 
 @pytest.mark.parametrize("option, expected, num_steps", [f1, f2, f3, f4, f5])
-def test_hooh_fixed_OH_stre(option, expected, num_steps, check_iter):
+def test_hooh_fixed_OH_stre(option, expected, num_steps):
     hooh = psi4.geometry(
         """
       H

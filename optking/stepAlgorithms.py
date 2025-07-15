@@ -40,7 +40,6 @@ from typing import Union
 
 import numpy as np
 
-from . import optparams as op
 from . import convcheck
 from .displace import displace_molsys
 from .exceptions import AlgError, OptError
@@ -50,6 +49,7 @@ from .misc import is_dq_symmetric
 from .molsys import Molsys
 from .printTools import print_array_string, print_mat_string
 from . import log_name
+from . import op
 
 logger = logging.getLogger(f"{log_name}{__name__}")
 

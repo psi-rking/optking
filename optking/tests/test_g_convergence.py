@@ -424,7 +424,6 @@ tests = {
     },
 }
 
-
 @pytest.mark.parametrize("conv_test", tests)
 @pytest.mark.parametrize("conv_preset", presets)
 def test_convergence_presets(conv_test, conv_preset):
@@ -486,7 +485,6 @@ combos = [
 
 for i in range(1, len(tests), 2):
     tests.pop(i)
-
 
 @pytest.mark.parametrize("conv_options", combos)
 @pytest.mark.parametrize("test_name", tests)

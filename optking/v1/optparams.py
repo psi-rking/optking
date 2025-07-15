@@ -8,19 +8,19 @@ import json
 import logging
 import pathlib
 import re
-from typing import Union
-from pprint import pformat
+from packaging import version
 
-from pydantic import (
+from pydantic.v1 import (
     BaseModel,
     Field,
-    field_validator,
-    model_validator,
     ConfigDict,
+    root_validator,
+    validator,
+    PrivateAttr,
 )
 
-from .exceptions import OptError
-from . import log_name
+from optking.exceptions import OptError
+from optking import log_name
 
 logger = logging.getLogger(f"{log_name}{__name__}")
 
@@ -43,24 +43,28 @@ class InterfragCoords(BaseModel):
     b_weights: list[list[float]] = Field(default=[], alias="B WEIGHTS")
     frozen: list[str] = Field(default=[], alias="FROZEN")
 
-    @model_validator(mode="before")
+    @root_validator(pre=True)
     @classmethod
     def to_upper(cls, data):
         return {key.upper(): val for key, val in data.items()}
 
     def to_dict(self):
-        return self.model_dump(by_alias=True)
+        return self.dict(by_alias=True)
 
+    @classmethod
+    def from_dict(cls, dict_obj):
+        """ Provides consistent v1/v2 interface from optking """
+        return cls.parse_obj(dict_obj).to_dict()
 
 class OptParams(BaseModel):
-    model_config = ConfigDict(
-        alias_generator=lambda field_name: field_name.upper(),
+
+    class Config:
+        alias_generator = lambda field_name: field_name.upper()
+        anystr_upper = True
         # validate_assignment=True,
         # extra="forbid",
-        str_to_upper=True,
-        # regexes need to use IGNORECASE flag since inputs won't be standardized until after
+        #  regexes need to use IGNORECASE flag since inputs won't be standardized until after
         # validation
-    )
 
     # SUBSECTION Optimization Algorithm
     # NOTE Internal (in some cases legacy documentation) goes above fields as a commend.
@@ -494,12 +498,11 @@ class OptParams(BaseModel):
     see psi4 docs for details on [cfour format]"""
     
     # accompanies cart_hess_read. The default is not validated
-    # Need two options here because str_to_upper cannot be turned of for members of the Model
-    # _hessian_file avoids str_to_upper
+    # Need two options here because str_to_upper cannot be turned of for individual members of the Model
+    # _hessian_file avoids str_to_upper. Captitalization does not seem to be an issue for V1.
     hessian_file: pathlib.Path = Field(default=pathlib.Path(""), validate_default=False)
     """Accompanies |CART_HESS_READ|. path to file where hessian has been saved."""
-
-    _hessian_file = pathlib.Path("")
+    # _hessian_file: pathlib.Path = pathlib.Path("")
 
     # Frequency with which to compute the full Hessian in the course
     # of a geometry optimization. 0 means to compute the initial Hessian only,
@@ -679,36 +682,40 @@ class OptParams(BaseModel):
     redundant_eval_tol: float = 1.0e-10  # to be deprecated.
 
     # --- SET INTERNAL OPTIMIZATION PARAMETERS ---
-    _i_max_force = False
-    _i_rms_force = False
-    _i_max_DE = False
-    _i_max_disp = False
-    _i_rms_disp = False
-    _i_untampered = False
+    _i_max_force: bool = False
+    _i_rms_force: bool = False
+    _i_max_DE: bool = False
+    _i_max_disp: bool = False
+    _i_rms_disp: bool = False
+    _i_untampered: bool = False
 
     def to_dict(self):
         """ Specialized form of __dict__. Makes sure to include convergence keys that are hidden """
-        save = self.model_dump()
-        include = {
-            "_i_max_force": self._i_max_force,
-            "_i_rms_force": self._i_rms_force,
-            "_i_max_DE": self._i_max_DE,
-            "_i_max_disp": self._i_max_disp,
-            "_i_rms_disp": self._i_rms_disp,
-            "_i_untampered": self._i_untampered,
-        }
-        for key in include:
-            save.update(include)
+        save = self.dict()
+        # This was used in the v2 option. Prevents anyone from setting the vars explicity
+        # But during serialization, need to know what these are.
+        # include = {
+        #     "_i_max_force": self._i_max_force,
+        #     "_i_rms_force": self._i_rms_force,
+        #     "_i_max_DE": self._i_max_DE,
+        #     "_i_max_disp": self._i_max_disp,
+        #     "_i_rms_disp": self._i_rms_disp,
+        #     "_i_untampered": self._i_untampered# or key in include:
+        # }
+        # for key in include:
+            # save.update(include)
         return save
 
     def __str__(self):
         s = "\n\t\t -- Optimization Parameters --\n"
-        for name, value in self.model_dump(by_alias=True).items():
+        for name, value in self.dict(by_alias=True).items():
+            if "_i_" in name[:3]:
+                continue
             s += "\t%-30s = %15s\n" % (name, value)
         s += "\n"
         return s
 
-    @model_validator(mode="before")
+    @root_validator(pre=True)
     @classmethod
     def save_raw_input(cls, data):
         """Stash user input before any user input checking or transformations are performed (for
@@ -731,38 +738,41 @@ class OptParams(BaseModel):
         # create a special dict to hold keywords that were changed by validation
         return upper_data
 
-    @model_validator(mode="after")
-    def validate_algorithm(self):
+    @root_validator()
+    def validate_algorithm(cls, fields):
         """Ensure that if the user has selected both an opt_type and step_type that they are
         compatible. If the user has selected `opt_type=TS` OR a `step_type` consistent with `TS`
         then change the other keyword to have the appropriate keyword"""
 
         min_step_types = ["RFO", "NR", "SD", "CONJUGATE", "LINESEARCH"]
         ts_step_types = ["RS_I_RFO", "P_RFO"]
+        set_vars = cls._raw_input
 
-        if "OPT_TYPE" in self._raw_input and "STEP_TYPE" in self._raw_input:
-            if self.opt_type == "TS":
-                assert self.step_type not in min_step_types
-            elif self.opt_type == "MIN":
-                assert self.step_type not in ts_step_types
-        elif "OPT_TYPE" in self._raw_input and self.opt_type == "TS":
+        if "OPT_TYPE" in set_vars and "STEP_TYPE" in set_vars:
+            if fields["opt_type"] == "TS":
+                assert fields["step_type"] not in min_step_types
+            elif fields["opt_type"] == "MIN":
+                assert fields["step_type"] not in ts_step_types
+        elif "OPT_TYPE" in set_vars and fields["opt_type"] == "TS":
             # User has selected TS. Change algorithm to RS_I_RFO
-            self.step_type = "RS_I_RFO"
-        elif "STEP_TYPE" in self._raw_input and "STEP_TYPE" in ts_step_types:
-            self.opt_type = "TS"
-        return self
+            fields.update({"step_type": "RS_I_RFO"})
+        elif "STEP_TYPE" in set_vars and fields["step_type"] in ts_step_types:
+            fields.update({"opt_type": "TS"})
+        return fields
 
-    @model_validator(mode="after")
-    def validate_convergence(self):
+    @root_validator()
+    def validate_convergence(cls, fields: dict):
         """Set active variables depending upon the PRESET that has been provided and whether any
         specific values were individually specified by the user."""
 
         # stash so that __setattr__ doesn't affect which variables have been changed
         # Start by setting each individual convergence option from preset
-        conv_spec = CONVERGENCE_PRESETS.get(self.g_convergence)
+        set_vars = cls._raw_input
 
+        conv_spec = CONVERGENCE_PRESETS[fields["g_convergence"]]
         for key, val in conv_spec.items():
-            self.__setattr__(key, val)
+            fields.update({key: val})
+            # cls.__setattr__(key, val)
 
         # Table to easily correlate the user / psi4 name, internal keyword name,
         # and internal active flag for keyword
@@ -774,103 +784,121 @@ class OptParams(BaseModel):
             ("RMS_DISP_G_CONVERGENCE", "conv_rms_disp", "_i_rms_disp"),
         ]
 
-        # if ANY convergence options were specified by the user,  turn untampered on and set all
-        # options to inactive
-        for keyword_set in keywords:
-            if keyword_set[0] in self._raw_input:
-                # mark keyword as "active" through _i_keyword variable
-                # mark untampered as False (tampering has occurred!)
-                self.__setattr__(keyword_set[1], self._raw_input.get(keyword_set[0]))
-                self.__setattr__(keyword_set[2], True)
-                self._i_untampered = False
-                if self.flexible_g_convergence:
-                    # use flexible conv criteria don't leave criteria preset active except for mods
-                    self._i_untampered = True
+        keys_present = [True if keyword_set[0] in set_vars else False for keyword_set in keywords]
+
+        # Skip if no tampering occured. The following code sets active to False for any values the
+        # user didn't explicitly specify. 
+        if any(keys_present):
+            # Summary: If ANY convergence options were specified by the user
+            # (without flexible convergence being on), turn untampered on and set all options to inactive
+            for keyword_set in keywords:
+                if keyword_set[0] in set_vars:
+                    # Keyword was specified by the user. Set value and active flag
+                    fields.update({keyword_set[1]: set_vars[keyword_set[0]]})
+                    fields.update({keyword_set[2]: True})
+                    fields.update({"_i_untampered": False}) # Tampering has occured!!!!
+                    if fields["flexible_g_convergence"]:
+                        # use flexible conv criteria don't leave criteria preset active except for mods
+                        fields.update({"_i_untampered": True})
+                    else:
+                        fields.update({"_i_untampered": False})
                 else:
-                    self._i_untampered = False
-        return self
+                    # Keyword was not specified by user. Deactivate all other keywords if running in normal mode
+                    # if in flexible mode, leave other criteria active
+                    if not fields["flexible_g_convergence"]:
+                        fields.update({keyword_set[2]: False})
+        return fields
 
-    @model_validator(mode="after")
-    def validate_iter(self):
-        if self.opt_type == "IRC" and "GEOM_MAXITER" not in self._raw_input:
-            self.geom_maxiter = self.irc_points * 15
-        elif self.geom_maxiter < self.alg_geom_maxiter:
-            self.alg_geom_maxiter = self.geom_maxiter
-        return self
+    @root_validator()
+    @classmethod
+    def validate_iter(cls, fields: dict):
 
-    @model_validator(mode="after")
-    def validate_trustregion(self):
+        if fields["opt_type"] == "IRC" and "GEOM_MAXITER" not in cls._raw_input:
+            fields.update({"geom_maxiter": fields["irc_points"] * 15})
+        elif fields["geom_maxiter"] < fields["alg_geom_maxiter"]:
+            fields.update({"alg_geom_maxiter": fields["geom_maxiter"]})
+        return fields
+
+    @root_validator()
+    def validate_trustregion(cls, fields):
         # Initial Hessian guess for Cartesian's with coordinates BOTH is stupid, so don't scale
         #   step size down too much.  Steepest descent has no good hessian either.
-        if "INTRAFRAG_TRUST_MIN" not in self._raw_input:
-            if self.opt_coordinates == "BOTH":
-                self.intrafrag_trust_min = self.intrafrag_trust / 2.0
-            elif self.step_type == "SD":  # steepest descent, use constant stepsize
-                self.intrafrag_trust_min = self.intrafrag_trust
+        set_vars = cls._raw_input
+
+        if "INTRAFRAG_TRUST_MIN" not in set_vars:
+            intra_trust = fields["intrafrag_trust"]
+            if fields["opt_coordinates"] == "BOTH":
+                fields.update({"intrafrag_trust_min": intra_trust})
+            elif fields["step_type"] == "SD":  # steepest descent, use constant stepsize
+                fields.update({"intrafrag_trust_min": intra_trust})
             elif any(
                 [
-                    self.ext_force_distance,
-                    self.ext_force_bend,
-                    self.ext_force_dihedral,
-                    self.ext_force_oofp,
-                    self.ext_force_cartesian,
+                    fields["ext_force_distance"],
+                    fields["ext_force_bend"],
+                    fields["ext_force_dihedral"],
+                    fields["ext_force_oofp"],
+                    fields["ext_force_cartesian"],
                 ]
             ):
                 # with external forces, the check for trust radius will be inapt
                 # so don't let minimum step get shrunk too much.
-                self.intrafrag_trust_min = self.intrafrag_trust / 2.0
+                fields.update({"intrafrag_trust_min": intra_trust / 2.0})
 
-        if self.opt_type in ["IRC", "TS"] and "INTRAFRAG_STEP_LIMIT" not in self._raw_input:
-            self.intrafrag_trust = 0.2  # start with smaller intrafrag_trust
+        # breakpoint()
+        if (fields["opt_type"] in ["IRC", "TS"] or fields["step_type"] == "RS_I_RFO") and "INTRAFRAG_STEP_LIMIT" not in set_vars:
+            fields.update({"intrafrag_trust": 0.2})  # start with smaller intrafrag_trust
 
-        if self.intrafrag_trust_max < self.intrafrag_trust:
-            self.intrafrag_trust = self.intrafrag_trust_max
-        return self
+        if fields["intrafrag_trust_max"] < fields["intrafrag_trust"]:
+            fields.update({"intrafrag_trust": fields["intrafrag_trust_max"]})
+        return fields
 
-    @model_validator(mode="after")
-    def validate_hessian(self):
-        set_vars = self._raw_input
+    @root_validator()
+    @classmethod
+    def validate_hessian(cls, fields):
+
+        set_vars = cls._raw_input
+        opt_type = fields["opt_type"]  # fetch once
 
         # Original Lindh specification was to redo at every step.
-        if "h_guess_every" not in set_vars and self.intrafrag_hess == "LINDH":
-            self.h_guess_every = True
+        if "H_GUESS_EVERY" not in set_vars and fields["intrafrag_hess"] == "LINDH":
+            fields.update({"h_guess_every": True})
 
         # Default for cartesians: use Lindh force field for initial guess, then BFGS.
-        if self.opt_coordinates == "CARTESIAN":
-            if "intrafrag_hess" not in set_vars:
-                self.intrafrag_hess = "LINDH"
-                if "h_guess_every" not in set_vars:
-                    self.h_guess_every = False
+        if fields["opt_coordinates"] == "CARTESIAN":
+            if "INTRAFRAG_HESS" not in set_vars:
+                fields.update({"intrafrag_hess": "LINDH"})
+                if "H_GUESS_EVERY" not in set_vars:
+                    fields.update({"h_guess_every": False})
 
         # Set Bofill as default for TS optimizations.
-        if self.opt_type == "TS" or self.opt_type == "IRC":
-            if "hess_update" not in set_vars:
-                self.hess_update = "BOFILL"
+        if opt_type == "TS" or opt_type == "IRC":
+            if "HESS_UPDATE" not in set_vars:
+                fields.update({"hess_update": "BOFILL"})
 
         # Make trajectory file printing the default for IRC.
-        if self.opt_type == "IRC" and "print_trajectory_xyz_file" not in set_vars:
-            self.print_trajectory_xyz_file = True
+        if opt_type == "IRC" and "PRINT_TRAJECTORY_XYZ_FILE" not in set_vars:
+            fields.update({"print_trajectory_xyz_file": True})
 
         # Read cartesian Hessian by default for IRC.
         # Changed to turn cart_hess_read on only if a file path was provided.
         # otherwise full_hess_every will handle providing hessian
-        if self.opt_type == "IRC" and "cart_hess_read" not in set_vars:
-            if self._hessian_file != pathlib.Path(""):
-                self.cart_hess_read = True
+        if opt_type == "IRC" and "CART_HESS_READ" not in set_vars:
+            if fields["hessian_file"] != pathlib.Path(""):
+                fields.update({"cart_hess_read": True})
 
         # inactive option
-        # if self.generate_intcos_exit:
-        #     self.keep_intcos = True
+        # if fields.get("generate_intcos_exit"):
+        #     fields.get("keep_intcos") = True
 
         # For IRC, we WILL need a Hessian.  Compute it if not provided.
         # Set full_hess_every to 0 if -1
-        if self.opt_type == "IRC" and self.full_hess_every < 0:
-            self.full_hess_every = 0
-            # self.cart_hess_read = True  # not sure about this one - test
+        if opt_type == "IRC" and fields["full_hess_every"] < 0:
+            fields.update({"full_hess_every":  0})
+            # fields.get("cart_hess_read") = True  # not sure about this one - test
 
         # if steepest-descent, then make much larger default
-        if self.step_type == "SD" and "consecutive_backsteps" not in set_vars:
-            self.consecutive_backsteps_allowed = 10
+        if fields["step_type"] == "SD" and "CONSECUTIVE_BACKSTEPS" not in set_vars:
+            fields.update({"consecutive_backsteps_allowed": 10})
 
         # For RFO step, eigenvectors of augmented Hessian are divided by the last
         # element unless it is smaller than this value {double}.  Can be used to
@@ -880,32 +908,35 @@ class OptParams(BaseModel):
         # if P.fragment_mode == 'MULTI' and 'RFO_NORMALIZATION_MAX' not in uod:
         #     P.rfo_normalization_max = 1.0e5
         # If arbitrary user forces, don't shrink step_size if Delta(E) is poor.
-        return self
+        return fields
 
-    @model_validator(mode="after")
-    def validate_hessian_file(self):
-        # Stash value of hessian_file in _hessian_file for internal use
-        # mode before required so that we stash before str_to_upper is called
-        orig_vars = self._raw_input
-        if orig_vars.get("HESSIAN_FILE"):
-            self._hessian_file = pathlib.Path(orig_vars.get("HESSIAN_FILE"))
-        return self
+    # @root_validator()
+    # def validate_hessian_file(cls, fields):
+    #     # Stash value of hessian_file in _hessian_file for internal use
+    #     # mode before required so that we stash before str_to_upper is called
 
-    @model_validator(mode="after")
-    def validate_frag(self):
+    #     set_vars = cls._raw_input
+    #     hess_file = set_vars.get("hessian_file")
+    #     if hess_file:
+    #         fields.update({"_hessian_file": pathlib.Path(hess_file)})
+    #     breakpoint()
+    #     return fields
+
+    @root_validator()
+    def validate_frag(cls, fields: dict):
         # Finish multi-fragment option setup by forcing frag_mode: MULTI if DimerCoords are provided
 
-        input = self.interfrag_coords
+        input = fields["interfrag_coords"]
         if input:
             # if interfrag_coords is not empty. Consider whether it is just [{}]
             if isinstance(input, list) and len(input) > 0:
                 if isinstance(input[0], dict) and len(input[0]) == 0:
                     # empty dict in list
-                    return self
-            self.frag_mode = "MULTI"
-        return self
+                    return fields
+            fields.update({"frag_mode": "MULTI"})
+        return fields
 
-    @field_validator("interfrag_coords", mode="before")
+    @validator("interfrag_coords", pre=True)
     @classmethod
     def check_interfrag_coords(cls, val):
         """Make sure required fields and types are sensible for interfrag_coords dict."""
@@ -932,7 +963,8 @@ class OptParams(BaseModel):
             # Validate string as matching InterfragCoords Spec
             for item in tmp:
                 if item and item != "{}":
-                    assert InterfragCoords.model_validate_json(item)
+                    assert InterfragCoords.parse_raw(item)
+                    # assert InterfragCoords.model_validate_json(item)
 
             # Now that everything is validated. Convert to dict for storage
             tmp = [json.loads(item) for item in tmp]
@@ -940,17 +972,18 @@ class OptParams(BaseModel):
         else:
             return [{}]
 
-    @model_validator(mode="after")
-    def validate_case(self):
-        for attr in self.model_dump():
-            if isinstance(self.__getattribute__(attr), str):
-                self.__setattr__(attr, self.__getattribute__(attr).upper())
-        return self
+    @root_validator()
+    @classmethod
+    def validate_case(cls, fields: dict):
+        for key, val in fields.items():
+            if isinstance(val, str):
+                fields[key] = val.upper()
+        return fields
 
     @classmethod
     def from_internal_dict(cls, params):
         """Assumes that params does not use the input key and syntax, but uses the internal names and
-        internal syntax. Meant to be used for recreating options object after dump to dict
+        internal syntax. Meant to be used for recreating options# o dict
         It's probably preferable to dump by alias and then recreate instead of using this"""
 
         options = cls()  # basic default options
@@ -1177,4 +1210,4 @@ CART_STR = r"(?:xyz|xy|yz|x|y|z)"
 LABEL = r"(?:[SRABTDO]|STRE|STRETCH|BOND|BEND|ANGLE|TORS|TORSION|DIHEDRAL)"
 
 # Create a module level, default, options object
-Params = OptParams(**{})
+Params = OptParams()

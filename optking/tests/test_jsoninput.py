@@ -1,6 +1,7 @@
 import os
 import json
 from packaging import version
+import pydantic
 
 import pytest
 import optking
@@ -28,7 +29,10 @@ def test_input_through_json(inp, expected, num_steps, check_iter):
         if "lif" in inp:
             import qcmanybody
             if version.Version(qcmanybody.__version__) >= version.Version("0.5"):
-                from qcmanybody.models.v1.generalized_optimization import GeneralizedOptimizationInput
+                if version.Version(pydantic.__version__) < version.Version("2"):
+                    from qcmanybody.models.v1.generalized_optimization import GeneralizedOptimizationInput
+                else:
+                    from qcmanybody.models.v2.generalized_optimization import GeneralizedOptimizationInput
             else:
                 from qcmanybody.models.generalized_optimization import GeneralizedOptimizationInput
             opt_schema = GeneralizedOptimizationInput(**input_copy)

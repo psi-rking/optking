@@ -3,7 +3,7 @@ import psi4
 import optking
 import numpy as np
 
-from optking.optparams import OptParams
+from optking import op
 from optking.molsys import Molsys
 from optking.optimize import OptimizationManager
 from optking.optwrapper import make_computer
@@ -17,7 +17,7 @@ def test_atom_stepwise():
 
     psi4.core.clean_options()
 
-    params = OptParams()
+    params = op.OptParams()
     history = History(params)
     opt_mol, qcschema_mol = Molsys.from_psi4(neon)
 

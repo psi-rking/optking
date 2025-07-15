@@ -11,6 +11,7 @@ algorithms like backtransformation and displacement.
 """
 
 import logging
+import pathlib
 from typing import Union
 
 import numpy as np
@@ -18,12 +19,12 @@ from optking.compute_wrappers import ComputeWrapper
 from optking.molsys import Molsys
 
 from . import IRCfollowing, addIntcos, hessian, history, intcosMisc
-from . import optparams as op
 from . import stepAlgorithms
 from . import testB, linesearch
 from .exceptions import AlgError, OptError
 from .printTools import print_array_string, print_geom_grad, print_mat_string
 from . import log_name
+from . import op
 
 logger = logging.getLogger(f"{log_name}{__name__}")
 
@@ -584,10 +585,10 @@ def get_pes_info(
             logger.info("Reading hessian from file")
             result = computer.compute(o_molsys.geom, driver=driver, return_full=False)
             g_x = np.asarray(result) if driver == "gradient" else None
-            Hx = hessian.from_file(params._hessian_file)
+            Hx = hessian.from_file(params.hessian_file)
             H = o_molsys.hessian_to_internals(Hx)
             params.cart_hess_read = False
-            params._hessian_file = ""
+            params.hessian_file = pathlib.Path(".")
         else:
             raise OptError("Encountered unknown value from get_hessian_protocol()")
 

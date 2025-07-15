@@ -4,13 +4,13 @@ from math import acos, sqrt, tan
 import numpy as np
 
 from . import IRCdata, convcheck
-from . import optparams as op
 from .displace import displace_molsys
 from .exceptions import AlgError
 from .linearAlgebra import symm_mat_eig, symm_mat_inv, symm_mat_root, lowest_eigenvector_symm_mat
 from .printTools import print_array_string, print_mat_string
 from .stepAlgorithms import OptimizationInterface
 from . import log_name
+from . import op
 
 logger = logging.getLogger(f"{log_name}{__name__}")
 

@@ -19,8 +19,8 @@ from .exceptions import OptError, AlgError
 from .optimize import get_pes_info, make_internal_coords, optimize, prepare_opt_output, OptimizationManager
 from .misc import import_psi4
 from .printTools import print_geom_grad, welcome
-from . import optparams as op
 from . import log_name
+from . import op
 
 logger = logging.getLogger(f"{log_name}{__name__}")
 
@@ -114,7 +114,7 @@ class Helper(ABC):
     def to_dict(self):
         d = {
             "step_num": self.step_num,
-            "params": self.params.to_dict(),
+            "params": self.params.to_dict(by_alias=False),
             "molsys": self.molsys.to_dict(),
             "history": self.history.to_dict(),
             "computer": self.computer.__dict__,
@@ -440,7 +440,7 @@ class CustomHelper(Helper):
         if self.HX is None:
             if "hessian" in self.calculations_needed():
                 if self.params.cart_hess_read:
-                    self.HX = hessian.from_file(self.params._hessian_file)  # set ourselves if file
+                    self.HX = hessian.from_file(self.params.hessian_file)  # set ourselves if file
                     _ = self.computer.compute(self.geom, driver="hessian")
                     self.gX = self.computer.external_gradient
                     self.fq = self.molsys.gradient_to_internals(self.gX, -1.0)
@@ -449,7 +449,7 @@ class CustomHelper(Helper):
                     self.fq, self._Hq = self.molsys.project_redundancies_and_constraints(self.fq, self._Hq)
                     self.HX = None
                     self.params.cart_hess_read = False
-                    self.params._hessian_file = pathlib.Path("")
+                    self.params.hessian_file = pathlib.Path("")
                 else:
                     raise RuntimeError(
                         "Optking requested a hessian but was not provided one. " "This could be a driver issue"
