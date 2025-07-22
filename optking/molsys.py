@@ -556,7 +556,7 @@ class Molsys(object):
         if self.nfragments == 1:
             return 1.3
 
-        frag_connectivity = np.zeros((nF, nF))
+        frag_connectivity = np.zeros((nF, nF), dtype=int)
         for iF in range(nF):
             frag_connectivity[iF, iF] = 1
 
@@ -605,7 +605,7 @@ class Molsys(object):
                                 C[i][j] = C[j][i] = True
 
             # Test whether all frags are connected using current distance threshold
-            if np.sum(frag_connectivity[0]) == nF:
+            if any(np.sum(frag_connectivity, axis=0) - nF == 0):
                 logger.info("\tAll fragments are connected in connectivity matrix.")
                 all_connected = True
             else:
