@@ -7,7 +7,7 @@ dependencies:
   - python
   - qcelemental
   - msgpack-python
-  - sphinx
+  - sphinx=7.4.7
   - sphinx-automodapi
   - graphviz
   - sphinxcontrib-napoleon

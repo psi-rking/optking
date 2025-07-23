@@ -20,7 +20,7 @@ dependencies:
   - codecov
 
    # Dev
-  - sphinx
+  - sphinx=7.4.7
   - sphinx-automodapi
   - sphinxcontrib-napoleon
   - pydata-sphinx-theme
