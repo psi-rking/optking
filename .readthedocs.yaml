@@ -10,3 +10,6 @@ build:
 
 conda:
   environment: devtools/conda-envs/docs.yaml
+
+sphinx:
+  configuration: docs/source/conf.py
