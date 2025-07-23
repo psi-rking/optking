@@ -59,7 +59,7 @@ jobs:
     - name: PyTest
       shell: bash -l {0}
       run: |
-        pytest -rws -v -m "not long" --cov=optking --color=yes --cov-report=xml optking/
+        pytest -n 4 -rws -v -m "not long" --cov=optking --color=yes --cov-report=xml optking/
     - name: CodeCov
       uses: codecov/codecov-action@v4
       with:
