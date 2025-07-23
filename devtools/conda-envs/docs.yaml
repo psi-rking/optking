@@ -13,4 +13,4 @@ dependencies:
   - sphinxcontrib-napoleon
   - sphinx-design
   - pydata-sphinx-theme
-  - autodoc-pydantic
+  - autodoc-pydantic=1.9.0

@@ -9,6 +9,7 @@ dependencies:
   - qcelemental
   - qcengine
   - msgpack-python
+  - pydantic=1.10
   
     # Testing
   - pytest
@@ -24,7 +25,7 @@ dependencies:
   - sphinxcontrib-napoleon
   - pydata-sphinx-theme
   - sphinx-design
-  - autodoc-pydantic
+  - autodoc-pydantic=1.9.0
   - graphviz
   - black
   - isort
