@@ -2,7 +2,7 @@ Optking's documentation is built by `sphinx` and hosted on `readthedocs.org`
 To build the documentation install the following dependencies
 
 ```
-conda install sphinx graphviz sphinx-automodapi sphinx_rtd_theme -c conda-forge
+conda install sphinx graphviz sphinx-automodapi pydata-sphinx-theme sphinx-design autodoc-pydantic -c conda-forge
 ```
 
 To build locally

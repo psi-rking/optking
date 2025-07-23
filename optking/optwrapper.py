@@ -24,9 +24,9 @@ logger = logging.getLogger(f"{log_name}{__name__}")
 
 
 def optimize_psi4(calc_name, program="psi4", dertype=None, **xtra_opt_params):
-    """
-    Wrapper for optimize.optimize() Looks for an active psi4 molecule and optimizes.
+    """Wrapper for optimize.optimize() Looks for an active psi4 molecule and optimizes.
     This is the written warning that Optking will try to use psi4 if no program is provided
+
     Parameters
     ----------
     calc_name: str
@@ -167,16 +167,17 @@ def optimize_qcengine(opt_input, computer_type="qc"):
     """Try to optimize, find TS, or find IRC of the system as specifed by a QCSchema
     OptimizationInput.
 
-        Parameters
-        ----------
-        opt_input: Union[OptimizationInput, dict]
-            Pydantic Schema of the OptimizationInput model.
-            see https://github.com/MolSSI/QCElemental/blob/master/qcelemental/models/procedures.py
-        computer_type: str
+    Parameters
+    ----------
+    opt_input: Union[OptimizationInput, dict]
+        Pydantic Schema of the OptimizationInput model.
+        see https://github.com/MolSSI/QCElemental/blob/master/qcelemental/models/procedures.py
+    computer_type: str
 
-        Returns
-        -------
-        dict
+    Returns
+    -------
+    dict
+
     """
 
     if isinstance(opt_input, OptimizationInput):

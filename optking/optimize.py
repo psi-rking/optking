@@ -1,13 +1,13 @@
 """ Provides some of the high level functions and classes to run optimizations. This is a good starting place for anyone
-looking to add features to the code to familarize themselves with the overall workings of optking.
-Functions may be useful to users seeking greater control over the inner workings of optking than provided by the
-OptHelpers. For instance if manually creating a molecular system or manually controlling / switching algorithms
+looking to add features to the code to familarize themselves with the overall workings of OptKing.
+Functions may be useful to users seeking greater control over the inner workings of OptKing than provided by the
+``OptHelpers``. For instance, if manually creating a molecular system or manually controlling / switching algorithms
 on the fly.
 
-See also `OptimizationAlgorithm <stepalgorithms.OptimizationAlgorithm>` and
-`OptimizationInterface <stepalgorithms.OptimizationInterface>`for core functionality common to all the optimization
-algorithms like backtransformation and displacement.
-
+See Also
+--------
+:py:class:`stepalgorithms.OptimizationAlgorithm`
+:py:class:`stepalgorithms.OptimizationInterface`
 """
 
 import logging
@@ -30,8 +30,9 @@ logger = logging.getLogger(f"{log_name}{__name__}")
 
 
 def optimize(o_molsys, computer):
-    """Driver for OptKing's optimization procedure. Suggested that users use EngineHelper, CustomHelper, or
-    one of the external interfaces (psi4 and qcengine) to perform a normal (full) optimization
+    """Driver for OptKing's optimization procedure. It is suggested that users use
+    :py:class:`optking.opt_helper.EngineHelper`, :py:class:`optking.opt_helper.CustomHelper`, or
+    one of the external interfaces (Psi4 and Qcengine) to perform a normal (full) optimization
 
     Parameters
     ----------
@@ -228,6 +229,8 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
     def take_step(self, fq=None, H=None, energy=None, return_str=False, **kwargs):
         """Take whatever step (normal, linesearch, IRC, constrained IRC) is next.
 
+        Parameters
+        ----------
         fq: Union[np.ndarray, None]
             forces
         H: Union[np.ndarray, None]

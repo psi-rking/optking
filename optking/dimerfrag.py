@@ -64,36 +64,42 @@ class RefPoint(object):
 
 class DimerFrag(object):
     """Set of (up to 6) coordinates between two distinct fragments.
+
     The fragments 'A' and 'B' have up to 3 reference atoms each (dA[3] and dB[3]).
-    The reference atoms are defined in one of two ways:
-    1. If interfrag_mode == FIXED, then fixed, linear combinations of atoms
-          in A and B are used.
-    2. (NOT YET IMPLEMENTED)
-       If interfrag_mode == PRINCIPAL_AXES, then the references points are
+    The reference atoms are defined in one of two ways.
+
+    1. If ``interfrag_mode == FIXED``, then fixed, linear combinations of atoms in A and B are used.
+    2. If ``interfrag_mode == PRINCIPAL_AXES`` (NOT YET IMPLEMENTED), then the references points are
         a. the center of mass
         b. a point a unit distance along the principal axis corresponding to the largest moment.
         c. a point a unit distance along the principal axis corresponding to the 2nd largest moment.
-    #
+
+    Notes
+    -----
     For simplicity, we sort the atoms in the reference point structure according to
     the assumed connectivity of the coordinates.
-    ref_geom[0] = dA[2];
-    ref_geom[1] = dA[1];
-    ref_geom[2] = dA[0];
-    ref_geom[3] = dB[0];
-    ref_geom[4] = dB[1];
-    ref_geom[5] = dB[2];
-    #
-    The six coordinates, if present, formed from the d{A-B}{0-2} sets are assumed to be the
+
+    #. ``ref_geom[0] = dA[2]``
+    #. ``ref_geom[1] = dA[1]``
+    #. ``ref_geom[2] = dA[0]``
+    #. ``ref_geom[3] = dB[0]``
+    #. ``ref_geom[4] = dB[1]``
+    #. ``ref_geom[5] = dB[2]``
+
+    The six coordinates, if present, formed from the ``d{A-B}{0-2}`` sets are assumed to be the
     following in this canonical order:
+
+    === ======== ========= ======================== =================================
     pos sym      type      atom-definition          present, if
-    ---------------------------------------------------------------------------------
+    === ======== ========= ======================== =================================
     0   RAB      distance  dA[0]-dB[0]              always
     1   theta_A  angle     dA[1]-dA[0]-dB[0]        A has > 1 atom
     2   theta_B  angle     dA[0]-dB[0]-dB[1]        B has > 1 atom
     3   tau      dihedral  dA[1]-dA[0]-dB[0]-dB[1]  A and B have > 1 atom
     4   phi_A    dihedral  dA[2]-dA[1]-dA[0]-dB[0]  A has > 2 atoms and is not linear
     5   phi_B    dihedral  dA[0]-dB[0]-dB[1]-dB[2]  B has > 2 atoms and is not linear
-    #
+    === ======== ========= ======================== =================================
+
     Parameters
     ----------
     A_idx : int
@@ -841,7 +847,8 @@ class DimerFrag(object):
 
     def Bmat(self, A_geom, B_geom, Bmat_in, A_xyz_off=None, B_xyz_off=None):
         """This function adds interfragment rows into an existing B matrix.
-            B is (internals, Cartesians).  Often, 6 x 3*(Natoms).
+        B is (internals, Cartesians).  Often, :math:`6 x 3*(Natoms)`.
+
         Parameters
         ----------
         A_geom : numpy array
@@ -857,6 +864,9 @@ class DimerFrag(object):
             Needed since columns may span full molecular system.
         B_off : int
             Column of B matrix at which the cartesian coordinates of atoms in fragment B begin.
+
+        Notes
+        -----
         If A_off and B_off are not given, then the minimal (dimer-only) B-matrix is returned.
         """
 

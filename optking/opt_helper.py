@@ -1,6 +1,8 @@
-"""
-Helpers to provide high-level interfaces for optking.  The Helpers allow individual steps to be taken easily.
-EngineHelper runs calculations through QCEngine. CustomHelper adds the abilility to directly input gradients.
+"""Helpers to provide high-level interfaces for OptKing. The Helpers allow individual steps to be taken easily
+from a variety of sources. EngineHelper runs calculations through
+`QCEngine <https://molssi.github.io/QCEngine/>`__. Optimizations can also be run through the QCEngine
+procedure for OptKing :ref:`example <qcengine_running>`. CustomHelper adds the abilility to directly input energies, gradients,
+hessians, etc...
 """
 
 import logging
@@ -29,15 +31,15 @@ class Helper(ABC):
     """
     Base class for CustomHelper (accepts user provided gradients) and EngineHelper (uses MolSSI's QCEngine for gradients)
 
-    A step may be taken by setting the class attributes gX and E, then calling the
-    compute() and take_step() methods. The class attribute HX may also be set at any time as
-    desired, if this is not set then optking will perform its normal update/guess procedure.
+    A step may be taken by setting the class attributes ``gX`` and ``E``, then calling the
+    ``compute()`` and ``take_step()`` methods. The class attribute ``HX`` may also be set at any time as
+    desired, if this is not set then OptKing will perform its normal update/guess procedure.
 
-    If full_hess_every has been set, the optimizer will require that hessians be provided every n steps.
-    The properties required by the optimizer can be queried by calling get_requirements()
+    If ``full_hess_every`` has been set, the optimizer will require that hessians be provided every n steps.
+    The properties required by the optimizer can be queried by calling ``get_requirements()``
     test_convergence may be used to determine compliance with optking's convergence criteria
 
-    Optking will create a OptimizationResult as output in this process. This will be written upon
+    OptKing will create a ``OptimizationResult`` as output in this process. This will be written upon
     calling close()
 
     """
@@ -75,7 +77,7 @@ class Helper(ABC):
         return string
 
     def post_step_str(self):
-        """Returns a formatted string to summarize the step taken after calling take_step()"""
+        """Returns a formatted string to summarize the step taken after calling ``take_step()``"""
 
         string = ""
         string += self.step_str if self.step_str is not None else ""
@@ -311,18 +313,16 @@ class Helper(ABC):
 
 
 class CustomHelper(Helper):
-    """Class allows for easy setup of optking. Accepts custom forces, energies,
+    """Class allows for easy setup of OptKing. Accepts custom forces, energies,
     and hessians from user. User will need to write a loop to perform optimization.
 
-    examples
+    Examples
     --------
 
     >>> import qcengine as qcng
-
     >>> from qcelemental.models import Molecule, OptimizationInput
     >>> from qcelemental.models.common_models import Model
     >>> from qcelemental.models.procedures import QCInputSpecification
-
     >>> opt_input = {
     ...     "initial_molecule": {
     ...         "symbols": ["O", "O", "H", "H"],
@@ -350,7 +350,6 @@ class CustomHelper(Helper):
     ...     },
     ...     "keywords": {"g_convergence": "GAU_TIGHT", "program": "psi4"},
     ... }
-
     >>> for step in range(30):
     ... # Compute one's own energy and gradient
     ... E, gX = optking.lj_functions.calc_energy_and_gradient(opt.geom, 2.5, 0.01, True)
@@ -363,15 +362,16 @@ class CustomHelper(Helper):
     ... if conv is True:
     ...     print("Optimization SUCCESS:")
     ...     break
-    >>> else:
-    ... print("Optimization FAILURE:\n")
-
+    ... else:
+    ...     print("Optimization FAILURE:")
     >>> json_output = opt.close() # create an unvalidated OptimizationOutput like object
     >>> E = json_output["energies"][-1]
 
     Notes
     -----
-    Overrides. gX, Hessian, and Energy to allow for user input."""
+    Overrides. ``gX``, ``HX``, and ``E`` to allow for user input.
+
+    """
 
     def __init__(self, mol_src, params={}, **kwargs):
         """
@@ -379,6 +379,7 @@ class CustomHelper(Helper):
         ----------
         mol_src: [dict, qcel.models.Molecule, psi4.qcdb.Molecule]
             psi4 or qcelemental molecule to construct optking molecular system from
+
         """
 
         opt_input = {
@@ -534,21 +535,13 @@ class EngineHelper(Helper):
     """Perform an optimization using qcengine to compute properties. Use OptimizationInput to setup
     a molecular system
 
-    calling `compute()` will perform a QCEngine calculation according to the provided QCInputSpecification.
-
-    calling `optimize()` after instantiation will perform an automatic optimization returning an OptimizationResult.
-
-    examples
+    Examples
     --------
-
     >>> import optking
     >>> import qcengine as qcng
-
     >>> from qcelemental.models import Molecule, OptimizationInput
     >>> from qcelemental.models.common_models import Model
     >>> from qcelemental.models.procedures import QCInputSpecification
-
-
     >>> molecule = Molecule.from_data(
     ...     symbols = ["O", "O", "H", "H"],
     ...     geometry = [
@@ -568,21 +561,17 @@ class EngineHelper(Helper):
     ...     fix_com=True,
     ...     fix_orientation=True,
     ... )
-
     >>> model = Model(method="hf", basis="sto-3g")
     >>> input_spec = QCInputSpecification(
     ...     driver="gradient", model=model, keywords={"d_convergence": 1e-7}  # QC program options
     ... )
-
     >>> opt_input = OptimizationInput(
     ...     initial_molecule=molecule,
     ...     input_specification=input_spec,
     ...     keywords={"g_convergence": "GAU_TIGHT", "program": "psi4"},  # optimizer options
     ... )
-
     >>> opt = optking.EngineHelper(opt_input)
     >>> # opt_result = opt.optimize()  # optimize geometry - no interaction
-
     >>> for step in range(30):
     ...    # Compute one's own energy and gradient
     ...    opt.compute() # process input. Get ready to take a step
@@ -592,8 +581,7 @@ class EngineHelper(Helper):
     ...        print("Optimization SUCCESS:")
     ...        break
     >>> else:
-    ...     print("Optimization FAILURE:\n")
-
+    ...     print("Optimization FAILURE:")
     >>> json_output = opt.close() # create an unvalidated OptimizationOutput like object
     >>> E = json_output["energies"][-1]
 

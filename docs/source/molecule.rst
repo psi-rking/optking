@@ -1,10 +1,15 @@
-The Molecular System
-====================
+Molecules
+=========
 
-Opkting's molecular system, at its core, is a list of intramolecular fragments `frag.Frag` and
-intermolecular fragments `dimerfrag.DimerFrag`. The fragments in turn are lists of masses, atomic numbers and coordinates (cartesian or internal)
-along with a numpy array for the cartesian geometry.
-NIST values for masses, and atomic numbers can be easily retrieved through `qcelemental` e.g. `qcelemental.periodictable.to_Z('O')`
+Overview
+--------
+
+Opkting's molecular system, at its core, is a list of intramolecular fragments ``frag.Frag`` and
+intermolecular pseudo-fragments ``dimerfrag.DimerFrag``. The fragments in turn are lists of masses, atomic numbers and
+coordinates (cartesian or internal) along with a numpy array for the cartesian geometry.
+NIST values for masses, and atomic numbers can be easily retrieved through ``qcelemental`` e.g.
+``qcelemental.periodictable.to_Z('O')`` to aid in creating a molecule. To utilize a custom molecule
+in an optimzation see :ref:`CustomHelper` and :ref:`Interfaces`.
 
 A fragment for water:
 
@@ -31,12 +36,3 @@ More typically, the coordinate system is automatically generated once the full m
 
     >>> molsys = optking.Molsys([fragment])
     >>> optking.make_internal_coords(molsys)
-
-To control the automatic generation of coordinates the following keywords can be modified. For more information see the keyword
-documentation.
-
-# TODO keyword documentation needs work (mostly copying pasting?)
-
-.. automodapi:: optking.molsys
-.. automodapi:: optking.frag
-.. automodapi:: optking.dimerfrag

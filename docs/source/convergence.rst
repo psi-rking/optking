@@ -1,23 +1,23 @@
-###########
 Convergence
 ###########
+
+Overview
+--------
 
 .. |delta|  unicode:: U+0394
 
 Optking utilizes a number of optimization presets which mirror and/or mimic the optmization behavior from a number
-of popular Quantum Chemistry packages. These may be selected with the *G_CONVERGENCE* keyword. Descriptions of each
+of popular Quantum Chemistry packages. These may be selected with the ``G_CONVERGENCE`` keyword. Descriptions of each
 preset may be found below. See Notes [#fe] and [#ff] for clarification on what combinations of
 criteria are required or allowed.
 
-For greater control one or more ctriteria can be selectively activated through use of the *<CRITERIA>_G_CONVERGENCE* keywords.
-In order to modify a preset both *FLEXIBLE_G_CONVERGENCE* and one or more *<CRITERIA>_G_CONVERGENCE* keywords must be
-selected in addition to the preset. Specifying *<CRITERIA>_G_CONVERGENCE* without *FLEXIBLE_G_CONVERGENCE* will cause
-the preset to be discarded and optking will ONLY consider the *<CRITERIA>_G_CONVERGENCE* keyword for convergence.
+For greater control one or more ctriteria can be selectively activated through use of the ``*<CRITERIA>_G_CONVERGENCE*`` keywords.
+In order to modify a preset both ``*FLEXIBLE_G_CONVERGENCE*`` and one or more ``*<CRITERIA>_G_CONVERGENCE*`` keywords must be
+selected in addition to the preset. Specifying ``*<CRITERIA>_G_CONVERGENCE*`` without ``*FLEXIBLE_G_CONVERGENCE*`` will cause
+the preset to be discarded and optking will ONLY consider the ``*<CRITERIA>_G_CONVERGENCE*`` keyword for convergence.
 
-As an example the first set of options only changes the `rms_force` threshold. The second changes from `QCHEM` to `GAU_TIGHT` while
-loosening the `rms_force` threshold
-
-::
+As an example the first set of options only changes the ``rms_force`` threshold. The second changes from ``QCHEM`` to ``GAU_TIGHT`` while
+loosening the ``rms_force`` threshold::
 
     {"g_convergence": "gau_tight", "rms_force_g_convergence": 3e-5}
     {"g_convergence": "gau_tight", "flexible_g_convergence": True, "rms_force_g_convergence": 3e-5}
@@ -54,17 +54,18 @@ loosening the `rms_force` threshold
 .. [#fb] Baker convergence criteria are the same.
 .. [#fc] Counterpart NWCHEM convergence criteria are the same.
 .. [#fd] Convergence achieved when all active criteria are fulfilled.
-.. [#fe] Convergence achieved when **Max Force** and one of **Max Energy** or **Max Disp** are fulfilled.
-.. [#ff] Normal convergence achieved when all four criteria (**Max Force**, **RMS Force**,
-         **Max Disp**, and **RMS Disp**) are fulfilled. To help with flat 
-         potential surfaces, alternate convergence achieved when 100\ :math:`\times`\ *rms force* is less 
-         than **RMS Force** criterion.
+.. [#fe] Convergence achieved when ``Max Force`` and one of ``Max Energy`` or ``Max Disp`` are fulfilled.
+.. [#ff] Normal convergence achieved when all four criteria (``Max Force``, ``RMS Force``,
+         ``Max Disp``, and ``RMS Disp``) are fulfilled. To help with flat
+         potential surfaces, alternate convergence achieved when 100\ :math:`\times`\ ``RMS Force`` is less
+         than ``RMS Force`` criterion.
 
 IRC Convergence
 ---------------
 
 The IRC algorithm uses slightly different convergence criteria since the step sizes are of a fixed distance.
-The optimization ends when the forces are opposite the forces of the previous step at a certain threshold < -0.7.
+The optimization ends when the forces are close to anti-parallel with the forces of the previous step.
+The threshold for checking the overlap of the forces can be controlled via ``irc_convergence``.
 Alternatively an increase in energy along the MEP with any negative overlap of the forces is sufficient.
 
 Individual points on the IRC are optimized in a constrained optimization (on a hypersphere of fixed radius) according

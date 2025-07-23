@@ -1,3 +1,4 @@
+"""Specifies two classes to store data for an optimization: ``Step`` and ``History``."""
 import copy
 import logging
 import math
@@ -17,6 +18,8 @@ logger = logging.getLogger(f"{log_name}{__name__}")
 
 
 class Step(object):
+    """Stores basic data: geometry, forces, step information, etc... for a given step of an
+    Optimization"""
     def __init__(self, geom, E, forces, cart_grad):
         self.geom = geom.copy()  # Store as 2D object
         self.E = E
@@ -91,6 +94,7 @@ class Step(object):
 
 
 class History(object):
+    """A collection of ``Steps`` objects. Manages updating the hessian."""
     def __init__(self, params=None):
         self.steps = []
         History.stepsSinceLastHessian = 0
