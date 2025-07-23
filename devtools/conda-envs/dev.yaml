@@ -13,6 +13,7 @@ dependencies:
     # Testing
   - pytest
   - pytest-cov
+  - pytest-xdist
   - psi4 1.9.1
   - dftd3-python
   - codecov
@@ -20,7 +21,9 @@ dependencies:
    # Dev
   - sphinx
   - sphinx-automodapi
-  - sphinx_material
+  - sphinxcontrib-napoleon
+  - pydata-sphinx-theme
+  - sphinx-design
   - autodoc-pydantic
   - graphviz
   - black
