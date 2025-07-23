@@ -235,7 +235,7 @@ class OptParams(BaseModel):
     For dissociation reactions, where the reaction path may not terminate in
     a minimum, this is needed to cap the number of step's Optking is allowed to take"""
 
-    irc_convergence: int = Field(lt=-0.5, gt=-1.0, default=-0.7)
+    irc_convergence: float = Field(lt=-0.5, gt=-1.0, default=-0.7)
     """Main criteria for declaring convergence for an IRC. The overlap between the unit forces
     at two points of the IRC is compared to this value to assess whether a minimum has been stepped
     over. If :math:`overlap < irc_convergence`, declare convergence. If an IRC terminates too early,
