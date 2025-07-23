@@ -128,7 +128,7 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
             logger.debug("Too few steps. continue optimization")
             return False
 
-        if self.irc_history.test_for_irc_minimum(fq, energies[-1]):
+        if self.irc_history.test_for_irc_minimum(fq, energies[-1], self.params.irc_convergence):
             logger.info("A minimum has been reached on the IRC.  Stopping here.\n")
             return True
 

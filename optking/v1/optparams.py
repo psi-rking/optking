@@ -149,7 +149,7 @@ class OptParams(BaseModel):
     )
     """One of ``["REDUNDANT", "INTERNAL", "CARTESIAN", "BOTH"]``. ``"INTERNAL"`` is just a synonym for
     ``"REDUNDANT"``. ``"BOTH"`` utilizes a full set of redundant internal coordinates and cartesian
-    $(3N - 6+) + (3N) = (6N - 6+)$ coordinates."""
+    :math:`(3N - 6+) + (3N) = (6N - 6+)` coordinates."""
 
     # Do follow the initial RFO vector after the first step?
     rfo_follow_root: bool = False
@@ -222,6 +222,13 @@ class OptParams(BaseModel):
     """Maximum number of converged points along the IRC path to map out before quitting.
     For dissociation reactions, where the reaction path may not terminate in
     a minimum, this is needed to cap the number of step's Optking is allowed to take"""
+
+    irc_convergence: int = Field(lt=-0.5, gt=-1.0, default=-0.7)
+    """Main criteria for declaring convergence for an IRC. The overlap between the unit forces
+    at two points of the IRC is compared to this value to assess whether a minimum has been stepped
+    over. If :math:`overlap < irc_convergence`, declare convergence. If an IRC terminates too early,
+    this may be symptomatic of a highly curved reaction-path, decrease try
+    ``irc_converence = -0.9``"""
 
     # ------------- SUBSECTION ----------------
     # trust radius - need to write custom validator to check for sane combination
