@@ -13,6 +13,8 @@ class OptError(Exception):
         self.err_type = err_type
         # Exception.__init__(self, mesg)
 
+    def __str__(self):
+        return self.mesg
 
 class AlgError(Exception):
     # maybe generalize later def __init__(self, *args, **kwargs):

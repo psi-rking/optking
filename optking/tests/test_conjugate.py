@@ -14,7 +14,7 @@ cg_step_types = [("FLETCHER",14),("DESCENT", 24), ("POLAK", 44)]
 @pytest.mark.long
 @pytest.mark.parametrize("option, num_steps", cg_step_types, ids=["FLETCHER","DESCENT","POLAK"])
 def test_conjugate_gradient_type(option, num_steps, check_iter):
-    propylamine = psi4.geometry(
+    _ = psi4.geometry(
     """
      N    1.8767   -0.1522   -0.0054 
      C   -0.5459   -0.5165    0.0053 

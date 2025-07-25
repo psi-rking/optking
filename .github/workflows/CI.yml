@@ -17,13 +17,11 @@ jobs:
       matrix:
         cfg:
           - conda-env: base
-            python-version: 3.8
-          - conda-env: base
             python-version: 3.9
           - conda-env: base
-            python-version: "3.10"
-          - conda-env: base
             python-version: "3.12"
+          - conda-env: base
+            python-version: "3.13"
     env:
       PYVER: ${{ matrix.cfg.python-version }}
       CONDA_ENV: ${{ matrix.cfg.conda-env }}
@@ -61,7 +59,7 @@ jobs:
     - name: PyTest
       shell: bash -l {0}
       run: |
-        pytest -rws -v -m "not long" --cov=optking --color=yes --cov-report=xml optking/
+        pytest -n 4 -rws -v -m "not long" --cov=optking --color=yes --cov-report=xml optking/
     - name: CodeCov
       uses: codecov/codecov-action@v4
       with:

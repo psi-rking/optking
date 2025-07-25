@@ -1,5 +1,7 @@
 import os
 import json
+from packaging import version
+import pydantic
 
 import pytest
 import optking
@@ -25,7 +27,14 @@ def test_input_through_json(inp, expected, num_steps, check_iter):
     with open(os.path.join(os.path.dirname(__file__), inp)) as input_data:
         input_copy = json.load(input_data)
         if "lif" in inp:
-            from qcmanybody.models.generalized_optimization import GeneralizedOptimizationInput
+            import qcmanybody
+            if version.Version(qcmanybody.__version__) >= version.Version("0.5"):
+                if version.Version(pydantic.__version__) < version.Version("2"):
+                    from qcmanybody.models.v1.generalized_optimization import GeneralizedOptimizationInput
+                else:
+                    from qcmanybody.models.v2.generalized_optimization import GeneralizedOptimizationInput
+            else:
+                from qcmanybody.models.generalized_optimization import GeneralizedOptimizationInput
             opt_schema = GeneralizedOptimizationInput(**input_copy)
         else:
             opt_schema = OptimizationInput(**input_copy)
@@ -35,7 +44,7 @@ def test_input_through_json(inp, expected, num_steps, check_iter):
         #   GeneralizedOptimizationInput like above.
 
     # optking.run_json_file(os.path.join(os.path.dirname(__file__), inp))
-    json_dict = optking.optimize_qcengine(input_copy)
+    json_dict = optking.optimize_qcengine(opt_schema)
 
     if "lif" in inp:
         assert inp, json_dict["trajectory"][-1]["schema_name"] == "qcschema_manybodyresult"

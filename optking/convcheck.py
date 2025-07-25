@@ -8,13 +8,15 @@ conv_check: Primary wrapper. Take information (as dictionary) from previous step
 
 
 import logging
+import pprint
 from math import fabs
+from pydantic import BaseModel
 
 import numpy as np
 
-from . import optparams as op
 from .linearAlgebra import abs_max, rms
 from . import log_name
+from . import op
 
 logger = logging.getLogger(f"{log_name}{__name__}")
 
@@ -40,7 +42,7 @@ CONVERGENCE_PRESETS = {
 }
 
 
-def conv_check(conv_info: dict, params: dict, required=None, str_mode=""):
+def conv_check(conv_info: dict, opt_params: op.OptParams, required=None, str_mode=""):
     """
     Parameters
     ----------
@@ -70,19 +72,21 @@ def conv_check(conv_info: dict, params: dict, required=None, str_mode=""):
     if not return_str:
         logger.info("Performing convergence check.")
 
+    params = opt_params.conv_criteria()
+
     criteria = _get_conv_criteria(conv_info.get("dq"), conv_info.get("fq"), conv_info.get("energies"), required)
     conv_met, conv_active = _transform_criteria(criteria, params)
     conv_str = _print_convergence_table(conv_info, criteria, conv_met, conv_active, params, return_str)
 
     # flat potential cannot be activated by the user - purely an internal tool for gau_type convergence
-    conv_met.update({"flat_potential": 100 * criteria.get("rms_force") < op.Params.conv_rms_force})
+    conv_met.update({"flat_potential": 100 * criteria.get("rms_force") < opt_params.conv_rms_force})
 
     if str_mode == "table":
         return conv_str
     elif str_mode == "both":
-        return conv_str, _test_for_convergence(conv_met, conv_active, return_str)
+        return conv_str, _test_for_convergence(conv_met, conv_active, return_str, opt_params)
     else:
-        return _test_for_convergence(conv_met, conv_active)
+        return _test_for_convergence(conv_met, conv_active, params=opt_params)
 
 
 def _get_conv_criteria(dq, f_vec, energies, required=None):
@@ -124,8 +128,7 @@ def _transform_criteria(criteria, params_dict):
     """
 
     conv_met = {key: fabs(val) < params_dict.get(f"conv_{key}") for key, val in criteria.items()}
-    conv_active = {key: params_dict.get(f"i_{key}") for key in criteria}
-
+    conv_active = {key: params_dict.get(f"i_{key}") for key in criteria.keys()}
     return conv_met, conv_active
 
 
@@ -140,7 +143,7 @@ def _get_criteria_symbol(criteria_met, criteria_active):
     return symbol
 
 
-def _test_for_convergence(conv_met, conv_active, return_str=False):
+def _test_for_convergence(conv_met, conv_active, return_str=False, params=op.Params):
     """Test whether the current point is sufficiently converged. Have all needed criteria been met.
 
     Parameters
@@ -158,14 +161,14 @@ def _test_for_convergence(conv_met, conv_active, return_str=False):
 
     """
 
-    if op.Params.i_untampered:
+    if params._i_untampered:
         # flexible_criteria forces this route, but with an adjusted value for an individual criteria
-        if "GAU" in op.Params.g_convergence or op.Params.g_convergence == "INTERFRAG_TIGHT":
+        if "GAU" in params.g_convergence or params.g_convergence == "INTERFRAG_TIGHT":
             conv_requirements = CONVERGENCE_PRESETS.get("GAUSSIAN")
-        elif op.Params.g_convergence in ["QCHEM", "MOLPRO"]:
+        elif params.g_convergence in ["QCHEM", "MOLPRO"]:
             conv_requirements = CONVERGENCE_PRESETS.get("QCHEM_MOLPRO")
         else:
-            conv_requirements = CONVERGENCE_PRESETS.get(op.Params.g_convergence)
+            conv_requirements = CONVERGENCE_PRESETS.get(params.g_convergence)
 
     else:
         conv_requirements = {
@@ -189,7 +192,7 @@ def _test_for_convergence(conv_met, conv_active, return_str=False):
 
     if return_str:
         return _print_active_criteria(conv_status, conv_requirements)
-    if converged and op.Params.opt_type != "IRC":
+    if converged and params.opt_type != "IRC":
         logger.info("%s", _print_active_criteria(conv_status, conv_requirements))
 
     return converged

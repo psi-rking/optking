@@ -4,7 +4,6 @@
                          "protocols": {"component_results": "all"},
                          "schema_name": "qcschema_manybodyspecification",
                          "specification": {"driver": "energy",
-                                           "extras": {"psiapi": true},
                                            "keywords": {},
                                            "model": {"basis": "6-31g", "method": "hf"},
                                            "program": "psi4",

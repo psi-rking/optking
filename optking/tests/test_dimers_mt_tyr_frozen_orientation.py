@@ -12,6 +12,7 @@ from qcengine.testing import has_program
 
 @pytest.mark.long
 @pytest.mark.dimers
+@pytest.mark.dftd3
 @pytest.mark.skipif(
     (has_program("dftd3") or has_program("s-dftd3")) is False,
     reason="Neither DFTD3 nor s-DFTD3 is findable"

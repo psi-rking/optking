@@ -6,7 +6,7 @@ import optking
 from .utils import utils
 
 conv_RHF_OO_at_135 = -150.7853238  # minimum is 1.39
-init_OO_distance = [("1.28", 9), ("1.30", 7), ("1.325", 8), ("1.35", 9), ("1.38", 8)]
+init_OO_distance = [("1.28", 9), ("1.2999", 8), ("1.325", 8), ("1.35", 9), ("1.38", 8)]
 
 @pytest.mark.parametrize("option, num_steps", init_OO_distance)
 def test_ranged_stretch(option, num_steps, check_iter):

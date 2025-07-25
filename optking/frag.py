@@ -15,7 +15,7 @@ logger = logging.getLogger(f"{log_name}{__name__}")
 
 class Frag:
     def __init__(self, Z, geom, masses, intcos=None, frozen=False):
-        """Group of bonded atoms
+        """A group of bonded atoms
 
         Parameters
         ----------
@@ -87,45 +87,57 @@ class Frag:
 
     @property
     def natom(self):
+        """number of atoms in frag"""
         return len(self._Z)
 
     @property
     def Z(self):
+        """Getter for atomic numbers of all atoms in fragment"""
         return self._Z
 
     @property
     def geom(self):
+        """Getter for geometry (stored in [au])"""
         return self._geom
 
     @property
     def masses(self):
+        """Getter for masses of all atoms in fragment [au]"""
         return self._masses
 
     @property
     def intcos(self):
+        """Getter for internal coordinates describing geometry of fragment"""
         return self._intcos
 
     @property
     def frozen(self):
+        """Is fragment frozen?"""
         return self._frozen
 
     @property
     def num_intcos(self):
+        """Getter for number of internal coordinates in fragment"""
         return len(self._intcos)
 
     def q(self):
+        """Values of internal coordinates in BOHR/RAD"""
         return [intco.q(self.geom) for intco in self._intcos]
 
     def q_array(self):
+        """Array of values of internal coordinates in BOHR/RAD"""
         return np.asarray(self.q())
 
     def q_show(self):
+        """Values of internal coordinates in ANG/DEG"""
         return [intco.q_show(self.geom) for intco in self._intcos]
 
     def q_show_array(self):
+        """Array of values of internal coordinates in ANG/DEG"""
         return np.asarray(self.q_show())
 
     def print_intcos(self):
+        """Logs a table of current values of internal coordinates in both au and angstroms"""
         intcos_report = "\tInternal Coordinate Values\n"
         intcos_report += "\n\t - Coordinate -           - BOHR/RAD -       - ANG/DEG -\n"
         for coord in self._intcos:
@@ -138,24 +150,28 @@ class Frag:
         logger.info(intcos_report)
 
     def connectivity_from_distances(self):
+        """Determine the connectivity of the fragment based on covalent radii and distance matrix"""
         return addIntcos.connectivity_from_distances(self._geom, self._Z)
 
     def add_intcos_from_connectivity(self, connectivity=None):
+        """Automatically add a set of internal coordinates to the fragment based on connectivity"""
         if connectivity is None:
             connectivity = self.connectivity_from_distances()
         addIntcos.add_intcos_from_connectivity(connectivity, self._intcos, self._geom)
         self.add_h_bonds()
 
     def add_auxiliary_bonds(self, connectivity=None):
+        """Add additional bends based on increased covalent radii threshold"""
         if connectivity is None:
             connectivity = self.connectivity_from_distances()
         addIntcos.add_auxiliary_bonds(connectivity, self._intcos, self._geom, self._Z)
 
     def add_cartesian_intcos(self):
+        """Add cartesian coordinates to "internal" coordinate set."""
         addIntcos.add_cartesian_intcos(self._intcos, self._geom)
 
     def add_h_bonds(self):
-        """Prepend h_bonds because that's where optking 2 places them"""
+        """Prepend h_bonds because that's where c++ optking places them"""
         h_bonds = addIntcos.add_h_bonds(self.geom, self.Z, self.natom)
         for h_bond in h_bonds:
             if stre.Stre(h_bond.A, h_bond.B) in self._intcos:
@@ -182,22 +198,27 @@ class Frag:
         return frag_atom_symbol_list
 
     def Bmat(self):
+        """Computes Wilson B matrix for the fragment"""
         B = np.zeros((self.num_intcos, 3 * self.natom))
         for i, intco in enumerate(self._intcos):
             intco.DqDx(self.geom, B[i])
         return B
 
     def fix_bend_axes(self):
+        """Makes sure axis defining bends does not change for all ``Bend`` intstances in Frag's
+        intcos"""
         for intco in self._intcos:
             if isinstance(intco, bend.Bend):
                 intco.fix_bend_axes(self.geom)
 
     def unfix_bend_axes(self):
+        """Remove constraint on bend axis for all ``Bend`` instances in Frag's intcos"""
         for intco in self._intcos:
             if isinstance(intco, bend.Bend):
                 intco.unfix_bend_axes()
 
     def freeze(self):
+        """Freezes all internal coordinates in the fragment"""
         for intco in self._intcos:
             intco.freeze()
         self._frozen = True
@@ -220,6 +241,7 @@ class Frag:
             return False
 
     def is_linear(self):
+        """Is the fragment a linear molecule """
         if self.natom in [1, 2]:  # lets tentatively call an atom linear here
             return True
         else:
