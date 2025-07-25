@@ -21,10 +21,8 @@ def test_B_dB_matrices(check_iter):
         "scf_type": "pk",
         "TEST_B": True,
         "TEST_DERIVATIVE_B": True,
-        "G_CONVERGENCE": "gau_tight",
     }
     psi4.set_options(psi4_options)
-
     json_output = optking.optimize_psi4("hf")  # Uses default program (psi4)
 
     E = json_output["energies"][-1]  # TEST
@@ -65,7 +63,7 @@ def test_maxiter(check_iter):
 
     assert "geom_maxiter" in json_output["keywords"]  # TEST
     assert "Maximum number of steps exceeded" in json_output["error"]["error_message"]  # TEST
-    assert "OptError" in json_output["error"]["error_type"]  # TEST
+    assert "OptError" in str(json_output["error"]["error_type"])  # TEST
 
 
 # Test the energy of geometry output, when maxiter is reached.
@@ -80,7 +78,13 @@ def test_maxiter_geom():
     )
 
     psi4.core.clean_options()
-    psi4options = {"basis": "cc-pvdz", "e_convergence": 10, "d_convergence": 10, "scf_type": "pk", "geom_maxiter": 2}
+    psi4options = {
+        "basis": "cc-pvdz",
+        "e_convergence": 10,
+        "d_convergence": 10,
+        "scf_type": "pk",
+        "geom_maxiter": 2
+    }
     psi4.set_options(psi4options)
 
     result = optking.optimize_psi4("hf")

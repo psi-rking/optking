@@ -230,14 +230,33 @@ class IRCHistory(object):
         index = -1 if step is None else step
         return self.irc_points[index].step_dist
 
-    def test_for_irc_minimum(self, f_q, energy):
+    def test_for_irc_minimum(self, f_q, energy, irc_conv):
         """Given current forces, checks if we are at/near a minimum
+
+        Parameters
+        ----------
+        f_q: np.ndarray
+            (1, nintco) array of forces in internal coordinates evaluated at the geometry currently
+            being evaulated for convergence.
+        energy: float
+            energy for the point at the geometry currently being evaluated for convergence
+        irc_conv: float
+            Threshold to compare the overlap between the previous and current forces along the
+            reaction path.
+
+        Notes
+        -----
         Two checks are performed.
         1. If forces are opposite those are previous pivot point
             - The forces point in opposite directions due to stepping over the minima
         2. If forces are have any negative overlap and the energy has increased.
             - The minima has been stepped over but the forces are not exactly opposite
             due to finite step size
+
+        At the time this function is called, the point/geometry is assumed to not have been added
+        to the history. Calling ``arc_dist()``, ``energy()``, ``f_q()``, etc... should return the
+        last converged point along the IRC. This function should only be called after hypersphere
+        optimization has been completed.
         """
 
         unit_f = f_q / np.linalg.norm(f_q)  # current forces
@@ -248,7 +267,8 @@ class IRCHistory(object):
         logger.info("Overlap of forces with previous rxnpath point %8.4f" % overlap)
         d_energy = energy - self.energy()
         logger.info("Change in energy from last point %d", d_energy)
-        if overlap < -0.7:
+
+        if overlap < irc_conv:
             return True
         elif overlap < 0.0 and d_energy > 0.0:
             return True

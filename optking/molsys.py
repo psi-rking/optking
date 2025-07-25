@@ -1,6 +1,6 @@
 import logging
 from itertools import combinations, permutations
-from typing import List
+from typing import List, Tuple
 
 import numpy as np
 import qcelemental as qcel
@@ -53,8 +53,11 @@ class Molsys(object):
             s += str(dimer)
         return s
 
+    # The following methods use the old workaround for using annotations for classes from modules
+    # that have not been fully initialized by the python interpreter. Python 3.14 introduces
+    # better annotation support, this should work just fine for now.
     @classmethod
-    def from_schema(cls, qc_molecule):
+    def from_schema(cls, qc_molecule: dict) -> 'Molsys':
         """Creates optking molecular system from JSON input.
 
         Parameters
@@ -89,24 +92,26 @@ class Molsys(object):
         return cls(frags)
 
     @staticmethod
-    def from_psi4(mol):
+    def from_psi4(mol) -> Tuple['Molsys', dict]:
         """Creates a optking molecular system from psi4 mol. Note that not all information
         is preserved.
         Parameters
         ----------
-        mol: object
+        mol: (psi4.core.Molecule, psi4.qcdb.Molecule)
             psi4 mol
         Returns
         -------
-        cls :
+        Molsys:
             optking molecular system: list of fragments
+        dict:
+            qcschema representation of molecule.
         """
 
         import psi4
 
         logger.debug("\tConverting psi4 molecular system to schema")
 
-        if not isinstance(mol, psi4.core.Molecule):
+        if not isinstance(mol, (psi4.core.Molecule, psi4.qcdb.Molecule)):
             logger.critical("from_psi4 cannot handle a non psi4 molecule")
             raise OptError("Cannot make molecular system from this molecule")
 
@@ -115,7 +120,7 @@ class Molsys(object):
         opt_mol = Molsys.from_schema(qc_mol)
         return opt_mol, qc_mol
 
-    def to_schema(self):
+    def to_schema(self) -> qcel.models.Molecule:
         mol_dict = {
             "symbols": self.atom_symbols,
             "geometry": self.geom.flat,
@@ -134,7 +139,7 @@ class Molsys(object):
         return d
 
     @classmethod
-    def from_dict(cls, d):
+    def from_dict(cls, d) -> 'Molsys':
         if "fragments" not in d:
             raise OptError("'fragments' key missing from input dict")
         frags = [frag.Frag.from_dict(F) for F in d["fragments"]]
@@ -148,31 +153,43 @@ class Molsys(object):
 
     @property
     def natom(self) -> int:
+        """Computes the number of atoms in the molecular system"""
         return sum(fragment.natom for fragment in self._fragments)
 
     @property
     def nfragments(self) -> int:
+        """Get the number of fragments in the molecular system"""
         return len(self._fragments)
         # return len(self._fragments) + len(self._fb_fragments)
 
     @property
     def frag_natoms(self) -> List[int]:
+        """Compute number of atoms for each fragment.
+
+        Returns
+        -------
+        List[int]
+        """
         return [fragment.natom for fragment in self._fragments]
 
     @property
     def fragments(self) -> List[frag.Frag]:
+        """Getter for list of fragments"""
         return self._fragments
 
     @property
     def dimer_intcos(self) -> List[dimerfrag.DimerFrag]:
+        """Getter for intrafragment intcos from DimerFrag"""
         return self._dimer_intcos
 
     @property
     def dimer_psuedo_frags(self) -> List[frag.Frag]:
+        """List of fragments containing the reference atoms utilized in the interfragment coords"""
         return [dimer.pseudo_frag for dimer in self._dimer_intcos]
 
     @property
     def all_fragments(self):
+        """List of real ("true" moleules) and psuedo (reference atoms) fragments"""
         return self._fragments + self.dimer_psuedo_frags
 
     # @property
@@ -196,9 +213,10 @@ class Molsys(object):
                 lbls.append("Dimer({:d},{:d})".format(DI.A_idx + 1, DI.B_idx + 1) + str(coord))
         return lbls
 
-    # Return overall index of first atom in fragment, beginning 0,1,...
-    # For last fragment returns one past the end.
     def frag_1st_atom(self, iF):
+        """Return overall index of first atom in fragment ``iF``, beginning 0,1,...
+        For last fragment returns one past the end."""
+
         if iF > len(self._fragments):
             return ValueError()
         start = 0
@@ -207,22 +225,26 @@ class Molsys(object):
         return start
 
     def frag_atom_range(self, iF):
+        """Gets range for first and last atom indices for a given fragment"""
         start = self.frag_1st_atom(iF)
         return range(start, start + self._fragments[iF].natom)
 
     def frag_atom_slice(self, iF):
+        """Same as :py:func:`frag_atom_range` but returns slice"""
         start = self.frag_1st_atom(iF)
         return slice(start, start + self._fragments[iF].natom)
 
     # accepts absolute atom index, returns fragment index
     def atom2frag_index(self, atom_index):
+        """For a given atom in the overall molecular system return index of the fragment containing
+        that atom"""
         for iF in range(self.nfragments):
             if atom_index in self.frag_atom_range(iF):
                 return iF
         raise OptError("atom2frag_index: atom_index impossibly large")
 
-    # Given a list of atoms, return all the fragments to which they belong
     def atom_list2unique_frag_list(self, atomList):
+        """Given a list of atoms, return all the fragments to which they belong"""
         fragList = []
         for a in atomList:
             f = self.atom2frag_index(a)
@@ -254,6 +276,7 @@ class Molsys(object):
 
     @property
     def masses(self):
+        """array of masses for all atoms"""
         m = np.zeros(self.natom)
         for iF, F in enumerate(self._fragments):
             m[self.frag_atom_slice(iF)] = F.masses
@@ -277,13 +300,16 @@ class Molsys(object):
 
     @property
     def num_intcos(self) -> int:
+        """Computes total number of internal coordinates (either true internals or number of cartesians)
+        depending on ``opt_coordinates``"""
 
         nintco_list = [f.num_intcos for f in self.all_fragments]
         return sum(nintco_list)
 
     @property
     def num_intrafrag_intcos(self):
-
+        """Computes number of internal coordinates but does not include coordinates in pseudo
+        fragments"""
         nintco_list = [f.num_intcos for f in self.fragments]
         return sum(nintco_list)
 
@@ -343,7 +369,12 @@ class Molsys(object):
 
     def constraint_matrix(self, fq):
         """Returns constraint matrix with 1 on diagonal for frozen coordinates.
-        Tis method used to check for forces being passed in but wasn't being used. Forces now need to be passed in
+        This method used to check for forces being passed in but wasn't being used. Forces now need to be passed in
+
+        Parameters
+        ----------
+        fq: np.ndarray forces
+
         """
         frozen = self.frozen_intco_list
 
@@ -355,8 +386,9 @@ class Molsys(object):
         else:
             return None
 
-    # returns the index of the first internal coordinate belonging to fragment
     def frag_1st_intco(self, iF):
+        """returns the index of the first internal coordinate belonging to fragment"""
+
         if iF >= len(self._fragments):
             return ValueError()
         start = 0
@@ -365,10 +397,14 @@ class Molsys(object):
         return start
 
     def frag_intco_range(self, iF):
+        """range of internal coordinates within the overall set corresponding to a given ``Frag``
+        """
         start = self.frag_1st_intco(iF)
         return range(start, start + self._fragments[iF].num_intcos)
 
     def frag_intco_slice(self, iF):
+        """slice of internal coordinates within the overall set corresponding to a given ``Frag``
+        """
         start = self.frag_1st_intco(iF)
         return slice(start, start + self._fragments[iF].num_intcos)
 
@@ -658,6 +694,7 @@ class Molsys(object):
 
     # Returns mass-weighted Bmatrix if use_masses is True.
     def Bmat(self, massWeight=False):
+        """Computes Wilson B Matrix for the moleclar system"""
         # Allocate memory for full system.
         n_int = self.num_intcos
         n_cart = 3 * self.natom

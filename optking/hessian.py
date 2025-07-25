@@ -1,10 +1,13 @@
 import logging
 import json
+import os
+from pathlib import Path
 
 import numpy as np
 import qcelemental as qcel
 
 from .bend import Bend
+from .exceptions import OptError
 from .printTools import print_mat_string
 from .stre import Stre
 from .tors import Tors
@@ -85,11 +88,14 @@ def guess(oMolsys, connectivity=None, guessType="SIMPLE"):
     return H
 
 
-def from_file(filename):
+def from_file(filename: Path):
     """Read user provided hessian from disk"""
 
-    with open(filename) as f:
-        if ".json" == filename[:-5]:
+    if not filename.exists():
+        raise OptError(f"The specified file {filename} in `hessian_file` does not exist")
+
+    with filename.open() as f:
+        if ".json" == filename.suffix:
             result = json.load(f)
             hess = result["return_result"]
             ncart = 3 * len(result["molecule"]["symbols"])
@@ -98,6 +104,7 @@ def from_file(filename):
             lines = f.readlines()
             hess = [list(map(float, line.split())) for line in lines[1:]]
             ncart = int(lines[0].split()[1])  # assumes FCMFINAL / CFOUR format
+
     try:
         H = np.array(hess, dtype=float)
         H = H.reshape(ncart, ncart)

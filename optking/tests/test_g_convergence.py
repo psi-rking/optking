@@ -12,7 +12,6 @@ import numpy as np
 import optking
 
 # Generate values over 2 orders of magnitude which approach the convergence threshold
-
 rng = np.random.default_rng()
 rng_vals = rng.integers(2, 98, size=10)
 scalings = np.zeros(12)
@@ -23,27 +22,27 @@ scalings[1:-1] = rng_vals
 # Values are copied from optkings documentation to compare against optking internals
 
 presets = {
-    "nwchem_loose": [None, 4.5e-3, 3.0e-3, 5.4e-3, 3.6e-3],
-    "gau_loose": [None, 2.5e-3, 1.7e-3, 1.0e-2, 6.7e-3],
-    # "gau": [None, 4.5e-4, 3.0e-4, 1.8e-3, 1.2e-3],
-    "cfour": [None, None, 1e-4, None, None],
-    "qchem": [1.0e-6, 3.0e-4, None, 1.2e-3, None],
-    # "molpro": [1.0e-6, 3.0e-4, None, 3.0e-4, None],
-    # "gau_tight": [None, 1.5e-5, 1.0e-5, 6.0e-5, 4.0e-5],
-    "gau_verytight": [None, 2.0e-6, 1.0e-6, 6.0e-6, 4.0e-6],
-    "turbomole": [1.0e-6, 1.0e-3, 5.0e-4, 1.0e-3, 5.0e-4],
+    "NWCHEM_LOOSE": [None, 4.5e-3, 3.0e-3, 5.4e-3, 3.6e-3],
+    "GAU_LOOSE": [None, 2.5e-3, 1.7e-3, 1.0e-2, 6.7e-3],
+    # "GAU": [None, 4.5e-4, 3.0e-4, 1.8e-3, 1.2e-3],
+    "CFOUR": [None, None, 1e-4, None, None],
+    "QCHEM": [1.0e-6, 3.0e-4, None, 1.2e-3, None],
+    # "MOLPRO": [1.0e-6, 3.0e-4, None, 3.0e-4, None],
+    # "GAU_TIGHT": [None, 1.5e-5, 1.0e-5, 6.0e-5, 4.0e-5],
+    "GAU_VERYTIGHT": [None, 2.0e-6, 1.0e-6, 6.0e-6, 4.0e-6],
+    "TURBOMOLE": [1.0e-6, 1.0e-3, 5.0e-4, 1.0e-3, 5.0e-4],
 }
 
 program_mappings = {
-    "gau_loose": "GAU",
-    "gau": "GAU",
-    "gau_tight": "GAU",
-    "gau_verytight": "GAU",
-    "cfour": "CFOUR",
-    "molpro": "Q-M",
-    "qchem": "Q-M",
-    "turbomole": "TURBO",
-    "nwchem_loose": "NWCHEM",
+    "GAU_LOOSE": "GAU",
+    "GAU": "GAU",
+    "GAU_TIGHT": "GAU",
+    "GAU_VERYTIGHT": "GAU",
+    "CFOUR": "CFOUR",
+    "MOLPRO": "Q-M",
+    "QCHEM": "Q-M",
+    "TURBOMOLE": "TURBO",
+    "NWCHEM_LOOSE": "NWCHEM",
 }
 
 tests = {
@@ -425,7 +424,6 @@ tests = {
     },
 }
 
-
 @pytest.mark.parametrize("conv_test", tests)
 @pytest.mark.parametrize("conv_preset", presets)
 def test_convergence_presets(conv_test, conv_preset):
@@ -449,23 +447,16 @@ def test_convergence_presets(conv_test, conv_preset):
     for random_scale in rng_vals:
         criteria = _create_variations(defaults, changes, random_scale)
 
-        optking.optwrapper.initialize_options({"g_convergence": conv_preset})
-        params_dict = optking.optparams.Params.__dict__
+        params = optking.optwrapper.initialize_options({"g_convergence": conv_preset})
+        params_dict = params.conv_criteria()
 
         # Actual conv_check test.
         conv_met, conv_active = optking.convcheck._transform_criteria(criteria, params_dict)
         conv_met.update({"flat_potential": 100 * criteria.get("rms_force") < params_dict.get("conv_rms_force")})
-        state = optking.convcheck._test_for_convergence(conv_met, conv_active)
+        state = optking.convcheck._test_for_convergence(conv_met, conv_active, params=params)
         expected = tests.get(conv_test).get(program_mappings.get(conv_preset))
 
-        try:
-            assert state == expected
-        except AssertionError:
-            print(changes)
-            print(f"test values {criteria}")
-            print(f"thresholds {defaults}")
-            print(random_scale)
-            raise
+        assert state == expected
 
 
 options = [
@@ -484,7 +475,7 @@ conv_mapping = {
     "rms_disp_g_convergence": "rms_disp",
 }
 
-preset_subset = ["qchem", "gau_tight", "nwchem_loose"]
+preset_subset = ["QCHEM", "GAU_TIGHT", "NWCHEM_LOOSE"]
 
 # only testing up combinations of user settings up to 2
 combos = [
@@ -494,7 +485,6 @@ combos = [
 
 for i in range(1, len(tests), 2):
     tests.pop(i)
-
 
 @pytest.mark.parametrize("conv_options", combos)
 @pytest.mark.parametrize("test_name", tests)
@@ -508,11 +498,11 @@ def test_user_tampering(conv_options, test_name, preset, flexible_on):
     print(conv_options)
     options_dict = {key: 1e-5 for key in conv_options}
     options_dict.update({"flexible_g_convergence": flexible_on, "g_convergence": preset})
-    optking.optwrapper.initialize_options(options_dict)
+    params = optking.optwrapper.initialize_options(options_dict)
 
     keys = ["max_DE", "max_force", "rms_force", "max_disp", "rms_disp"]
 
-    opt_params = optking.optparams.Params.__dict__
+    opt_params = params.conv_criteria()
     thresh1 = [opt_params.get(f"conv_{key}") for key in keys]
     thresholds = [val if val > 0 else 0.1 for val in thresh1]
 
@@ -521,7 +511,7 @@ def test_user_tampering(conv_options, test_name, preset, flexible_on):
 
         conv_met, conv_active = optking.convcheck._transform_criteria(criteria, opt_params)
         conv_met.update({"flat_potential": 100 * criteria.get("rms_force") < opt_params.get("conv_rms_force")})
-        state = optking.convcheck._test_for_convergence(conv_met, conv_active)
+        state = optking.convcheck._test_for_convergence(conv_met, conv_active, params=params)
 
         extra_requirements = [conv_mapping.get(val) for val in conv_options]
         # all keys that should be met based on changes
@@ -568,6 +558,6 @@ def _create_variations(thresholds, changes, coefficient):
             # for random_scale = 1 and below original for random_scale = 99
             temp = thresholds[index] / 100 + rng.random() * (10 ** (magnitudes[index] - 5))
             criteria[conv_criteria_names[index]] = temp * coefficient
-            assert thresholds[index] / 100 < temp < thresholds[index]
+            assert thresholds[index] / 100 < temp * coefficient < thresholds[index]
 
     return criteria

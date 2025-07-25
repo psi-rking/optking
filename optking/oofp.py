@@ -3,9 +3,9 @@ import math
 
 import qcelemental as qcel
 
-from . import optparams as op
 from . import v3d
 from . import log_name
+from .import op
 from . import bend
 from .exceptions import AlgError
 from .misc import string_math_fx

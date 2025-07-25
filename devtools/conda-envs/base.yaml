@@ -8,10 +8,12 @@ dependencies:
   - python
   - qcelemental
   - msgpack-python
+  - pydantic=1.10
 
     # Testing
   - pytest
   - pytest-cov
+  - pytest-xdist
   - psi4 1.9.1
   - dftd3-python
   - codecov

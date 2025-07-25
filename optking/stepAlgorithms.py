@@ -1,36 +1,50 @@
 """ Defines classes for minimization and transition state optimizations
 
-See Also
+Classes
+-------
+OptimizationInterface
+    An abstract class that all optimization classes inherit from. Requires that all subclasses
+    implement a ``take_step()`` method
+OptimizationAlgorithm
+    An abstract class that extends ``OptimizationInterface`` most algorithms (minimization or ts)
+    inherit from this class.
+QuasiNewtonOptimization
+    Abstract class for performing Quasi-Newton optimizations, these methods utilize an approximate
+    updated hessian to approximate the potential energy surface.
+RFO
+    An abstract class for performing various Rational Function Optimization. RFO itself is an
+    extension of a QuasiNewtonOptimization.
+NewtonRaphson
+    Extension of QuasiNewtonOptimization
+RestrictedStepRFO
+    Default minimization algorithm.
+ImageRFO
+    Extension of RestrictedStepRFO for transition state finding
+PartitionedRFO
+    Default TS algorithm before OptKing ``v0.3.0``
+SteepestDescent
+    Basic gradient descent
+ConjugateGradient
+    Three varieties of CG are implemented Fletcher, Descent, and Polak. Fletcher is default.
+Linesearch
+    1-D linesearch by quadratic fit of energies
+
+Functions
 ---------
-opt_helper.OptHelper for easy setup and control over optimization procedures.
+step_matches_forces
+    A basic attempt to determine whether the step taken matches the symmetry of the gradient.
 
-* User interfaces
-    * optimization_factory()
-    * OptimizationManager
-* optimiziation Classes
-    * NewtonRaphson
-    * SteepestDescent
-        * overlap
-        * barzilai_borwein
-    * ConjugateGradient
-        * Fletcher (from Fletcher's "Pratical Methods of Optimization, Vol. 1", Ch. 4, Pg. 63, Eqn. 4.1.4)
-        * descent (from Fletcher, Ch. 4, Pg. 66, Eqn. 4.1.11)
-        * Polak (from Fletcher, Ch. 4, Pg. 66, Eqn. 4.1.12)
-    * RestricedStepRFO
-    * ParitionedRFO
-* Linesearch
-    * ThreePointEnergy
-* Abstract Classes
-    * OptimizationInterface
-    * OptimizationAlgorithm
-    * RFO
-    * QuasiNewtonOptimization
+See Also
+--------
+:py:class:`optking.optimize.OptimizationManager`
+:py:class:`optking.opt_helper.CustomHelper`
 
-The optimization classes above may be created using the factory pattern through optimization_factory(). If
-linesearching or more advanced management of the optimization process is desired an OptimizationManager
-should be created.
+Notes
+-----
+The optimization classes above may be created using the factory pattern through
+:py:func:`optking.optimize.optimization_factory`. If linesearching or more advanced management of the optimization
+process is desired an OptimizationManager should be created.
 (More features are coming to the OptimizationManager)
-
 """
 
 import logging
@@ -40,7 +54,6 @@ from typing import Union
 
 import numpy as np
 
-from . import optparams as op
 from . import convcheck
 from .displace import displace_molsys
 from .exceptions import AlgError, OptError
@@ -50,6 +63,7 @@ from .misc import is_dq_symmetric
 from .molsys import Molsys
 from .printTools import print_array_string, print_mat_string
 from . import log_name
+from . import op
 
 logger = logging.getLogger(f"{log_name}{__name__}")
 
@@ -73,7 +87,7 @@ class OptimizationInterface(ABC):
         self.history: History = history
 
         if not params:
-            params = op.OptParams({})
+            params = op.OptParams()
         self.print_lvl = params.print_lvl
 
     @abstractmethod
@@ -107,8 +121,8 @@ class OptimizationAlgorithm(OptimizationInterface):
     """The standard minimization and transition state algorithms inherit from here. Defines
     the take_step for those algorithms. Backstep and trust radius management are performed here.
 
-    All child classes implement a step() method using the forces and Hessian to compute
-    a step direction and possibly a step_length. trust_radius_on = False allows a child class
+    All child classes implement a ``step()`` method using the forces and Hessian to compute
+    a step direction and possibly a step_length. ``trust_radius_on = False`` allows a child class
     to override a basic trust radius enforcement."""
 
     def __init__(self, molsys, history, params):
@@ -248,15 +262,6 @@ class OptimizationAlgorithm(OptimizationInterface):
         -----
         Take partial backward step.  Update current step in history.
         Divide the last step size by 1/2 and displace from old geometry.
-        History contains:
-            consecutiveBacksteps : increase by 1
-        Step contains:
-            forces, geom, E, followedUnitVector, oneDgradient, oneDhessian, Dq, and projectedDE
-        update:
-            Dq - cut in half
-            projectedDE - recompute
-        leave remaining
-
         """
 
         logger.warning("\tRe-doing last optimization step - smaller this time.\n")
@@ -290,7 +295,7 @@ class OptimizationAlgorithm(OptimizationInterface):
             "iternum": step_number,
         }
         converged = convcheck.conv_check(
-            conv_info, self.params.__dict__, str_mode=str_mode
+            conv_info, self.params, str_mode=str_mode
         )
         if str_mode:
             return converged
@@ -553,6 +558,17 @@ class SteepestDescent(OptimizationAlgorithm):
 
 
 class ConjugateGradient(OptimizationAlgorithm):
+    """ Implements the conjugate gradient algorithm.
+
+    Notes
+    -----
+    The following varieties are implemented.
+
+    #. Fletcher (from Fletcher's "Pratical Methods of Optimization, Vol. 1", Ch. 4, Pg. 63, Eqn. 4.1.4)
+    #. descent (from Fletcher, Ch. 4, Pg. 66, Eqn. 4.1.11)
+    #. Polak (from Fletcher, Ch. 4, Pg. 66, Eqn. 4.1.12)
+    """
+
     def __init__(self, molsys, history, params):
         super().__init__(molsys, history, params)
         self.method = params.conjugate_gradient_type

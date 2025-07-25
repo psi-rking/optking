@@ -1,16 +1,17 @@
 """ Provides some of the high level functions and classes to run optimizations. This is a good starting place for anyone
-looking to add features to the code to familarize themselves with the overall workings of optking.
-Functions may be useful to users seeking greater control over the inner workings of optking than provided by the
-OptHelpers. For instance if manually creating a molecular system or manually controlling / switching algorithms
+looking to add features to the code to familarize themselves with the overall workings of OptKing.
+Functions may be useful to users seeking greater control over the inner workings of OptKing than provided by the
+``OptHelpers``. For instance, if manually creating a molecular system or manually controlling / switching algorithms
 on the fly.
 
-See also `OptimizationAlgorithm <stepalgorithms.OptimizationAlgorithm>` and
-`OptimizationInterface <stepalgorithms.OptimizationInterface>`for core functionality common to all the optimization
-algorithms like backtransformation and displacement.
-
+See Also
+--------
+:py:class:`stepalgorithms.OptimizationAlgorithm`
+:py:class:`stepalgorithms.OptimizationInterface`
 """
 
 import logging
+import pathlib
 from typing import Union
 
 import numpy as np
@@ -18,19 +19,20 @@ from optking.compute_wrappers import ComputeWrapper
 from optking.molsys import Molsys
 
 from . import IRCfollowing, addIntcos, hessian, history, intcosMisc
-from . import optparams as op
 from . import stepAlgorithms
 from . import testB, linesearch
 from .exceptions import AlgError, OptError
 from .printTools import print_array_string, print_geom_grad, print_mat_string
 from . import log_name
+from . import op
 
 logger = logging.getLogger(f"{log_name}{__name__}")
 
 
 def optimize(o_molsys, computer):
-    """Driver for OptKing's optimization procedure. Suggested that users use EngineHelper, CustomHelper, or
-    one of the external interfaces (psi4 and qcengine) to perform a normal (full) optimization
+    """Driver for OptKing's optimization procedure. It is suggested that users use
+    :py:class:`optking.opt_helper.EngineHelper`, :py:class:`optking.opt_helper.CustomHelper`, or
+    one of the external interfaces (Psi4 and Qcengine) to perform a normal (full) optimization
 
     Parameters
     ----------
@@ -51,7 +53,6 @@ def optimize(o_molsys, computer):
     fq = 0
 
     opt_history = history.History(op.Params)
-
     # Try to optimize one structure OR set of IRC points. OptError and all Exceptions caught below.
     try:
         converged = False
@@ -194,7 +195,9 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
             logger.info("There is only 1 atom. Nothing to optimize. Computing energy.")
             E = get_pes_info(np.ndarray(0), self.computer, self.molsys,
                     self.history, self.params, "unneeded", ["energy"])[2]
-            raise OptError("There is only 1 atom. Nothing to optimize. Computing energy.","OptError")
+            raise OptError(
+                "There is only 1 atom. Nothing to optimize. Computing energy.", "OptError"
+            )
 
         # if optimization coordinates are absent, choose them. Could be erased after AlgError
         if not self.molsys.intcos_present:
@@ -226,6 +229,8 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
     def take_step(self, fq=None, H=None, energy=None, return_str=False, **kwargs):
         """Take whatever step (normal, linesearch, IRC, constrained IRC) is next.
 
+        Parameters
+        ----------
         fq: Union[np.ndarray, None]
             forces
         H: Union[np.ndarray, None]
@@ -330,7 +335,8 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         # flags like self.erase_hessian will be reset once a protocol is created.
         # Saving the protocol allows for this method to be called
         # multiple times for a single step with consistent output
-        if step_number == self.protocol.get("step_number"):
+        # This doesn't work for IRCs since step_number tracks IRC points not individual steps
+        if step_number == self.protocol.get("step_number") and self.params.opt_type != "IRC":
             return self.protocol
 
         # Have not called method yet for this step. Create new protocol
@@ -356,8 +362,12 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
                     action = "compute"
                 else:
                     action = "guess"
-            else:  # IRC
-                action = "compute"
+            else:
+                # IRC
+                if self.opt_method.sub_step_number == 0:
+                    action = "compute"
+                else:
+                    action = "update"
         else:
             if self.params.full_hess_every < 1:
                 action = "update"
@@ -417,7 +427,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
             # Convert the Hessian back into the new coordinate system
             self.H = self.molsys.hessian_to_internals(Hx, gx)
 
-        elif self.params.dynamic_level == self.params.dynamic_level_max:
+        elif self.params.dynamic_level == self.params.dynamic_lvl_max:
             logger.critical("\n\t Current algorithm/dynamic_level is %d.\n" % self.params.dynamic_level)
             logger.critical("\n\t Alternative approaches are not available or turned on.\n")
             raise OptError("Maximum dynamic_level reached.")
@@ -581,7 +591,7 @@ def get_pes_info(
             Hx = hessian.from_file(params.hessian_file)
             H = o_molsys.hessian_to_internals(Hx)
             params.cart_hess_read = False
-            params.hessian_file = None
+            params.hessian_file = pathlib.Path(".")
         else:
             raise OptError("Encountered unknown value from get_hessian_protocol()")
 
@@ -591,8 +601,15 @@ def get_pes_info(
 
     f_q, H = o_molsys.project_redundancies_and_constraints(f_q, H)
     g_q = -f_q
+
+    # Remove incredibly small values. This primarly helps makes tests more consistent.
+    # eigensolvers give consistent eigenvectors.
+    g_q[np.abs(g_q) < np.finfo(float).resolution] = 0
+    H[np.abs(H) < np.finfo(float).resolution] = 0
+
     if H.size:
         logger.info(print_mat_string(H, title="Hessian matrix"))
+
     return H, g_q, g_x, computer.energies[-1]
 
 
@@ -673,7 +690,6 @@ def make_internal_coords(o_molsys: Molsys, params: op.OptParams):
             o_molsys.fragments[0].add_cartesian_intcos()
 
     elif params.frag_mode == "MULTI":
-
         try:
             # if provided multiple frags, then we use these.
             # if not, then split them (if not connected).
@@ -681,7 +697,7 @@ def make_internal_coords(o_molsys: Molsys, params: op.OptParams):
                 o_molsys.split_fragments_by_connectivity()
 
             if o_molsys.nfragments > 1:
-                addIntcos.add_dimer_frag_intcos(o_molsys)
+                addIntcos.add_dimer_frag_intcos(o_molsys, params)
                 # remove connectivity so that we don't add redundant coordinates
                 # between fragments
                 o_molsys.purge_interfragment_connectivity(connectivity)
@@ -703,7 +719,7 @@ def make_internal_coords(o_molsys: Molsys, params: op.OptParams):
             for F in o_molsys.fragments:
                 F.add_cartesian_intcos()
 
-    addIntcos.add_constrained_intcos(o_molsys)  # make sure these are in the set
+    addIntcos.add_constrained_intcos(o_molsys, params)  # make sure these are in the set
     return
 
 
@@ -724,7 +740,7 @@ def prepare_opt_output(o_molsys, computer, rxnpath=False, error=None):
     }
 
     if error:
-        qc_output.update({"success": False, "error": {"error_type": error.err_type, "error_message": error.mesg}})
+        qc_output.update({"success": False, "error": {"error_type": type(error), "error_message": str(error)}})
 
     if rxnpath:
         qc_output["extras"]["irc_rxn_path"] = rxnpath

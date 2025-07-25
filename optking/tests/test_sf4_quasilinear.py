@@ -9,10 +9,9 @@ import pytest
 
 from .utils import utils
 
-
+@pytest.mark.long
 def test_sf4_quasilinear_cart(check_iter):
-    sf4 = psi4.geometry(
-        """
+    sf4 = psi4.geometry("""
       S  0.00000000  -0.00000000  -0.30618267
       F -1.50688420  -0.00000000   0.56381732
       F  0.00000000  -1.74000000  -0.30618267
@@ -62,6 +61,7 @@ def test_sf4_quasilinear():
         "basis": "6-31G(d)",
         "scf_type": "pk",
         "g_convergence": "gau_tight",
+        "ensure_bt_convergence": True,
     }
     psi4.set_options(psi4_options)
 

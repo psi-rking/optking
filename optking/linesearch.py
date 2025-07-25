@@ -94,6 +94,7 @@ class LineSearch(OptimizationInterface):
         linesearch.active_point = d["active_point"]
         return linesearch
 
+    @abstractmethod
     def fit(self):
         """Determines where the next step should head. Remove points from self.points as needed
         Add the new points. Must set self.final_point if the linesearch has finished.
@@ -104,6 +105,7 @@ class LineSearch(OptimizationInterface):
             length of step (could be negative) along dq to the next point from the last point
         converged: bool
             has fit found a minimum.
+
         """
         pass
 
@@ -229,6 +231,7 @@ class ThreePointEnergy(LineSearch):
 
     def fit(self):
         """Three point parabolic fit. Returns the next point in linesearch.
+
         Returns
         -------
         step_size: float

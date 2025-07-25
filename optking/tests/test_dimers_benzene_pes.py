@@ -1,11 +1,10 @@
 import psi4
 import optking
 import qcelemental as qcel
-
-au2kcal = qcel.constants.hartree2kcalmol
 import numpy as np
 import pytest
 
+au2kcal = qcel.constants.hartree2kcalmol
 # import matplotlib.pyplot as plt
 
 benz_xyz = """
@@ -38,6 +37,7 @@ benz_xyz = """
 
 # Potential energy scan with two benzenes.
 @pytest.mark.dimers
+@pytest.mark.long
 def test_dimers_benzene_pes():
 
     # Define the fragments and reference pts for dimers.
@@ -53,7 +53,7 @@ def test_dimers_benzene_pes():
         ],  # another carbon
     }
 
-    dimerCoord = optking.dimerfrag.DimerFrag.fromUserDict(dimer)
+    dimerCoord = optking.dimerfrag.DimerFrag.from_user_dict(dimer)
 
     # Choose a theory.
     psi4.core.clean_options()

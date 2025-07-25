@@ -7,14 +7,12 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "long")
     config.addinivalue_line("markers", "dimers")
     config.addinivalue_line("markers", "multimers")
+    config.addinivalue_line("markers", "dftd3")
 
 
 @pytest.fixture(scope="function", autouse=True)
 def set_up():
     import optking
-
-    optking.optparams.Params = optking.optparams.OptParams({})
-
 
 def pytest_addoption(parser):
     parser.addoption(

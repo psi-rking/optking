@@ -8,6 +8,7 @@ MP2minEnergy = -228.669584375489
 
 #! H2O trimer with auto-generated interfragment coordinates
 @pytest.mark.multimers
+@pytest.mark.long
 def test_trimers_h2o_auto(check_iter):
     h2oT = psi4.geometry(
         """
@@ -48,6 +49,7 @@ def test_trimers_h2o_auto(check_iter):
 
 #! H2O trimer with user-provided interfragment coordinates
 @pytest.mark.multimers
+@pytest.mark.long
 def test_trimers_h2o_user(check_iter):
     h2oT = psi4.geometry(
         """
@@ -118,6 +120,7 @@ def test_trimers_h2o_user(check_iter):
     utils.compare_iterations(json_output, 22, check_iter)
 
 #! H2O trimer with user-provided interfragment coords with weights
+#@pytest.mark.long
 @pytest.mark.multimers
 def test_trimers_h2o_weights(check_iter):
     h2oT = psi4.geometry(
@@ -146,7 +149,7 @@ def test_trimers_h2o_weights(check_iter):
             "B Frag": 2,
             "B Ref Atoms": [[5], [4, 6], [6]],
             "B Weights": [[1.0], [1.0, 1.0], [1.0]],
-            "B Label": "water-2",
+            "B Label": "water-2"
         },
         {
             "Natoms per frag": [3, 3, 3],
@@ -157,7 +160,7 @@ def test_trimers_h2o_weights(check_iter):
             "B Frag": 3,
             "B Ref Atoms": [[8], [7, 9], [9]],
             "B Weights": [[1.0], [1.0, 1.0], [1.0]],
-            "B Label": "water-3",
+            "B Label": "water-3"
         },
         {
             "Natoms per frag": [3, 3, 3],
@@ -168,8 +171,8 @@ def test_trimers_h2o_weights(check_iter):
             "B Frag": 3,
             "B Ref Atoms": [[8], [7, 9], [9]],
             "B Weights": [[1.0], [1.0, 1.0], [1.0]],
-            "B Label": "water-3",
-        },
+            "B Label": "water-3"
+        }
     ]
     psi4_options = {
         "basis": "6-31+G*",

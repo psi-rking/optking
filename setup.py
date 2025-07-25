@@ -26,13 +26,16 @@ if __name__ == "__main__":
             "qcelemental>=0.20.0",
             "qcengine>=0.20.0",
             "msgpack>=1.0",
+            "pydantic>=1.10",
         ],
         extras_require={
             "docs": [
                 "sphinx",  # autodoc was broken in 1.3.1
                 "sphinxcontrib-napoleon",
                 "sphinx-automodapi"
-                "sphinx_rtd_theme",
+                "sphinx-design",
+                "pydata-sphinx-theme",
+                "pydantic-autodoc",
                 "numpydoc",
             ],
             "tests": ["pytest", "pytest-cov", "pytest-pep8",],

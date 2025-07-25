@@ -7,11 +7,12 @@ import numpy as np
 import qcelemental as qcel
 
 from . import bend, cart, dimerfrag, oofp
-from . import optparams as op
 from . import stre, tors, v3d
 from .exceptions import AlgError, OptError
 from .v3d import are_collinear
 from . import log_name
+from . import op
+from . import misc
 
 # Functions related to freezing, fixing, determining, and
 #    adding coordinates.
@@ -899,48 +900,70 @@ def freeze_intrafrag(o_molsys):
         F.freeze()
 
 
-def add_constrained_intcos(o_molsys):
+def add_constrained_intcos(o_molsys, params):
+
     # Frozen coordinates
-    if op.Params.frozen_distance:
-        frozen_stre_from_input(op.Params.frozen_distance, o_molsys)
-    if op.Params.frozen_bend:
-        frozen_bend_from_input(op.Params.frozen_bend, o_molsys)
-    if op.Params.frozen_dihedral:
-        frozen_tors_from_input(op.Params.frozen_dihedral, o_molsys)
-    if op.Params.frozen_oofp:
-        frozen_oofp_from_input(op.Params.frozen_oofp, o_molsys)
-    if op.Params.frozen_cartesian:
-        frozen_cart_from_input(op.Params.frozen_cartesian, o_molsys)
+    def frozen(input, natom, cart=False):
+        if cart:
+            return misc.int_xyz_float_list(
+                misc.tokenize_input_string(input),
+                Nint=natom,
+                Nxyz=1,
+                Nfloat=0
+            )
+        return misc.int_list(misc.tokenize_input_string(input), natom)
 
-    # Ranged coordinates
-    if op.Params.ranged_distance:
-        ranged_stre_from_input(op.Params.ranged_distance, o_molsys)
-    if op.Params.ranged_bend:
-        ranged_bend_from_input(op.Params.ranged_bend, o_molsys)
-    if op.Params.ranged_dihedral:
-        ranged_tors_from_input(op.Params.ranged_dihedral, o_molsys)
-    if op.Params.ranged_oofp:
-        ranged_oofp_from_input(op.Params.ranged_oofp, o_molsys)
-    if op.Params.ranged_cartesian:
-        ranged_cart_from_input(op.Params.ranged_cartesian, o_molsys)
+    def ranged(input, natom, cart=False):
+        if cart:
+            return misc.int_xyz_float_list(
+                misc.tokenize_input_string(input),
+                Nint=1,
+                Nxyz=1,
+                Nfloat=2
+            )
+        else:
+            return misc.int_float_list(misc.tokenize_input_string(input), Nint=natom, Nfloat=2)
 
-    # Coordinates with extra forces
-    if op.Params.ext_force_distance:
-        ext_force_stre_from_input(op.Params.ext_force_distance, o_molsys)
-    if op.Params.ext_force_bend:
-        ext_force_bend_from_input(op.Params.ext_force_bend, o_molsys)
-    if op.Params.ext_force_dihedral:
-        ext_force_tors_from_input(op.Params.ext_force_dihedral, o_molsys)
-    if op.Params.ext_force_oofp:
-        ext_force_oofp_from_input(op.Params.ext_force_oofp, o_molsys)
-    if op.Params.ext_force_cartesian:
-        ext_force_cart_from_input(op.Params.ext_force_cartesian, o_molsys)
+    def ext_force(input, natom, cart=False):
+        if cart:
+            return misc.int_xyz_fx_string(input, Nint=1)
+        else:
+            return misc.int_fx_string(input, natom)
+
+    # encode how to treat each constraint option
+    # natoms, contstraint_type (corresponds to method above), specific method to call
+    constraints = {
+        "frozen_distance": (2, frozen, frozen_stre_from_input),
+        "frozen_bend": (3, frozen, frozen_bend_from_input),
+        "frozen_dihedral": (4, frozen, frozen_tors_from_input),
+        "frozen_oofp": (4, frozen, frozen_oofp_from_input),
+        "frozen_cartesian": (1, frozen, frozen_cart_from_input),
+        "ranged_distance": (2, ranged, ranged_stre_from_input),
+        "ranged_bend": (3, ranged, ranged_bend_from_input),
+        "ranged_dihedral": (4, ranged, ranged_tors_from_input),
+        "ranged_oofp": (4, ranged, ranged_oofp_from_input),
+        "ranged_cartesian": (1, ranged, ranged_cart_from_input),
+        "ext_force_distance": (2, ext_force, ext_force_stre_from_input),
+        "ext_force_bend": (3, ext_force, ext_force_bend_from_input),
+        "ext_force_dihedral": (4, ext_force, ext_force_tors_from_input),
+        "ext_force_oofp": (4, ext_force, ext_force_oofp_from_input),
+        "ext_force_cartesian": (1, ext_force, ext_force_cart_from_input),
+    }
+
+    for key, val in constraints.items():
+        option = params.to_dict(by_alias=False).get(key)  # lookup option
+        if option:
+            # parser converts string to list. constrainer adds constrained coords to molsys
+            natom, parser, constrainer = val
+            cart = "cartesian" in key
+            constrainer(parser(option, natom, cart), o_molsys)
 
     if op.Params.freeze_intrafrag:
         freeze_intrafrag(o_molsys)
 
     if op.Params.freeze_all_dihedrals:
-        freeze_all_torsions(o_molsys, op.Params.unfreeze_dihedrals)
+        torsions = frozen(params.unfreeze_dihedrals, 4)
+        freeze_all_torsions(o_molsys, torsions)
 
 def freeze_all_torsions(molsys, skipped_torsions=[]):
     """ Freeze all intrafragment torsions.
@@ -972,7 +995,7 @@ def freeze_all_torsions(molsys, skipped_torsions=[]):
             )
             frag.intcos.append(new_tors)
 
-def add_dimer_frag_intcos(o_molsys):
+def add_dimer_frag_intcos(o_molsys, params):
     # Look for coordinates in the following order:
     # 1. Check for 1 or list of dicts for 'interfrag_coords' in params
     # TODO: test non-equal weights
@@ -981,47 +1004,22 @@ def add_dimer_frag_intcos(o_molsys):
     # 3. Auto-generate reference atoms.
     # TODO: move into a molsys class function?
 
-    input = op.Params.interfrag_coords
-    if input is not None:
+    input = params.interfrag_coords
 
-        logger.debug("%s", input)
+    if input:
 
-        # Place input in iterable for consistency
-        if isinstance(input, str):
-            input = input.replace("'", '"')
-            input = json.loads(input)
-            # input could come back as a dictionary or as a list of dictionaries
-            input = input if isinstance(input, (list, tuple)) else [input]
-        elif isinstance(input, dict):
-            input = [input]
-        elif isinstance(input, (list, tuple)):
-            pass
-        else:
-            raise TypeError(
-                "Cannot convert keyword interfrag_coords to a (list of) dictionary(s). Provide a (list of) dict or str"
-            )
-
-        # Check elements for correct type (should really be done in OptParams). Ensure everything is of dict by end
-        # create DimerFrags and add to molsys
+        # optparams now ensures that type is list[dict], required keys are present, and types a
+        # sensible
         for val in input:
-            if isinstance(val, str):
-                dict_val = json.loads(val)
-            elif isinstance(val, dict):
-                dict_val = val
-            else:
-                raise TypeError(
-                    "Cannot convert keyword interfrag_coords to a (list of) dictionary(s). Provide a (list of) dict or str"
-                )
-
-            df = dimerfrag.DimerFrag.fromUserDict(dict_val)
+            df = dimerfrag.DimerFrag.from_user_dict(val)
             df.update_reference_geometry(o_molsys.frag_geom(df.A_idx), o_molsys.frag_geom(df.B_idx))
             o_molsys.dimer_intcos.append(df)
 
-    elif op.Params.frag_ref_atoms is not None:
+    elif params.frag_ref_atoms:
         # User-defined ref atoms starting from 1. Decrement here.
         # Assuming that for trimers+, the same reference atoms are
         # desired for each coordinate involving that fragment.
-        frag_ref_atoms = deepcopy(op.Params.frag_ref_atoms)
+        frag_ref_atoms = deepcopy(params.frag_ref_atoms)
         for iF, F in enumerate(frag_ref_atoms):  # fragments
             frag_1st_atom = o_molsys.frag_1st_atom(iF)
             for iRP, RP in enumerate(F):  # reference points
@@ -1036,7 +1034,7 @@ def add_dimer_frag_intcos(o_molsys):
     else:  # autogenerate interfswap_min_maxragment coordinates
         # Tolerance for collinearity of ref points. Can be mad smaller, but its
         # riskier to start wth ref points the make very large angles
-        col_tol = op.Params.interfrag_collinear_tol
+        col_tol = params.interfrag_collinear_tol
         for A, B in combinations(range(o_molsys.nfragments), r=2):
             xyzA = o_molsys.frag_geom(A)
             xyzB = o_molsys.frag_geom(B)

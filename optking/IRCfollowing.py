@@ -4,13 +4,13 @@ from math import acos, sqrt, tan
 import numpy as np
 
 from . import IRCdata, convcheck
-from . import optparams as op
 from .displace import displace_molsys
 from .exceptions import AlgError
 from .linearAlgebra import symm_mat_eig, symm_mat_inv, symm_mat_root, lowest_eigenvector_symm_mat
 from .printTools import print_array_string, print_mat_string
 from .stepAlgorithms import OptimizationInterface
 from . import log_name
+from . import op
 
 logger = logging.getLogger(f"{log_name}{__name__}")
 
@@ -128,7 +128,7 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
             logger.debug("Too few steps. continue optimization")
             return False
 
-        if self.irc_history.test_for_irc_minimum(fq, energies[-1]):
+        if self.irc_history.test_for_irc_minimum(fq, energies[-1], self.params.irc_convergence):
             logger.info("A minimum has been reached on the IRC.  Stopping here.\n")
             return True
 
@@ -145,7 +145,7 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
             "fq": fq_new,
         }
 
-        substep_convergence = convcheck.conv_check(conv_data, self.params.__dict__, self.requires(), str_mode=str_mode)
+        substep_convergence = convcheck.conv_check(conv_data, self.params, self.requires(), str_mode=str_mode)
         if not str_mode:
             logger.info("\tConvergence check returned %s for constrained optimization." % substep_convergence)
 

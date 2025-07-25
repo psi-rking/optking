@@ -1,10 +1,12 @@
-optking (also known as pyoptking) is a rewrite of the c++ optking module in psi4 to enable future development
-and for use with recent interoperability efforts (e.g. MolSSI QCArchive and QCDB). optking is focused on
-optimization of molecular geometries: finding minima, transition states, and reaction paths. Current work
-is focused especially on expanding the reaction path methods.
+.. _`start`:
 
 Getting Started
 ===============
+
+OptKing (also known as pyoptking) is a rewrite of the c++ OptKing module in psi4 to enable future development
+and for use with recent interoperability efforts (e.g. MolSSI QCArchive and QCDB). OptKing is focused on
+optimization of molecular geometries: finding minima, transition states, and reaction paths. Current work
+is focused especially on expanding the reaction path methods.
 
 Installation and Setup
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -22,23 +24,29 @@ To install from source make sure all dependencies are installed via conda or pip
 
 from the installation directory.
 
-To run optking without `QCEngine`` or `Psi4`, the `CustomHelper` class may be used though the python API.
-This `Helper` allows for the use of arbitrary packages and/or modified gradients to be used.
-Alternatively, an `OptimizationManager` or an even lower-level class could be used with custom gradients.
-Gradients, energies, and possibly hessians can be provided directly. #TODO add link
+Dependencies
+------------
+
+To run optking without ``QCEngine`` or ``Psi4``, the ``CustomHelper`` class may be used though the python API.
+This ``Helper`` allows for the use of arbitrary packages and/or modified gradients to be used.
+If even finer grain control is needed an ``OptimizationManager`` class can be used - this is not
+likely to be the case unless implementing a new, complex optimization algorithm.
+Gradients, energies, and possibly hessians can be provided directly.
 To use the most basic representation of the algorithms with no reference to molecules one of the classes
 inheriting from OptimizationAlgorithm will be needed.
 
-Otherwise (and for most use cases), `QCEngine` and your QC/MM program of choice OR Psi4 is required.
-If using `QCEngine` see MolSSI's `qcengine documentation <http://docs.qcarchive.molssi.org/projects/QCEngine/en/stable/>`_ 
-to ensure proper setup. Any QC or MM programs will need to be installed such that QCEngine can find them.
+Otherwise (and for most use cases), ``QCEngine`` and your QC/MM program of choice OR ``Psi4`` is required.
+If using QCEngine see `Install QCEngine <https://molssi.github.io/QCEngine/install.html>`__. 
+to ensure proper setup. Any QC or MM programs will need to be installed such that ``QCEngine`` can find them.
 
-Running through QCEngine
+.. _`qcengine_running`:
+
+Running Through QCEngine
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-A basic driver has been implemented in QCEngine. QCEngine is built upon QCElemental which provides input
-validation and standardized input/output. To see the requirements for an Optimziation Input check MolSSI's
-`qcelemental documentation <http://docs.qcarchive.molssi.org/projects/QCElemental/en/stable/api/qcelemental.models.OptimizationInput.html#qcelemental.models.OptimizationInput>`_. NOTE QCElemental assumes atomic units by default:
+A basic driver has been implemented in ``QCEngine``. ``QCEngine`` is built upon ``QCElemental`` which provides input
+validation and standardized input/output. To see the requirements for an ``OptimziationInput`` check MolSSI's
+`qcelemental documentation <https://molssi.github.io/QCElemental/>`_. NOTE ``QCElemental`` assumes atomic units by default:
 
 .. code-block:: python
 
@@ -112,16 +120,11 @@ place Angstroms are expected:
     opt = qcng.get_procedure("optking")
     result = opt.compute(opt_input, config)
 
-Running through Psi4 - Development
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Running through Psi4
+~~~~~~~~~~~~~~~~~~~~
 
-Direct integration in Psi4 is in development. Check an upcoming Psi4 release to run optking through psi4.
-Running this input file `psi4 input.dat` will trigger (as of 1.6) the old c++ optimizer. In the future this
-will trigger optimization through pyoptking. Almost everything in Psi4's current optking documentation is also
-applicable to the new optimizer. Optimizations can also be run through Psi4's python API.
-
-::
-
+pyoptking replaced the c++ OptKing module in Psi4 as of Psi4 1.7. To run an optimization, simply
+call ``optimize()``::
 
     molecule hooh {
         0 1
@@ -138,21 +141,27 @@ applicable to the new optimizer. Optimizations can also be run through Psi4's py
 
     optimize("hf/sto-3g")
 
+.. note::
+  As of ``v1.9``, Psi4 maintains its own list of options corresponding to OptKing's options. If an
+  Optking is not available in your version of Psi4, please update your version of Psi4. Alternatively,
+  options can be passed directly to the optimizer through ``optimizer_keywords``.
+  See `psi4.driver.optimize <https://psicode.org/psi4manual/master/api/psi4.driver.optimize.html#psi4.driver.optimize>`__.
+
 Running through an OptHelper
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 For users looking to run optimizations from python, an examples of QCEngine's python API has already been shown.
-To run optking through Psi4's python API checkout the `Psi4 API docs <https://psicode.org/psi4manual/master/psiapi.html>`.
+To run optking through Psi4's python API checkout the `Psi4 API docs <https://psicode.org/psi4manual/master/psiapi.html>`__.
 These two options should be sufficient for the majority of users.
 
-If direct control over the optimizer is desired two `OptHelper` classes are provided to streamline performing an optimization.
+If direct control over the optimizer is desired two ``OptHelper`` classes are provided to streamline performing an optimization.
 The molecular system, optimization coordinates, history, etc are all accessible through their respective classes and may be accessed
 as attributes of the OptHelper instance.
-`EngineHelper` takes an OptimizationHelper and calls `qcengine.compute()` to perform basic calculations with the provided `input_specification`
-`CustomHelper` accepts `QCElemental` and `Psi4` molecules while requiring user provided gradients, energies, and possibly hessians. This may
-be useful for implementing a custom optimization driver or procedure using optking.
+``EngineHelper`` takes an ``OptimizationHelper`` and calls ``qcengine.compute()`` to perform basic calculations with the provided ``input_specification``
+``CustomHelper`` accepts ``QCElemental`` and ``Psi4`` molecules while requiring user provided gradients, energies, and possibly hessians. This may
+be useful for implementing a custom optimization driver or procedure using OptKing.
 
-EngineHelper:
+``EngineHelper``:
 
 .. code-block:: python
 
@@ -202,7 +211,7 @@ EngineHelper:
     json_output = opt.close() # create an unvalidated OptimizationOutput like object
     E = json_output["energies"][-1]
 
-`CustomHelper` can take `psi4` or `qcelemental` molecules. A simple example of a custom optimization loop is
+``CustomHelper`` can take ``psi4`` or ``qcelemental`` molecules. A simple example of a custom optimization loop is
 shown where the gradients are provided from a simple lennard jones potential:
 
 .. code-block:: python

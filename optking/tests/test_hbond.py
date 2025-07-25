@@ -7,9 +7,8 @@ import optking.tors
 import optking.intcosMisc
 import optking.addIntcos
 import optking.displace
-import optking.optparams as op
-import optking.caseInsensitiveDict
 
+from optking import op
 
 # stretch displacement
 # bend displacement
@@ -22,7 +21,7 @@ def test_hydrogen_bonds(options, expected):
 
     # Manually construct water dimer in single frag mode
     # Tests fail when run with entire suite due to op.Params missing
-    op.Params = op.OptParams(optking.caseInsensitiveDict.CaseInsensitiveDict({}))
+    op.Params = op.OptParams(**{})
 
     # Geometry in Bohr
     geom = np.array(

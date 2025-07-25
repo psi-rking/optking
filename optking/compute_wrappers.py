@@ -25,6 +25,8 @@ class ComputeWrapper:
     def __init__(self, molecule, model, keywords, program):
 
         self.molecule = molecule
+        # ensure molecule orientation does not differ from optking regardless of how mol was created
+        self.molecule.update({'fix_com': True, 'fix_orientation': True})
         self.model = model
         self.keywords = keywords
         self.program = program
@@ -156,22 +158,22 @@ class QCEngineComputer(ComputeWrapper):
 
         import qcengine
 
-        local_options = {}
+        task_config = {}
         if self.program == "psi4":
             import psi4
 
-            local_options["memory"] = psi4.core.get_memory() / 1000000000
-            local_options["ncores"] = psi4.core.get_num_threads()
+            task_config["memory"] = psi4.core.get_memory() / 1000000000
+            task_config["ncores"] = psi4.core.get_num_threads()
 
         if self.model == "(proc_spec_in_options)":
             logger.debug("QCEngineComputer.path: ManyBody")
             inp = self.generate_schema_input_for_procedure(driver)
-            ret = qcengine.compute_procedure(inp, "qcmanybody", True, local_options)
+            ret = qcengine.compute_procedure(inp, "qcmanybody", True, task_config=task_config)
 
         else:
             logger.debug("QCEngineComputer.path: Atomic")
             inp = self.generate_schema_input(driver)
-            ret = qcengine.compute(inp, self.program, True, local_options)
+            ret = qcengine.compute(inp, self.program, True, task_config=task_config)
 
         return ret
 

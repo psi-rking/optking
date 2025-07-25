@@ -20,14 +20,14 @@ sys.path.insert(0, os.path.abspath("../../"))
 
 # -- Project information -----------------------------------------------------
 
-project = "pyoptking"
-copyright = "2018, R. A. King and A. Heide"
+project = "OptKing"
+copyright = "2017-2025, R. A. King and A. Heide"
 author = "R. A. King and A. Heide"
 
 # The short X.Y version
-version = ""
+version = "0.4.0"
 # The full version, including alpha/beta/rc tags
-release = "0.1"
+release = "0.4.0"
 
 
 # -- General configuration ---------------------------------------------------
@@ -49,6 +49,7 @@ extensions = [
     "sphinx.ext.graphviz",
     "sphinx.ext.autosummary",
     "sphinx.ext.napoleon",
+    "sphinx.ext.autosectionlabel",
     # from Cloud
     # "cloud_sptheme.ext.index_styling",
     # "cloud_sptheme.ext.escaped_samp_literals",
@@ -59,6 +60,8 @@ extensions = [
     # from Psi4
     # "sphinx_psi_theme.ext.psidomain",
     # "sphinx_psi_theme.ext.relbar_toc",
+    'sphinxcontrib.autodoc_pydantic',
+    "sphinx_design",
 ]
 
 autosummary_generate = True
@@ -71,7 +74,7 @@ templates_path = ["_templates"]
 # You can specify multiple suffix as a list of string:
 #
 # source_suffix = ['.rst', '.md']
-source_suffix = ".rst"
+source_suffix = {".rst": "restructuredtext"}
 
 # The master toctree document.
 master_doc = "index"
@@ -81,7 +84,7 @@ master_doc = "index"
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = None
+language = "English"
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -97,13 +100,28 @@ pygments_style = "sphinx"
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = "sphinx_rtd_theme"
+html_theme = "pydata_sphinx_theme"
+# html_logo = "../../media/optking_grey_color_cropped.png"
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
 #
-# html_theme_options = {}
+html_theme_options = {
+    "header_links_before_dropdown": 4,
+     "logo": {
+      "image_light": "../../media/optking_logo.png",
+      "image_dark": "../../media/optking_logo_dark.png",
+   },
+   "show_toc_level": 1,
+   "show_nav_level": 1,
+   "collapse_navigation": True,
+   "navigation_depth": 1,
+}
+
+html_sidebars = {
+    "**": [],
+}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -182,16 +200,42 @@ texinfo_documents = [
     ),
 ]
 
-
 # -- Extension configuration -------------------------------------------------
 
 # -- Options for intersphinx extension ---------------------------------------
 
 # Example configuration for intersphinx: refer to the Python standard library.
-intersphinx_mapping = {"https://docs.python.org/": None}
+intersphinx_mapping = {"python": ("https://docs.python.org/", None)}
 
 # -- Options for todo extension ----------------------------------------------
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = True
 
+autodoc_pydantic_model_show_config_summary=True
+autodoc_pydantic_model_show_field_summary=False
+autodoc_pydantic_model_show_json=False
+autodoc_pydantic_settings_hide_paramlist=False
+autodoc_pydantic_field_swap_name_and_alias=True
+autodoc_pydantic_model_show_validator_summary=False
+autodoc_pydantic_model_show_validator_members=False
+autodoc_pydantic_field_list_validators=False
+
+# Yells at automodapi for having mulitple sections like Classes in a given doc
+suppress_warnings = ['autosectionlabel.*']
+
+# The following snippet is from https://github.com/astropy/sphinx-automodapi/issues/119
+# to address sphinx trying to create links to documentation for anything that gets imported into
+# a module.
+from sphinx_automodapi import automodsumm
+from sphinx_automodapi.utils import find_mod_objs
+
+def find_mod_objs_patched(*args, **kwargs):
+    return find_mod_objs(args[0], onlylocals=True)
+
+def patch_automodapi(app):
+    """Monkey-patch the automodapi extension to exclude imported members"""
+    automodsumm.find_mod_objs = find_mod_objs_patched
+
+def setup(app):
+    app.connect("builder-inited", patch_automodapi)

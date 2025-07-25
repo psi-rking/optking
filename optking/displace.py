@@ -1,3 +1,8 @@
+"""Functions related to taking the step computed by the OptimizationAlgorithm.
+:func:`optking.stepAlgorithms.OptimizationAlgorithm.take_step()` calls the main function
+:func:`displace_molsys` to compute a new geometry and update the molecular system to reflect
+the new step. A new geometry must be computed via an interactive backtransformation which is not
+guaranteed to converge."""
 import logging
 
 import numpy as np
@@ -31,6 +36,7 @@ def displace_molsys(
         **kwargs
     ):
     """Manage internal coordinate step for a molecular system
+
     Parameters
     ----------
     oMolsys : Molsys
@@ -174,6 +180,7 @@ def displace_molsys(
 
 def displace_frag(frag, dq_in, **kwargs):
     """Converts internal coordinate step into the new cartesian geometry
+
     Parameters
     ----------
     F  : Fragment (geometry is changed)

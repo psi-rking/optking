@@ -1,10 +1,13 @@
-"""
-Helpers to provide high-level interfaces for optking.  The Helpers allow individual steps to be taken easily.
-EngineHelper runs calculations through QCEngine. CustomHelper adds the abilility to directly input gradients.
+"""Helpers to provide high-level interfaces for OptKing. The Helpers allow individual steps to be taken easily
+from a variety of sources. EngineHelper runs calculations through
+`QCEngine <https://molssi.github.io/QCEngine/>`__. Optimizations can also be run through the QCEngine
+procedure for OptKing :ref:`example <qcengine_running>`. CustomHelper adds the abilility to directly input energies, gradients,
+hessians, etc...
 """
 
 import logging
 import json
+import pathlib
 from abc import ABC, abstractmethod
 from typing import Union
 
@@ -18,8 +21,8 @@ from .exceptions import OptError, AlgError
 from .optimize import get_pes_info, make_internal_coords, optimize, prepare_opt_output, OptimizationManager
 from .misc import import_psi4
 from .printTools import print_geom_grad, welcome
-from . import optparams as op
 from . import log_name
+from . import op
 
 logger = logging.getLogger(f"{log_name}{__name__}")
 
@@ -28,15 +31,15 @@ class Helper(ABC):
     """
     Base class for CustomHelper (accepts user provided gradients) and EngineHelper (uses MolSSI's QCEngine for gradients)
 
-    A step may be taken by setting the class attributes gX and E, then calling the
-    compute() and take_step() methods. The class attribute HX may also be set at any time as
-    desired, if this is not set then optking will perform its normal update/guess procedure.
+    A step may be taken by setting the class attributes ``gX`` and ``E``, then calling the
+    ``compute()`` and ``take_step()`` methods. The class attribute ``HX`` may also be set at any time as
+    desired, if this is not set then OptKing will perform its normal update/guess procedure.
 
-    If full_hess_every has been set, the optimizer will require that hessians be provided every n steps.
-    The properties required by the optimizer can be queried by calling get_requirements()
+    If ``full_hess_every`` has been set, the optimizer will require that hessians be provided every n steps.
+    The properties required by the optimizer can be queried by calling ``get_requirements()``
     test_convergence may be used to determine compliance with optking's convergence criteria
 
-    Optking will create a OptimizationResult as output in this process. This will be written upon
+    OptKing will create a ``OptimizationResult`` as output in this process. This will be written upon
     calling close()
 
     """
@@ -74,7 +77,7 @@ class Helper(ABC):
         return string
 
     def post_step_str(self):
-        """Returns a formatted string to summarize the step taken after calling take_step()"""
+        """Returns a formatted string to summarize the step taken after calling ``take_step()``"""
 
         string = ""
         string += self.step_str if self.step_str is not None else ""
@@ -91,7 +94,7 @@ class Helper(ABC):
 
         if status == "CONVERGED" and len(energies) > 0:
             if self.params.opt_type != "IRC":
-                conv_table, criteria_table = conv_check(conv_info, self.params.__dict__, str_mode="both")
+                conv_table, criteria_table = conv_check(conv_info, self.params, str_mode="both")
                 string += conv_table
                 string += criteria_table
                 string += self.history.summary_string()
@@ -104,7 +107,7 @@ class Helper(ABC):
                 conv_info["iternum"] = irc_object.irc_step_number
                 conv_info["fq"] = irc_object.irc_history._project_forces(self.fq, self.molsys)
 
-            string += conv_check(conv_info, self.params.__dict__, str_mode="table")
+            string += conv_check(conv_info, self.params, str_mode="table")
 
         string += "Next Geometry in Ang \n"
         string += self.molsys.show_geom()
@@ -113,7 +116,7 @@ class Helper(ABC):
     def to_dict(self):
         d = {
             "step_num": self.step_num,
-            "params": self.params.__dict__,
+            "params": self.params.to_dict(by_alias=False),
             "molsys": self.molsys.to_dict(),
             "history": self.history.to_dict(),
             "computer": self.computer.__dict__,
@@ -131,6 +134,9 @@ class Helper(ABC):
 
         helper = cls(d.get("opt_input"), params={}, silent=True)
 
+        # We need to make sure that the new params EXACTLY matches what was exported.
+        # No validation should occur after export as validation will interpret each exported
+        # options as having been set explicitly by the user.
         helper.params = op.OptParams.from_internal_dict(d.get("params"))
         op.Params = helper.params
         # update with current information
@@ -158,14 +164,18 @@ class Helper(ABC):
     def compute(self):
         """Get the energy, gradient, and hessian. Project redundancies and apply constraints / forces"""
 
-        if not self.molsys.intcos_present:
-            # opt_manager.molsys is the same object as this molsys
-            make_internal_coords(self.molsys, self.params)
-            logger.debug("Molecular system after make_internal_coords:")
-            logger.info(str(self.molsys))
+        try:
+            if not self.molsys.intcos_present:
+                # opt_manager.molsys is the same object as this molsys
+                make_internal_coords(self.molsys, self.params)
+                logger.debug("Molecular system after make_internal_coords:")
+                logger.info(str(self.molsys))
 
-        self._compute()
-        logger.info("\n\t%s", print_geom_grad(self.geom, self.gX))
+            self._compute()
+            logger.info("\n\t%s", print_geom_grad(self.geom, self.gX))
+        except OptError as e:
+            logger.critical("A critical error has occured: %s - %s", type(e), e, exc_info=True)
+            raise e
 
     def take_step(self):
         """Must call compute before calling this method. Takes the next step."""
@@ -174,6 +184,9 @@ class Helper(ABC):
             self.dq, self.step_str = self.opt_manager.take_step(self.fq, self._Hq, self.E, return_str=True)
         except AlgError as e:
             self.opt_manager.alg_error_handler(self._Hq, self.fq, e)
+        except OptError as e:
+            logger.critical("A critical error has occured: %s - %s", type(e), e, exc_info=True)
+            raise e
 
         self.new_geom = self.molsys.geom
         self.step_num += 1
@@ -300,18 +313,16 @@ class Helper(ABC):
 
 
 class CustomHelper(Helper):
-    """Class allows for easy setup of optking. Accepts custom forces, energies,
+    """Class allows for easy setup of OptKing. Accepts custom forces, energies,
     and hessians from user. User will need to write a loop to perform optimization.
 
-    examples
+    Examples
     --------
 
     >>> import qcengine as qcng
-
     >>> from qcelemental.models import Molecule, OptimizationInput
     >>> from qcelemental.models.common_models import Model
     >>> from qcelemental.models.procedures import QCInputSpecification
-
     >>> opt_input = {
     ...     "initial_molecule": {
     ...         "symbols": ["O", "O", "H", "H"],
@@ -339,7 +350,6 @@ class CustomHelper(Helper):
     ...     },
     ...     "keywords": {"g_convergence": "GAU_TIGHT", "program": "psi4"},
     ... }
-
     >>> for step in range(30):
     ... # Compute one's own energy and gradient
     ... E, gX = optking.lj_functions.calc_energy_and_gradient(opt.geom, 2.5, 0.01, True)
@@ -352,15 +362,16 @@ class CustomHelper(Helper):
     ... if conv is True:
     ...     print("Optimization SUCCESS:")
     ...     break
-    >>> else:
-    ... print("Optimization FAILURE:\n")
-
+    ... else:
+    ...     print("Optimization FAILURE:")
     >>> json_output = opt.close() # create an unvalidated OptimizationOutput like object
     >>> E = json_output["energies"][-1]
 
     Notes
     -----
-    Overrides. gX, Hessian, and Energy to allow for user input."""
+    Overrides. ``gX``, ``HX``, and ``E`` to allow for user input.
+
+    """
 
     def __init__(self, mol_src, params={}, **kwargs):
         """
@@ -368,6 +379,7 @@ class CustomHelper(Helper):
         ----------
         mol_src: [dict, qcel.models.Molecule, psi4.qcdb.Molecule]
             psi4 or qcelemental molecule to construct optking molecular system from
+
         """
 
         opt_input = {
@@ -403,7 +415,19 @@ class CustomHelper(Helper):
 
     @classmethod
     def from_dict(cls, d):
-        helper = super().from_dict(d)
+        helper = cls(d.get("opt_input"), params={}, silent=True)
+
+        # We need to make sure that the new params EXACTLY matches what was exported.
+        # No validation should occur after export as validation will interpret each exported
+        # options as having been set explicitly by the user.
+        helper.params = op.OptParams.from_internal_dict(d.get("params"))
+        op.Params = helper.params
+        # update with current information
+        helper.molsys = molsys.Molsys.from_dict(d.get("molsys"))
+        helper.history = history.History.from_dict(d.get("history"))
+        helper.step_num = d.get("step_num")
+        helper.irc_step_num = d.get("irc_step_num")
+        helper._Hq = d.get("hessian")
         helper.computer = compute_wrappers.make_computer_from_dict("user", d.get("computer"))
         helper.opt_manager = OptimizationManager.from_dict(
             d["opt_manager"], helper.molsys, helper.history, helper.params, helper.computer
@@ -426,7 +450,7 @@ class CustomHelper(Helper):
                     self.fq, self._Hq = self.molsys.project_redundancies_and_constraints(self.fq, self._Hq)
                     self.HX = None
                     self.params.cart_hess_read = False
-                    self.params.hessian_file = None
+                    self.params.hessian_file = pathlib.Path("")
                 else:
                     raise RuntimeError(
                         "Optking requested a hessian but was not provided one. " "This could be a driver issue"
@@ -453,13 +477,19 @@ class CustomHelper(Helper):
             self.fq = self.molsys.gradient_to_internals(self.gX, -1.0)
             self._Hq = self.molsys.hessian_to_internals(self.HX)
             self.HX = None  # set back to None
+            self.params.cart_hess_read = False
             self.fq, self._Hq = self.molsys.apply_external_forces(self.fq, self._Hq)
             self.fq, self._Hq = self.molsys.project_redundancies_and_constraints(self.fq, self._Hq)
 
     def calculations_needed(self):
         """Assume gradient is always needed. Provide tuple with keys for required properties"""
-        hessian_protocol = self.opt_manager.get_hessian_protocol(self.step_num)
 
+        # TODO revist once multiple opt_managers have been finalized. For now assume opt_helper
+        # is correct since it knows the behavior of _compute().
+        if self.params.cart_hess_read != self.opt_manager.params.cart_hess_read:
+            self.opt_manager.params.cart_hess_read = self.params.cart_hess_read
+
+        hessian_protocol = self.opt_manager.get_hessian_protocol(self.step_num)
         protocol = hessian_protocol.get("protocol")
 
         if protocol == "compute":
@@ -505,21 +535,13 @@ class EngineHelper(Helper):
     """Perform an optimization using qcengine to compute properties. Use OptimizationInput to setup
     a molecular system
 
-    calling `compute()` will perform a QCEngine calculation according to the provided QCInputSpecification.
-
-    calling `optimize()` after instantiation will perform an automatic optimization returning an OptimizationResult.
-
-    examples
+    Examples
     --------
-
     >>> import optking
     >>> import qcengine as qcng
-
     >>> from qcelemental.models import Molecule, OptimizationInput
     >>> from qcelemental.models.common_models import Model
     >>> from qcelemental.models.procedures import QCInputSpecification
-
-
     >>> molecule = Molecule.from_data(
     ...     symbols = ["O", "O", "H", "H"],
     ...     geometry = [
@@ -539,21 +561,17 @@ class EngineHelper(Helper):
     ...     fix_com=True,
     ...     fix_orientation=True,
     ... )
-
     >>> model = Model(method="hf", basis="sto-3g")
     >>> input_spec = QCInputSpecification(
     ...     driver="gradient", model=model, keywords={"d_convergence": 1e-7}  # QC program options
     ... )
-
     >>> opt_input = OptimizationInput(
     ...     initial_molecule=molecule,
     ...     input_specification=input_spec,
     ...     keywords={"g_convergence": "GAU_TIGHT", "program": "psi4"},  # optimizer options
     ... )
-
     >>> opt = optking.EngineHelper(opt_input)
     >>> # opt_result = opt.optimize()  # optimize geometry - no interaction
-
     >>> for step in range(30):
     ...    # Compute one's own energy and gradient
     ...    opt.compute() # process input. Get ready to take a step
@@ -563,8 +581,7 @@ class EngineHelper(Helper):
     ...        print("Optimization SUCCESS:")
     ...        break
     >>> else:
-    ...     print("Optimization FAILURE:\n")
-
+    ...     print("Optimization FAILURE:")
     >>> json_output = opt.close() # create an unvalidated OptimizationOutput like object
     >>> E = json_output["energies"][-1]
 
@@ -594,7 +611,20 @@ class EngineHelper(Helper):
 
     @classmethod
     def from_dict(cls, d):
-        helper = super().from_dict(d)
+
+        helper = cls(d.get("opt_input"), params={}, silent=True)
+
+        # We need to make sure that the new params EXACTLY matches what was exported.
+        # No validation should occur after export as validation will interpret each exported
+        # options as having been set explicitly by the user.
+        helper.params = op.OptParams.from_internal_dict(d.get("params"))
+        op.Params = helper.params
+        # update with current information
+        helper.molsys = molsys.Molsys.from_dict(d.get("molsys"))
+        helper.history = history.History.from_dict(d.get("history"))
+        helper.step_num = d.get("step_num")
+        helper.irc_step_num = d.get("irc_step_num")
+        helper._Hq = d.get("hessian")
         helper.computer = compute_wrappers.make_computer_from_dict("qc", d.get("computer"))
         helper.opt_manager = OptimizationManager.from_dict(
             d["opt_manager"], helper.molsys, helper.history, helper.params, helper.computer

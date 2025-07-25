@@ -4,12 +4,12 @@ import math
 import numpy as np
 import qcelemental as qcel
 
-from . import optparams as op
 from . import v3d
 from . import bend
 from .exceptions import AlgError, OptError
 from .misc import hguess_lindh_rho, string_math_fx
 from .simple import Simple
+from . import op
 
 
 class Tors(Simple):

@@ -1,0 +1,509 @@
+
+.. autopydantic_model:: optking.optparams.OptParams
+
+Keywords and Options
+====================
+
+Optking uses pydantic to validate user input for types, values, and, when strings are expected,
+for content with regexes. Brief descriptions of each option is presented below.
+
+For developers or users interacting with optking's internals, Optking historically has utilized
+a single global options dictionary. Some parts of optking still utilize this global dicionary
+Most of the current code's classes and functions; however, accept local options by passing a
+dictionary, options object, or explicit parameters. Note - the options reported here are the names
+that the user should use when providing keywords to optking. For developers, optking may use
+different names internally. For starters, variables (with the exception of matrices) should
+adhere to PEP8 (lower snakecase).
+
+General Optimization Options
+----------------------------
+
+GEOM_MAXITER: int
+    The maximum number of geometry optimization steps allowed - this is effectively
+    the maximum number of gradients that optking is allowed to calculate.
+    Default: 50
+OPT_TYPE: str
+    One of `["MIN", "TS", or "IRC"]`. `OPT_TYPE` will be changed if `OPT_TYPE` is not provided, but
+	`STEP_TYPE` is provided, and the two are inconsistent. If both are provided but are
+	inconsistent, an error will be raised.
+    Default: "MIN"
+
+    +--------------------------------------------------------------+
+    | Allowed `opt_type` and `step_type` values                    |
+    +==============================================================+
+    | `opt_type` | compatible `step_type`                          |
+    +------------+----+---------+----+----+------------+-----------+
+    | MIN        | **RFO**      | NR | SD | LINESEARCH | Conjugate |
+    +------------+--------------+----+----+------------+-----------+
+    | TS         | **RS_I_RFO** | P_RFO                            |
+    +------------+--------------+----------------------------------+
+    | IRC        | N/A                                             |
+    +------------+-------------------------------------------------+
+
+STEP_TYPE: str
+    One of `["RFO", "RS_I_RFO", "P_RFO", "NR", "SD", "LINESEARCH", "CONJUGATE"]`. If `OPT_TYPE`
+    is set to `TS` and `STEP_TYPE` is not specified. `STEP_TYPE` will be set to `RS_I_RFO`.
+	Default: "RFO"
+OPT_COORDINATES:
+    One of `["REDUNDANT", "INTERNAL", "CARTESIAN", "BOTH"]`. `"INTERNAL"` is just a synonym for
+    `"REDUNDANT"`. `"BOTH"` utilizes a full set of redundant internal coordinates (3N - 6+) +
+    cartesian (3N) = 6N - 6 + coordinates.
+    Default: "INTERNAL"
+PRINT_LVL: int
+    An integer between 1 (least printing) and 5 (most printing). This has been largely but not
+    entirely replaced by using the logging modules `DEBUG` and `INFO` levels.
+    Consider changing the logging handler in the `loggingconfig.py` or if using a program such
+    as Psi4 change the logging level from the command line. `psi4 --loglevel=10...`
+    Default: 1
+ACCEPT_SYMMETRY_BREAKING: bool
+    Whether to accept geometry steps that lower the molecular point group.
+    DEFAULT=False
+DYNAMIC_LVL: int
+    An integer between 0 and 6. Larger values reflect less agressive optimization techniques
+    If dynamic_lvl is not set, `optking` will not change the `dynamic_lvl`. The dynamic_lvl
+    must be > 0 for alternative approaches to be tried.
+    A backstep will be triggered (if allowed) by DE > 0 in minimization
+    A step is considered "bad"
+        * if DE > 0, no more backsteps are allowed
+        * and iterations > 5
+        * or there are badly defined internal coordinates or derivatives.
+    Default = 0
+    +-----------+------+-------+------------+--------------+------------------------------+
+    | dynamic   | step | coord | trust      | backsteps    | criteria                     |
+    +-----------+------+-------+------------+--------------+----------------+-------------+
+    | run_level |      |       |            |              | for downmove   |  for upmove |
+    +-----------+------+-------+------------+--------------+----------------+-------------+
+    |   0       | RFO  | RI    | dynamic    | no           |     none       | none        |
+    +-----------+------+-------+------------+--------------+----------------+-------------+
+    |   1       | RFO  | RI    | dynamic(d) | no           |     1 bad step | none        |
+    +-----------+------+-------+------------+--------------+----------------+-------------+
+    |   2       | RFO  | RI    | smaller    | yes (1)      |     1 bad step | none        |
+    +-----------+------+-------+------------+--------------+----------------+-------------+
+    |   3       | RFO  | BOTH  | small      | yes (1)      |     1 bad step | none        |
+    +-----------+------+-------+------------+--------------+----------------+-------------+
+    |   4       | RFO  | XYZ   | large      | yes (1)      |     1 bad step | none        |
+    +-----------+------+-------+------------+--------------+----------------+-------------+
+    |   5       | RFO  | XYZ   | small      | yes (1)      |     1 bad step | none        |
+    +-----------+------+-------+------------+--------------+----------------+-------------+
+    |   6       | SD   | XYZ   | large      | yes (1)      |     1 bad step | none        |
+    +-----------+------+-------+------------+--------------+----------------+-------------+
+    |   7       | SD   | XYZ   | small      | yes (1)      |     1 bad step | none        |
+    +-----------+------+-------+------------+--------------+----------------+-------------+
+DYNAMIC_LVL_MAX: int
+    How large is `dynamic_lvl` allowed to grow. If `dynamic_lvl` $> 0$, `dyanmic_lvl`
+    will default to 6
+    Default: 0
+CONSECUTIVE_BACKSTEPS_ALLOWED: int
+    Set number of consecutive backward steps allowed in an optimization. This option can be
+    modified by `optking` if `dynamic_lvl` is > 0. Not recommended for general use.
+    Default: 0
+program: str
+    What program to use for running gradient and energy calculations through qcengine.
+
+Step Size Control
+-----------------
+Optking uses a dynamic trust radius and, for the default algorithms, uses methods that attempt to
+determine an "optimal" step within that trust radius.
+
+INTRAFRAG_STEP_LIMIT:
+    Initial maximum step size in bohr or radian along an internal coordinate
+    Default: 0.5
+INTRAFRAG_STEP_LIMIT_MAX:
+    Upper bound for dynamic trust radius [au]
+    Default 0.5
+INTRAFRAG_STEP_LIMIT_MIN:
+    Lower bound for dynamic trust radius [au]
+    Default: 0.001
+INTERFRAG_STEP_LIMIT: float
+    Initial maximum step size in bohr or radian along an interfragment coordinate
+    Default: 0.5
+INTERFRAG_STEP_LIMIT_MAX: float
+    Lower bound for dynamic trust radius [au] for interfragment coordinates
+    Default: 1.0
+ENSURE_BT_CONVERGENCE: float
+    Reduces step size as necessary to ensure convergence of back-transformation of
+    internal coordinate step to cartesian coordinates.
+    Default: False
+SIMPLE_STEP_SCALING: bool
+    Do simple, linear scaling of internal coordinates to step limit instead of restriced-step
+	(dynamic trust radius) approaches like `RS_RFO` or `RS_I_RFO`
+    Default: False
+
+Constraining Coordinates
+------------------------
+For more details please see `Adding Constraints to the Optimization`_
+
+FROZEN_DISTANCE: str
+    A string of whitespace separated atomic indices to specify that the distances between the
+    atoms should be frozen (unchanged).
+    Example: `"1 2 3 4"` --> Freezes `Stre(1, 2)` and `Stre(3, 4)`
+    Default: ""
+FROZEN_BEND: str
+    A string of whitespace separated atomic indices to specify that the corresponding bending
+    angle should be frozen (unchanged).
+    Example: `"1 2 3 4 5 6"` --> Freezes `Bend(1, 2, 3)` and `Bend(4, 5, 6)`
+    Default: ""
+FROZEN_DIHEDRAL: str
+    A string of whitespace separated atomic indices to specify that the corresponding dihedral
+    angle should be frozen (unchanged).
+    Example: `"1 2 3  3 2 3 4 5"` --> Freezes `TORS(1, 2, 3, 4)` and `TORS(2, 3, 4, 5)`
+    Default: ""
+FROZEN_OOFP: str
+    A string of whitespace separated atomic indices to specify that the corresponding
+    out-of-plane angle should be frozen.
+    atoms should be frozen (unchanged).
+    Example: `"1 2 3 4 2 3 4 5"` --> Freezes `OOFP(1, 2, 3, 4)` and `OOFP(2, 3, 4, 5)`
+    Default: ""
+FROZEN_CARTESIAN: str
+    A string of whitespace separated atomic indices and cartesian labels to specify that the
+    cartesian coordinates for a given atom should be frozen (unchanged).
+    Example: `"1 XYZ 2 XY 2 Z"` --> Freezes `CART(1, X)`, `CART(1, Y)`, `CART(1, Z)`, `CART(2, X)`,
+    etc...
+    Default: ""
+FREEZE_ALL_DIHEDRALS: bool
+    A shortcut to request that all dihedrals should be frozen.
+    Default: False
+UNFREEZE_DIHEDRALS: str
+    A string of whitespace separated atomic indices to specify that the corresponding dihedral
+    angle should be unfrozen. This keyword is meant to be used in conjunction with
+    `FREEZE_ALL_DIHEDRALS`
+    Default: ""
+RANGED_DISTANCE: str
+    A string of whitespace separated atomic indices and bounds for the distance between two
+    atoms.
+    Example: `"1 2 2.3 2.4"` --> Forces `Stre(1, 2)` to remain between 2.3 and 2.4 Angstroms
+    Default: ""
+RANGED_BEND: str
+    A string of whitespace separated atomic indices and bounds for the angle between three
+    atoms.
+    Example: `"1 2 3 100 110"` --> Forces `Bend(1, 2, 3)` to remain between 100 and 110 degrees
+    Default: ""
+RANGED_DIHEDRAL: str
+    A string of whitespace separated atomic indices and bounds for the torsion angle of four
+    atoms. The order of specification determines whether the dihedral is a proper or improper
+    torsion/dihedral.
+    Example: `"1 2 3 4 100 110"` --> Forces `TORS(1, 2, 3, 4)` to remain between 100 and 110
+    degrees
+    Default: ""
+RANGED_OOFP: str
+    A string of whitespace separated atomic indices and bounds for the out of plane angle
+    defined by four atoms where the second atom is the central atom.
+    Example: `"1 2 3 4 100 110"` --> Forces `OOFP(1, 2, 3, 4)` to remain between 100 and 110
+    degrees
+    Default: ""
+RANGED_CARTESIAN: str
+    A string of whitespace separated atomic indices, cartesian labels, and bounds for the
+    cartesian coordinates of a given atom.
+    Example: `"1 XYZ 2.0 2.1"` --> Forces the X Y and Z coordinates of atom 1 to remain
+    between 2.0 and 2.1 angstroms
+    Default ""
+EXT_FORCE_DISTANCE: str
+    A string of whitespace separated atomic indices (2) followed by a single variable equation
+    surrounded in either a single or double quotation mark.
+    Example: `"1 2 'Sin(x)'"` or `'1 2 "Sin(x)"'` --> Evaluate the force along the coordinate
+    as a 1-dimensional sinusoidal function where x is the "value" (distance [bohr]) of the
+    coordinate (stretch).
+    Default: ""
+EXT_FORCE_BEND: str
+    A string of whitespace separated atomic indices (3) followed by a single variable equation
+    surrounded in either a single or double quotation mark.
+    Example: `"1 2 3 'Sin(x)'"` --> Evaluate the force along the coordinate as a 1-D
+    sinusoidal function where x is the "value" () of the coordinate (angle [radians]) of the
+    coordinate (bend)
+    Default: ""
+EXT_FORCE_DIHEDRAL: str
+    A string of whitespace separated atomic indices (4) followed by a single variable equation
+    surrounded in either a single or double quotation mark.
+    Example: `"1 2 3 4 'Sin(x)'"` --> Evaluate the force along the coordinate as a 1-D
+    sinusoidal function where x is the "value" () of the coordinate (angle [radians]) of the
+    coordinate (torsion)
+    Default: ""
+EXT_FORCE_OOFP: str
+    A string of whitespace separated atomic indices (4) followed by a single variable equation
+    surrounded in either a single or double quotation mark.
+    Example: `"1 2 3 4 'Sin(x)'"` --> Evaluate the force along the coordinate as a 1-D
+    sinusoidal function where x is the "value" () of the coordinate (angle [radians]) of the
+    coordinate (oofp)
+    Default: ""
+EXT_FORCE_CARTESIAN: str
+    A string of whatspace separated atomic indices (1) and cartesian labels, followed by a
+    single variable equation surrounded in either a single or double quotation mark.
+    Example: `"1 X 'Sin(x)'"` --> Evaluate the force along the coordinate as 1 1-D sinusoidal
+    function where x is the "value" () of the coordinate (angle [bohr]) of the coordinate
+    (bohr)
+    Default: ""
+
+Convergence Criteria
+~~~~~~~~~~~~~~~~~~~~
+
+G_CONVERGENCE: str
+    A set of optimization critera covering the change in energy, magnitude of the forces and
+    the step_size. One of ["QCHEM", "MOLPRO", "GAU", "GAU_LOOSE", "GAU_TIGHT", "GAU_VERYTIGHT",
+    "TURBOMOLE", "CFOUR", "NWCHEM_LOOSE", "INTERFRAG_TIGHT"].
+    Set of optimization criteria. Specification of any MAX_*_G_CONVERGENCE
+    RMS_*_G_CONVERGENCE options will append to overwrite the criteria set here if
+    |optking__flexible_g_convergence| is also on.
+    See Table :ref:`Geometry Convergence <table:optkingconv>` for details.
+MAX_FORCE_G_CONVERGENCE: float
+    Convergence criterion for geometry optmization: maximum force (internal coordinates, au)
+    Default: 3.0e-4
+RMS_FORCE_G_CONVERGENCE: float
+    Convergence criterion for geometry optmization: rms force  (internal coordinates, au)
+     Default: 3.0e-4
+MAX_ENERGY_G_CONVERGENCE: float
+    Convergence criterion for geometry optmization: maximum energy change
+    Default: 1.0e-6
+MAX_DISP_G_CONVERGENCE: float
+    Convergence criterion for geometry optmization: maximum displacement
+    (internal coordinates, au)
+    Default: 1.2e-3
+RMS_DISP_G_CONVERGENCE: float
+    Convergence criterion for geometry optmization: rms displacement
+    (internal coordinates, au)
+    Default: 1.2e-3
+FLEXIBLE_G_CONVERGENCE: bool
+    normally, any specified MAX_*_G_CONVERENCE keywords will be obeyed exclusively. If active,
+    `FLEXIBLE_G_CONVERGENCE` appends to `G_CONVERGENCE` with the value from
+    `MAX_FORCE_G_CONVERGENCE`
+    Default: False
+
+
+ALGORITHM SPECIFIC OPTIONS
+--------------------------
+Options to control various parameters and options within the various optimization schemes.
+
+RFO algorithms
+~~~~~~~~~~~~~~
+
+RFO_FOLLOW_ROOT: bool
+    Whether or not to optimize along the previously chosen mode of the augmented hessian matrix
+RFO_ROOT: int
+    root for `RFO` or `RS_I_RFO` to follow. Changing rfo_root for a `TS` may lead to a
+    higher-order stationary point.
+    Default: 0
+RFO_NORMALIZATION_MAX: float
+    Eigenvectors of RFO matrix with elements greater than this are ignored as candidates for
+	the step direction.
+    Default: 100
+RSRFO_ALPHA_MAX: float
+    Absolute maximum value of step scaling parameter in `RFO` and `RS_I_RFO`.
+    Default: 1e8
+
+Conjugate Gradient
+~~~~~~~~~~~~~~~~~~
+
+CONJUGATE_GRADIENT_TYPE:
+    One of "POLAK", "FLETCHER", or "DESCENT". Change how the step direction is calculated.
+
+Intrinsic Reaction Coordinate
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+IRC_STEP_SIZE: float
+    Specifies the distance between each converged point along the IRC reaction path
+    Default: 0.2
+IRC_DIRECTION: str
+    One of "forward" or "backward". Whether to step in the forward (+) direction along
+    the transition state mode (smallest / most negative mode of hessian) or backward (-)
+    Default: "forward"
+IRC_POINTS: int
+    Maximum number of converged points along the IRC path to map out before quitting.
+    For dissociation reactions, where the reaction path will not nessecarily terminate in
+    a minimum, this is needed to cap the number of step's optking is allowed to take
+    Default: 20
+
+Linesearching
+~~~~~~~~~~~~~
+LINESEARCH_STEP: float
+    stepsize to start with when displacing to perform linesearch
+    Default: 0.100
+linesearch: bool = False
+    perform linesearch ontop of current |step_type|.
+    Default: False
+
+Steepest Descent
+~~~~~~~~~~~~~~~~
+SD_HESSIAN: float
+    Guess at Hessian in steepest-descent direction (acts as a stepsize control).
+    Default=1.0
+STEEPEST_DESCENT_TYPE: str
+    One of "OVERLAP", or "BARZILAI_BORWEIN". Change how the `SD` is calculated (scaled)
+
+
+Hessian Information
+-------------------
+Options and keywords to control how approximate or analytic hessians are computed and/or updated.
+Positive definite update schemes, such as BFGS, are recommended for minimizations; however, these
+are innapropriate for other optimizations. Optking will choose an update scheme as appropriate.
+
+HESS_UPDATE: str
+    one of: [NONE, "BFGS", "MS", "POWELL", "BOFILL"]
+    Update scheme for the hessian. Default depends on `OPT_TYPE`
+    Default: "BFGS"
+HESS_UPDATE_USE_LAST: int
+    Number of previous steps to use in Hessian update, 0 uses all steps.
+    Default: 4
+HESS_UPDATE_LIMIT: bool
+    Do limit the magnitude of changes caused by the Hessian update?
+    If |hess_update_limit| is True, changes to the Hessian from the update are limited
+    to the larger of |hess_update_limit_scale| * (current value) and
+    |hess_update_limit_max| [au].  By default, a Hessian value cannot be changed by more
+    than 50% and 1 au.
+    Default: True
+HESS_UPDATE_LIMIT_MAX: float
+    Absolute upper limit for how much any given Hessian value can be changed when updating
+    Default: 1.00
+HESS_UPDATE_LIMIT_SCALE: float
+    Relative upper limit for how much any given Hessian value can be changed when updating 
+    Default: 0.50
+HESS_UPDATE_DEN_TOL: float
+    Denominator check for hessian update.
+    Default: 1e-7
+HESS_UPDATE_DQ_TOL: float
+    Hessian update is avoided if any internal coordinate has changed by
+    more than this in radians/au
+    Default: 0.5
+CART_HESS_READ: bool
+    Do read Cartesian Hessian?  Only for experts - use
+    |optking__full_hess_every| instead. cfour format or `.json` file (AtomicOutput) allowed.
+    The filetype is determined by the presence of a `.json` extension. The cfour hessian format
+    specifies that the first line contains the number of atoms. Each subsequent line contains
+    three hessian values provided in
+    [row-major order](https://en.wikipedia.org/wiki/Row-_and_column-major_order).
+    see psi4 docs for details on [cfour format]
+    Default: False
+HESSIAN_FILE: str
+    Accompanies |CART_HESS_READ|. path to file where hessian has been saved.
+    Default: ""
+FULL_HESS_EVERY: int
+    Frequency with which to compute the full Hessian in the course
+    of a geometry optimization. 0 means to compute the initial Hessian only,
+    1 means recompute every step, and N means recompute every N steps. -1 indicates that the
+    full hessian should never be computed.
+    Default: -1
+INTRAFRAG_HESS: str
+    Model Hessian to guess intrafragment force constants. One of `["SCHLEGEL", "FISCHER",
+    "SIMPLE", "LINDH", "LINDH_SIMPLE"]`
+    Default="SCHLEGEL"
+H_GUESS_EVERY: bool
+    Re-estimate the Hessian at every step, i.e., ignore the currently stored Hessian.
+    Default: False
+
+Backtransformations
+-------------------
+Options to control the iterative transformation between internal coordinates to cartesian
+coordinates. Process runs until there is no improvement in the cartesian coordinates.
+
+BT_MAX_ITER: int
+    Maximum number of iterations allowed to converge backtransformation
+    Default: 25
+BT_DX_CONV: float
+    Threshold for the change in any given cartesian coordinate during iterative
+    backtransformation.
+    Default: 1.0e-7
+BT_DX_RMS_CHANGE_CONV: float
+    Threshold for RMS change in cartesian coordinates during iterative backtransformation.
+    Default: 1.0e-12
+BT_PINV_RCOND: float
+    Threshold to remove redundancies fom generalized inverse. Corresponds to the `rcond` from
+    [numpy](https://numpy.org/doc/stable/reference/generated/numpy.linalg.pinv.html)
+    The following should be used whenever redundancies in the coordinates
+    are removed, in particular when forces and Hessian are projected and
+    in back-transformation from delta(q) to delta(x).
+    Default: 1.0e-6
+
+Multifragment Optimizations
+---------------------------
+
+frag_mode: str
+    For multi-fragment molecules, treat as single bonded molecule or via interfragment
+    coordinates. A primary difference is that in ``MULTI`` mode, the interfragment
+    coordinates are not redundant.
+    Default: "SINGLE"
+FRAG_REF_ATOMS: list[int]
+    Which atoms define the reference points for interfragment coordinates?
+    Default=[]
+# Do freeze all fragments rigid?
+FREEZE_INTRAFRAG: bool
+    Whether to freeze all intrafragment coordinates (rigid molecules). Only optimize the
+    interfragment coordinates.
+    Default: False
+INTERFRAG_MODE: str
+    Use either principal axes or fixed linear combinations of atoms as reference points for
+    generating the interfragment coordinates.
+    FIXED|PRINCIPAL_AXES
+    Default: "FIXED"
+INTERFRAG_COLLINEAR_TOL: float
+    Used for determining which atoms in a system are too collinear to be chosen as default
+    reference atoms. We avoid collinearity. Greater is more restrictive.
+    Default: 0.01
+INTERFRAG_COORDS: str
+    Let the user submit a dictionary (or array of dictionaries) for
+    the interfrag coordinates. The string input must be "loadable" as a python dictionary.
+    See input examples.
+INTERFRAG_HESS: str
+    Model Hessian to guess interfragment force constants. One of ["DEFAULT", "FISCHER_LIKE"]
+    Default: "DEFAULT"
+COVALENT_CONNECT: float
+    When determining connectivity, a bond is assigned if interatomic distance
+    is less than (this number) * sum of covalent radii.
+    When connecting disparate fragments when frag_mode = SIMPLE, a "bond"
+    is assigned if interatomic distance is less than (this number) * sum of covalent radii.
+    The value is then increased until all the fragments are connected directly
+    or indirectly.
+    Default: 1.3
+INTERFRAGMENT_CONNECT: float
+    Default: 1.8
+
+Coordinates
+-----------
+ADD_AUXILIARY_BONDS: bool
+    Do add bond coordinates at nearby atoms for non-bonded systems?
+    Default: False
+AUXILIARY_BOND_FACTOR: float
+    This factor times the standard covalent distance is used to add extra stretch coordinates.
+    Default: 2.5
+INTERFRAG_DIST_INV: bool
+    Do use 1/R for the interfragment stretching coordinate instead of R?
+    Default: False
+H_BOND_CONNECT: float
+    General, maximum distance for the definition of H-bonds.
+    Default: 4.3
+INCLUDE_OOFP: bool
+    Add out-of-plane angles (usually not needed)
+    Default: False
+
+Misc
+----
+
+TEST_B: bool
+    Do test B matrix analytic derivates against finite difference?
+    Default = False
+TEST_DERIVATIVE_B: bool
+    Do test derivative B matrix?
+    Default: False
+
+## The items below are unlikely to need modified
+
+FIX_VAL_NEAR_PI: float
+    Boundary to guess if a torsion or out-of-plane angle has passed through 180
+    during a step.
+    Default: 1.57
+V3D_TORS_ANGLE_LIM: float
+    Torsional angles will not be computed if the contained bond angles are within
+    this many radians of zero or 180. (< ~1 and > ~179 degrees) only used in v3d.py
+    Default: 0.017
+V3D_TORS_COS_TOL: float
+    cos(torsional angle) must be this close to -1/+1 for angle to count as 0/pi
+    only used in v3d.py
+    Default: 1e-10
+LINEAR_BEND_THRESHOLD: float
+    If bend exceeds this value, then also create linear bend complement.
+    Approximately 175 degrees
+    Default = 3.05
+SMALL_BEND_FIX_THRESHOLD: float
+    If bend is smaller than this value, never fix its associated vectors
+    this allows iterative steps through and near zero degrees.
+    Default: 0.35
+REDUNDANT_EVAL_TOL: float = 1.0e-10
+    to be deprecated. Threshold for which entries in diagonalized redundant matrix are kept
+    and inverted while computing a generalized inverse of a matrix

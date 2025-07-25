@@ -1,3 +1,4 @@
+"""Specifies two classes to store data for an optimization: ``Step`` and ``History``."""
 import copy
 import logging
 import math
@@ -6,17 +7,19 @@ from typing import Union
 import numpy as np
 import qcelemental as qcel
 
-from . import optparams as op
 from .exceptions import OptError
 from .molsys import Molsys
 from .linearAlgebra import abs_max, rms, sign_of_double
 from .printTools import print_array_string, print_mat_string
 from . import log_name
+from . import op
 
 logger = logging.getLogger(f"{log_name}{__name__}")
 
 
 class Step(object):
+    """Stores basic data: geometry, forces, step information, etc... for a given step of an
+    Optimization"""
     def __init__(self, geom, E, forces, cart_grad):
         self.geom = geom.copy()  # Store as 2D object
         self.E = E
@@ -91,12 +94,13 @@ class Step(object):
 
 
 class History(object):
+    """A collection of ``Steps`` objects. Manages updating the hessian."""
     def __init__(self, params=None):
         self.steps = []
         History.stepsSinceLastHessian = 0
 
         if params is None:
-            params = op.OptParams({})
+            params = op.OptParams()
 
         self.steps_since_last_hessian = 0
         self.consecutive_backsteps = 0
@@ -160,7 +164,7 @@ class History(object):
 
     @classmethod
     def from_dict(cls, d):
-        params = op.OptParams(d.get("options", {}))
+        params = op.OptParams(**d.get("options", {}))
         new_history = cls(params)
 
         new_history.steps_since_last_hessian = d.get("steps_since_last_hessian", 0)

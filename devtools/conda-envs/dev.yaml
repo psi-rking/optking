@@ -9,18 +9,23 @@ dependencies:
   - qcelemental
   - qcengine
   - msgpack-python
+  - pydantic=1.10
   
     # Testing
   - pytest
   - pytest-cov
+  - pytest-xdist
   - psi4 1.9.1
   - dftd3-python
   - codecov
 
    # Dev
-  - sphinx
+  - sphinx=7.4.7
   - sphinx-automodapi
-  - sphinx_material
+  - sphinxcontrib-napoleon
+  - pydata-sphinx-theme
+  - sphinx-design
+  - autodoc-pydantic=1.9.0
   - graphviz
   - black
   - isort

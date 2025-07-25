@@ -13,10 +13,12 @@ au2kcal = qcel.constants.hartree2kcalmol
 
 
 @pytest.mark.dimers
+@pytest.mark.dftd3
 @pytest.mark.skipif(
     (has_program("dftd3") or has_program("s-dftd3")) is False,
     reason="Neither DFTD3 nor s-DFTD3 is findable"
 )
+@pytest.mark.long
 def test_dimers_mt_tyr_Rscan():
     init_xyz = """
         C       -1.258686      0.546935      0.436840
@@ -79,7 +81,7 @@ def test_dimers_mt_tyr_Rscan():
     #  phi_A     : Dihedral angle, A3-A2-A1-B1
     #  phi_B     : Dihedral angle, A1-B1-B2-B3
 
-    dimerCoord = optking.dimerfrag.DimerFrag.fromUserDict(dimer)
+    dimerCoord = optking.dimerfrag.DimerFrag.from_user_dict(dimer)
 
     # Build the psi4 molecule.
     MT_mol = psi4.geometry(init_xyz)
