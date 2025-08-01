@@ -720,7 +720,9 @@ def make_internal_coords(o_molsys: Molsys, params: op.OptParams):
     logger.debug("\t Adding internal coordinates to molecular system")
 
     # Use covalent radii to determine bond connectivity.
-    connectivity = addIntcos.connectivity_from_distances(o_molsys.geom, o_molsys.Z)
+    connectivity = addIntcos.connectivity_from_distances(
+        o_molsys.geom, o_molsys.Z, params.covalent_connect
+    )
     logger.debug("Connectivity Matrix\n" + print_mat_string(connectivity))
 
     if params.frag_mode == "SINGLE":
@@ -794,11 +796,18 @@ def prepare_opt_output(o_molsys, computer, rxnpath=[], error=None):
         "success": True,
     }
 
-    if error:
+    if isinstance(error, OptError):
         qc_output.update(
             {
                 "success": False,
                 "error": {"error_type": error.err_type, "error_message": error.mesg},
+            }
+        )
+    elif error:
+        qc_output.update(
+            {
+                "success": False,
+                "error": {"error_type": str(type(error)), "error_message": str(error)}
             }
         )
 

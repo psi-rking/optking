@@ -1,4 +1,5 @@
 import logging
+import copy
 from math import acos, sqrt, tan
 
 import copy
@@ -34,6 +35,7 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
         self.irc_history.set_step_size_and_direction(
             self.params.irc_step_size, self.params.irc_direction
         )
+        self.orig_molsys = copy.deepcopy(molsys)
 
     def to_dict(self):
         return {
@@ -181,7 +183,8 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
                 )
                 return True
 
-            if self.irc_history.test_for_irc_minimum(fq, energies[-1]):
+            irc_conv = self.params.irc_convergence
+            if self.irc_history.test_for_irc_minimum(fq, energies[-1], irc_conv=irc_conv):
                 logger.info("A minimum has been reached on the IRC.  Stopping here.\n")
                 return True
 

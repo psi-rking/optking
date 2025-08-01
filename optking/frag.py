@@ -149,9 +149,9 @@ class Frag:
         intcos_report += "\n"
         logger.info(intcos_report)
 
-    def connectivity_from_distances(self):
+    def connectivity_from_distances(self, covalent_connect=1.3):
         """Determine the connectivity of the fragment based on covalent radii and distance matrix"""
-        return addIntcos.connectivity_from_distances(self._geom, self._Z)
+        return addIntcos.connectivity_from_distances(self._geom, self._Z, covalent_connect)
 
     def add_intcos_from_connectivity(self, connectivity=None, ignore_coords=[]):
         """Automatically add a set of internal coordinates to the fragment based on connectivity"""

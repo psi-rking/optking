@@ -161,7 +161,7 @@ def symm_mat_inv(A, redundant=False, threshold=1.0e-8):
         # could be LinAlgError?
 
 
-def symm_mat_root(A, Inverse=None, threshold=1e-10):
+def symm_mat_root(A, inverse=None, threshold=1e-10):
     """
     Compute A^(1/2) for a positive-definite matrix
 
@@ -183,12 +183,11 @@ def symm_mat_root(A, Inverse=None, threshold=1e-10):
     except LinAlgError:
         raise OptError("symm_mat_root: could not compute eigenvectors")
 
-    evals[np.abs(evals) < threshold] = 0.0
-    evects[np.abs(evects) < threshold] = 0.0
+    evals[np.abs(evals) < 10 * threshold] = 0.0
+    evects[np.abs(evects) < 10 * threshold] = 0.0
 
-    if Inverse:
+    if inverse:
         evals = 1 / evals
 
     root_matrix = np.diagflat(np.sqrt(evals))
-    A = evects @ root_matrix @ evects.T
-    return A
+    return evects @ root_matrix @ evects.T

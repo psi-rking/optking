@@ -5,7 +5,8 @@ from typing import List, Tuple
 import numpy as np
 import qcelemental as qcel
 
-from . import dimerfrag, frag, v3d
+from . import dimerfrag, v3d
+from .frag import Frag
 from .addIntcos import add_cartesian_intcos, connectivity_from_distances
 from .exceptions import OptError
 from .linearAlgebra import symm_mat_inv
@@ -86,9 +87,9 @@ class Molsys(object):
         frags = []
         if "fragments" in qc_molecule:
             for fr in qc_molecule["fragments"]:
-                frags.append(frag.Frag(np.array(z_list)[fr], geom[fr], np.array(masses_list)[fr]))
+                frags.append(Frag(np.array(z_list)[fr], geom[fr], np.array(masses_list)[fr]))
         else:
-            frags.append(frag.Frag(z_list, geom, masses_list))
+            frags.append(Frag(z_list, geom, masses_list))
 
         return cls(frags)
 
@@ -142,7 +143,7 @@ class Molsys(object):
     def from_dict(cls, d) -> 'Molsys':
         if "fragments" not in d:
             raise OptError("'fragments' key missing from input dict")
-        frags = [frag.Frag.from_dict(F) for F in d["fragments"]]
+        frags = [Frag.from_dict(F) for F in d["fragments"]]
 
         if "dimer_intcos" in d:
             dimers = [dimerfrag.DimerFrag.from_dict(DF) for DF in d["dimer_intcos"]]
@@ -173,7 +174,7 @@ class Molsys(object):
         return [fragment.natom for fragment in self._fragments]
 
     @property
-    def fragments(self) -> List[frag.Frag]:
+    def fragments(self) -> List[Frag]:
         """Getter for list of fragments"""
         return self._fragments
 
@@ -183,7 +184,7 @@ class Molsys(object):
         return self._dimer_intcos
 
     @property
-    def dimer_psuedo_frags(self) -> List[frag.Frag]:
+    def dimer_psuedo_frags(self) -> List[Frag]:
         """List of fragments containing the reference atoms utilized in the interfragment coords"""
         return [dimer.pseudo_frag for dimer in self._dimer_intcos]
 
@@ -213,12 +214,12 @@ class Molsys(object):
                 lbls.append("Dimer({:d},{:d})".format(DI.A_idx + 1, DI.B_idx + 1) + str(coord))
         return lbls
 
-    def frag_1st_atom(self, iF):
+    def frag_1st_atom(self, iF) -> int:
         """Return overall index of first atom in fragment ``iF``, beginning 0,1,...
         For last fragment returns one past the end."""
 
         if iF > len(self._fragments):
-            return ValueError()
+            raise ValueError()
         start = 0
         for i in range(0, iF):
             start += self._fragments[i].natom
@@ -397,7 +398,7 @@ class Molsys(object):
         """returns the index of the first internal coordinate belonging to fragment"""
 
         if iF >= len(self._fragments):
-            return ValueError()
+            raise ValueError()
         start = 0
         for i in range(0, iF):
             start += self._fragments[i].num_intcos
@@ -519,7 +520,7 @@ class Molsys(object):
             m = np.concatenate((m, self._fragments[i].masses))
         # self._fragments.append(consolidatedFrag)
         del self._fragments[:]
-        consolidatedFrag = frag.Frag(Z, g, m)
+        consolidatedFrag = Frag(Z, g, m)
         self._fragments.append(consolidatedFrag)
 
     def split_fragments_by_connectivity(self, covalent_connect=1.3):
@@ -558,7 +559,7 @@ class Molsys(object):
                     subZ[i] = tempZ[I]
                     subGeom[i, 0:3] = tempGeom[I, 0:3]
                     subMasses[i] = tempMasses[I]
-                newFragments.append(frag.Frag(subZ, subGeom, subMasses))
+                newFragments.append(Frag(subZ, subGeom, subMasses))
 
         del self._fragments[:]
         self._fragments = newFragments
@@ -602,6 +603,7 @@ class Molsys(object):
             frag_connectivity[iF, iF] = 1
 
         Z = self.Z
+        i, j = -1, -1
 
         scale_dist = 1.3
         all_connected = False

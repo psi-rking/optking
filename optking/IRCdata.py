@@ -1,13 +1,16 @@
 import logging
 import os
 import copy
-from typing import List
+from typing import List, Tuple
 
 import numpy as np
 
 from .exceptions import OptError
 from .printTools import print_geom_string
-from .linearAlgebra import symm_mat_inv, symm_mat_root, rms
+from .linearAlgebra import symm_mat_inv, rms
+from .molsys import Molsys
+from .frag import Frag
+from . import addIntcos
 from . import log_name
 from . import addIntcos
 from . import molsys
@@ -241,7 +244,7 @@ class IRCHistory(object):
         return self.irc_points[index].step_dist
 
     def test_for_dissociation(
-        self, new_molsys: molsys.Molsys, old_molsys: molsys.Molsys, threshold=0.4
+        self, new_molsys: Molsys, old_molsys: Molsys, threshold=0.4
     ):
         """Check whether or not the connectivity has changed and multiple fragments have
         been created. This may be used to terminate the IRC. This method should only be
@@ -265,14 +268,14 @@ class IRCHistory(object):
         # Detect the number of fragments current molecular system using the old scale_dist plus
         # 0.4 angstroms. Not bullet proof, just attempts to detect changes in conenctivity while
         # not triggering for small increases in bond lengths
-        new_molsys = molsys.Molsys([frag.Frag(old_molsys.Z, new_molsys.geom, old_molsys.masses)])
+        new_molsys = Molsys([Frag(old_molsys.Z, new_molsys.geom, old_molsys.masses)])
         new_molsys.split_fragments_by_connectivity(scale_dist + threshold)
 
         if orig_molsys.nfragments != new_molsys.nfragments:
             return True
         return False
 
-    def test_for_irc_minimum(self, f_q, energy, fq_rms=1e-5):
+    def test_for_irc_minimum(self, f_q, energy, fq_rms=1e-5, irc_conv=-0.7):
         """Given current forces, checks if we are at/near a minimum
 
         Parameters
@@ -316,9 +319,6 @@ class IRCHistory(object):
             return True
         if abs(rms(f_q)) < fq_rms:
             logger.info("RMS of forces have reached %s. Close to minimum. Qutting.", fq_rms)
-            return True
-        # if overlap < 0.0 and d_energy > 0.0:
-        #     logger.info("Energy has increased and overlap of forces is low")
             return True
 
         return False
@@ -443,7 +443,7 @@ class IRCHistory(object):
         orthog_f = f_q - (f_q @ p_vec) / (p_vec @ G_m_inv_p) * G_m_inv_p
         return orthog_f
 
-    def recompute_all_internals(self, molsys: molsys.Molsys):
+    def recompute_all_internals(self, molsys: Molsys):
         # make a independent copy of molecular system to change all internal coordinate values
         # into the new internal basis set
         tmp_molsys = copy.deepcopy(molsys)
