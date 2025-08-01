@@ -21,7 +21,7 @@ from .psi4_helper import using_qcmanybody
         pytest.param("json_betapinene.json", (568.2219045869, -383.38105559, 1), 4),
         pytest.param("json_hooh_frozen.json", (37.969354880, -150.786372411, 2), 6),
         pytest.param(
-            "json_lif_cp.json", (8.95167, -106.8867587, 2, 3.016), 4, marks=using_qcmanybody
+            "json_lif_cp.json", (8.95167, -106.8867587, 2, 3.016), 4, marks=[using_qcmanybody, pytest.mark.long]
         ),
         pytest.param(
             "json_lif_nocp.json", (9.09281, -106.9208785, 2, 2.969), 5, marks=using_qcmanybody

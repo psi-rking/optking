@@ -126,6 +126,9 @@ def test_dimers_mt_tyr_Rscan():
         MT_mol.set_geometry(xyz)
         E_Rab.append([R_AB, xyz.to_array(), psi4.energy("b3lyp-d3mbj")])
 
+        psi4_options = {"basis": "6-31G(d)", "d_convergence": "9", "guess": "read"}
+        psi4.set_options(psi4_options)
+
     # Convert the energies to relative energies in kcal/mol.
     E_Rab = np.array(E_Rab, dtype=object)
     Emin = min(E_Rab[:, 2])

@@ -2,8 +2,7 @@ import copy
 import qcelemental as qcel
 import numpy as np
 import optking
-
-from optking import optparams as op
+import pathlib
 
 """
 These tests attempt to verify that validation as well as saving the options object and reloading
@@ -62,7 +61,9 @@ def assert_options_match(initial_params, new_params):
 
 def test_hessians():
 
-    params = {"hessian_file": "H2O2_irc.hess"}
+    test_dir = pathlib.Path(__file__).parent
+
+    params = {"hessian_file": f"{test_dir}/test_data/H2O2_irc.hess"}
     custom_helper, initial_params, reloaded_params = custom_helper_with_reload(params)
     print(initial_params)
 

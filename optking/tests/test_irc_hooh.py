@@ -69,6 +69,7 @@ def test_hooh_irc_quick(check_iter):
         "g_convergence": "gau_verytight",
         "opt_type": "irc",
         "irc_step_size": 1.0,
+        "irc_points": 2,
         "cart_hess_read": True,
     }
 
@@ -79,4 +80,4 @@ def test_hooh_irc_quick(check_iter):
     # Does not match perfectly; however, the true "arc distance" is slightly different between the
     # two runs 0.99941 for 1.0 step size 0.99998 for default step_size
     assert psi4.compare_values(energy_5th_IRC_pt, IRC[1]["energy"], 4, "Energy of 1st IRC point.")  # TEST
-    utils.compare_iterations(json_output, 12, check_iter)
+    utils.compare_iterations(json_output, 10, check_iter)

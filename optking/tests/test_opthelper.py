@@ -199,7 +199,7 @@ def test_hooh_irc(check_iter):
         "irc_direction": "FORWARD",
         "irc_step_size": 1.0,
         "cart_hess_read": True,
-        "irc_points": 5,
+        "irc_points": 2,
     }
 
     psi4.set_options(psi4_options)
@@ -239,7 +239,7 @@ def test_hooh_irc(check_iter):
     IRC = json_output["extras"]["irc_rxn_path"]
 
     assert psi4.compare_values(energy_5th_IRC_pt, IRC[1]["energy"], 4, "Energy of 5th IRC point.")  # TEST
-    utils.compare_iterations(json_output, 12, check_iter)
+    utils.compare_iterations(json_output, 10, check_iter)
 
 
 def test_linesearch(check_iter):

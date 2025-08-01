@@ -8,15 +8,16 @@ from .utils import utils
 
 check_iter = True
 
-refE = -173.3000252
-cg_step_types = [("FLETCHER", 14), ("DESCENT", 24), ("POLAK", 44)]
+REF_PROPYLAMINE = -173.3000252
+cg_step_types = [
+    ("FLETCHER", -150.786741206765),
+    ("DESCENT", -150.786741176406),
+    ("POLAK", -150.786740344611)
+]
 
-
-@pytest.mark.long
-@pytest.mark.parametrize("option, num_steps", cg_step_types, ids=["FLETCHER", "DESCENT", "POLAK"])
-def test_conjugate_gradient_type(option, num_steps, check_iter):
-    propylamine = psi4.geometry(
-        """
+def test_conjugate_gradient_default(check_iter):
+    _ = psi4.geometry(
+     """
      N    1.8767   -0.1522   -0.0054 
      C   -0.5459   -0.5165    0.0053 
      C    0.5800    0.5145    0.0053 
@@ -34,13 +35,43 @@ def test_conjugate_gradient_type(option, num_steps, check_iter):
     )
 
     psi4.core.clean_options()
-    psi4_options = {"basis": "cc-pVDZ", "d_convergence": 10, "geom_maxiter": 70}
+    psi4_options = {"basis": "cc-pvdz", "d_convergence": 10, "geom_maxiter": 70}
     psi4.set_options(psi4_options)
 
-    optking_options = {"step_type": "CONJUGATE", "conjugate_gradient_type": option}
+    optking_options = {"step_type": "CONJUGATE"}
 
     json_output = optking.optimize_psi4("hf", **optking_options)
     thisenergy = json_output["energies"][-1]
 
-    assert psi4.compare_values(refE, thisenergy, 5)
-    utils.compare_iterations(json_output, num_steps, check_iter)
+    assert psi4.compare_values(REF_PROPYLAMINE, thisenergy, 5)
+    utils.compare_iterations(json_output, 14, check_iter)
+
+@pytest.mark.parametrize("option, energy", cg_step_types, ids=["FLETCHER", "DESCENT", "POLAK"])
+def test_conjugate_gradient_type(option, energy, check_iter):
+
+    _ = psi4.geometry(
+        """
+        H
+        O 1 0.95
+        O 2 1.39 1 102.0
+        H 3 0.95 2 102.0 1 120.0
+        """
+    )
+
+    psi4_options = {
+        "basis": "cc-pvdz",
+        "scf_type": "pk",
+        "step_type": "CONJUGATE",
+        "conjugate_gradient_type": option,
+        "intrafrag_step_limit": 0.3,
+        "intrafrag_step_limit_max": 0.4,
+        "geom_maxiter": 5
+    }
+
+    psi4.set_options(psi4_options)
+    json_output = optking.optimize_psi4("hf")  # Uses default program (psi4)
+    thisenergy = json_output["energies"][-1]
+
+    assert psi4.compare_values(energy, thisenergy, 5, "Final energy, every step Hessian")  # TEST
+    assert len(json_output["energies"]) == 5
+

@@ -12,7 +12,11 @@ def pytest_configure(config):
 
 @pytest.fixture(scope="function", autouse=True)
 def set_up():
+    import psi4
     import optking
+    yield
+    psi4.core.clean_options()
+    psi4.core.clean()
 
 @pytest.fixture(scope="function", autouse=True)
 def psi4_setup(psi4_threads, psi4_mem):

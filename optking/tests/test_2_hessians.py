@@ -3,6 +3,7 @@ import pytest
 import psi4
 import optking
 from .utils import utils
+import os
 
 final_energy = -150.786766850
 hess_every = [
@@ -146,3 +147,6 @@ def test_hess_read(check_iter):
     E = json_output["energies"][-1]
     assert psi4.compare_values(final_energy, E, 8, "Final energy, every step Hessian")  # TEST
     utils.compare_iterations(json_output, 10, check_iter)
+
+    # cleanup any and all files
+    os.system(f"{psi4.core.get_writer_file_prefix(hooh.name())}.*")
