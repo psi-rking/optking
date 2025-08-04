@@ -168,11 +168,7 @@ def _test_for_convergence(conv_met, conv_active, return_str=False, params=op.Par
 
     """
 
-<<<<<<< HEAD
-    if op.Params._i_untampered:
-=======
     if params._i_untampered:
->>>>>>> master
         # flexible_criteria forces this route, but with an adjusted value for an individual criteria
         if "GAU" in params.g_convergence or params.g_convergence == "INTERFRAG_TIGHT":
             conv_requirements = CONVERGENCE_PRESETS.get("GAUSSIAN")
