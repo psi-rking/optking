@@ -50,13 +50,13 @@ def test_irc_CH3O2(direction, points, energies):
         "irc_step_size": 0.2,
         "irc_points": 30,
         "geom_maxiter": 200,
-        "hessian_file": f"{test_dir}/test_data/CH3O2_irc.hess"
     }
 
     psi4.set_options(psi4_options)
+    optking_options = {"hessian_file": f"{test_dir}/test_data/CH3O2_irc.hess"}
 
     # IRC
-    optking.optimize_psi4("HF")
+    optking.optimize_psi4("HF", **optking_options)
 
 
 @pytest.mark.parametrize(
@@ -112,11 +112,11 @@ def test_irc_HCN(direction, point, energy):
             "irc_step_size": 0.2,
             "irc_points": 10,
             "geom_maxiter": 300,
-            "hessian_file": f"{test_dir}/test_data/HCN_irc.hess",
         }
     )
 
-    optking.optimize_psi4("HF")
+    optking_options = {"hessian_file": f"{test_dir}/test_data/HCN_irc.hess"}
+    optking.optimize_psi4("HF", **optking_options)
     # Check final. Should procure a reference history at some point to check against
     # The forward direction visually matches SCHELGEL but due to how we add a linear bend to the
     # system vs their bend we do not match the backward direction. Their bend goes to zero ours
