@@ -49,7 +49,7 @@ def test_hooh_irc(check_iter):
     utils.compare_iterations(json_output, 20, check_iter)
 
 def test_hooh_irc_quick(check_iter):
-    energy_5th_IRC_pt = -150.812913276783  # TEST
+    energy_5th_IRC_pt = -150.812913276783  # TEST 5th point for .2 1st point for 1.0
     h2o2 = psi4.geometry(
         """
       H     0.0000000000   0.9803530335  -0.8498671785

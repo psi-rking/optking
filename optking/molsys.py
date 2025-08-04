@@ -303,6 +303,7 @@ class Molsys(object):
     def num_intcos(self) -> int:
         """Computes total number of internal coordinates (either true internals or number of cartesians)
         depending on ``opt_coordinates``"""
+
         nintco_list = [f.num_intcos for f in self.all_fragments]
         return sum(nintco_list)
 

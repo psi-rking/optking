@@ -455,6 +455,7 @@ def test_convergence_presets(conv_test, conv_preset):
         conv_met.update(
             {"flat_potential": 100 * criteria.get("rms_force") < params_dict.get("conv_rms_force")}
         )
+        conv_met.update({"flat_potential": 100 * criteria.get("rms_force") < params_dict.get("conv_rms_force")})
         state = optking.convcheck._test_for_convergence(conv_met, conv_active, params=params)
         expected = tests.get(conv_test).get(program_mappings.get(conv_preset))
 

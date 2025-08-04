@@ -99,9 +99,7 @@ class Helper(ABC):
 
         if status == "CONVERGED" and len(energies) > 0:
             if self.params.opt_type != "IRC":
-                conv_table, criteria_table = conv_check(
-                    conv_info, self.params.__dict__, str_mode="both"
-                )
+                conv_table, criteria_table = conv_check(conv_info, self.params, str_mode="both")
                 string += conv_table
                 string += criteria_table
                 string += self.history.summary_string()

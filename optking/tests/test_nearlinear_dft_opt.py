@@ -7,8 +7,7 @@ from .utils import utils
 #! not quite linear structure
 @pytest.mark.long
 def test_b3lyp_phenylacetylene(check_iter):
-    phenylacetylene = psi4.geometry(
-    """
+    _ = psi4.geometry("""
       0 1
       C          0.50424        2.62143       -1.86897
       C         -0.79405        2.10443       -1.80601

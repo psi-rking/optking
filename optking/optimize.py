@@ -2,6 +2,7 @@
 looking to add features to the code to familarize themselves with the overall workings of OptKing.
 Functions may be useful to users seeking greater control over the inner workings of OptKing than provided by the
 ``OptHelpers``. For instance, if manually creating a molecular system or manually controlling / switching algorithms
+on the fly.
 
 See Also
 --------
