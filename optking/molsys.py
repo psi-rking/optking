@@ -12,7 +12,7 @@ from .exceptions import OptError
 from .linearAlgebra import symm_mat_inv
 from .printTools import print_array_string, print_mat_string
 from . import log_name
-from . import optparams as op
+from . import op
 
 logger = logging.getLogger(f"{log_name}{__name__}")
 
