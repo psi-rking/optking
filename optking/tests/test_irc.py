@@ -153,7 +153,7 @@ def test_irc_CH5(direction, point, energy):
     """)
 
     # TEST - leave in to check that OPTKING successfully utilizes Psi's standard hess file
-    os.system(f"cp test_data/CH5_irc.hess stdout.default.{os.getpid()}.hess")
+    os.system(f"cp {test_dir}/test_data/CH5_irc.hess stdout.default.{ch5.name()}.hess")
 
     # find Hessian
     psi4.core.clean_options()
