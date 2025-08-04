@@ -445,6 +445,9 @@ class CustomHelper(Helper):
             if "hessian" in self.calculations_needed():
                 if self.params.cart_hess_read:
                     logger.debug("Reading hessian from file")
+                    # Extra safeguard in case an external program has set hessian_file incorrectly
+                    if isinstance(self.params.hessian_file, str):
+                        self.params.hessian_file = pathlib.Path(self.params.hessian_file)
                     self.HX = hessian.from_file(self.params.hessian_file)  # set ourselves if file
                     _ = self.computer.compute(self.geom, driver="hessian")
                     self.gX = self.computer.external_gradient

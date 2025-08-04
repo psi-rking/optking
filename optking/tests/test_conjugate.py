@@ -61,15 +61,18 @@ def test_conjugate_gradient_type(option, energy, check_iter):
     psi4_options = {
         "basis": "cc-pvdz",
         "scf_type": "pk",
-        "step_type": "CONJUGATE",
-        "conjugate_gradient_type": option,
         "intrafrag_step_limit": 0.3,
         "intrafrag_step_limit_max": 0.4,
         "geom_maxiter": 5
     }
 
+    optking_options = {
+        "step_type": "CONJUGATE",
+        "conjugate_gradient_type": option,
+    }
+
     psi4.set_options(psi4_options)
-    json_output = optking.optimize_psi4("hf")  # Uses default program (psi4)
+    json_output = optking.optimize_psi4("hf", **optking_options)  # Uses default program (psi4)
     thisenergy = json_output["energies"][-1]
 
     assert psi4.compare_values(energy, thisenergy, 5, "Final energy, every step Hessian")  # TEST

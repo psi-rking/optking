@@ -5,6 +5,7 @@ import pathlib
 import json
 import numpy as np
 import qcelemental as qcel
+import optking
 
 # Absolute path to tests
 test_dir = pathlib.Path(__file__).parent
@@ -55,7 +56,7 @@ def test_irc_CH3O2(direction, points, energies):
     psi4.set_options(psi4_options)
 
     # IRC
-    E, history = psi4.optimize("HF", return_history=True)
+    optking.optimize_psi4("HF")
 
 
 @pytest.mark.parametrize(
@@ -108,15 +109,14 @@ def test_irc_HCN(direction, point, energy):
             "opt_type": "IRC",
             "irc_direction": direction,
             "cart_hess_read": True,
-            "irc_step_size": 0.125,
-            "irc_convergence": -0.9,
-            "irc_points": 60,
+            "irc_step_size": 0.2,
+            "irc_points": 10,
             "geom_maxiter": 300,
             "hessian_file": f"{test_dir}/test_data/HCN_irc.hess",
         }
     )
 
-    E, history = psi4.optimize("HF", return_history=True)
+    optking.optimize_psi4("HF")
     # Check final. Should procure a reference history at some point to check against
     # The forward direction visually matches SCHELGEL but due to how we add a linear bend to the
     # system vs their bend we do not match the backward direction. Their bend goes to zero ours

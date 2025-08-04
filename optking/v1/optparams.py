@@ -509,7 +509,12 @@ class OptParams(BaseModel):
     # Need two options here because str_to_upper cannot be turned of for individual members of the Model
     # _hessian_file avoids str_to_upper. Captitalization does not seem to be an issue for V1.
     hessian_file: pathlib.Path = Field(default=pathlib.Path(""), validate_default=False)
-    """Accompanies ``CART_HESS_READ``. path to file where hessian has been saved."""
+    """Accompanies ``CART_HESS_READ``. path to file where hessian has been saved.
+    WARNING: As of Psi4 v1.10~nightly psi4.optimize() overrides this variable. If you have written
+    a hessian to disk, copy the file to
+    ``psi4.core.write_file_prefix(psi4.core.get_active_molecule().name())`` or use
+    ``optking.optimize_psi4()``
+    """
     # _hessian_file: pathlib.Path = pathlib.Path("")
 
     # Frequency with which to compute the full Hessian in the course
