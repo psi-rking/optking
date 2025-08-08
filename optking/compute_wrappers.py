@@ -23,7 +23,6 @@ class ComputeWrapper:
     """
 
     def __init__(self, molecule, model, keywords, program):
-
         self.molecule = molecule
         # ensure molecule orientation does not differ from optking regardless of how mol was created
         self.molecule.update({'fix_com': True, 'fix_orientation': True})
@@ -56,9 +55,10 @@ class ComputeWrapper:
         self.molecule["geometry"] = [i for i in geom.flat]
 
     def generate_schema_input(self, driver):
-
         molecule = Molecule(**self.molecule)
-        inp = AtomicInput(molecule=molecule, model=self.model, keywords=self.keywords, driver=driver)
+        inp = AtomicInput(
+            molecule=molecule, model=self.model, keywords=self.keywords, driver=driver
+        )
 
         return inp
 
@@ -140,7 +140,6 @@ def make_computer_from_dict(computer_type, d):
 
 class Psi4Computer(ComputeWrapper):
     def _compute(self, driver):
-
         import psi4
 
         inp = self.generate_schema_input(driver)
@@ -148,14 +147,15 @@ class Psi4Computer(ComputeWrapper):
         if "1.3" in psi4.__version__:
             ret = psi4.json_wrapper.run_json_qcschema(inp.dict(), clean=True)
         else:
-            ret = psi4.schema_wrapper.run_json_qcschema(inp.dict(), clean=True, json_serialization=True)
+            ret = psi4.schema_wrapper.run_json_qcschema(
+                inp.dict(), clean=True, json_serialization=True
+            )
         ret = AtomicResult(**ret)
         return ret
 
 
 class QCEngineComputer(ComputeWrapper):
     def _compute(self, driver):
-
         import qcengine
 
         task_config = {}

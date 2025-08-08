@@ -3,6 +3,7 @@ import optking
 import numpy as np
 import pytest
 
+
 # Test interfragment coordinate B matrix numerically.
 @pytest.mark.dimers
 def test_dimers_bmat():

@@ -40,7 +40,6 @@ class Stre(Simple):
         range_max=None,
         ext_force=None,
     ):
-
         self._inverse = inverse  # bool - is really 1/R coordinate?
 
         if a < b:
@@ -68,7 +67,9 @@ class Stre(Simple):
 
         s += "(%d,%d)" % (self.A + 1, self.B + 1)
         if self.ranged:
-            s += "[{:.3f},{:.3f}]".format(self.range_min * self.q_show_factor, self.range_max * self.q_show_factor)
+            s += "[{:.3f},{:.3f}]".format(
+                self.range_min * self.q_show_factor, self.range_max * self.q_show_factor
+            )
         return s
 
     def __eq__(self, other):
@@ -242,7 +243,9 @@ class Stre(Simple):
             rval = AA / ((R - BB) * (R - BB) * (R - BB))
 
         elif guess_type == "FISCHER":
-            Rcov = qcel.covalentradii.get(Z[self.A], missing=4.0) + qcel.covalentradii.get(Z[self.B], missing=4.0)
+            Rcov = qcel.covalentradii.get(Z[self.A], missing=4.0) + qcel.covalentradii.get(
+                Z[self.B], missing=4.0
+            )
             R = v3d.dist(geom[self.A], geom[self.B])
             AA = 0.3601
             BB = 1.944

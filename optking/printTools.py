@@ -79,14 +79,18 @@ def print_array_string(M, Ncol=7, title=None, form=":10.6f"):
 
 
 def print_geom_grad(geom, grad):
-
     Natom = geom.shape[0]
     geometry = [f"{'Geometry (au)':>22}"]
-    geometry += ["{:15.10f}{:15.10f}{:15.10f}".format(geom[i, 0], geom[i, 1], geom[i, 2]) for i in range(Natom)]
+    geometry += [
+        "{:15.10f}{:15.10f}{:15.10f}".format(geom[i, 0], geom[i, 1], geom[i, 2])
+        for i in range(Natom)
+    ]
 
     gradient = [f"{' ':39}Gradient (au)\n"]
     gradient += [
-        "\t\t{:15.10f}{:15.10f}{:15.10f}\n".format(grad[3 * i + 0], grad[3 * i + 1], grad[3 * i + 2])
+        "\t\t{:15.10f}{:15.10f}{:15.10f}\n".format(
+            grad[3 * i + 0], grad[3 * i + 1], grad[3 * i + 2]
+        )
         for i in range(Natom)
     ]
 

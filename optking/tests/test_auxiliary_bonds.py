@@ -73,22 +73,27 @@ units bohr
 
 aux_bonds = [(menthone, [[1, 10], [1, 11]]), (ACHTAR10, [[1, 4]])]
 
-HF_expected_noaux = {'menthone': 11, 'ACHTAR10': 13}
-HF_expected_aux = {'menthone': 10, 'ACHTAR10': 11}
-HF_E = {'menthone':  -464.0439981504222, 'ACHTAR10':  -360.90442278650494}
+HF_expected_noaux = {"menthone": 11, "ACHTAR10": 13}
+HF_expected_aux = {"menthone": 10, "ACHTAR10": 11}
+HF_E = {"menthone": -464.0439981504222, "ACHTAR10": -360.90442278650494}
 
-B3LYP_expected_noaux = {'menthone': 10, 'ACHTAR10': 12}
-B3LYP_expected_aux = {'menthone': 9, 'ACHTAR10': 11}
-B3LYP_E = {'menthone': -467.157103348465, 'ACHTAR10': -363.065807664032}
+B3LYP_expected_noaux = {"menthone": 10, "ACHTAR10": 12}
+B3LYP_expected_aux = {"menthone": 9, "ACHTAR10": 11}
+B3LYP_E = {"menthone": -467.157103348465, "ACHTAR10": -363.065807664032}
+
 
 @pytest.mark.long
 @pytest.mark.skip("Tests are long. Replaced with simpler, more direct tests but left in for now.")
 def test_auxiliary_bonds(check_iter):
-    for molname in ['menthone', 'ACHTAR10']:
+    for molname in ["menthone", "ACHTAR10"]:
         psi4.core.set_active_molecule(eval(molname))
 
         psi4.core.clean_options()
-        psi4.set_options({ "basis": "6-31+G*", })
+        psi4.set_options(
+            {
+                "basis": "6-31+G*",
+            }
+        )
 
         result = optking.optimize_psi4("HF")
         utils.compare_iterations(result, HF_expected_noaux[molname], check_iter)
@@ -98,7 +103,11 @@ def test_auxiliary_bonds(check_iter):
         psi4.core.set_active_molecule(eval(molname))
         psi4.core.clean_options()
 
-        psi4.set_options({ "basis": "6-31+G*", })
+        psi4.set_options(
+            {
+                "basis": "6-31+G*",
+            }
+        )
         optking_options = {"add_auxiliary_bonds": True}
 
         result = optking.optimize_psi4("HF", **optking_options)

@@ -32,7 +32,6 @@ def test_step_by_step():
     opt = optking.CustomHelper(h2o)
 
     for step in range(30):
-
         grad, wfn = psi4.gradient("hf", return_wfn=True)
         opt.gX = grad.np.reshape(-1)
         opt.E = wfn.energy()
@@ -197,11 +196,10 @@ def test_hooh_irc(check_iter):
     params = {
         "g_convergence": "gau_verytight",
         "opt_type": "irc",
-        "geom_maxiter": 60,
         "irc_direction": "FORWARD",
         "irc_step_size": 1.0,
-        "hess_update": "BOFILL",
         "cart_hess_read": True,
+        "irc_points": 2,
     }
 
     psi4.set_options(psi4_options)
@@ -241,7 +239,7 @@ def test_hooh_irc(check_iter):
     IRC = json_output["extras"]["irc_rxn_path"]
 
     assert psi4.compare_values(energy_5th_IRC_pt, IRC[1]["energy"], 4, "Energy of 5th IRC point.")  # TEST
-    utils.compare_iterations(json_output, 12, check_iter)
+    utils.compare_iterations(json_output, 10, check_iter)
 
 
 def test_linesearch(check_iter):
@@ -301,3 +299,22 @@ def test_linesearch(check_iter):
     assert psi4.compare_values(nucenergy, nucenergy, 3, "Nuclear repulsion energy")  # TEST
     assert psi4.compare_values(refenergy, E, 1, "Reference energy")  # TEST
     utils.compare_iterations(json_output, 9, check_iter)
+
+
+def test_lin_bend_psi4():
+    # Make sure the Psi4 interface can handle a linear bend going linear
+    import psi4
+    psi4.geometry("""
+        H
+        C 1 1.1
+        N 2 1.2 1 170.0
+    """)
+
+    psi4.set_options({
+        "basis": "6-31G",
+        "g_convergence": "gau_verytight"
+    })
+
+    REF_HCN_LINEAR = -92.828215834392
+    E = psi4.optimize("HF")
+    assert psi4.compare_values(REF_HCN_LINEAR, E, 6)

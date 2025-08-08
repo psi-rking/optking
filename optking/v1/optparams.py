@@ -230,6 +230,13 @@ class OptParams(BaseModel):
     this may be symptomatic of a highly curved reaction-path, decrease try
     ``irc_converence = -0.9``"""
 
+    irc_mode: str = Field(
+        pattern=re.compile("NORMAL|CONFIRM", flags=re.IGNORECASE), default="NORMAL"
+    )
+    """Experimental - One of ['NORMAL', 'CONFIRM']. 'CONFIRM' is meant to be used for dissociation
+    reactions. The IRC is terminated once the molecule's connectivity has changed. Convergence
+    is declared once the original ``covalent_connect`` must be increased by more than 0.4 au."""
+
     # ------------- SUBSECTION ----------------
     # trust radius - need to write custom validator to check for sane combination
     # of values: One for intrafrag_trust, intrafrag_trust_min, and intrafrag_trust_max,
@@ -502,7 +509,12 @@ class OptParams(BaseModel):
     # Need two options here because str_to_upper cannot be turned of for individual members of the Model
     # _hessian_file avoids str_to_upper. Captitalization does not seem to be an issue for V1.
     hessian_file: pathlib.Path = Field(default=pathlib.Path(""), validate_default=False)
-    """Accompanies ``CART_HESS_READ``. path to file where hessian has been saved."""
+    """Accompanies ``CART_HESS_READ``. path to file where hessian has been saved.
+    WARNING: As of Psi4 v1.10~nightly psi4.optimize() overrides this variable. If you have written
+    a hessian to disk, copy the file to
+    ``psi4.core.write_file_prefix(psi4.core.get_active_molecule().name())`` or use
+    ``optking.optimize_psi4()``
+    """
     # _hessian_file: pathlib.Path = pathlib.Path("")
 
     # Frequency with which to compute the full Hessian in the course
@@ -684,6 +696,11 @@ class OptParams(BaseModel):
     # Threshold for which entries in diagonalized redundant matrix are kept and
     # inverted while computing a generalized inverse of a matrix
     redundant_eval_tol: float = 1.0e-10  # to be deprecated.
+
+    # threshold for which eigenvalues, eigenvector values, and other floating point
+    # values are considered to be zero. Silences numeric noise that can cause issues
+    # with matrix inversion. Replaces redundant_eval_tol
+    linear_algebra_tol = 1e-10
 
     # --- SET INTERNAL OPTIMIZATION PARAMETERS ---
     _i_max_force: bool = False
@@ -890,6 +907,20 @@ class OptParams(BaseModel):
             if fields["hessian_file"] != pathlib.Path(""):
                 fields.update({"cart_hess_read": True})
 
+        if fields["cart_hess_read"] and fields["hessian_file"] == pathlib.Path(""):
+            try:
+                import psi4
+            except ImportError as e:
+                logger.error("CART_HESS_READ was turned on but ``HESSIAN_FILE`` was left empty."
+                    "Attempting to read from ``psi4.writer_file_prefix`` has failed. Please"
+                    "explicitly provide a file or ensure that psi4 is importable"
+                )
+                raise e
+            name = psi4.core.get_active_molecule().name()
+            fields.update(
+                {"hessian_file": pathlib.Path(f"{psi4.core.get_writer_file_prefix(name)}.hess")}
+            )
+
         # inactive option
         # if fields.get("generate_intcos_exit"):
         #     fields.get("keep_intcos") = True
@@ -921,9 +952,9 @@ class OptParams(BaseModel):
 
     #     set_vars = cls._raw_input
     #     hess_file = set_vars.get("hessian_file")
-    #     if hess_file:
-    #         fields.update({"_hessian_file": pathlib.Path(hess_file)})
     #     breakpoint()
+    #     if hess_file:
+    #         fields.update({"hessian_file": pathlib.Path(hess_file)})
     #     return fields
 
     @root_validator()

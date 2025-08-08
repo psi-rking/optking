@@ -20,7 +20,10 @@ psi4_options = {
     "basis": "sto-3g",
     "geom_maxiter": 30,
     "frag_mode": "MULTI",
-    "frag_ref_atoms": [[[1]], [[1]]],  # atoms for reference pts. on frag1  # atoms for reference pts. on frag 2
+    "frag_ref_atoms": [
+        [[1]],
+        [[1]],
+    ],  # atoms for reference pts. on frag1  # atoms for reference pts. on frag 2
     "g_convergence": "gau_tight",
 }
 psi4.set_options(psi4_options)
