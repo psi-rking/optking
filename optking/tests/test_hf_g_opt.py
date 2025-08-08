@@ -24,6 +24,7 @@ def test_hf_g_h2o(check_iter):
         "e_convergence": 10,
         "d_convergence": 10,
         "scf_type": "pk",
+        "print_trajectory_xyz_file": True,
     }
     psi4.set_options(psi4_options)
 

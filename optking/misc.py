@@ -303,7 +303,7 @@ def trajectory_string(symbols, geom, comment_str):
     def coord_str(x):
         return f"{x[0]:12f} {x[1]:12f} {x[2]:12f}"
 
-    strings = [f"{symbol} " + coord_str(coords) for symbol, coords in zip(symbols, geom, strict=True)]
+    strings = [f"{symbol} " + coord_str(coords) for symbol, coords in zip(symbols, geom)]
     header = [f"{len(symbols)}", comment_str]
     return "\n".join(header + strings) + "\n"
 
