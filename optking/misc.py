@@ -303,6 +303,15 @@ def trajectory_string(symbols, geom, comment_str):
     def coord_str(x):
         return f"{x[0]:12f} {x[1]:12f} {x[2]:12f}"
 
+    if isinstance(geom, list):
+        geom = np.asarray(geom)
+
+    if isinstance(geom, np.ndarray):
+        if geom.ndim == 1:
+            geom = geom.reshape(-1, 3)
+    else:
+        raise TypeError(f"Encountered incorrect type {type(geom)} for geometry when writing trajectory")
+
     strings = [f"{symbol} " + coord_str(coords) for symbol, coords in zip(symbols, geom)]
     header = [f"{len(symbols)}", comment_str]
     return "\n".join(header + strings) + "\n"
@@ -352,13 +361,13 @@ def write_opt_xyz_trajectory(optimization_output, filename=""):
     Raises
     ------
     ValueError
-        if the key: "trajectory" does not exist within "extras"
+        if the key: "trajectory" does not exist within schema
     """
 
-    trajectory = optimization_output["extras"]["trajectory"]
-    geometries = [step["geometry"] for step in trajectory]
+    trajectory = optimization_output["trajectory"]
+    geometries = [step["molecule"]["geometry"] for step in trajectory]
     comments = (
-        f"Optimization step: {step['step_number']}. E: {step['energy']}" for step in trajectory
+        f"Optimization step: {i}. E: {step['extras']['qcvars']['CURRENT ENERGY']}" for i, step in enumerate(trajectory)
     )
     symbols = optimization_output["final_molecule"]["symbols"]
     mol_strs = (
