@@ -299,3 +299,22 @@ def test_linesearch(check_iter):
     assert psi4.compare_values(nucenergy, nucenergy, 3, "Nuclear repulsion energy")  # TEST
     assert psi4.compare_values(refenergy, E, 1, "Reference energy")  # TEST
     utils.compare_iterations(json_output, 9, check_iter)
+
+
+def test_lin_bend_psi4():
+    # Make sure the Psi4 interface can handle a linear bend going linear
+    import psi4
+    psi4.geometry("""
+        H
+        C 1 1.1
+        N 2 1.2 1 170.0
+    """)
+
+    psi4.set_options({
+        "basis": "6-31G",
+        "g_convergence": "gau_verytight"
+    })
+
+    REF_HCN_LINEAR = -92.828215834392
+    E = psi4.optimize("HF")
+    assert psi4.compare_values(REF_HCN_LINEAR, E, 6)
