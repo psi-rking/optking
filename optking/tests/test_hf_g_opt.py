@@ -1,5 +1,8 @@
 #! SCF STO-3G geometry optimzation, with Z-matrix input
+import os
+import pathlib
 import json
+import qcelemental as qcel
 import psi4
 import optking
 from .utils import utils
@@ -33,6 +36,25 @@ def test_hf_g_h2o(check_iter):
     assert psi4.compare_values(refnucenergy, nucenergy, 3, "Nuclear repulsion energy")  # TEST
     assert psi4.compare_values(refenergy, E, 6, "Reference energy")  # TEST
     utils.compare_iterations(json_output, 4, check_iter)
+
+    ##
+    # Test writing a trajectory file
+    ##
+    traj_file = pathlib.Path(f'opt_traj.{os.getpid()}.xyz')
+    assert traj_file.exists()
+
+    with traj_file.open() as f:
+        lines = f.readlines()
+    # Remove before assertions
+    os.system(f'rm {str(traj_file)}')
+
+    first = "".join(lines[:5])
+    last = "".join(lines[-5:])
+    first_mol = qcel.molparse.from_string(first, dtype='xyz')
+    last_mol = qcel.molparse.from_string(last, dtype='xyz')
+
+    assert first_mol.get('qm').get('elem').tolist() == ['O', 'H', 'H']
+    assert last_mol.get('qm').get('elem').tolist() == ['O', 'H', 'H']
 
 
 #! SCF cc-pVDZ geometry optimzation, Z-matrix input, tight convergence

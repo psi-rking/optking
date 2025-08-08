@@ -13,13 +13,14 @@ See Also
 import copy
 import logging
 import pathlib
+import os
 from typing import Union
 
 import numpy as np
 from optking.compute_wrappers import ComputeWrapper
 from optking.molsys import Molsys
 
-from . import IRCfollowing, addIntcos, hessian, history, intcosMisc
+from . import IRCfollowing, addIntcos, hessian, history, intcosMisc, misc
 from . import stepAlgorithms
 from . import testB, linesearch
 from .exceptions import AlgError, OptError
@@ -549,6 +550,13 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
 
         qc_output = prepare_opt_output(self.molsys, self.computer, rxnpath=rxnpath, error=error)
         self.clear()
+
+        if self.params.print_trajectory_xyz_file:
+            if self.params.opt_type == "IRC":
+                misc.write_irc_xyz_trajectory(qc_output)
+            else:
+                misc.write_opt_xyz_trajectory(qc_output)
+
         return qc_output
 
 

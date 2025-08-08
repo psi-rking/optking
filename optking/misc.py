@@ -301,7 +301,7 @@ def trajectory_string(symbols, geom, comment_str):
     """
 
     def coord_str(x):
-        return f"{x[0]:10f} {x[1]:10f} {x[2]:10f}"
+        return f"{x[0]:12f} {x[1]:12f} {x[2]:12f}"
 
     strings = [f"{symbol} " + coord_str(coords) for symbol, coords in zip(symbols, geom, strict=True)]
     header = [f"{len(symbols)}", comment_str]
@@ -325,7 +325,7 @@ def irc_q_trajectory(optimization_output, coord_str):
 
 def write_irc_xyz_trajectory(optimization_output, filename=""):
     """ Write an xyz file with the reaction path trajectory from an OptimizationResult.
-    If filename is not provided defaults to irc_traj.<pid>.json` 
+    If filename is not provided defaults to irc_traj.<pid>.xyz` 
 
     Raises
     ------
@@ -347,7 +347,7 @@ def write_irc_xyz_trajectory(optimization_output, filename=""):
 
 def write_opt_xyz_trajectory(optimization_output, filename=""):
     """ Write an xyz file with the optimization trajectory from an OptimizationResult.
-    If filename is not provided defaults to `opt_traj.<pid>.json` 
+    If filename is not provided defaults to `opt_traj.<pid>.xyz` 
     
     Raises
     ------

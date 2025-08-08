@@ -2,8 +2,10 @@
 import pathlib
 import psi4
 import optking
+import os
 import json
 from .utils import utils
+import qcelemental as qcel
 
 psi4.set_memory("2 GB")
 
@@ -71,6 +73,7 @@ def test_hooh_irc_quick(check_iter):
         "irc_step_size": 1.0,
         "irc_points": 2,
         "cart_hess_read": True,
+        "print_trajectory_xyz_file": True
     }
 
     psi4.set_options(psi4_options)
@@ -81,3 +84,25 @@ def test_hooh_irc_quick(check_iter):
     # two runs 0.99941 for 1.0 step size 0.99998 for default step_size
     assert psi4.compare_values(energy_5th_IRC_pt, IRC[1]["energy"], 4, "Energy of 1st IRC point.")  # TEST
     utils.compare_iterations(json_output, 10, check_iter)
+
+    ###
+    # Test that reading trajcetory files works.
+    ###
+
+    traj_file = pathlib.Path(f'irc_traj.{os.getpid()}.xyz')
+    assert traj_file.exists()
+
+    with traj_file.open() as f:
+        lines = f.readlines()
+    # Remove before assertions
+    os.system(f'rm {str(traj_file)}')
+
+    first = "".join(lines[:6])
+    last = "".join(lines[-6:])
+    first_mol = qcel.molparse.from_string(first, dtype='xyz')
+    last_mol = qcel.molparse.from_string(last, dtype='xyz')
+
+    import pprint
+    pprint.pprint(first_mol)
+    assert first_mol.get('qm').get('elem').tolist() == ['H', 'O', 'O', 'H']
+    assert last_mol.get('qm').get('elem').tolist() == ['H', 'O', 'O', 'H']
