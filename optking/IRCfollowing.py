@@ -78,14 +78,20 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
                 self.irc_history.add_irc_point(0, q_0, x_0, fq, f_x, energy)
                 self.irc_step_number += 1
 
-                # Alex. H_q_m doesn't get used here and isn't used in the initial step
-                # in old c++ optking. Instead of computing mass weighted Hessian."un" massweighting
-                # v, and then massweighting again to compute dq just compute as the lowest
-                # eigenvector of H
-                v = lowest_eigenvector_symm_mat(H)
-                logger.info(
-                    print_array_string(v, title="Lowest eigenvector of Internal Coordinate Hessian")
+                # Looked like we just undid this; however, this is not correct. Compute
+                # step in mass-weighted internal coordinates then convert back to our standard
+                # intco basis
+                G_root = symm_mat_root(self.molsys.Gmat(massWeight=True))
+                G_root_inv = symm_mat_inv(G_root, redundant=True)
+                H_m = G_root @ H @ G_root
+                v_m = lowest_eigenvector_symm_mat(H_m)
+
+                logger.debug(print_mat_string(G_root, title="G^(1/2) Matrix"))
+                logger.debug(print_mat_string(H_m, title="Mass-weighted Hessian"))
+                logger.debug(
+                    print_array_string(v_m, title="Lowest eigenvector of Mass-Weighted Internal Coordinate Hessian")
                 )
+                v = G_root_inv @ v_m
 
                 if self.params.irc_direction == "BACKWARD":
                     v *= -1
@@ -176,6 +182,9 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
         if substep_convergence is True:
             self.add_converged_point(fq, self.history.steps[-1].E)
             self.sub_step_number = -1
+
+            if self.irc_step_number < 2:
+                return False
 
             if self.irc_step_number >= self.params.irc_points:
                 logger.info(
@@ -272,8 +281,8 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
 
         G_prime = self.molsys.Gmat(massWeight=True)
         G_prime_root = symm_mat_root(G_prime, threshold=threshold)
-        G_prime_inv = symm_mat_inv(G_prime, redundant=True, threshold=threshold)
-        G_prime_root_inv = symm_mat_root(G_prime_inv, threshold=threshold)
+        # G_prime_inv = symm_mat_inv(G_prime, redundant=True, threshold=threshold)
+        G_prime_root_inv = symm_mat_inv(G_prime_root, redundant=True, threshold=threshold)
 
         logger.debug("G prime root matrix: \n" + print_mat_string(G_prime_root))
 
@@ -414,8 +423,7 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
         """mass-weighted distance from previous rxnpath point to new one"""
         G = self.molsys.Gmat(massWeight=True)
         G_root = symm_mat_root(G)
-        G_inv = symm_mat_inv(G_root, redundant=True, threshold=self.params.linear_algebra_tol)
-        G_root_inv = symm_mat_root(G_inv)
+        G_root_inv = symm_mat_inv(G_root, redundant=True, threshold=self.params.linear_algebra_tol)
 
         rxn_Dq = np.subtract(self.molsys.q_array(), self.irc_history.q())
         # mass weight (not done in old C++ code)

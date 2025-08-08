@@ -249,12 +249,12 @@ def _print_convergence_table(
         active(key) if conv_active.get(key) else f"{'o': >13}" for key in conv_active
     ]
 
-    suffix = "~\n" if conv_info.get("iternum") == 1 else "\n"
-
     # adjust printing spacing for irc
     if conv_info.get("step_type", "standard") == "standard":
+        suffix = "~\n" if conv_info.get("iternum") == 1 else "\n"
         dash_length, extra_irc_space, header = 94, "", std_header
     else:
+        suffix = "~\n" if conv_info.get("iternum") == 1 and conv_info.get("sub_step_num") == 1 else "\n"
         dash_length, extra_irc_space, header = 114, " " * 16, irc_header
 
     conv_str = f"""\n\t{"==> Convergence Check <==": ^92}

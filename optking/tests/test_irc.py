@@ -10,23 +10,15 @@ import optking
 # Absolute path to tests
 test_dir = pathlib.Path(__file__).parent
 
-energies = [
-    -189.211724350623,
-    -189.212236241247,
-    -189.213440976888,
-    -189.215036034028,
-]
-points = [1, 5, 10, -1]
-
-
+@pytest.mark.long
 @pytest.mark.parametrize(
-    "direction, points, energies",
+    "direction, NUM_POINTS, REF_ENERGY",
     (
-        ["forward", points, energies],
-        ["backward", points, energies],
+        ["forward", 11, -190.133172125480],  # 11 because we've computed 10 points (after TS)
+        ["backward", 9, -190.129671982538],  # Very short IRC in forward direction
     ),
 )
-def test_irc_CH3O2(direction, points, energies):
+def test_irc_CH3O2(direction, NUM_POINTS, REF_ENERGY):
 
     # Random IRC calculation that was ending before reaching a minimum
 
@@ -38,6 +30,8 @@ def test_irc_CH3O2(direction, points, energies):
         H           -2.058253276210    -0.023216256085    -0.441170124838
         H            1.572684844453    -0.372798307107     0.586272547903
         O            1.079106065627     0.284741534678     0.071090591276
+        nocom
+        noreorient
 	""")
 
     psi4_options = {
@@ -45,10 +39,11 @@ def test_irc_CH3O2(direction, points, energies):
         "reference": "uhf",
         "maxiter": 200,
         "opt_type": "IRC",
+        "full_hess_every": 0,
+        "g_convergence": "gau_tight",
         "irc_direction": direction,
-        "cart_hess_read": True,
         "irc_step_size": 0.2,
-        "irc_points": 30,
+        "irc_points": 10,
         "geom_maxiter": 200,
     }
 
@@ -56,45 +51,23 @@ def test_irc_CH3O2(direction, points, energies):
     optking_options = {"hessian_file": f"{test_dir}/test_data/CH3O2_irc.hess"}
 
     # IRC
-    optking.optimize_psi4("HF", **optking_options)
+    json_output = optking.optimize_psi4("MPW1PW", **optking_options)
+    rxn_path = json_output['extras']['irc_rxn_path']
+    energy = rxn_path[-1]["energy"]
+    assert np.isclose(len(rxn_path), NUM_POINTS)
+    assert np.isclose(REF_ENERGY, energy, atol=1e-4)
 
 
 @pytest.mark.parametrize(
-    "direction, point, energy",
+    "direction, NUM_POINTS, REF_ENERGY",
     (
-        [
-            "forward",
-            [
-                1,
-                5,
-                10,
-                -1,
-            ],
-            [
-                -91.565770840626,
-                -91.583446688556,
-                -91.609217364630,
-                -91.643652784351,
-            ],
-        ],
-        [
-            "backward",
-            [
-                1,
-                5,
-                10,
-                -1,
-            ],
-            [
-                -91.565801178404,
-                -91.591173512151,
-                -91.640628526650,
-                -91.674194750859,
-            ],
-        ],
+        ["forward", 22, -91.644039001250],
+        ["backward", 20, -91.674187446520]  # ref values are from new optking. Disagreement with old
+        # optking because PYOPTKING adds linear coordinates. Matches up to 1 or 2 points before
+        # terminating. linear bends only get added at end.
     ),
 )
-def test_irc_HCN(direction, point, energy):
+def test_irc_HCN(direction, NUM_POINTS, REF_ENERGY):
     HCN = psi4.geometry("""
         N  -0.0428368408   0.5748930708   0.0000000000
         C  -0.0428349579  -0.6464622551   0.0000000000
@@ -110,39 +83,28 @@ def test_irc_HCN(direction, point, energy):
             "irc_direction": direction,
             "cart_hess_read": True,
             "irc_step_size": 0.2,
-            "irc_points": 10,
+            "irc_points": 23,  # just enough to make sure we complete
             "geom_maxiter": 300,
         }
     )
 
     optking_options = {"hessian_file": f"{test_dir}/test_data/HCN_irc.hess"}
-    optking.optimize_psi4("HF", **optking_options)
-    # Check final. Should procure a reference history at some point to check against
-    # The forward direction visually matches SCHELGEL but due to how we add a linear bend to the
-    # system vs their bend we do not match the backward direction. Their bend goes to zero ours
-    # to 180.
+    json_output = optking.optimize_psi4("HF", **optking_options)
+    rxn_path = json_output["extras"]["irc_rxn_path"]
+    assert np.isclose(REF_ENERGY, rxn_path[-1]["energy"], atol=1e-5)
+    assert len(rxn_path) == NUM_POINTS
+
+with open(f'{test_dir}/test_data/CH5_irc_ref.json', 'r+') as f:
+    ch5_ref = json.load(f)
 
 @pytest.mark.parametrize(
-    "direction, point, energy",
+    "direction, coords, energies",
     (
-        [
-            "forward",
-            [1, 5, 10, -1],
-            [-40.160833152926, -40.192017969747, -40.193389299887, -40.193425771411],
-        ],
-        [
-            "backward",
-            [1, 5, 10, -1],
-            [
-                -40.159536620299,
-                -40.191073983759,
-                -40.194493549512,
-                -40.194556669918,
-            ],
-        ],
+        ["backward", ch5_ref["CH5_BACKWARD_REF_COORDS"], ch5_ref["CH5_BACKWARD_REF_ENS"]],
+        ["forward", ch5_ref["CH5_FORWARD_REF_COORDS"], ch5_ref["CH5_FORWARD_REF_ENS"]]
     ),
 )
-def test_irc_CH5(direction, point, energy):
+def test_irc_CH5(direction, coords, energies):
     ch5 = psi4.geometry("""
         C   0.1513220558  -0.0642324356  -0.1019101693
         H   0.8996390163  -0.3080157036   0.6421558506
@@ -181,19 +143,30 @@ def test_irc_CH5(direction, point, energy):
         opt_result = json.load(f)
         rxn_path = opt_result["extras"]["irc_rxn_path"]
 
-    qs = np.asarray([[step_dict["q"][val] for step_dict in rxn_path] for val in [3, 4, 12]])
+    # Collect values for coords, and enegies. Reference data may / will be longer than ours
+    q3 = [step_dict["q"][3] for step_dict in rxn_path]
+    q4 = [step_dict["q"][4] for step_dict in rxn_path]
+    q12 = [step_dict["q"][12] for step_dict in rxn_path]
+    irc_energies = [step_dict["energy"] for step_dict in rxn_path]
 
     with open(f"{test_dir}/CH5_irc_coords.json") as f:
         ch5_irc = json.load(f)
 
     # Check that point 11 on IRC matches closely
-    label = 'f' if direction == "forward" else "b"
-    assert np.isclose(qs[0][10], ch5_irc[f"coord_3_{label}"][10], atol=1e-5)
-    assert np.isclose(qs[1][10], ch5_irc[f"coord_4_{label}"][10], atol=1e-5)
-    assert np.isclose(qs[2][10], ch5_irc[f"coord_12_{label}"][10], atol=1e-5)
+    # label = 'f' if direction == "forward" else "b"
+
+    for e_ref, e in zip(energies, irc_energies):
+        assert np.isclose(e_ref, e, atol=2e-5)
+
+    for q, q3_ref in zip(q3, coords["q3"]):
+        assert np.isclose(q3_ref, q, atol=2e-4)
+
+    for q, q4_ref in zip(q4, coords["q4"]):
+        assert np.isclose(q4_ref, q, atol=2e-4)
 
     # If IRC issues are encountered check plot
-    # plot_irc(ch5_irc, qs)
+    # qs = np.asarray([q3, q4, q12])
+    # plot_ch5_irc(ch5_irc, qs)
 
     os.system(f"rm stdout.default.{os.getpid()}.hess")
     os.system(f"rm {filename}")

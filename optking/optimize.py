@@ -394,7 +394,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
                     action = "guess"
             else:
                 # IRC
-                if self.opt_method.sub_step_number == 0:
+                if self.opt_method.sub_step_number == -1:  # sub_step_number starts at -1 not 0
                     action = "compute"
                 else:
                     action = "update"

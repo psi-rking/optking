@@ -1,4 +1,5 @@
 import logging
+from typing import Tuple
 
 import numpy as np
 from numpy.linalg import LinAlgError
@@ -40,19 +41,19 @@ def sign_of_double(d):
 
 
 # Returns eigenvectors as rows?
-def symm_mat_eig(mat):
+def symm_mat_eig(mat) -> Tuple[np.ndarray, np.ndarray]:
     try:
         evals, evects = np.linalg.eigh(mat)
         if abs(min(evects[:, 0])) > abs(max(evects[:, 0])):
             evects[:, 0] *= -1.0
-    except np.LinAlgError:
+    except np.linalg.LinAlgError:
         raise OptError("symm_mat_eig: could not compute eigenvectors")
         # could be ALG_FAIL ?
     evects = evects.T
     return evals, evects
 
 
-def lowest_eigenvector_symm_mat(mat):
+def lowest_eigenvector_symm_mat(mat) -> np.ndarray:
     """Returns eigenvector with lowest eigenvalues; makes the largest
         magnitude element positive.
 
@@ -71,12 +72,12 @@ def lowest_eigenvector_symm_mat(mat):
         evals, evects = np.linalg.eigh(mat)
         if abs(min(evects[:, 0])) > abs(max(evects[:, 0])):
             evects[:, 0] *= -1.0
-    except np.LinAlgError:
+    except np.linalg.LinAlgError:
         raise OptError("symm_mat_eig: could not compute eigenvectors")
     return evects[:, 0]
 
 
-def asymm_mat_eig(mat):
+def asymm_mat_eig(mat) -> Tuple[np.ndarray, np.ndarray]:
     """Compute the eigenvalues and right eigenvectors of a square array.
     Wraps numpy.linalg.eig to sort eigenvalues, put eigenvectors in rows, and suppress complex.
 
@@ -98,7 +99,7 @@ def asymm_mat_eig(mat):
     """
     try:
         evals, evects = np.linalg.eig(mat)
-    except np.LinAlgError as e:
+    except np.linalg.LinAlgError as e:
         raise OptError("asymm_mat_eig: could not compute eigenvectors") from e
 
     idx = np.argsort(evals)
@@ -108,7 +109,7 @@ def asymm_mat_eig(mat):
     return evals.real, evects.real.T
 
 
-def symm_mat_inv(A, redundant=False, threshold=1.0e-8):
+def symm_mat_inv(A, redundant=False, threshold=1.0e-8) -> np.ndarray:
     """
     Return the inverse of a real, symmetric matrix.
 
@@ -161,7 +162,7 @@ def symm_mat_inv(A, redundant=False, threshold=1.0e-8):
         # could be LinAlgError?
 
 
-def symm_mat_root(A, inverse=None, threshold=1e-10):
+def symm_mat_root(A, inverse=None, threshold=1e-10) -> np.ndarray:
     """
     Compute A^(1/2) for a positive-definite matrix
 
