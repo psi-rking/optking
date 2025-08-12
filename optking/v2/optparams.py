@@ -235,6 +235,13 @@ class OptParams(BaseModel):
     For dissociation reactions, where the reaction path may not terminate in
     a minimum, this is needed to cap the number of step's Optking is allowed to take"""
 
+    irc_mode: str = Field(
+        pattern=re.compile("NORMAL|CONFIRM", flags=re.IGNORECASE), default="NORMAL"
+    )
+    """Experimental - One of ['NORMAL', 'CONFIRM']. 'CONFIRM' is meant to be used for dissociation
+    reactions. The IRC is terminated once the molecule's connectivity has changed. Convergence
+    is declared once the original ``covalent_connect`` must be increased by more than 0.4 au."""
+
     irc_convergence: float = Field(lt=-0.5, gt=-1.0, default=-0.7)
     """Main criteria for declaring convergence for an IRC. The overlap between the unit forces
     at two points of the IRC is compared to this value to assess whether a minimum has been stepped
@@ -301,6 +308,10 @@ class OptParams(BaseModel):
 
     # New in python version
     print_trajectory_xyz_file: bool = False
+    """Create an xyz file with geometries for each step of the Optimization. If ``opt_type`` is
+    ``IRC``, only the converged IRC points will be included and the file will be named
+    irc_traj.<pid>.json. Otherwise the file will contain all points and be named
+    ``opt_traj.<pid>.json``"""
 
     # Specify distances between atoms to be frozen (unchanged)
     frozen_distance: str = Field(default="", pattern=r"(?:\d\s+){2}*")
@@ -700,6 +711,8 @@ class OptParams(BaseModel):
     # inverted while computing a generalized inverse of a matrix
     redundant_eval_tol: float = 1.0e-10  # to be deprecated.
 
+    linear_algebra_tol: float = 1e-10
+
     # --- SET INTERNAL OPTIMIZATION PARAMETERS ---
     _i_max_force = False
     _i_rms_force = False
@@ -719,8 +732,7 @@ class OptParams(BaseModel):
             "_i_rms_disp": self._i_rms_disp,
             "_i_untampered": self._i_untampered,
         }
-        for key in include:
-            save.update(include)
+        save.update(include)
         return save
 
     def __str__(self):

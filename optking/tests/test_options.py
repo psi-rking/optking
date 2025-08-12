@@ -48,7 +48,7 @@ def custom_helper_with_reload(params):
     initial_params = copy.deepcopy(stashed_opt.get('params'))
 
     cust_helper = optking.CustomHelper.from_dict(stashed_opt)
-    new_params = copy.deepcopy(cust_helper.params.__dict__)
+    new_params = copy.deepcopy(cust_helper.params.to_dict(by_alias=False))
     return cust_helper, initial_params, new_params
 
 def assert_options_match(initial_params, new_params):

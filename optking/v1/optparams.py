@@ -296,6 +296,10 @@ class OptParams(BaseModel):
 
     # New in python version
     print_trajectory_xyz_file: bool = False
+    """Create an xyz file with geometries for each step of the Optimization. If ``opt_type`` is
+    ``IRC``, only the converged IRC points will be included and the file will be named
+    irc_traj.<pid>.json. Otherwise the file will contain all points and be named
+    ``opt_traj.<pid>.json``"""
 
     # Specify distances between atoms to be frozen (unchanged)
     frozen_distance: str = Field(default="", pattern=r"(?:\d\s+){2}*")
