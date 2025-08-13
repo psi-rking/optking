@@ -8,6 +8,7 @@ import json
 import logging
 import pathlib
 import re
+import warnings
 from packaging import version
 
 from pydantic.v1 import (
@@ -296,6 +297,13 @@ class OptParams(BaseModel):
 
     # New in python version
     print_trajectory_xyz_file: bool = False
+    """Deprecated use ``write_trajectory`` instead.
+    Create an xyz file with geometries for each step of the Optimization. If ``opt_type`` is
+    ``IRC``, only the converged IRC points will be included and the file will be named
+    irc_traj.<pid>.json. Otherwise the file will contain all points and be named
+    ``opt_traj.<pid>.json``"""
+
+    write_trajectory: bool = False
     """Create an xyz file with geometries for each step of the Optimization. If ``opt_type`` is
     ``IRC``, only the converged IRC points will be included and the file will be named
     irc_traj.<pid>.json. Otherwise the file will contain all points and be named
@@ -901,8 +909,8 @@ class OptParams(BaseModel):
                 fields.update({"hess_update": "BOFILL"})
 
         # Make trajectory file printing the default for IRC.
-        if opt_type == "IRC" and "PRINT_TRAJECTORY_XYZ_FILE" not in set_vars:
-            fields.update({"print_trajectory_xyz_file": True})
+        if opt_type == "IRC" and "WRITE_TRAJECTORY" not in set_vars:
+            fields.update({"write_trajectory": True})
 
         # Read cartesian Hessian by default for IRC.
         # Changed to turn cart_hess_read on only if a file path was provided.
@@ -960,6 +968,17 @@ class OptParams(BaseModel):
     #     if hess_file:
     #         fields.update({"hessian_file": pathlib.Path(hess_file)})
     #     return fields
+
+    @root_validator()
+    def validate_trajectory(cls, fields:dict):
+        if fields["print_trajectory_xyz_file"]:
+            msg = "`print_trajectory_xyz_file` is deprecated. Please use `write_trajectory`"
+            logger.warning(msg)
+            warnings.warn(msg, DeprecationWarning)
+
+        if fields["write_trajectory"] or fields["print_trajectory_xyz_file"]:
+            fields.update({"write_trajectory": True, "print_trajectory_xyz_file": True})
+        return fields
 
     @root_validator()
     def validate_frag(cls, fields: dict):

@@ -8,6 +8,7 @@ import json
 import logging
 import pathlib
 import re
+import warnings
 from packaging import version
 
 from pydantic import (
@@ -308,6 +309,13 @@ class OptParams(BaseModel):
 
     # New in python version
     print_trajectory_xyz_file: bool = False
+    """Deprecated- use ``write_trajectory`` instead.
+    Create an xyz file with geometries for each step of the Optimization. If ``opt_type`` is
+    ``IRC``, only the converged IRC points will be included and the file will be named
+    irc_traj.<pid>.json. Otherwise the file will contain all points and be named
+    ``opt_traj.<pid>.json``"""
+
+    write_trajectory: bool = False
     """Create an xyz file with geometries for each step of the Optimization. If ``opt_type`` is
     ``IRC``, only the converged IRC points will be included and the file will be named
     irc_traj.<pid>.json. Otherwise the file will contain all points and be named
@@ -935,6 +943,17 @@ class OptParams(BaseModel):
         hess_file = self._raw_input.get("HESSIAN_FILE")
         if hess_file:
             self.hessian_file = pathlib.Path(hess_file)
+        return self
+
+    @model_validator(mode='after')
+    def validate_trajectory(self):
+        if self.print_trajectory_xyz_file:
+            msg = "`print_trajectory_xyz_file` is deprecated. Please use `write_trajectory`"
+            logger.warning(msg)
+            warnings.warn(msg, DeprecationWarning)
+        if self.write_trajectory or self.print_trajectory_xyz_file: 
+            self.write_trajectory = True
+            self.print_trajectory_xyz_file = True
         return self
 
     @model_validator(mode="after")

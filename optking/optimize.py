@@ -551,7 +551,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         qc_output = prepare_opt_output(self.molsys, self.computer, rxnpath=rxnpath, error=error)
         self.clear()
 
-        if self.params.print_trajectory_xyz_file:
+        if self.params.write_trajectory:
             if self.params.opt_type == "IRC":
                 misc.write_irc_xyz_trajectory(qc_output)
             else:
