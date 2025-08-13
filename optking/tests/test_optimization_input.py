@@ -14,7 +14,6 @@ pp = pprint.PrettyPrinter(indent=2)
 
 
 def test_optimization_input():
-
     opt_input_dict = {
         "schema_name": "qcschema_optimization_input",
         "schema_version": 1,
@@ -38,7 +37,9 @@ def test_optimization_input():
     # Convert back to plain python dictionary
     full_model = json.loads(json_dumps(opt_in))
 
-    oMolsys = Molsys.from_schema(full_model["initial_molecule"])  # Create Optking's molecular system
+    oMolsys = Molsys.from_schema(
+        full_model["initial_molecule"]
+    )  # Create Optking's molecular system
     initialize_options(full_model["keywords"])
     computer = make_computer(full_model, "qc")
     # Takes the o_json object and creates QCSchema formatted python dict. Has numpy elements

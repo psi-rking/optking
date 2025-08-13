@@ -37,12 +37,13 @@ def Bmat(intcos, geom, masses=None):
 
 
 def tors_contains_bend(b, t):
-    return b.atoms in [
+    tors_bends = [
         t.atoms[0:3],
-        t.atoms[3::-1],
+        t.atoms[2::-1],
         t.atoms[1:4],
         t.atoms[4:0:-1],
     ]
+    return b.atoms in tors_bends
 
 
 def remove_old_now_linear_bend(atoms, intcos):
@@ -52,5 +53,18 @@ def remove_old_now_linear_bend(atoms, intcos):
     b = bend.Bend(atoms[0], atoms[1], atoms[2])
     logger.info("Removing Old Linear Bend")
     logger.info(str(b) + "\n")
+
+    # linear bend check assumes that the bend we're trying to remove is the same definition
+    # as the bend we're adding. This isn't the case when the bend goes through zero. In
+    # this case we need to swap indices
+    if b not in intcos:
+        bend_alt = bend.Bend(atoms[0], atoms[2], atoms[1])
+        if bend_alt in intcos:
+            b = bend_alt
+
     intcos[:] = [coord for coord in intcos if coord != b]
-    intcos[:] = [coord for coord in intcos if not (isinstance(coord, tors.Tors) and tors_contains_bend(b, coord))]
+    intcos[:] = [
+        coord
+        for coord in intcos
+        if not (isinstance(coord, tors.Tors) and tors_contains_bend(b, coord))
+    ]

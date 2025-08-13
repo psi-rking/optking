@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 from .utils import utils
 
+
 # Demonstrate and test positioning two water molecules by specifying
 # their interfragment reference points and coordinates.
 @pytest.mark.dimers
@@ -54,7 +55,9 @@ def test_dimerfrag_orient_h2o_dimers():
     phi_A3A2A1B1 = 0.3
     phi_A1B1B2B3 = 0.6
 
-    q_target = np.array([R_A1B1, theta_A2A1B1, theta_A1B1B2, tau_A2A1B1B2, phi_A3A2A1B1, phi_A1B1B2B3])
+    q_target = np.array(
+        [R_A1B1, theta_A2A1B1, theta_A1B1B2, tau_A2A1B1B2, phi_A3A2A1B1, phi_A1B1B2B3]
+    )
     Bxyz_new = Itest.orient_fragment(Axyz, Bxyz, q_target)
 
     # Test how we did
@@ -95,7 +98,9 @@ def test_dimers_h2o_auto(check_iter, option, iter):  # auto reference pt. creati
     }
     psi4.set_options(psi4_options)
 
-    newOptParams = {"interfrag_collinear_tol": 0.2}  # increase to prevent too colinear reference points
+    newOptParams = {
+        "interfrag_collinear_tol": 0.2
+    }  # increase to prevent too colinear reference points
     json_output = optking.optimize_psi4("mp2", **newOptParams)
 
     E = json_output["energies"][-1]

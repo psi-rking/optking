@@ -109,7 +109,9 @@ def from_file(filename: Path):
         H = np.array(hess, dtype=float)
         H = H.reshape(ncart, ncart)
     except (IndexError, ValueError, TypeError) as error:
-        logger.error("Hessian should be 3Nx3N cartesian force constant matrix or provided by MolSSI Schema")
+        logger.error(
+            "Hessian should be 3Nx3N cartesian force constant matrix or provided by MolSSI Schema"
+        )
         logger.error(error)
         raise ValueError("Could not load hessian from disk") from error
     else:

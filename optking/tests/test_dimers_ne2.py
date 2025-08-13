@@ -7,6 +7,7 @@ from .utils import utils
 # Optimized neon dimer
 MP2minEnergy = -257.4109749
 
+
 #! (Ne)_2 with interfrag coordinates, specifying ref atoms, from long-range
 @pytest.mark.dimers
 def test_dimers_ne2_long(check_iter):
@@ -81,7 +82,12 @@ def test_dimers_ne2_auto(check_iter):  # auto reference pt. creation
     )
 
     psi4.core.clean_options()
-    psi4_options = {"basis": "aug-cc-pvdz", "geom_maxiter": 30, "frag_mode": "MULTI", "g_convergence": "gau_verytight"}
+    psi4_options = {
+        "basis": "aug-cc-pvdz",
+        "geom_maxiter": 30,
+        "frag_mode": "MULTI",
+        "g_convergence": "gau_verytight",
+    }
     psi4.set_options(psi4_options)
     json_output = optking.optimize_psi4("mp2")
     E = json_output["energies"][-1]
@@ -132,7 +138,12 @@ def test_dimers_ne2_dict():
     """
     )
     psi4.core.clean_options()
-    psi4_options = {"basis": "aug-cc-pvdz", "geom_maxiter": 30, "frag_mode": "MULTI", "g_convergence": "gau_verytight"}
+    psi4_options = {
+        "basis": "aug-cc-pvdz",
+        "geom_maxiter": 30,
+        "frag_mode": "MULTI",
+        "g_convergence": "gau_verytight",
+    }
 
     dimer = {
         "Natoms per frag": [1, 1],

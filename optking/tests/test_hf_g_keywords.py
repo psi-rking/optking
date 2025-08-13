@@ -2,9 +2,9 @@ import psi4
 import optking
 from .utils import utils
 
+
 # HF SCF CC-PVDZ geometry optimization of HOOH with Z-matrix input
 def test_B_dB_matrices(check_iter):
-
     hooh = psi4.geometry(
         """
       H
@@ -38,7 +38,6 @@ def test_B_dB_matrices(check_iter):
 
 
 def test_maxiter(check_iter):
-
     h2o = psi4.geometry(
         """
      O
@@ -68,7 +67,6 @@ def test_maxiter(check_iter):
 
 # Test the energy of geometry output, when maxiter is reached.
 def test_maxiter_geom():
-
     h2o = psi4.geometry(
         """
         O
