@@ -136,4 +136,4 @@ def test_hf_g_ketene(check_iter):
     E = result["energies"][-1]  # TEST
     REF_energy = -151.7410313803  # TEST
     assert psi4.compare_values(REF_energy, E, 8, "RHF energy")  # TEST
-    utils.compare_iterations(result, 8, check_iter)
+    utils.compare_iterations(result, 7, check_iter)

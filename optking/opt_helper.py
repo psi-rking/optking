@@ -193,10 +193,11 @@ class Helper(ABC):
             )
         except AlgError as e:
             self.opt_manager.alg_error_handler(self._Hq, self.fq, e)
-            self._Hq = self.opt_manager.H
-            self.fq = self.molsys.gradient_to_internals(self.gX, coeff=-1.0)
-            self.molsys = self.opt_manager.molsys
-            self.HX = self.molsys.hessian_to_cartesians(self._Hq, -1 * self.fq)
+            if self.opt_manager.erase_hessian == "stashed":
+                self._Hq = self.opt_manager.H
+                self.fq = self.molsys.gradient_to_internals(self.gX, coeff=-1.0)
+                self.molsys = self.opt_manager.molsys
+                self.HX = self.molsys.hessian_to_cartesians(self._Hq, -1 * self.fq)
         except OptError as e:
             logger.critical("A critical error has occured: %s - %s", type(e), e, exc_info=True)
             raise e
@@ -208,7 +209,7 @@ class Helper(ABC):
         self.show()
         return self.dq
 
-    def test_convergence(self, str_mode=None):
+    def test_convergence(self, str_mode=None, **kwargs):
         """Check the final two steps for convergence. If the algorithm uses linesearching, linesearches are not considered
 
         Returns
@@ -218,7 +219,7 @@ class Helper(ABC):
         """
 
         return self.opt_manager.converged(
-            self.E, self.fq, self.dq, self.step_num, str_mode=str_mode
+            self.E, self.fq, self.dq, self.step_num, str_mode=str_mode, **kwargs
         )
 
     def close(self):
@@ -301,7 +302,7 @@ class Helper(ABC):
         last_step = self.history.steps[-1]
         return last_step.E, last_step.geom
 
-    def status(self, str_mode=None):
+    def status(self, str_mode=None, **kwargs):
         """get string message describing state of optimizer
 
         Returns
@@ -313,6 +314,14 @@ class Helper(ABC):
             'FINISHED' optimization converged
         """
 
+        try:
+            if not self.opt_manager.error and self.test_convergence(str_mode, **kwargs) is True:
+                return "CONVERGED"
+        except AlgError:
+            self.opt_manager.error = "AlgError"
+        except OptError:
+            self.opt_manager.error = "OptError"
+
         if self.opt_manager.error == "OptError":
             return "FAILED"
 
@@ -321,9 +330,6 @@ class Helper(ABC):
             self._Hq = None
             self.step_num = 0
             return "UNFINISHED-FAILED"
-
-        if self.test_convergence(str_mode) is True:
-            return "CONVERGED"
 
         return "UNFINISHED"
 

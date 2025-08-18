@@ -62,7 +62,7 @@ def test_irc_CH3O2(direction, NUM_POINTS, REF_ENERGY):
     "direction, NUM_POINTS, REF_ENERGY",
     (
         ["forward", 22, -91.644039001250],
-        ["backward", 20, -91.674187446520]  # ref values are from new optking. Disagreement with old
+        ["backward", 19, -91.675444951326]  # ref values are from new optking. Disagreement with old
         # optking because PYOPTKING adds linear coordinates. Matches up to 1 or 2 points before
         # terminating. linear bends only get added at end.
     ),

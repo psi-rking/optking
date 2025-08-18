@@ -121,6 +121,7 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
             logger.info("Dq with full precision %s", print_array_string(dq, form=":.6e"))
             fq_tan = self.irc_history._project_forces(fq, self.molsys)
             logger.info("\nTrue forces: %s\nHypersphere forces:%s", fq, fq_tan)
+            q_copy = self.molsys.q_array()
             dq, dx, return_str = displace_molsys(
                 self.molsys,
                 dq,
@@ -128,6 +129,7 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
                 **self.params.__dict__,
                 return_str=True,
                 ensure_convergence=self.params.ensure_bt_convergence,
+                allow_bend_adjustment=False
             )
             logger.info("IRC hypersphere optimization finished.")
 
@@ -136,6 +138,7 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
             dq_norm, dq_unit, grad, hess = self.step_metrics(dq, fq, H)
             DE = irc_de_projected(dq_norm, grad, hess)
             self.history.append_record(DE, dq, dq_unit, grad, hess)
+            self.history.add_linear_bend_record(q_copy, dq, self.molsys)
 
         self.sub_step_number += 1
         self.total_steps_taken += 1
@@ -183,10 +186,14 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
             self.add_converged_point(fq, self.history.steps[-1].E)
             self.sub_step_number = -1
 
-            if self.irc_step_number < 2:
+            # Psi4 has a test that requests exactly one point...
+            if self.irc_step_number < 2 and self.params.irc_points > 1:
                 return False
 
-            if self.irc_step_number >= self.params.irc_points:
+            # Needs to be outside substep so that calling converged again (i.e. Psi4 driver will)
+            # hit this multiple times. As is Psi4 will go one past
+            irc_points = self.params.irc_points - 1 if "psi4" in kwargs else self.params.irc_points
+            if self.irc_step_number >= irc_points:
                 logger.info(
                     f"\tThe requested {self.params.irc_points} IRC points have been obtained."
                 )
@@ -200,8 +207,24 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
             if self.params.irc_mode.upper() == "CONFIRM":
                 if self.irc_history.test_for_dissociation(self.molsys, self.orig_molsys):
                     logger.info(
-                        "A new fragment has been detected on the along the reaction path.\n"
+                        "A new fragment has been detected along the reaction path.\n"
                         "IRC is running in 'confirm' mode. Stopping here.\n"
+                    )
+                    return True
+
+        # Prevent never ending 180 degree passthrough. This occurs in opt-irc-2 in psi4
+        if self.sub_step_number > 6:
+            linear_bends = [step.crossed_180 for step in self.history.steps]
+            flat_list = [bend for bend_set in linear_bends for bend in bend_set]
+
+            for val in flat_list:
+                if flat_list.count(val) > 3:
+                    self.irc_history.termination_reason = (
+                        "Quitting IRC.\n"
+                        "One of the bends keeps passing through 180 degrees. Please check the final "
+                        "geometry to verify the desired structure has been obtained.\n"
+                        "The reported geometry is not guaranteed to be a minimum - please run a "
+                        "standard minimization to obtain a true stationary point if desired."
                     )
                     return True
 
@@ -211,9 +234,9 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
                 self.irc_step_number
             )
             raise AlgError(
-                "Exceeded 50 iterations for a single IRC point. Check whether the IRC has reached"
-                "the desired area of the PES. If not, check that the coordinate system is"
-                "reasonable consider adding or removing coordinates"
+                "Exceeded 50 iterations for a single IRC point. Check whether the IRC has reached "
+                "the desired area of the PES. If not, check that the coordinate system is "
+                "reasonable - consider adding or removing coordinates"
             )
 
         if str_mode:
@@ -419,18 +442,15 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
         # TODO write geometry for multiple fragments
         # displace(o_molsys.intcos, o_molsys._fragments[0].geom, dq)
 
-    def calc_line_dist_step(self):
+    def calc_line_dist_step(self, G_root_inv):
         """mass-weighted distance from previous rxnpath point to new one"""
-        G = self.molsys.Gmat(massWeight=True)
-        G_root = symm_mat_root(G)
-        G_root_inv = symm_mat_inv(G_root, redundant=True, threshold=self.params.linear_algebra_tol)
 
         rxn_Dq = np.subtract(self.molsys.q_array(), self.irc_history.q())
         # mass weight (not done in old C++ code)
         rxn_Dq_M = G_root_inv @ rxn_Dq
         return np.linalg.norm(rxn_Dq_M)
 
-    def calc_arc_dist_step(self):
+    def calc_arc_dist_step(self, G_root_inv):
         """Let q0 be last rxnpath point and q1 be new rxnpath point. q* is the pivot
         point (1/2)s from each of these. Returns the length of circular arc connecting
         q0 and q1, whose center is equidistant from q0 and q1, and for which line segments
@@ -441,21 +461,27 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
         q1 = self.molsys.q_array()
 
         p = np.subtract(q1, qp)  # Dq from pivot point to latest rxnpath pt.
-        line = np.subtract(q1, q0)  # Dq from rxnpath pt. to rxnpath pt.
+        dq = np.subtract(q1, q0)  # Dq from rxnpath pt. to rxnpath pt.
 
-        # mass-weight
-        p[:] = np.multiply(1.0 / np.linalg.norm(p), p)
-        line[:] = np.multiply(1.0 / np.linalg.norm(line), line)
+        # mass-weight. AH these were not being massweighted as of 0.3.0
+        p_m = G_root_inv @ p
+        dq_m = G_root_inv @ dq
+        p_m = np.multiply(1.0 / np.linalg.norm(p_m), p_m)
+        dq_m = np.multiply(1.0 / np.linalg.norm(dq_m), dq_m)
 
-        alpha = acos(p @ line)
+        alpha = acos(abs(p_m @ dq_m))
         arcDistStep = self.irc_history.step_size * alpha / tan(alpha)
         return arcDistStep
 
     def add_converged_point(self, fq, energy):
+        G = self.molsys.Gmat(massWeight=True)
+        G_root = symm_mat_root(G)
+        G_root_inv = symm_mat_inv(G_root, redundant=True, threshold=self.params.linear_algebra_tol)
+
         q_irc_point = self.molsys.q_array()
         cart_forces = self.molsys.gradient_to_cartesians(fq)
-        lineDistStep = self.calc_line_dist_step()
-        arcDistStep = self.calc_arc_dist_step()
+        lineDistStep = self.calc_line_dist_step(G_root_inv)
+        arcDistStep = self.calc_arc_dist_step(G_root_inv)
 
         self.irc_history.add_irc_point(
             self.irc_step_number,

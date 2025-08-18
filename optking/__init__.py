@@ -7,7 +7,7 @@ from logging.config import dictConfig
 from . import lj_functions, loggingconfig
 
 loggers = [name for name in logging.root.manager.loggerDict]
-if "psi4" in loggers:
+if "psi4" in loggers or "psi4" in sys.argv[0]:
     opt_log = logging.getLogger("psi4.optking")
     log_name = "psi4."
     opt_log.propagate = True

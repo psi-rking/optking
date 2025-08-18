@@ -8,6 +8,7 @@ import numpy as np
 import qcelemental as qcel
 
 from .exceptions import OptError
+from .bend import Bend
 from .molsys import Molsys
 from .linearAlgebra import abs_max, rms, sign_of_double
 from .printTools import print_array_string, print_mat_string
@@ -32,6 +33,7 @@ class Step(object):
         self.oneDhessian: Union[float, None] = None
         self.hessian: Union[np.ndarray, None] = None
         self.decent = True
+        self.crossed_180 = []
 
     def record(self, projectedDE, Dq, followedUnitVector, oneDgradient, oneDhessian):
         self.projectedDE = projectedDE
@@ -451,5 +453,13 @@ class History(object):
         output_string += self.summary(printoption=True)
         return output_string
 
+    def add_linear_bend_record(self, q: np.ndarray, dq: np.ndarray, molsys: Molsys):
+        for f_i, frag_obj in enumerate(molsys.fragments):
+            for q_i, intco in enumerate(frag_obj.intcos):
+                if isinstance(intco, Bend) and intco.bend_type in ['LINEAR', "COMPLEMENT"]:
+                    bend_index = molsys.frag_1st_intco(f_i) + q_i
+
+                    if q[bend_index] < np.pi and q[bend_index] + dq[bend_index] > np.pi:
+                        self.steps[-1].crossed_180.append(bend_index)
 
 # oHistory = History()

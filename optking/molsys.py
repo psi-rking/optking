@@ -13,6 +13,7 @@ from .linearAlgebra import symm_mat_inv
 from .printTools import print_array_string, print_mat_string
 from . import log_name
 from . import op
+from .oofp import Oofp
 
 logger = logging.getLogger(f"{log_name}{__name__}")
 
@@ -975,6 +976,13 @@ class Molsys(object):
 
     def hessian_to_cartesians(self, Hint, g_q=None):
         logger.info("Converting Hessian from internals to cartesians.\n")
+
+        for f in self.fragments:
+            for coord in f.intcos:
+                if isinstance(coord, Oofp):
+                    if g_q is not None:
+                        g_q = None
+                        break
 
         B = self.Bmat()
         # Hxy =  B^t Hij B

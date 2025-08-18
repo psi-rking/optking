@@ -75,7 +75,8 @@ def optimize(o_molsys, computer):
                 if isinstance(H, int) or isinstance(fq, int):
                     raise OptError("Failed to compute Hessian and Forces")
                 opt_object.alg_error_handler(H, fq, AF)
-                H = opt_object.H
+                if opt_object.erase_hessian == "stashed":
+                    H = opt_object.H
         qc_output = opt_object.finish(error=None)
         return qc_output
 
@@ -128,7 +129,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         self.requires = self.update_requirements()
         self.current_requirements = self.update_requirements()
         self.params = params
-        self.erase_hessian = False
+        self.erase_hessian = ""
         self.check_linesearch = True
         self.error = None
         self.protocol = {
@@ -316,7 +317,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         else:
             return self.linesearch_method.requires()
 
-    def converged(self, E, fq, dq, step_number=None, str_mode=None):
+    def converged(self, E, fq, dq, step_number=None, str_mode=None, **kwargs):
         """Test whether the optimization has finished. An optimization can only be declared converged
         If a gradient has been provided (linesearching cannot terminate an optimization)"""
 
@@ -324,7 +325,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
             step_number = self.step_number
         converged = False
         if not self.linesearch_method or self.check_linesearch:
-            converged = self.opt_method.converged(dq, fq, step_number, str_mode=str_mode)
+            converged = self.opt_method.converged(dq, fq, step_number, str_mode=str_mode, **kwargs)
             if str_mode:
                 return converged
             if converged is True:
@@ -377,11 +378,16 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
             self.protocol.update({"protocol": "unneeded"})
             return self.protocol
 
-        if self.erase_hessian is True:
-            self.erase_hessian = False
-            action = "compute" if self.params.full_hess_every > 0 else "update"
-            self.protocol.update({"protocol": action})
-            return self.protocol
+        if self.erase_hessian:
+            if self.erase_hessian == "erased":
+                self.erase_hessian = ""
+                action = "compute" if self.params.full_hess_every > 0 else "guess"
+                self.protocol.update({"protocol": action})
+                return self.protocol
+            elif self.erase_hessian == "stashed":
+                self.erase_hessian = ""
+                self.protocol.update({"protocol": "unneeded"})
+                return self.protocol
 
         if self.params.cart_hess_read:
             self.protocol.update({"protocol": "compute"})
@@ -424,7 +430,12 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         logger.error(" Caught AlgError exception\n")
         eraseIntcos = False
 
-        if error.linear_bends:
+        if error.back_transformation:
+            logger.info("Resetting optimization after critical back-transformation failure")
+            eraseIntcos  = True
+            eraseHistory = True
+
+        elif error.linear_bends:
             # New linear bends detected; Add them, and continue at current level.
             # from . import bend # import not currently being used according to IDE
 
@@ -473,6 +484,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
 
             # Convert the Hessian back into the new coordinate system
             self.H = self.molsys.hessian_to_internals(Hx, gx)
+            self.erase_hessian = "stashed"
         elif self.params.dynamic_level == self.params.dynamic_lvl_max:
             logger.critical(
                 "\n\t Current algorithm/dynamic_level is %d.\n" % self.params.dynamic_level
@@ -496,11 +508,12 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
             for f in self.molsys.fragments:
                 del f.intcos[:]
             self.molsys._dimer_intcos = []
+            self.erase_hessian = "erased"
 
         if eraseHistory:
             logger.warning(" Erasing history.\n")
             self.clear()
-            self.erase_hessian = True
+            # If a method needs to erase the hessian. erase all intcos and start over
 
             if isinstance(self.opt_method, IRCfollowing.IntrinsicReactionCoordinate):
                 self.opt_method.irc_history.recompute_all_internals(self.molsys)

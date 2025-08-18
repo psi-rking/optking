@@ -5,6 +5,7 @@ import numpy as np
 from numpy.linalg import LinAlgError
 
 from .exceptions import OptError
+from .printTools import print_array_string
 from . import log_name
 
 logger = logging.getLogger(f"{log_name}{__name__}")
@@ -109,7 +110,7 @@ def asymm_mat_eig(mat) -> Tuple[np.ndarray, np.ndarray]:
     return evals.real, evects.real.T
 
 
-def symm_mat_inv(A, redundant=False, threshold=1.0e-8) -> np.ndarray:
+def symm_mat_inv(A, redundant=False, threshold=1.0e-8, print_lvl=1) -> np.ndarray:
     """
     Return the inverse of a real, symmetric matrix.
 
@@ -135,7 +136,11 @@ def symm_mat_inv(A, redundant=False, threshold=1.0e-8) -> np.ndarray:
         if redundant:
             try:
                 evals, evects = np.linalg.eigh(A)
-                logger.debug("Eigenvalues for matrix to invert\n%s", evals)
+                if print_lvl > 1:
+                    logger.debug(
+                        "Eigenvalues for matrix to invert\n%s",
+                        print_array_string(evals, form=":10.2e")
+                    )
             except LinAlgError:
                 raise OptError("symm_mat_inv: could not compute eigenvectors")
 

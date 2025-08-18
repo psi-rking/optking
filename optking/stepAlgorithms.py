@@ -281,7 +281,7 @@ class OptimizationAlgorithm(OptimizationInterface):
         dq /= 2
         return dq
 
-    def converged(self, dq, fq, step_number, str_mode=""):
+    def converged(self, dq, fq, step_number, str_mode="", **kwargs):
         energies = [step.E for step in self.history.steps]
         conv_info = {
             "step_type": "standard",

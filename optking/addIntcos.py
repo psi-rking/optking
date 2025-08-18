@@ -1,7 +1,7 @@
 import json
 import logging
 from copy import deepcopy
-from itertools import combinations, permutations
+from itertools import combinations, permutations, zip_longest
 
 import numpy as np
 import qcelemental as qcel
@@ -386,6 +386,13 @@ def check_if_oofp_needed(C, intcos, geom):
     #         torsions_covered = False
 
     if maxNneighbors == Natom - 1 and maxNneighbors > 2:
+        for coord in intcos:
+            if isinstance(coord, bend.Bend):
+                if coord.bend_type in ['LINEAR', 'COMPLEMENT']:
+                    # If we've added a linear bend then there is already a coordinate to break
+                    # the plane of the molecule. No need to add OOFP. SF4 for instance is not
+                    # helped at all by addition of OOFPs
+                    return False
         logger.debug("check_if_oofp_needed() is turning oofp ON")
         return True
     # elif not torsions_covered:
@@ -425,6 +432,12 @@ def add_oofp_from_connectivity(C, intcos, geom):
                     errors.append([T, V, side1, side2])
                     continue
                 else:
+                    # Don't add an OOFP (1, 2, 3, 4) if (3, 2, 1, 4) already added
+                    # This check improves some worsens others. Not clear if reducing oofps
+                    # is beneficial. Causes a symmetry break in Psi4's opt14
+                    # present = similar_oofp_added([T, V, side1, side2], intcos)
+
+                    # if not present:
                     oneOofp = oofp.Oofp(T, V, side1, side2)
                     if oneOofp not in intcos:
                         intcos.append(oneOofp)
@@ -441,7 +454,7 @@ def add_oofp_from_connectivity(C, intcos, geom):
                 if not covered:
                     try:
                         im_tors = improper_torsion_around_oofp(
-                            coord.atoms[1], coord.atoms[0], coord.atoms[2], coord.atoms[3],
+                            coord.atoms[1], coord.atoms[0], coord.atoms[2], coord.atoms[3], geom
                         )
                         intcos.append(im_tors)
                     except AlgError:
@@ -451,6 +464,28 @@ def add_oofp_from_connectivity(C, intcos, geom):
                         )
 
     return
+
+
+def similar_oofp_added(indices, intcos) -> bool:
+    """ Check whether a torsion with the same central atom and the same three terminal atoms
+    already exists. Returns true is so """
+
+    oofps = [intco for intco in intcos if isinstance(intco, oofp.Oofp)]
+    sides_1 = list(map(int, indices[0:1] + indices[2:]))
+    central_1 = indices[1]
+
+    for oofp_obj in oofps:
+        atoms = oofp_obj.atoms
+        sides_2 = list(map(int, atoms[0:1] + atoms[2:]))
+        central_2 = atoms[1]
+
+        if central_1 == central_2:
+            if compare_lists(sorted(sides_1), sorted(sides_2)):
+                # Found a similar oofp. sorted lists of size were equivalent
+                logger.debug(list(sides_1))
+                logger.debug(list(sides_2))
+                return True
+    return False
 
 
 def add_cartesian_intcos(intcos, geom):
@@ -1171,3 +1206,10 @@ def improper_torsion_around_oofp(center, a, b, c, geom):
         return tors.Tors(b, a, center, c)
     else:
         return tors.Tors(a, b, center, c)
+
+def compare_lists(iter1, iter2) -> bool:
+    for a, b in zip(iter1, iter2):
+        if a != b:
+            # lists not equal
+            return False
+    return True

@@ -25,7 +25,8 @@ class AlgError(Exception):
         new_linear_bends=[],
         # new_linear_torsion=[],
         # oofp_failures=[],
-        old_bends=[]
+        old_bends=[],
+        back_transformation=False
     ):
         optimize_log.error(f"AlgError: Exception created. Mesg: {mesg}")
         if new_linear_bends:
@@ -45,3 +46,4 @@ class AlgError(Exception):
         self.old_bends = old_bends
         # self.linear_torsions = new_linear_torsion
         # self.oofp_failures = oofp_failures
+        self.back_transformation = back_transformation

@@ -111,6 +111,7 @@ class IRCHistory(object):
         self.go = True
         self.irc_points: List[IRCpoint] = []
         self.atom_symbols = None
+        self.termination_reason = ""
 
     def set_atom_symbols(self, atom_symbols):  # just for printing
         self.atom_symbols = atom_symbols.copy()  # just for printing
@@ -312,13 +313,16 @@ class IRCHistory(object):
         logger.info("Change in energy from last point %.4e", d_energy)
 
         if overlap < irc_conv:
-            logger.info("Overlap of forces with previous rxnpath point %8.4f" % overlap)
+            self.termination_reason = "Overlap of forces with previous rxnpath point is %8.4f. Quitting" % overlap
+            logger.info("Overlap of forces with previous rxnpath point is %8.4f. Quitting" % overlap)
             return True
         if abs(self.line_dist(step=-1) - self.line_dist(step=-2)) < self.step_size * 1e-3:
+            self.termination_reason = "Displacement along IRC is very small. Likely circling minumum. Quitting"
             logger.info("Displacement along IRC is very small. Likely circling minumum. Quitting")
             return True
         if abs(rms(f_q)) < fq_rms:
-            logger.info("RMS of forces have reached %s. Close to minimum. Qutting.", fq_rms)
+            self.termination_reason = "RMS of forces have reached %s. Close to minimum. Quitting."
+            logger.info("RMS of forces have reached %s. Close to minimum. Quitting.", fq_rms)
             return True
 
         return False
@@ -410,6 +414,10 @@ class IRCHistory(object):
 
         out += "\n"
         out += "\n"
+
+        if self.termination_reason:
+            out += f"\n@IRC {self.termination_reason}"
+
         if return_str:
             return out
         irc_log.info(out)

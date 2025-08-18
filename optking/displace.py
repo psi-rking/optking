@@ -463,15 +463,16 @@ def dq_to_dx(intcos, geom, dq, **kwargs):
 
     print_details = kwargs.get("print_details", False)
     threshold = kwargs.get("threshold", 1e-8)
+    print_lvl = kwargs.get("print_lvl", 1)
 
     B = intcosMisc.Bmat(intcos, geom)
     G = B @ B.T
-    Ginv = symm_mat_inv(G, redundant=True, threshold=threshold)
+    Ginv = symm_mat_inv(G, redundant=True, threshold=threshold, print_lvl=print_lvl)
     dx = B.T @ Ginv @ dq
 
     # If the step in cartesian coordinates is irregularly large,
     # recompute the step in internal coordinates with a more agressive check for small singular
-    # values in the B matrix
+    # values in the B matrix. No longer recomputing
     dq_len = np.linalg.norm(dq)
     dx_len = np.linalg.norm(dx)
     if dx_len > 10 * dq_len:
@@ -480,14 +481,19 @@ def dq_to_dx(intcos, geom, dq, **kwargs):
             dx_len / dq_len,
         )
 
-        # recompute step
-        Ginv = symm_mat_inv(G, redundant=True, threshold=1e-6)
+        # It seems to me like it'd be better just to abort and reset the molecular system
+        # but opt14 and opt15 in Psi4 will break symmetry without attempting to fix step first
+        eigvals = np.linalg.eigvalsh(G)
+        smallest = np.min(eigvals[eigvals > threshold])
+        new_threshold = smallest + smallest / 10  # Try to exclude next largest value
+
+        Ginv = symm_mat_inv(G, redundant=True, threshold=new_threshold, print_lvl=print_lvl)
         dx = B.T @ Ginv @ dq
 
         if np.linalg.norm(dx) > 10 * dq_len:
-            raise OptError(
+            raise AlgError(
                 "Back transformation failed. Cartesian Step size too large. Please restart from "
-                "the most recent geometry"
+                "the most recent geometry", back_transformation=True
             )
 
     if print_details:
