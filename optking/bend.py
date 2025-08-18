@@ -48,7 +48,6 @@ class Bend(Simple):
         range_max=None,
         ext_force=None,
     ):
-
         if a < c:
             atoms = (a, b, c)
         else:
@@ -81,7 +80,9 @@ class Bend(Simple):
 
         s += "(%d,%d,%d)" % (self.A + 1, self.B + 1, self.C + 1)
         if self.ranged:
-            s += "[{:.2f},{:.2f}]".format(self.range_min * self.q_show_factor, self.range_max * self.q_show_factor)
+            s += "[{:.2f},{:.2f}]".format(
+                self.range_min * self.q_show_factor, self.range_max * self.q_show_factor
+            )
         return s
 
     def __eq__(self, other):
@@ -259,13 +260,14 @@ class Bend(Simple):
 
         # B = overall index of atom; a = 0,1,2 relative index for delta's
         for a, B in enumerate(self.atoms):
-            dqdx[3 * B : 3 * B + 3] = Bend.zeta(a, 0, 1) * uXw[0:3] / Lu + Bend.zeta(a, 2, 1) * wXv[0:3] / Lv
+            dqdx[3 * B : 3 * B + 3] = (
+                Bend.zeta(a, 0, 1) * uXw[0:3] / Lu + Bend.zeta(a, 2, 1) * wXv[0:3] / Lv
+            )
         return
 
     # Return derivative B matrix elements.  Matrix is cart X cart and passed in.
     # TODO update with jet turneys code
     def Dq2Dx2(self, geom, dq2dx2):
-
         if not self.axes_fixed:
             self.compute_axes(geom)
 
@@ -282,7 +284,9 @@ class Bend(Simple):
         # packed, or mini dqdx where columns run only over 3 atoms
         dqdx = np.zeros(9)
         for a in range(3):
-            dqdx[3 * a : 3 * a + 3] = Bend.zeta(a, 0, 1) * uXw[0:3] / Lu + Bend.zeta(a, 2, 1) * wXv[0:3] / Lv
+            dqdx[3 * a : 3 * a + 3] = (
+                Bend.zeta(a, 0, 1) * uXw[0:3] / Lu + Bend.zeta(a, 2, 1) * wXv[0:3] / Lv
+            )
 
         val = self.q(geom)
         cos_q = math.cos(val)  # cos_q = v3d_dot(u,v);
@@ -299,14 +303,24 @@ class Bend(Simple):
                         tval = (
                             Bend.zeta(a, 0, 1)
                             * Bend.zeta(b, 0, 1)
-                            * (u[i] * v[j] + u[j] * v[i] - 3 * u[i] * u[j] * cos_q + delta(i, j) * cos_q)
+                            * (
+                                u[i] * v[j]
+                                + u[j] * v[i]
+                                - 3 * u[i] * u[j] * cos_q
+                                + delta(i, j) * cos_q
+                            )
                             / (Lu * Lu * sin_q)
                         )
 
                         tval += (
                             Bend.zeta(a, 2, 1)
                             * Bend.zeta(b, 2, 1)
-                            * (v[i] * u[j] + v[j] * u[i] - 3 * v[i] * v[j] * cos_q + delta(i, j) * cos_q)
+                            * (
+                                v[i] * u[j]
+                                + v[j] * u[i]
+                                - 3 * v[i] * v[j] * cos_q
+                                + delta(i, j) * cos_q
+                            )
                             / (Lv * Lv * sin_q)
                         )
 
@@ -348,11 +362,17 @@ class Bend(Simple):
             b = 0.11
             c = 0.44
             d = -0.42
-            Rcov_AB = qcel.covalentradii.get(Z[self.A], missing=4.0) + qcel.covalentradii.get(Z[self.B], missing=4.0)
-            Rcov_BC = qcel.covalentradii.get(Z[self.C], missing=4.0) + qcel.covalentradii.get(Z[self.B], missing=4.0)
+            Rcov_AB = qcel.covalentradii.get(Z[self.A], missing=4.0) + qcel.covalentradii.get(
+                Z[self.B], missing=4.0
+            )
+            Rcov_BC = qcel.covalentradii.get(Z[self.C], missing=4.0) + qcel.covalentradii.get(
+                Z[self.B], missing=4.0
+            )
             R_AB = v3d.dist(geom[self.A], geom[self.B])
             R_BC = v3d.dist(geom[self.B], geom[self.C])
-            return a + b / (np.power(Rcov_AB * Rcov_BC, d)) * np.exp(-c * (R_AB + R_BC - Rcov_AB - Rcov_BC))
+            return a + b / (np.power(Rcov_AB * Rcov_BC, d)) * np.exp(
+                -c * (R_AB + R_BC - Rcov_AB - Rcov_BC)
+            )
 
         elif guess_type == "LINDH_SIMPLE":
             R_AB = v3d.dist(geom[self.A], geom[self.B])

@@ -9,7 +9,7 @@ import logging
 import json
 import pathlib
 from abc import ABC, abstractmethod
-from typing import Union
+from typing import Union, Tuple
 
 import numpy as np
 from optking.IRCfollowing import IntrinsicReactionCoordinate
@@ -18,8 +18,13 @@ import qcelemental as qcel
 from . import compute_wrappers, hessian, history, molsys, optwrapper
 from .convcheck import conv_check
 from .exceptions import OptError, AlgError
-from .optimize import get_pes_info, make_internal_coords, optimize, prepare_opt_output, OptimizationManager
-from .misc import import_psi4
+from .optimize import (
+    get_pes_info,
+    make_internal_coords,
+    optimize,
+    prepare_opt_output,
+    OptimizationManager,
+)
 from .printTools import print_geom_grad, welcome
 from . import log_name
 from . import op
@@ -48,7 +53,7 @@ class Helper(ABC):
         """Initialize options. Still need a molecule to create molsys and computer"""
 
         optwrapper.initialize_options(params, silent=kwargs.get("silent", False))
-        self.params = op.Params
+        self.params: op.OptParams = op.Params
 
         self.computer: compute_wrappers.ComputeWrapper
         self.step_num = 0
@@ -105,7 +110,9 @@ class Helper(ABC):
                 irc_object: IntrinsicReactionCoordinate = self.opt_manager.opt_method
                 conv_info["sub_step_num"] = irc_object.sub_step_number
                 conv_info["iternum"] = irc_object.irc_step_number
-                conv_info["fq"] = irc_object.irc_history._project_forces(self.fq, self.molsys)
+                conv_info["fq"] = irc_object.irc_history._project_forces(
+                    self.fq, self.molsys, self.params.linear_algebra_tol
+                )
 
             string += conv_check(conv_info, self.params, str_mode="table")
 
@@ -181,9 +188,16 @@ class Helper(ABC):
         """Must call compute before calling this method. Takes the next step."""
         self.opt_manager.error = None
         try:
-            self.dq, self.step_str = self.opt_manager.take_step(self.fq, self._Hq, self.E, return_str=True)
+            self.dq, self.step_str = self.opt_manager.take_step(
+                self.fq, self._Hq, self.E, return_str=True
+            )
         except AlgError as e:
             self.opt_manager.alg_error_handler(self._Hq, self.fq, e)
+            if self.opt_manager.erase_hessian == "stashed":
+                self._Hq = self.opt_manager.H
+                self.fq = self.molsys.gradient_to_internals(self.gX, coeff=-1.0)
+                self.molsys = self.opt_manager.molsys
+                self.HX = self.molsys.hessian_to_cartesians(self._Hq, -1 * self.fq)
         except OptError as e:
             logger.critical("A critical error has occured: %s - %s", type(e), e, exc_info=True)
             raise e
@@ -195,7 +209,7 @@ class Helper(ABC):
         self.show()
         return self.dq
 
-    def test_convergence(self, str_mode=None):
+    def test_convergence(self, str_mode=None, **kwargs):
         """Check the final two steps for convergence. If the algorithm uses linesearching, linesearches are not considered
 
         Returns
@@ -204,7 +218,9 @@ class Helper(ABC):
 
         """
 
-        return self.opt_manager.converged(self.E, self.fq, self.dq, self.step_num, str_mode=str_mode)
+        return self.opt_manager.converged(
+            self.E, self.fq, self.dq, self.step_num, str_mode=str_mode, **kwargs
+        )
 
     def close(self):
         del self._Hq
@@ -230,7 +246,9 @@ class Helper(ABC):
                 if val.shape == (self.molsys.natom, 3):
                     self._gX = np.ravel(val)
                 else:
-                    raise TypeError(f"Gradient must an iterable with shape (3, {self.molsys.natom}) or (1, {ncart})")
+                    raise TypeError(
+                        f"Gradient must an iterable with shape (3, {self.molsys.natom}) or (1, {ncart})"
+                    )
 
     @property
     def HX(self):
@@ -272,7 +290,6 @@ class Helper(ABC):
 
     @staticmethod
     def attempt_fromiter(array):
-
         if not isinstance(array, np.ndarray):
             try:
                 array = np.fromiter(array, dtype=float)
@@ -285,7 +302,7 @@ class Helper(ABC):
         last_step = self.history.steps[-1]
         return last_step.E, last_step.geom
 
-    def status(self, str_mode=None):
+    def status(self, str_mode=None, **kwargs):
         """get string message describing state of optimizer
 
         Returns
@@ -297,6 +314,14 @@ class Helper(ABC):
             'FINISHED' optimization converged
         """
 
+        try:
+            if not self.opt_manager.error and self.test_convergence(str_mode, **kwargs) is True:
+                return "CONVERGED"
+        except AlgError:
+            self.opt_manager.error = "AlgError"
+        except OptError:
+            self.opt_manager.error = "OptError"
+
         if self.opt_manager.error == "OptError":
             return "FAILED"
 
@@ -305,9 +330,6 @@ class Helper(ABC):
             self._Hq = None
             self.step_num = 0
             return "UNFINISHED-FAILED"
-
-        if self.test_convergence(str_mode) is True:
-            return "CONVERGED"
 
         return "UNFINISHED"
 
@@ -382,35 +404,22 @@ class CustomHelper(Helper):
 
         """
 
-        opt_input = {
-            "initial_molecule": {"symbols": [], "geometry": []},
-            "input_specification": {"keywords": {}, "model": {}},
-        }
-        self.computer = optwrapper.make_computer(opt_input, "user")
+        self.computer = optwrapper.make_computer(OPT_INPUT_TEMPLATE, "user")
         super().__init__(params, **kwargs)
 
-        if isinstance(mol_src, qcel.models.Molecule):
-            self.opt_input = mol_src.dict()
-            self.molsys = molsys.Molsys.from_schema(self.opt_input)
-        elif isinstance(mol_src, dict):
-            tmp = qcel.models.Molecule(**mol_src).dict()
-            self.opt_input = json.loads(qcel.util.serialization.json_dumps(tmp))
-            self.molsys = molsys.Molsys.from_schema(self.opt_input)
+        if isinstance(mol_src, (qcel.models.basemodels.ProtoModel, dict)):
+            # from_dict will call from_schema as neeeded
+            self.opt_input = from_dict(mol_src)
+            self.molsys = molsys.Molsys.from_schema(self.opt_input["initial_molecule"])
         else:
-            import_psi4("Attempting to create molsys from psi4 molecule")
-            import psi4
+            # If Psi4 molecule doesn't work as a backup error out
+            self.molsys, self.opt_input = from_psi4(mol_src)
 
-            if isinstance(mol_src, (psi4.qcdb.Molecule, psi4.core.Molecule)):
-                self.molsys, self.opt_input = molsys.Molsys.from_psi4(mol_src)
-            else:
-                try:
-                    self.molsys, self.opt_input = molsys.Molsys.from_psi4(psi4.core.get_active_molecule())
-                except Exception as error:
-                    raise OptError("Failed to grab psi4 molecule as last resort") from error
-
-        self.computer.molecule = self.opt_input
+        self.computer.molecule = self.opt_input["initial_molecule"]
         self.build_coordinates()
-        self.opt_manager = OptimizationManager(self.molsys, self.history, self.params, self.computer)
+        self.opt_manager = OptimizationManager(
+            self.molsys, self.history, self.params, self.computer
+        )
         self.opt_manager.step_number = 1
 
     @classmethod
@@ -441,19 +450,26 @@ class CustomHelper(Helper):
         if self.HX is None:
             if "hessian" in self.calculations_needed():
                 if self.params.cart_hess_read:
+                    logger.debug("Reading hessian from file")
+                    # Extra safeguard in case an external program has set hessian_file incorrectly
+                    if isinstance(self.params.hessian_file, str):
+                        self.params.hessian_file = pathlib.Path(self.params.hessian_file)
                     self.HX = hessian.from_file(self.params.hessian_file)  # set ourselves if file
                     _ = self.computer.compute(self.geom, driver="hessian")
                     self.gX = self.computer.external_gradient
                     self.fq = self.molsys.gradient_to_internals(self.gX, -1.0)
                     self._Hq = self.molsys.hessian_to_internals(self.HX)
                     self.fq, self._Hq = self.molsys.apply_external_forces(self.fq, self._Hq)
-                    self.fq, self._Hq = self.molsys.project_redundancies_and_constraints(self.fq, self._Hq)
+                    self.fq, self._Hq = self.molsys.project_redundancies_and_constraints(
+                        self.fq, self._Hq
+                    )
                     self.HX = None
                     self.params.cart_hess_read = False
                     self.params.hessian_file = pathlib.Path("")
                 else:
                     raise RuntimeError(
-                        "Optking requested a hessian but was not provided one. " "This could be a driver issue"
+                        "Optking requested a hessian but was not provided one. "
+                        "This could be a driver issue"
                     )
             elif self.step_num == 0:
                 logger.debug("Guessing hessian")
@@ -461,7 +477,9 @@ class CustomHelper(Helper):
                 self.gX = self.computer.compute(self.geom, driver="gradient", return_full=False)
                 self.fq = self.molsys.gradient_to_internals(self.gX, -1.0)
                 self.fq, self._Hq = self.molsys.apply_external_forces(self.fq, self._Hq)
-                self.fq, self._Hq = self.molsys.project_redundancies_and_constraints(self.fq, self._Hq)
+                self.fq, self._Hq = self.molsys.project_redundancies_and_constraints(
+                    self.fq, self._Hq
+                )
 
             else:
                 logger.debug("Updating hessian")
@@ -469,8 +487,11 @@ class CustomHelper(Helper):
                 self.fq = self.molsys.gradient_to_internals(self.gX, -1.0)
                 self.fq, self._Hq = self.molsys.apply_external_forces(self.fq, self._Hq)
                 self._Hq = self.history.hessian_update(self._Hq, self.fq, self.molsys)
-                self.fq, self._Hq = self.molsys.project_redundancies_and_constraints(self.fq, self._Hq)
+                self.fq, self._Hq = self.molsys.project_redundancies_and_constraints(
+                    self.fq, self._Hq
+                )
         else:
+            logger.debug("Reading hessian from user")
             result = self.computer.compute(self.geom, driver="hessian")
             self.HX = self.computer.external_hessian
             self.gX = self.computer.external_gradient
@@ -595,19 +616,18 @@ class EngineHelper(Helper):
         optimization_input: Union[qcelemental.procedures.OptimizationInput, dict]
 
         """
-        if isinstance(optimization_input, qcel.models.OptimizationInput):
-            self.opt_input = optimization_input.dict()
-        elif isinstance(optimization_input, dict):
-            tmp = qcel.models.OptimizationInput(**optimization_input).dict()
-            self.opt_input = json.loads(qcel.util.serialization.json_dumps(tmp))
-        # self.calc_name = self.opt_input['input_specification']['model']['method']
+
+        # Just call from_dict for brevity. If schema, will be cast to dict
+        self.opt_input = from_dict(optimization_input)
 
         super().__init__(self.opt_input["keywords"], **kwargs)
         self.molsys = molsys.Molsys.from_schema(self.opt_input["initial_molecule"])
         self.computer = optwrapper.make_computer(self.opt_input, "qc")
         self.computer_type = "qc"
         self.build_coordinates()
-        self.opt_manager = OptimizationManager(self.molsys, self.history, self.params, self.computer)
+        self.opt_manager = OptimizationManager(
+            self.molsys, self.history, self.params, self.computer
+        )
 
     @classmethod
     def from_dict(cls, d):
@@ -632,7 +652,6 @@ class EngineHelper(Helper):
         return helper
 
     def _compute(self):
-
         hessian_protocol = self.opt_manager.get_hessian_protocol(self.step_num)
         protocol = hessian_protocol["protocol"]
         requires = self.opt_manager.opt_method.requires()
@@ -652,3 +671,125 @@ class EngineHelper(Helper):
         # set E, g_x, and hessian to have their last values
         # set step_number
         # set self.history to match history.
+
+
+MODEL_TYPES = {
+    "qcschema_optimization_input": qcel.models.OptimizationInput,
+    "qcschema_molecule": qcel.models.Molecule,
+}
+
+OPT_INPUT_TEMPLATE = {
+    "initial_molecule": {},
+    "input_specification": {"model": {"method": "", "basis": ""}, "keywords": {}},
+}
+
+
+def from_schema(input_obj: Union[qcel.models.Molecule, qcel.models.OptimizationInput]):
+    """Initialize opt_helper's molecule from QCSchema Input"""
+    if isinstance(input_obj, qcel.models.Molecule):
+        return from_dict(input_obj.dict(), type="qcschema_molecule")
+    elif isinstance(input_obj, qcel.models.OptimizationInput):
+        return from_dict(input_obj.dict(), type="qcschema_optimization_input")
+    elif isinstance(input_obj, dict):
+        # Be nice and attempt to run dictionary through from_dict checks
+        return from_dict(input_obj, type="")
+    else:
+        raise ValueError(
+            "Provided a qcschema of unsupported type. Should be `Molecule` or `OptimizationInput`"
+        )
+
+
+def from_dict(input_obj: dict, type="") -> dict:
+    """Attempt to create a dictionary with required elements of an OptimizationInput from user
+    input. User is not required to specify a full OptimizationInput. Used by OptHelper classes
+    If input is of wrong type, will attempt to identify type of input and create schema.
+
+    Parameters
+    ----------
+    input_obj: dict
+        A dictionary formatted according to either `qcel.models.Molecule` or
+        `qcel.models.OptimizationInput`
+    type: str (optional)
+        A hint at which type of schema is being provided. Corresponds to 'schema_name' field.
+
+    Returns
+    -------
+    opt_input: dict
+        An OptimizationInput with at least an `initial_molecule`. `input_specification` may be
+        empty. This is not an issue for CustomHelper where no input_spec is needed.
+    """
+
+    # I have done my best to account for a user providing any form of acceptable schema-like input
+    def check_name_and_validate(name, input_obj):
+        """Can raise a ValidationError if input_obj is incorrectly formatted"""
+        if input_obj.get("schema_name") != name or not input_obj.get("validated"):
+            return MODEL_TYPES[name](**input_obj).dict()
+        return input_obj
+
+    if not isinstance(input_obj, dict):
+        if isinstance(input_obj, qcel.models.basemodels.ProtoModel):
+            return from_schema(input_obj)
+        else:
+            raise RuntimeError(
+                "Attempted to initialize helper from dictionary input, but `input_obj` was not a"
+                "dictionary or a qcschema"
+            )
+
+    opt_input = OPT_INPUT_TEMPLATE.copy()
+
+    if not type:
+        if "schema_name" in input_obj.keys():
+            # use to determine type
+            if input_obj.get("schema_name") == "qcschema_molecule":
+                type = "molecule"
+            elif input_obj.get("schema_name") == "qcschema_optimization_input":
+                type = "optimization"
+
+        if "geometry" in input_obj.keys():
+            type = "molecule"
+        if "initial_molecule" in input_obj.keys():
+            type = "optimization"
+
+        if not type:
+            raise RuntimeError(
+                "Dictionary input does not appear to be either a Molecule or OptimizationInput"
+            )
+
+    if "molecule" in type:
+        input_obj = check_name_and_validate("qcschema_molecule", input_obj)
+        opt_input.update({"initial_molecule": input_obj})
+    elif "optimization" in type:
+        input_obj = check_name_and_validate("qcschema_optimization_input", input_obj)
+        opt_input = input_obj
+    else:
+        raise RuntimeError(
+            f"Unrecognized type: {type}. If you have manually set a type, must use either"
+            "`qcschema_optimization_input` or `qcschema_molecule`"
+        )
+    return opt_input
+
+
+def from_psi4(mol_src) -> Tuple[molsys.Molsys, dict]:
+    try:
+        import psi4
+    except ImportError:
+        logger.error(
+            "Could not import Psi4. Please install psi4 or check that PYTHONPATH is configured"
+        )
+        raise
+
+    if isinstance(mol_src, (psi4.qcdb.Molecule, psi4.core.Molecule)):
+        opt_mol, qc_mol = molsys.Molsys.from_psi4(mol_src)
+    else:
+        logger.warning(
+            "The user provided molecule is not a psi4.core.Molecule or psi4.qcdb.Molecule"
+        )
+        logger.warning("Checking for an active psi4 molecule")
+        try:
+            opt_mol, qc_mol = molsys.Molsys.from_psi4(psi4.core.get_active_molecule())
+        except Exception as error:
+            raise OptError("Failed to grab psi4 molecule as last resort") from error
+
+    opt_input = OPT_INPUT_TEMPLATE.copy()
+    opt_input.update({"initial_molecule": qc_mol})
+    return opt_mol, opt_input

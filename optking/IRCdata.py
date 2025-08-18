@@ -1,13 +1,20 @@
-""" Class to store points on the IRC """
 import logging
 import os
+import copy
+from typing import List, Tuple
 
 import numpy as np
 
 from .exceptions import OptError
-from .printTools import print_geom_string, print_array_string
-from .linearAlgebra import symm_mat_inv
+from .printTools import print_geom_string
+from .linearAlgebra import symm_mat_inv, rms
+from .molsys import Molsys
+from .frag import Frag
+from . import addIntcos
 from . import log_name
+from . import addIntcos
+from . import molsys
+from . import frag
 
 logger = logging.getLogger(f"{log_name}{__name__}")
 
@@ -94,63 +101,68 @@ class IRCHistory(object):
     """Stores obtained points along the IRC as well as information about
     the status of the IRC computation"""
 
-    __step_size = 0.0
-    __direction = None
-    __running_step_dist = 0.0
-    __running_arc_dist = 0.0
-    __running_line_dist = 0.0
+    _step_size = 0.0
+    _direction = None
+    _running_step_dist = 0.0
+    _running_arc_dist = 0.0
+    _running_line_dist = 0.0
 
     def __init__(self):
         self.go = True
-        self.irc_points = []
+        self.irc_points: List[IRCpoint] = []
         self.atom_symbols = None
+        self.termination_reason = ""
 
     def set_atom_symbols(self, atom_symbols):  # just for printing
         self.atom_symbols = atom_symbols.copy()  # just for printing
 
     def set_step_size_and_direction(self, step_size, direction):
-        self.__step_size = step_size
-        self.__direction = direction
+        self._step_size = step_size
+        self._direction = direction
 
     def to_dict(self):
-
         d = {
             "irc_points": [point.to_dict() for point in self.irc_points],
             "go": self.go,
             "atom_symbols": self.atom_symbols,
-            "direction": self.__direction,
-            "step_size": self.__step_size,
+            "direction": self._direction,
+            "step_size": self._step_size,
+            "running_step_dist": self._running_step_dist,
+            "running_arc_dist": self._running_arc_dist,
+            "running_line_dist": self._running_line_dist,
         }
         return d
 
     @classmethod
     def from_dict(cls, d):
-
         irc_history = cls()
         irc_history.irc_points = [IRCpoint.from_dict(point) for point in d["irc_points"]]
         irc_history.go = d["go"]
         irc_history.atom_symbols = d["atom_symbols"]
-        irc_history.__direction = d["direction"]
-        irc_history.__step_size = d["step_size"]
+        irc_history._direction = d["direction"]
+        irc_history._step_size = d["step_size"]
+        irc_history._running_step_dist = d["running_step_dist"]
+        irc_history._running_arc_dist = d["running_arc_dist"]
+        irc_history._running_line_dist = d["running_line_dist"]
         return irc_history
 
     def add_irc_point(self, step_number, q_in, x_in, f_q, f_x, E, lineDistStep=0, arcDistStep=0):
         if len(self.irc_points) != 0:
-            if self.__direction == "FORWARD":
+            if self._direction == "FORWARD":
                 sign = 1
-            elif self.__direction == "BACKWARD":
+            elif self._direction == "BACKWARD":
                 sign = -1
                 step_number *= -1
             else:
                 raise OptError("IRC direction must be set to FORWARD or BACKWARD")
             # step_dist = sum of all steps to and from pivot points, a multiple of
             # the step_size
-            self.__running_step_dist += sign * self.__step_size
+            self._running_step_dist += sign * self._step_size
             # line distance is sum of all steps directly between rxnpath points, ignoring
             # pivot points
-            self.__running_line_dist += sign * lineDistStep
+            self._running_line_dist += sign * lineDistStep
             # distance along a circular arc connecting rxnpath points
-            self.__running_arc_dist += sign * arcDistStep
+            self._running_arc_dist += sign * arcDistStep
 
         onepoint = IRCpoint(
             step_number,
@@ -161,9 +173,9 @@ class IRCHistory(object):
             E,
             None,
             None,
-            self.__running_step_dist,
-            self.__running_arc_dist,
-            self.__running_line_dist,
+            self._running_step_dist,
+            self._running_arc_dist,
+            self._running_line_dist,
         )
         self.irc_points.append(onepoint)
 
@@ -175,7 +187,9 @@ class IRCHistory(object):
     def add_pivot_point(self, q_p, x_p, step=None):
         index = -1 if step is None else step
         pindex = (len(self.irc_points) - 1) if step is None else step
-        logger.debug("Adding pivot point (index %d) for finding rxnpath point %d" % (pindex, pindex + 1))
+        logger.debug(
+            "Adding pivot point (index %d) for finding rxnpath point %d" % (pindex, pindex + 1)
+        )
         self.irc_points[index].add_pivot(q_p, x_p)
 
     # Return most recent IRC step data unless otherwise specified
@@ -185,7 +199,7 @@ class IRCHistory(object):
 
     @property
     def step_size(self):
-        return self.__step_size
+        return self._step_size
 
     def current_step_number(self):
         return len(self.irc_points)
@@ -230,7 +244,39 @@ class IRCHistory(object):
         index = -1 if step is None else step
         return self.irc_points[index].step_dist
 
-    def test_for_irc_minimum(self, f_q, energy, irc_conv):
+    def test_for_dissociation(
+        self, new_molsys: Molsys, old_molsys: Molsys, threshold=0.4
+    ):
+        """Check whether or not the connectivity has changed and multiple fragments have
+        been created. This may be used to terminate the IRC. This method should only be
+        called if frag_mode == 'SINGLE'.
+
+        Returns
+        -------
+        bool
+            True if the molecular system has separated into 2 (or more) fragments from 1
+        """
+
+        logger.debug("Checking connectivity for whether dissociation has occured")
+
+        # Repeat the standard procedure for creating a single fragment molecular system
+        orig_connectivity = addIntcos.connectivity_from_distances(old_molsys.geom, old_molsys.Z)
+        orig_molsys = copy.deepcopy(old_molsys)
+        orig_molsys.split_fragments_by_connectivity()
+        scale_dist = orig_molsys.augment_connectivity_to_single_fragment(orig_connectivity)
+        orig_molsys.consolidate_fragments()
+
+        # Detect the number of fragments current molecular system using the old scale_dist plus
+        # 0.4 angstroms. Not bullet proof, just attempts to detect changes in conenctivity while
+        # not triggering for small increases in bond lengths
+        new_molsys = Molsys([Frag(old_molsys.Z, new_molsys.geom, old_molsys.masses)])
+        new_molsys.split_fragments_by_connectivity(scale_dist + threshold)
+
+        if orig_molsys.nfragments != new_molsys.nfragments:
+            return True
+        return False
+
+    def test_for_irc_minimum(self, f_q, energy, fq_rms=1e-5, irc_conv=-0.7):
         """Given current forces, checks if we are at/near a minimum
 
         Parameters
@@ -249,8 +295,6 @@ class IRCHistory(object):
         Two checks are performed.
         1. If forces are opposite those are previous pivot point
             - The forces point in opposite directions due to stepping over the minima
-        2. If forces are have any negative overlap and the energy has increased.
-            - The minima has been stepped over but the forces are not exactly opposite
             due to finite step size
 
         At the time this function is called, the point/geometry is assumed to not have been added
@@ -259,24 +303,27 @@ class IRCHistory(object):
         optimization has been completed.
         """
 
-        unit_f = f_q / np.linalg.norm(f_q)  # current forces
-        f_rxn = self.f_q()  # forces at most recent rxnpath point
+        unit_f = f_q / np.linalg.norm(f_q)  # current forces (at guess_point)
+        f_rxn = self.f_q(step=-2)  # forces at most recent rxnpath point (q0)
         unit_f_rxn = f_rxn / np.linalg.norm(f_rxn)
         overlap = np.dot(unit_f, unit_f_rxn)
 
         logger.info("Overlap of forces with previous rxnpath point %8.4f" % overlap)
-        d_energy = energy - self.energy()
-        logger.info("Change in energy from last point %d", d_energy)
+        d_energy = energy - self.energy(step=-2)
+        logger.info("Change in energy from last point %.4e", d_energy)
 
         if overlap < irc_conv:
+            self.termination_reason = "Overlap of forces with previous rxnpath point is %8.4f. Quitting" % overlap
+            logger.info("Overlap of forces with previous rxnpath point is %8.4f. Quitting" % overlap)
             return True
-        elif overlap < 0.0 and d_energy > 0.0:
+        if abs(self.line_dist(step=-1) - self.line_dist(step=-2)) < self.step_size * 1e-3:
+            self.termination_reason = "Displacement along IRC is very small. Likely circling minumum. Quitting"
+            logger.info("Displacement along IRC is very small. Likely circling minumum. Quitting")
             return True
-
-        # TODO  Look at line distance criterion when distances are working.
-        # elif:
-        #    g_line_dist(p_irc_data->size()-1) - g_line_dist(p_irc_data->size()-2)) < s*10e-03)
-        #    return True
+        if abs(rms(f_q)) < fq_rms:
+            self.termination_reason = "RMS of forces have reached %s. Close to minimum. Quitting."
+            logger.info("RMS of forces have reached %s. Close to minimum. Quitting.", fq_rms)
+            return True
 
         return False
 
@@ -367,6 +414,10 @@ class IRCHistory(object):
 
         out += "\n"
         out += "\n"
+
+        if self.termination_reason:
+            out += f"\n@IRC {self.termination_reason}"
+
         if return_str:
             return out
         irc_log.info(out)
@@ -378,7 +429,7 @@ class IRCHistory(object):
         rp = [self.irc_points[i].to_dict() for i in range(len(self.irc_points))]
         return rp
 
-    def _project_forces(self, f_q, o_molsys):
+    def _project_forces(self, f_q, o_molsys, threshold=1e-10):
         """Compute forces perpendicular to the second IRC halfstep and tangent to hypersphere
 
         Notes
@@ -390,19 +441,28 @@ class IRCHistory(object):
 
         """
 
-        logger.debug("Projecting out forces parallel to reaction path.")
-
         G_m = o_molsys.Gmat(massWeight=True)
-        G_m_inv = symm_mat_inv(G_m, redundant=True)
+        G_m_inv = symm_mat_inv(G_m, redundant=True, threshold=threshold)
 
         q_vec = o_molsys.q_array()
         p_vec = q_vec - self.q_pivot()
-        logger.info(
-            "\ncurrent step from IRC pivot point (not previous point on rxnpath):\n %s", print_array_string(p_vec)
-        )
-        logger.info("\nForces at current point on hypersphere\n %s", print_array_string(f_q))
 
         G_m_inv_p = G_m_inv @ p_vec
         orthog_f = f_q - (f_q @ p_vec) / (p_vec @ G_m_inv_p) * G_m_inv_p
-        logger.debug("\nForces perpendicular to hypersphere.\n %s", print_array_string(orthog_f))
         return orthog_f
+
+    def recompute_all_internals(self, molsys: Molsys):
+        # make a independent copy of molecular system to change all internal coordinate values
+        # into the new internal basis set
+        tmp_molsys = copy.deepcopy(molsys)
+
+        # For each step update the irc_point coords, forces coords, and pivot points coords
+        for step in self.irc_points:
+            tmp_molsys.geom = step.x
+            step.q = tmp_molsys.q_array()
+            step.f_q = tmp_molsys.gradient_to_internals(step.f_x)
+
+            # Last point may not be fully set (could be none)
+            if isinstance(step.x_pivot, np.ndarray):
+                tmp_molsys.geom = step.x_pivot
+                step.q_pivot = tmp_molsys.q_array()

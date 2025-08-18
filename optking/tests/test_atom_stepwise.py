@@ -12,6 +12,7 @@ from optking.exceptions import OptError
 
 RefEnergy = -127.8037761406364581
 
+
 def test_atom_stepwise():
     neon = psi4.geometry(""" Ne """)
 
@@ -22,10 +23,10 @@ def test_atom_stepwise():
     opt_mol, qcschema_mol = Molsys.from_psi4(neon)
 
     opt_input = {
-        #"keywords": {}, for optimizer, optional
+        # "keywords": {}, for optimizer, optional
         "initial_molecule": qcschema_mol,
         "input_specification": {
-            "model": {"basis": "3-21G", "method": 'hf'},
+            "model": {"basis": "3-21G", "method": "hf"},
             "driver": "gradient",
             "keywords": {},
         },
@@ -39,11 +40,13 @@ def test_atom_stepwise():
         assert False
     except OptError as error:
         qc_output = opt_manager.opt_error_handler(error)
-        E = qc_output['energies'][-1]
-        Etraj = qc_output["trajectory"][-1]['extras']['qcvars']['CURRENT ENERGY']
+        E = qc_output["energies"][-1]
+        Etraj = qc_output["trajectory"][-1]["extras"]["qcvars"]["CURRENT ENERGY"]
 
-        assert not qc_output['success']
-        assert qc_output["error"]["error_message"] == "There is only 1 atom. Nothing to optimize. Computing energy."
+        assert not qc_output["success"]
+        assert (
+            qc_output["error"]["error_message"]
+            == "There is only 1 atom. Nothing to optimize. Computing energy."
+        )
         assert psi4.compare_values(RefEnergy, E, 6, "Atom energy (energies)")
         assert psi4.compare_values(RefEnergy, E, 6, "Atom energy (trajectory)")
-

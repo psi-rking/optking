@@ -1,4 +1,4 @@
-""" Test combinations of met criteria
+"""Test combinations of met criteria
 tests vals * (max_vals / 100)  so that our random tests will approach the actual value as vals approaches 99.
 Optking does not test for equality. Convergence is strictly less than so testing edge values
 (i.e. whether a criteria is right at the limit is not necessary)
@@ -452,6 +452,9 @@ def test_convergence_presets(conv_test, conv_preset):
 
         # Actual conv_check test.
         conv_met, conv_active = optking.convcheck._transform_criteria(criteria, params_dict)
+        conv_met.update(
+            {"flat_potential": 100 * criteria.get("rms_force") < params_dict.get("conv_rms_force")}
+        )
         conv_met.update({"flat_potential": 100 * criteria.get("rms_force") < params_dict.get("conv_rms_force")})
         state = optking.convcheck._test_for_convergence(conv_met, conv_active, params=params)
         expected = tests.get(conv_test).get(program_mappings.get(conv_preset))
@@ -479,7 +482,10 @@ preset_subset = ["QCHEM", "GAU_TIGHT", "NWCHEM_LOOSE"]
 
 # only testing up combinations of user settings up to 2
 combos = [
-    val for i in range(1, len(options)) for index, val in enumerate(itertools.combinations(options, i)) if index < 1
+    val
+    for i in range(1, len(options))
+    for index, val in enumerate(itertools.combinations(options, i))
+    if index < 1
 ]
 # remove even tests for brevity
 
@@ -491,7 +497,6 @@ for i in range(1, len(tests), 2):
 @pytest.mark.parametrize("preset", preset_subset)
 @pytest.mark.parametrize("flexible_on", (True, False))
 def test_user_tampering(conv_options, test_name, preset, flexible_on):
-
     test = tests.get(test_name)
     changes = test.get("increment")
 
@@ -510,7 +515,9 @@ def test_user_tampering(conv_options, test_name, preset, flexible_on):
         criteria = _create_variations(thresholds, changes, random_scale)
 
         conv_met, conv_active = optking.convcheck._transform_criteria(criteria, opt_params)
-        conv_met.update({"flat_potential": 100 * criteria.get("rms_force") < opt_params.get("conv_rms_force")})
+        conv_met.update(
+            {"flat_potential": 100 * criteria.get("rms_force") < opt_params.get("conv_rms_force")}
+        )
         state = optking.convcheck._test_for_convergence(conv_met, conv_active, params=params)
 
         extra_requirements = [conv_mapping.get(val) for val in conv_options]
@@ -536,13 +543,11 @@ def test_user_tampering(conv_options, test_name, preset, flexible_on):
 
 
 def _create_variations(thresholds, changes, coefficient):
-
     criteria = {"max_DE": 1, "max_force": 1, "rms_force": 1, "max_disp": 1, "rms_disp": 1}
     conv_criteria_names = list(criteria.keys())
     magnitudes = np.floor(np.log10(thresholds))
 
     for index, val in enumerate(changes):
-
         if val > 0:
             # increase by two orders of magnitude then bring back down (near the threshold)
             temp = thresholds[index] * 100 + rng.random() * (10 ** (magnitudes[index] + 2))

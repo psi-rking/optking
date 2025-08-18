@@ -5,12 +5,15 @@ from typing import List, Tuple
 import numpy as np
 import qcelemental as qcel
 
-from . import dimerfrag, frag, v3d
+from . import dimerfrag, v3d
+from .frag import Frag
 from .addIntcos import add_cartesian_intcos, connectivity_from_distances
 from .exceptions import OptError
 from .linearAlgebra import symm_mat_inv
 from .printTools import print_array_string, print_mat_string
 from . import log_name
+from . import op
+from .oofp import Oofp
 
 logger = logging.getLogger(f"{log_name}{__name__}")
 
@@ -85,9 +88,9 @@ class Molsys(object):
         frags = []
         if "fragments" in qc_molecule:
             for fr in qc_molecule["fragments"]:
-                frags.append(frag.Frag(np.array(z_list)[fr], geom[fr], np.array(masses_list)[fr]))
+                frags.append(Frag(np.array(z_list)[fr], geom[fr], np.array(masses_list)[fr]))
         else:
-            frags.append(frag.Frag(z_list, geom, masses_list))
+            frags.append(Frag(z_list, geom, masses_list))
 
         return cls(frags)
 
@@ -108,7 +111,6 @@ class Molsys(object):
         """
 
         import psi4
-
         logger.debug("\tConverting psi4 molecular system to schema")
 
         if not isinstance(mol, (psi4.core.Molecule, psi4.qcdb.Molecule)):
@@ -142,7 +144,7 @@ class Molsys(object):
     def from_dict(cls, d) -> 'Molsys':
         if "fragments" not in d:
             raise OptError("'fragments' key missing from input dict")
-        frags = [frag.Frag.from_dict(F) for F in d["fragments"]]
+        frags = [Frag.from_dict(F) for F in d["fragments"]]
 
         if "dimer_intcos" in d:
             dimers = [dimerfrag.DimerFrag.from_dict(DF) for DF in d["dimer_intcos"]]
@@ -173,7 +175,7 @@ class Molsys(object):
         return [fragment.natom for fragment in self._fragments]
 
     @property
-    def fragments(self) -> List[frag.Frag]:
+    def fragments(self) -> List[Frag]:
         """Getter for list of fragments"""
         return self._fragments
 
@@ -183,7 +185,7 @@ class Molsys(object):
         return self._dimer_intcos
 
     @property
-    def dimer_psuedo_frags(self) -> List[frag.Frag]:
+    def dimer_psuedo_frags(self) -> List[Frag]:
         """List of fragments containing the reference atoms utilized in the interfragment coords"""
         return [dimer.pseudo_frag for dimer in self._dimer_intcos]
 
@@ -213,12 +215,12 @@ class Molsys(object):
                 lbls.append("Dimer({:d},{:d})".format(DI.A_idx + 1, DI.B_idx + 1) + str(coord))
         return lbls
 
-    def frag_1st_atom(self, iF):
+    def frag_1st_atom(self, iF) -> int:
         """Return overall index of first atom in fragment ``iF``, beginning 0,1,...
         For last fragment returns one past the end."""
 
         if iF > len(self._fragments):
-            return ValueError()
+            raise ValueError()
         start = 0
         for i in range(0, iF):
             start += self._fragments[i].natom
@@ -359,9 +361,17 @@ class Molsys(object):
             for intco in f.intcos:
                 if intco.ranged:
                     tol = 0.001 * (intco.range_max - intco.range_min)
-                    if np.fabs(qvals[cnt] - intco.range_max) < tol and fq[cnt] > 0 or qvals[cnt] > intco.range_max:
+                    if (
+                        np.fabs(qvals[cnt] - intco.range_max) < tol
+                        and fq[cnt] > 0
+                        or qvals[cnt] > intco.range_max
+                    ):
                         frozen[cnt] = True
-                    elif np.fabs(qvals[cnt] - intco.range_min) < tol and fq[cnt] < 0 or qvals[cnt] < intco.range_min:
+                    elif (
+                        np.fabs(qvals[cnt] - intco.range_min) < tol
+                        and fq[cnt] < 0
+                        or qvals[cnt] < intco.range_min
+                    ):
                         frozen[cnt] = True
                 cnt += 1
 
@@ -390,7 +400,7 @@ class Molsys(object):
         """returns the index of the first internal coordinate belonging to fragment"""
 
         if iF >= len(self._fragments):
-            return ValueError()
+            raise ValueError()
         start = 0
         for i in range(0, iF):
             start += self._fragments[i].num_intcos
@@ -512,10 +522,10 @@ class Molsys(object):
             m = np.concatenate((m, self._fragments[i].masses))
         # self._fragments.append(consolidatedFrag)
         del self._fragments[:]
-        consolidatedFrag = frag.Frag(Z, g, m)
+        consolidatedFrag = Frag(Z, g, m)
         self._fragments.append(consolidatedFrag)
 
-    def split_fragments_by_connectivity(self):
+    def split_fragments_by_connectivity(self, covalent_connect=1.3):
         """Split any fragment not connected by bond connectivity."""
         tempZ = np.copy(self.Z)
         tempGeom = np.copy(self.geom)
@@ -523,7 +533,7 @@ class Molsys(object):
 
         newFragments = []
         for F in self._fragments:
-            C = connectivity_from_distances(F.geom, F.Z)
+            C = connectivity_from_distances(F.geom, F.Z, covalent_connect)
             atomsToAllocate = list(reversed(range(F.natom)))
             while atomsToAllocate:
                 frag_atoms = [atomsToAllocate.pop()]
@@ -551,7 +561,7 @@ class Molsys(object):
                     subZ[i] = tempZ[I]
                     subGeom[i, 0:3] = tempGeom[I, 0:3]
                     subMasses[i] = tempMasses[I]
-                newFragments.append(frag.Frag(subZ, subGeom, subMasses))
+                newFragments.append(Frag(subZ, subGeom, subMasses))
 
         del self._fragments[:]
         self._fragments = newFragments
@@ -566,6 +576,19 @@ class Molsys(object):
     # Supplements a connectivity matrix to connect all fragments.  Assumes the
     # definition of the fragments has ALREADY been determined before function called.
     def augment_connectivity_to_single_fragment(self, C):
+        """Take the current connectivity and add elements until a walk can be performed between
+        any two atoms
+
+        Parameters
+        ----------
+        C: np.ndarray
+            A previously determined connectivity
+
+        Returns
+        -------
+        scale_dist: float
+            The scalar of covalent radii required to achieve full connectivity
+        """
         logger.debug("\tAugmenting connectivity matrix to join fragments.")
         fragAtoms = []
         geom = self.geom
@@ -575,13 +598,14 @@ class Molsys(object):
         # Which fragments are connected?
         nF = self.nfragments
         if self.nfragments == 1:
-            return
+            return 1.3
 
         frag_connectivity = np.zeros((nF, nF), dtype=int)
         for iF in range(nF):
             frag_connectivity[iF, iF] = 1
 
         Z = self.Z
+        i, j = -1, -1
 
         scale_dist = 1.3
         all_connected = False
@@ -632,7 +656,7 @@ class Molsys(object):
             else:
                 scale_dist += 0.2
                 logger.info("\tIncreasing scaling to %6.3f to connect fragments." % scale_dist)
-        return
+        return scale_dist
 
     def distance_matrix(self):
         xyz = self.geom
@@ -717,7 +741,13 @@ class Molsys(object):
                 b_atom1 = self.frag_1st_atom(DI.B_idx)
                 a_xyz = self.frag_geom(DI.A_idx)
                 b_xyz = self.frag_geom(DI.B_idx)
-                DI.Bmat(a_xyz, b_xyz, B[self.dimerfrag_intco_slice(i)], 3 * a_atom1, 3 * b_atom1)  # column offsets
+                DI.Bmat(
+                    a_xyz,
+                    b_xyz,
+                    B[self.dimerfrag_intco_slice(i)],
+                    3 * a_atom1,
+                    3 * b_atom1,
+                )  # column offsets
 
         if massWeight:
             sqrtm = np.broadcast_to(np.repeat(np.sqrt(self.masses), 3), (n_int, n_cart))
@@ -743,7 +773,7 @@ class Molsys(object):
         B = self.Bmat(massWeight)
         return np.dot(B, B.T)
 
-    def gradient_to_internals(self, g_x, coeff=1.0, B=None, useMasses=False):
+    def gradient_to_internals(self, g_x, coeff=1.0, B=None, use_masses=False, threshold=1e-10):
         """Transform cartesian gradient to internals
         Parameters
         ----------
@@ -753,7 +783,7 @@ class Molsys(object):
             prefactor coefficient; -1 for forces
         B : np.ndarray, optional
             B matrix to use
-        useMasses : boolean
+        use_masses : boolean
             instead of identity, use u = 1/masses in transformation
 
         Returns
@@ -771,19 +801,19 @@ class Molsys(object):
         if B is None:
             B = self.Bmat()
 
-        if useMasses:
+        if use_masses:
             u = np.diag(np.repeat(1.0 / self.masses, 3))
-            G = np.dot(np.dot(B, u), B.T)
-            Ginv = symm_mat_inv(G, redundant=True)
-            g_q = coeff * np.dot(np.dot(np.dot(Ginv, B), u), g_x)
+            G = B @ u @ B.T
+            Ginv = symm_mat_inv(G, redundant=True, threshold=threshold)
+            g_q = coeff * Ginv @ B @ u @ g_x
         else:
-            G = np.dot(B, B.T)
-            Ginv = symm_mat_inv(G, redundant=True)
-            g_q = coeff * np.dot(np.dot(Ginv, B), g_x)
+            G = B @ B.T
+            Ginv = symm_mat_inv(G, redundant=True, threshold=threshold)
+            g_q = coeff * Ginv @ B @ g_x
 
         return g_q
 
-    def hessian_to_internals(self, H, g_x=None, useMasses=False):
+    def hessian_to_internals(self, H, g_x=None, use_masses=False):
         """converts the hessian from cartesian coordinates into internal coordinates
         Hq = A^t (Hxy - Kxy) A, where K_xy = sum_q ( grad_q[I] d^2(q_I)/(dx dy)
         and A = (BuB^t)^-1 Bu
@@ -808,7 +838,7 @@ class Molsys(object):
 
         B = self.Bmat()
 
-        if useMasses:
+        if use_masses:
             u = np.diag(np.repeat(1.0 / self.masses, 3))
             G = np.dot(np.dot(B, u), B.T)
             Ginv = symm_mat_inv(G, redundant=True)
@@ -819,12 +849,15 @@ class Molsys(object):
             Atranspose = np.dot(Ginv, B)
 
         Hworking = H.copy()
+
         if g_x is None:  # A^t Hxy A
-            logger.info("Neglecting force/B-matrix derivative term, only correct at stationary points.")
+            logger.info(
+                "Neglecting force/B-matrix derivative term, only correct at stationary points."
+            )
         else:  # A^t (Hxy - Kxy) A;    K_xy = sum_q ( grad_q[I] d^2(q_I)/(dx dy) )
             logger.info("Including force/B-matrix derivative term.\n")
 
-            g_q = self.gradient_to_internals(g_x, useMasses=useMasses)
+            g_q = self.gradient_to_internals(g_x, use_masses=use_masses)
 
             for iF, F in enumerate(self._fragments):
                 dq2dx2 = np.zeros((3 * F.natom, 3 * F.natom))
@@ -840,7 +873,9 @@ class Molsys(object):
                     # Loop over Cartesian pairs in fragment
                     for a in range(3 * F.natom):
                         for b in range(3 * F.natom):
-                            Hworking[cart_offset + a, cart_offset + b] -= g_q[intco_offset + iIntco] * dq2dx2[a, b]
+                            Hworking[cart_offset + a, cart_offset + b] -= (
+                                g_q[intco_offset + iIntco] * dq2dx2[a, b]
+                            )
 
             # TODO: dimer coordinates, akin to this
             if self._dimer_intcos:
@@ -859,11 +894,11 @@ class Molsys(object):
         Hq = np.dot(Atranspose, np.dot(Hworking, Atranspose.T))
         return Hq
 
-    def project_redundancies_and_constraints(self, fq, H, small_val_limit=1e-6):
+    def project_redundancies_and_constraints(self, fq, H, threshold=1e-8):
         """Project redundancies and constraints out of forces and Hessian"""
         # compute projection matrix = G G^-1
         G = self.Gmat()
-        G_inv = symm_mat_inv(G, redundant=True, small_val_limit=small_val_limit)
+        G_inv = symm_mat_inv(G, redundant=True, threshold=threshold)
         Pprime = G @ G_inv
         # Add constraints to projection matrix
         # fq is passed to Supplement matrix with ranged variables that are at their limit
@@ -872,7 +907,7 @@ class Molsys(object):
         if C is not None:
             logger.debug("Adding constraints for projection.\n" + print_mat_string(C))
             CPC = C @ Pprime @ C
-            CPCInv = symm_mat_inv(CPC, redundant=True, small_val_limit=small_val_limit)
+            CPCInv = symm_mat_inv(CPC, redundant=True, threshold=threshold)
             P = Pprime - Pprime @ C @ CPCInv @ C @ Pprime
         else:
             P = Pprime
@@ -942,6 +977,13 @@ class Molsys(object):
     def hessian_to_cartesians(self, Hint, g_q=None):
         logger.info("Converting Hessian from internals to cartesians.\n")
 
+        for f in self.fragments:
+            for coord in f.intcos:
+                if isinstance(coord, Oofp):
+                    if g_q is not None:
+                        g_q = None
+                        break
+
         B = self.Bmat()
         # Hxy =  B^t Hij B
         Hxy = np.dot(B.T, np.dot(Hint, B))
@@ -966,7 +1008,9 @@ class Molsys(object):
                     # Loop over Cartesian pairs in fragment
                     for a in range(3 * F.natom):
                         for b in range(3 * F.natom):
-                            Hxy[cart_offset + a, cart_offset + b] += g_q[intco_offset + i_intco] * dq2dx2[a, b]
+                            Hxy[cart_offset + a, cart_offset + b] += (
+                                g_q[intco_offset + i_intco] * dq2dx2[a, b]
+                            )
 
             # TODO: dimer coordinates
             if self._dimer_intcos:
@@ -1004,7 +1048,7 @@ class Molsys(object):
         natom = self.natom
         nintco = self.num_intcos
         DISP_SIZE = 0.01
-        MAX_ERROR = 50 * DISP_SIZE ** 4
+        MAX_ERROR = 50 * DISP_SIZE**4
 
         logger.info("\tTesting B-matrix numerically...")
 
@@ -1043,9 +1087,9 @@ class Molsys(object):
                 B_fd[:, 3 * atom + xyz] = (q_m2 - 8 * q_m + 8 * q_p - q_p2) / (12.0 * DISP_SIZE)
 
         logger.debug(
-            "Numerical B matrix in au, DISP_SIZE = %lf\n%s" ,
+            "Numerical B matrix in au, DISP_SIZE = %lf\n%s",
             DISP_SIZE,
-            print_mat_string(B_fd)
+            print_mat_string(B_fd),
         )
 
         self.geom = geom_orig  # restore original
@@ -1063,7 +1107,10 @@ class Molsys(object):
         max_error_intco = max_index[0]
         max_error = B_delta[max_index]
 
-        logger.info("\t\tMaximum difference is %.1e for internal coordinate %d." % (max_error, max_error_intco + 1))
+        logger.info(
+            "\t\tMaximum difference is %.1e for internal coordinate %d."
+            % (max_error, max_error_intco + 1)
+        )
         # logger.info("\t\tThis coordinate is %s" % str(intcos[max_error_intco]))
 
         if max_error > MAX_ERROR:
@@ -1116,12 +1163,13 @@ class Molsys(object):
                 dq2dx2_analytic.fill(0)
                 intco.Dq2Dx2(coord, dq2dx2_analytic)
 
-                logger.info("Analytic B' (Dq2Dx2) matrix in au\n" + print_mat_string(dq2dx2_analytic))
+                logger.info(
+                    "Analytic B' (Dq2Dx2) matrix in au\n" + print_mat_string(dq2dx2_analytic)
+                )
 
                 # compute B' matrix from B matrices
                 for atom_a in range(natom):
                     for xyz_a in range(3):
-
                         coord[atom_a, xyz_a] += DISP_SIZE
                         B_p = intcosMisc.Bmat(F.intcos, coord)
 

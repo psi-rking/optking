@@ -63,7 +63,6 @@ class LineSearch(OptimizationInterface):
         self.print_lvl = params.print_lvl
 
     def to_dict(self):
-
         return {
             "linesearch_max_iter": self.linesearch_max_iter,
             "linesearch_start": self.linesearch_start,
@@ -80,7 +79,6 @@ class LineSearch(OptimizationInterface):
 
     @classmethod
     def from_dict(cls, d, molsys, history, params):
-
         linesearch = cls(molsys, history, params)
         linesearch.linesearch_max_iter = d["linesearch_max_iter"]
         linesearch.linesearch_start = d["linesearch_start"]
@@ -122,7 +120,6 @@ class LineSearch(OptimizationInterface):
         pass
 
     def take_step(self, fq=None, H=None, energy=None, return_str=False, **kwargs):
-
         if self.linesearch_steps < 10:
             dq, self.step_size = self.step(fq, energy, **kwargs)
             self.linesearch_steps += 1
@@ -137,11 +134,7 @@ class LineSearch(OptimizationInterface):
 
         self.molsys.interfrag_dq_discontinuity_correction(dq)
         achieved_dq, achieved_dx, return_str = displace_molsys(
-            self.molsys,
-            dq,
-            fq,
-            return_str=True,
-            print_lvl=self.print_lvl
+            self.molsys, dq, fq, return_str=True, print_lvl=self.print_lvl
         )
         achieved_dq_norm = np.linalg.norm(achieved_dq)
         logger.info("\tNorm of achieved step-size %15.10f" % achieved_dq_norm)
@@ -208,7 +201,9 @@ class ThreePointEnergy(LineSearch):
 
         distance = self.compute_distance()
         logger.debug("Adding new step at distance %s", distance)
-        new_step = LineSearchStep(self.molsys.geom, energy, fq, distance, next_pt_dist=self.step_size)
+        new_step = LineSearchStep(
+            self.molsys.geom, energy, fq, distance, next_pt_dist=self.step_size
+        )
         self.linesearch_history.steps.append(new_step)
 
         if self.linesearch_steps < self.points_needed:

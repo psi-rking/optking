@@ -10,15 +10,17 @@ See Also
 :py:class:`stepalgorithms.OptimizationInterface`
 """
 
+import copy
 import logging
 import pathlib
+import os
 from typing import Union
 
 import numpy as np
 from optking.compute_wrappers import ComputeWrapper
 from optking.molsys import Molsys
 
-from . import IRCfollowing, addIntcos, hessian, history, intcosMisc
+from . import IRCfollowing, addIntcos, hessian, history, intcosMisc, misc
 from . import stepAlgorithms
 from . import testB, linesearch
 from .exceptions import AlgError, OptError
@@ -73,7 +75,8 @@ def optimize(o_molsys, computer):
                 if isinstance(H, int) or isinstance(fq, int):
                     raise OptError("Failed to compute Hessian and Forces")
                 opt_object.alg_error_handler(H, fq, AF)
-                H = opt_object.H
+                if opt_object.erase_hessian == "stashed":
+                    H = opt_object.H
         qc_output = opt_object.finish(error=None)
         return qc_output
 
@@ -101,7 +104,13 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
 
     _LINESEARCHES = {"ENERGY": linesearch.ThreePointEnergy}
 
-    def __init__(self, molsys: Molsys, history_object: history.History, params: op.OptParams, computer: ComputeWrapper):
+    def __init__(
+        self,
+        molsys: Molsys,
+        history_object: history.History,
+        params: op.OptParams,
+        computer: ComputeWrapper,
+    ):
         super().__init__(molsys, history_object, params)
         self.direction: Union[np.ndarray, None] = None
 
@@ -113,15 +122,20 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         self.stashed_hessian = None
 
         if params.linesearch:
-            self.linesearch_method = OptimizationManager._LINESEARCHES["ENERGY"](molsys, self.history, params)
+            self.linesearch_method = OptimizationManager._LINESEARCHES["ENERGY"](
+                molsys, self.history, params
+            )
             self.opt_method.trust_radius_on = False
         self.requires = self.update_requirements()
         self.current_requirements = self.update_requirements()
         self.params = params
-        self.erase_hessian = False
+        self.erase_hessian = ""
         self.check_linesearch = True
         self.error = None
-        self.protocol = {"protocol": None, "step_number": -100} # Just a number that will never occur naturally
+        self.protocol = {
+            "protocol": None,
+            "step_number": -100,
+        }  # Just a number that will never occur naturally
 
     def to_dict(self):
         """Convert attributes to serializable form."""
@@ -212,7 +226,15 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         requirements = self.opt_method.requires()
         hessian_protocol = self.get_hessian_protocol(self.step_number)
         protocol = hessian_protocol["protocol"]
-        H, g_q, g_x, E = get_pes_info(H, self.computer, self.molsys, self.history, self.params, protocol, requirements)
+        H, g_q, g_x, E = get_pes_info(
+            H,
+            self.computer,
+            self.molsys,
+            self.history,
+            self.params,
+            protocol,
+            requirements,
+        )
 
         logger.info("%s", print_geom_grad(self.molsys.geom, g_x))
 
@@ -252,15 +274,24 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
                 self.linesearch_method.start(self.direction)
 
                 if self.check_linesearch:
-                    self.history.append(self.molsys.geom, energy, fq, self.molsys.gradient_to_cartesians(-1 * fq))
+                    self.history.append(
+                        self.molsys.geom,
+                        energy,
+                        fq,
+                        self.molsys.gradient_to_cartesians(-1 * fq),
+                    )
                     ls_energy = self.linesearch_method.expected_energy
-                    dq_norm, unit_dq, grad, hess = self.opt_method.step_metrics(self.direction, fq, H)
+                    dq_norm, unit_dq, grad, hess = self.opt_method.step_metrics(
+                        self.direction, fq, H
+                    )
                     self.history.append_record(ls_energy, self.direction, unit_dq, grad, hess)
 
                 self.stashed_hessian = H
                 self.check_linesearch = False
 
-            achieved_dq, returned_str = self.linesearch_method.take_step(fq, H, energy, return_str=True)
+            achieved_dq, returned_str = self.linesearch_method.take_step(
+                fq, H, energy, return_str=True
+            )
 
             if self.linesearch_method.minimized:
                 logger.info("Linesearch complete. Next step will compute a new direction")
@@ -286,7 +317,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         else:
             return self.linesearch_method.requires()
 
-    def converged(self, E, fq, dq, step_number=None, str_mode=None):
+    def converged(self, E, fq, dq, step_number=None, str_mode=None, **kwargs):
         """Test whether the optimization has finished. An optimization can only be declared converged
         If a gradient has been provided (linesearching cannot terminate an optimization)"""
 
@@ -294,7 +325,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
             step_number = self.step_number
         converged = False
         if not self.linesearch_method or self.check_linesearch:
-            converged = self.opt_method.converged(dq, fq, step_number, str_mode=str_mode)
+            converged = self.opt_method.converged(dq, fq, step_number, str_mode=str_mode, **kwargs)
             if str_mode:
                 return converged
             if converged is True:
@@ -314,7 +345,8 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         # Hard quit if too many total steps taken (inc. all IRC points and algorithms).
         if iterations >= self.params.geom_maxiter:
             logger.error(
-                "\tTotal number of steps (%d) exceeds maximum allowed (%d).\n" % (iterations, self.params.geom_maxiter)
+                "\tTotal number of steps (%d) exceeds maximum allowed (%d).\n"
+                % (iterations, self.params.geom_maxiter)
             )
             raise OptError(
                 "Maximum number of steps exceeded: {}.".format(self.params.geom_maxiter),
@@ -346,11 +378,16 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
             self.protocol.update({"protocol": "unneeded"})
             return self.protocol
 
-        if self.erase_hessian is True:
-            self.erase_hessian = False
-            action = "compute" if self.params.full_hess_every > 0 else "update"
-            self.protocol.update({"protocol": action}) 
-            return self.protocol
+        if self.erase_hessian:
+            if self.erase_hessian == "erased":
+                self.erase_hessian = ""
+                action = "compute" if self.params.full_hess_every > 0 else "guess"
+                self.protocol.update({"protocol": action})
+                return self.protocol
+            elif self.erase_hessian == "stashed":
+                self.erase_hessian = ""
+                self.protocol.update({"protocol": "unneeded"})
+                return self.protocol
 
         if self.params.cart_hess_read:
             self.protocol.update({"protocol": "compute"})
@@ -364,7 +401,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
                     action = "guess"
             else:
                 # IRC
-                if self.opt_method.sub_step_number == 0:
+                if self.opt_method.sub_step_number == -1:  # sub_step_number starts at -1 not 0
                     action = "compute"
                 else:
                     action = "update"
@@ -393,7 +430,12 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         logger.error(" Caught AlgError exception\n")
         eraseIntcos = False
 
-        if error.linear_bends or error.linear_torsions or error.oofp_failures:
+        if error.back_transformation:
+            logger.info("Resetting optimization after critical back-transformation failure")
+            eraseIntcos  = True
+            eraseHistory = True
+
+        elif error.linear_bends:
             # New linear bends detected; Add them, and continue at current level.
             # from . import bend # import not currently being used according to IDE
 
@@ -402,38 +444,58 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
             gx = self.molsys.gradient_to_cartesians(-1 * fq)
 
             # This takes a more heavy handed approach:
-            # Collect all the bends involved in our problematic coordinates
-            # Then remove all the bends involved in these problematic coordinates as well as the oofps and
-            # torsions. Rely on the add_intcos routine to judge which coordinates should be added back
-            bends = [bend for dihedral in error.linear_torsions for bend in dihedral.bends]
-            bends += [bend for oofp in error.oofp_failures for bend in oofp.bends]
-            bends += error.linear_bends
+            # Collect all the bends involved in our problematic coordinates (oofp or dihedral)
+            # Then remove all the bends involved in these coordinates as well as the
+            # oofps and torsions themselves.
+            # bends = [bend for dihedral in error.linear_torsions for bend in dihedral.bends]
+            # bends += [bend for oofp in error.oofp_failures for bend in oofp.bends]
+            # The algerror includes bends to remove and bends to add seperately
+            # bends += error.old_bends
 
-            logger.info(f"Current bends considered for removal: {bends}")
+            logger.info(
+                f"Current bends considered for removal: {[str(bend) for bend in error.old_bends]}"
+            )
 
             affected_frags = []
-            for bend in bends:
-                if bend.bend_type != "COMPLEMENT":  # no need to repeat this code for "COMPLEMENT"
+            for bend in error.old_bends:
+                # no need to repeat this code for "COMPLEMENT". Bend already removed for LINEAR
+                # Needed to ensure that bends that become zero get removed and Don't get accidently
+                # readded when they're not quite linear, but will be on the next step.
+                if bend.bend_type != "COMPLEMENT":
                     iF = addIntcos.check_fragment(bend.atoms, self.molsys)
                     F = self.molsys.fragments[iF]
                     affected_frags.append(F)
                     intcosMisc.remove_old_now_linear_bend(bend.atoms, F.intcos)
 
-            # problematic coordinates are now all removed. Add new coordinates
+            # Add the new linear bends if not already added (here its easy to know which bends
+            # need to be added back)
+            for bend in error.linear_bends:
+                iF = addIntcos.check_fragment(bend.atoms, self.molsys)
+                F = self.molsys.fragments[iF]
+                if bend not in F.intcos:
+                    F.intcos.append(bend)
+
+            # problematic coordinates are now all removed. linear bends should be taken care of.
+            # add bends and any appropriate four index coordinates  to complete coord set.
             for frag in set(affected_frags):
-                frag.add_intcos_from_connectivity()
+                frag.add_intcos_from_connectivity(ignore_coords=error.old_bends)
+
             eraseHistory = True
 
             # Convert the Hessian back into the new coordinate system
             self.H = self.molsys.hessian_to_internals(Hx, gx)
-
+            self.erase_hessian = "stashed"
         elif self.params.dynamic_level == self.params.dynamic_lvl_max:
-            logger.critical("\n\t Current algorithm/dynamic_level is %d.\n" % self.params.dynamic_level)
+            logger.critical(
+                "\n\t Current algorithm/dynamic_level is %d.\n" % self.params.dynamic_level
+            )
             logger.critical("\n\t Alternative approaches are not available or turned on.\n")
             raise OptError("Maximum dynamic_level reached.")
         else:
             self.params.dynamic_level += 1
-            logger.warning("\n\t Increasing dynamic_level algorithm to %d.\n" % self.params.dynamic_level)
+            logger.warning(
+                "\n\t Increasing dynamic_level algorithm to %d.\n" % self.params.dynamic_level
+            )
             logger.warning("\n\t Erasing old history, hessian, intcos.\n")
             eraseIntcos = True
             eraseHistory = True
@@ -446,14 +508,20 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
             for f in self.molsys.fragments:
                 del f.intcos[:]
             self.molsys._dimer_intcos = []
+            self.erase_hessian = "erased"
 
         if eraseHistory:
             logger.warning(" Erasing history.\n")
             self.clear()
-            self.erase_hessian = True
+            # If a method needs to erase the hessian. erase all intcos and start over
+
+            if isinstance(self.opt_method, IRCfollowing.IntrinsicReactionCoordinate):
+                self.opt_method.irc_history.recompute_all_internals(self.molsys)
+                # prevent overcounting steps that couldn't be completed
+                self.opt_method.irc_step_number -= 1
 
         self.error = "AlgError"
-    
+
     def opt_error_handler(self, error):
         """OptError indicates an unrecoverable error. Print information and trigger cleanup."""
         logger.critical("\tA critical optimization-specific error has occured.")
@@ -473,8 +541,10 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         return self._exception_cleanup(error)
 
     def _exception_cleanup(self, error):
-
-        logger.info("\tDumping history: Warning last point not converged.\n" + self.history.summary_string())
+        logger.info(
+            "\tDumping history: Warning last point not converged.\n %s",
+            self.history.summary_string(),
+        )
 
         if self.params.opt_type == "IRC":
             logging.debug("\tDumping IRC points completed")
@@ -484,7 +554,6 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         return self.finish(error)
 
     def finish(self, error=None):
-
         rxnpath = None
         if self.params.opt_type == "IRC":
             self.opt_method.irc_history.progress_report()
@@ -494,6 +563,13 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
 
         qc_output = prepare_opt_output(self.molsys, self.computer, rxnpath=rxnpath, error=error)
         self.clear()
+
+        if self.params.write_trajectory:
+            if self.params.opt_type == "IRC":
+                misc.write_irc_xyz_trajectory(qc_output)
+            else:
+                misc.write_opt_xyz_trajectory(qc_output)
+
         return qc_output
 
 
@@ -556,7 +632,7 @@ def get_pes_info(
     Notes
     -----
     Some functionality from start_step has now been placed here. external forces are added into the forces.
-    Redundancies and constraints are projected out of the forces and hessian. 
+    Redundancies and constraints are projected out of the forces and hessian.
 
     """
 
@@ -567,7 +643,7 @@ def get_pes_info(
 
     if hessian_protocol == "update":
         # For update. Compute new gradient. Update with external forces if present. Update the hessian
-        logger.info(f"Updating Hessian with {str(params.hess_update)}")
+        logger.debug(f"Updating Hessian with {str(params.hess_update)}")
         result = computer.compute(o_molsys.geom, driver=driver, return_full=False)
         g_x = np.asarray(result) if driver == "gradient" else None
         f_q = o_molsys.gradient_to_internals(g_x, -1.0)
@@ -575,17 +651,18 @@ def get_pes_info(
         H = opt_history.hessian_update(H, f_q, o_molsys)
     else:
         if hessian_protocol == "compute" and not params.cart_hess_read:
+            logger.debug("Computing Hessian")
             H, g_x = get_hess_grad(computer, o_molsys)  # get gradient from hessian
 
         elif hessian_protocol in ["guess", "unneeded"]:
             # guess hessian compute gradient
-            logger.info(f"Guessing Hessian with {str(params.intrafrag_hess)}")
+            logger.debug(f"Guessing Hessian with {str(params.intrafrag_hess)}")
             H = hessian.guess(o_molsys, guessType=params.intrafrag_hess)
             result = computer.compute(o_molsys.geom, driver=driver, return_full=False)
             g_x = np.asarray(result) if driver == "gradient" else None
         elif params.cart_hess_read:
             # read hessian from file. calculate gradient. Update params to not read from disk again
-            logger.info("Reading hessian from file")
+            logger.debug("Reading hessian from file")
             result = computer.compute(o_molsys.geom, driver=driver, return_full=False)
             g_x = np.asarray(result) if driver == "gradient" else None
             Hx = hessian.from_file(params.hessian_file)
@@ -665,7 +742,9 @@ def make_internal_coords(o_molsys: Molsys, params: op.OptParams):
     logger.debug("\t Adding internal coordinates to molecular system")
 
     # Use covalent radii to determine bond connectivity.
-    connectivity = addIntcos.connectivity_from_distances(o_molsys.geom, o_molsys.Z)
+    connectivity = addIntcos.connectivity_from_distances(
+        o_molsys.geom, o_molsys.Z, params.covalent_connect
+    )
     logger.debug("Connectivity Matrix\n" + print_mat_string(connectivity))
 
     if params.frag_mode == "SINGLE":
@@ -723,7 +802,7 @@ def make_internal_coords(o_molsys: Molsys, params: op.OptParams):
     return
 
 
-def prepare_opt_output(o_molsys, computer, rxnpath=False, error=None):
+def prepare_opt_output(o_molsys, computer, rxnpath=[], error=None):
     logger.info("Preparing OptimizationResult")
     # Get molecule from most recent step. Add provenance and fill in non-required fills.
     # Turn back to dict
@@ -739,12 +818,36 @@ def prepare_opt_output(o_molsys, computer, rxnpath=False, error=None):
         "success": True,
     }
 
-    if error:
-        qc_output.update({"success": False, "error": {"error_type": type(error), "error_message": str(error)}})
+    if isinstance(error, OptError):
+        qc_output.update(
+            {
+                "success": False,
+                "error": {"error_type": error.err_type, "error_message": error.mesg},
+            }
+        )
+    elif error:
+        qc_output.update(
+            {
+                "success": False,
+                "error": {"error_type": str(type(error)), "error_message": str(error)}
+            }
+        )
 
     if rxnpath:
         qc_output["extras"]["irc_rxn_path"] = rxnpath
-        qc_output["final_geometry"] = rxnpath[-2]["x"]
-        qc_output["extras"]["final_irc_energy"] = rxnpath[-2]["energy"]
+        if rxnpath[-2]:
+            qc_output["final_geometry"] = rxnpath[-2]["x"]
+            qc_output["extras"]["final_irc_energy"] = rxnpath[-2]["energy"]
+        else:
+            qc_output.update({
+                "success": False,
+                "error": {
+                    "error_type": "OptError",
+                    "error": """IRC calculation has terminated before taking a single step. Please
+                        ensure that the starting point is a transition state at the level of theory
+                        being utilized. If issues continue, decrease ``irc_convergence`` and/or
+                        ``irc_step_size``"""}
+                }
+            )
 
     return qc_output

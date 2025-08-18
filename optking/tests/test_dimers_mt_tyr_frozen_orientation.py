@@ -6,51 +6,54 @@ import optking
 
 # import numpy as np
 import pytest
+
 # import qcelemental as qcel
 # import qcengine as qcng
 from qcengine.testing import has_program
+
 
 @pytest.mark.long
 @pytest.mark.dimers
 @pytest.mark.dftd3
 @pytest.mark.skipif(
     (has_program("dftd3") or has_program("s-dftd3")) is False,
-    reason="Neither DFTD3 nor s-DFTD3 is findable"
+    reason="Neither DFTD3 nor s-DFTD3 is findable",
 )
 def test_dimers_mt_tyr_frozen_orientation():
     # Starting at R ~ 5 Angstroms
+    # To shorten this test the geometry of the second fragment has been preoptimized
     init_xyz = """
-     C       -1.258686      0.546935      0.436840
-     H       -0.683650      1.200389      1.102833
-     C       -0.699036     -0.349093     -0.396608
-     C       -2.693370      0.550414      0.355311
-     H       -3.336987      1.206824      0.952052
-     C       -3.159324     -0.343127     -0.536418
-     H       -4.199699     -0.558111     -0.805894
-     S       -1.883829     -1.212288     -1.301525
-     C        0.786082     -0.656530     -0.606057
-     H        1.387673     -0.016033      0.048976
-     H        1.054892     -0.465272     -1.651226
-     H        0.978834     -1.708370     -0.365860
-     --
-     C       -6.955593     -0.119764     -1.395442
-     C       -6.977905     -0.135060      1.376787
-     C       -7.111625      1.067403     -0.697024
-     C       -6.810717     -1.314577     -0.707746
-     C       -6.821873     -1.322226      0.678369
-     C       -7.122781      1.059754      0.689090
-     H       -7.226173      2.012097     -1.240759
-     H       -6.687348     -2.253224     -1.259958
-     H       -6.707325     -2.266920      1.222105
-     H       -7.246150      1.998400      1.241304
-     O       -6.944245     -0.111984     -2.805375
-     H       -7.058224      0.807436     -3.049180
-     C       -6.990227     -0.143507      2.907714
-     H       -8.018305     -0.274985      3.264065
-     H       -6.592753      0.807024      3.281508
-     H       -6.368443     -0.968607      3.273516
-     nocom
-     unit angstrom
+        C       -1.258686      0.546935      0.436840
+        H       -0.683650      1.200389      1.102833
+        C       -0.699036     -0.349093     -0.396608
+        C       -2.693370      0.550414      0.355311
+        H       -3.336987      1.206824      0.952052
+        C       -3.159324     -0.343127     -0.536418
+        H       -4.199699     -0.558111     -0.805894
+        S       -1.883829     -1.212288     -1.301525
+        C        0.786082     -0.656530     -0.606057
+        H        1.387673     -0.016033      0.048976
+        H        1.054892     -0.465272     -1.651226
+        H        0.978834     -1.708370     -0.365860
+        --
+        C       -6.562836      0.088927     -1.511277
+        C       -6.594269      0.025253      1.308215
+        C       -6.676671      1.271056     -0.779037
+        C       -6.505626     -1.131881     -0.829734
+        C       -6.520887     -1.158260      0.559346
+        C       -6.682066      1.235842      0.615561
+        H       -6.740534      2.224314     -1.293107
+        H       -6.436728     -2.040745     -1.412676
+        H       -6.459292     -2.110657      1.073787
+        H       -6.755418      2.164270      1.170820
+        O       -6.515574      0.041680     -2.895823
+        H       -6.529678      0.962018     -3.265664
+        C       -6.546283     -0.014213      2.822460
+        H       -7.184314     -0.813172      3.215202
+        H       -6.883394      0.935506      3.248925
+        H       -5.521759     -0.199035      3.169367
+        nocom
+        unit angstrom
     """
     # Note that nocom is needed so psi4 does not move the fragment COM's.
 
@@ -107,11 +110,11 @@ def test_dimers_mt_tyr_frozen_orientation():
     # Optimize fragments and R but not interfragment angular coordinates.
     # psi4.set_options({"d_convergence": 9, "basis": "6-31G(d)", "interfrag_coords": str(MTdimer)})
     # result = optking.optimize_psi4("b3lyp-d3mbj")
-    psi4.set_options({"d_convergence": 9, "basis": "6-31G(d)"})
-    result = optking.optimize_psi4("b3lyp-d3mbj", **{"interfrag_coords": str(MTdimer)})
+    psi4.set_options({"d_convergence": 9, "basis": "3-21G"})
+    E = psi4.optimize("b3lyp-d3mbj", optimizer_keywords={"interfrag_coords": str(MTdimer)})
+    # result = optking.optimize_psi4("b3lyp-d3mbj", **{"interfrag_coords": str(MTdimer)})
+    # E = result["energies"][-1]
 
-    E = result["energies"][-1]
-
-    REF_631Gd_Energy = -939.169521
-    # REF_321G_Energy = -934.237170
-    assert psi4.compare_values(REF_631Gd_Energy, E, 4, "B3LYP-D3MBJ energy")  # TEST
+    # REF_631Gd_Energy = -939.169521
+    REF_321G_Energy = -934.237170
+    assert psi4.compare_values(REF_321G_Energy, E, 4, "B3LYP-D3MBJ energy")  # TEST

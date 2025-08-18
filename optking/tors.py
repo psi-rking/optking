@@ -49,7 +49,6 @@ class Tors(Simple):
         range_max=None,
         ext_force=None,
     ):
-
         if a < d:
             atoms = (a, b, c, d)
         else:
@@ -73,7 +72,9 @@ class Tors(Simple):
 
         s += "(%d,%d,%d,%d)" % (self.A + 1, self.B + 1, self.C + 1, self.D + 1)
         if self.ranged:
-            s += "[{:.2f},{:.2f}]".format(self.range_min * self.q_show_factor, self.range_max * self.q_show_factor)
+            s += "[{:.2f},{:.2f}]".format(
+                self.range_min * self.q_show_factor, self.range_max * self.q_show_factor
+            )
         return s
 
     def __eq__(self, other):
@@ -157,9 +158,19 @@ class Tors(Simple):
     # compute angle and return value in radians
     def q(self, geom):
         try:
-            tau = v3d.tors(geom[self.A], geom[self.B], geom[self.C], geom[self.D])
+            tau = v3d.tors(geom[self.A], geom[self.B], geom[self.C], geom[self.D], self.atoms)
         except AlgError as error:
-            raise AlgError("Tors.q: unable to compute torsion value", new_linear_torsion=[self]) from error
+            # Turn the indices from v3d tors into real bends
+            old_bends = [bend.Bend(*atoms) for atoms in error.old_bends]
+            linear_bends = [bend.Bend(*atoms, bend_type='LINEAR') for atoms in error.linear_bends]
+            linear_bends += [
+                bend.Bend(*atoms, bend_type='COMPLEMENT') for atoms in error.linear_bends
+            ]
+            raise AlgError(
+                "Tors.q: unable to compute torsion value",
+                old_bends=old_bends,
+                new_linear_bends=linear_bends
+            ) from error
 
         # Extend values domain of torsion angles beyond pi or -pi, so that
         # delta(values) can be calculated
@@ -274,9 +285,17 @@ class Tors(Simple):
                                 / (Lv * Lv * sinv4)
                             )
 
-                        if (a == 1 and b == 1) or (a == 2 and b == 1) or (a == 2 and b == 0) or (a == 1 and b == 0):
+                        if (
+                            (a == 1 and b == 1)
+                            or (a == 2 and b == 1)
+                            or (a == 2 and b == 0)
+                            or (a == 1 and b == 0)
+                        ):
                             tval += (
-                                (Tors.zeta(a, 0, 1) * Tors.zeta(b, 1, 2) + Tors.zeta(a, 2, 1) * Tors.zeta(b, 1, 0))
+                                (
+                                    Tors.zeta(a, 0, 1) * Tors.zeta(b, 1, 2)
+                                    + Tors.zeta(a, 2, 1) * Tors.zeta(b, 1, 0)
+                                )
                                 * (
                                     uXw[i] * (w[j] - 2 * u[j] * cos_u + w[j] * cos_u * cos_u)
                                     + uXw[j] * (w[i] - 2 * u[i] * cos_u + w[i] * cos_u * cos_u)
@@ -284,9 +303,17 @@ class Tors(Simple):
                                 / (2 * Lu * Lw * sinu4)
                             )
 
-                        if (a == 3 and b == 2) or (a == 3 and b == 1) or (a == 2 and b == 2) or (a == 2 and b == 1):
+                        if (
+                            (a == 3 and b == 2)
+                            or (a == 3 and b == 1)
+                            or (a == 2 and b == 2)
+                            or (a == 2 and b == 1)
+                        ):
                             tval += (
-                                (Tors.zeta(a, 3, 2) * Tors.zeta(b, 2, 1) + Tors.zeta(a, 1, 2) * Tors.zeta(b, 2, 3))
+                                (
+                                    Tors.zeta(a, 3, 2) * Tors.zeta(b, 2, 1)
+                                    + Tors.zeta(a, 1, 2) * Tors.zeta(b, 2, 3)
+                                )
                                 * (
                                     vXw[i] * (w[j] + 2 * v[j] * cos_v + w[j] * cos_v * cos_v)
                                     + vXw[j] * (w[i] + 2 * v[i] * cos_v + w[i] * cos_v * cos_v)
@@ -299,8 +326,20 @@ class Tors(Simple):
                                 Tors.zeta(a, 1, 2)
                                 * Tors.zeta(b, 2, 1)
                                 * (
-                                    uXw[i] * (u[j] + u[j] * cos_u * cos_u - 3 * w[j] * cos_u + w[j] * cosu3)
-                                    + uXw[j] * (u[i] + u[i] * cos_u * cos_u - 3 * w[i] * cos_u + w[i] * cosu3)
+                                    uXw[i]
+                                    * (
+                                        u[j]
+                                        + u[j] * cos_u * cos_u
+                                        - 3 * w[j] * cos_u
+                                        + w[j] * cosu3
+                                    )
+                                    + uXw[j]
+                                    * (
+                                        u[i]
+                                        + u[i] * cos_u * cos_u
+                                        - 3 * w[i] * cos_u
+                                        + w[i] * cosu3
+                                    )
                                 )
                                 / (2 * Lw * Lw * sinu4)
                             )
@@ -310,8 +349,20 @@ class Tors(Simple):
                                 Tors.zeta(a, 2, 1)
                                 * Tors.zeta(b, 1, 2)
                                 * (
-                                    vXw[i] * (-v[j] - v[j] * cos_v * cos_v - 3 * w[j] * cos_v + w[j] * cosv3)
-                                    + vXw[j] * (-v[i] - v[i] * cos_v * cos_v - 3 * w[i] * cos_v + w[i] * cosv3)
+                                    vXw[i]
+                                    * (
+                                        -v[j]
+                                        - v[j] * cos_v * cos_v
+                                        - 3 * w[j] * cos_v
+                                        + w[j] * cosv3
+                                    )
+                                    + vXw[j]
+                                    * (
+                                        -v[i]
+                                        - v[i] * cos_v * cos_v
+                                        - 3 * w[i] * cos_v
+                                        + w[i] * cosv3
+                                    )
                                 )
                                 / (2 * Lw * Lw * sinv4)
                             )
@@ -335,7 +386,12 @@ class Tors(Simple):
                                     / (Lu * Lw * sin_u * sin_u)
                                 )
 
-                            if (a == 3 and b == 2) or (a == 3 and b == 1) or (a == 2 and b == 2) or (a == 2 and b == 1):
+                            if (
+                                (a == 3 and b == 2)
+                                or (a == 3 and b == 1)
+                                or (a == 2 and b == 2)
+                                or (a == 2 and b == 1)
+                            ):
                                 tval += (
                                     Tors.zeta(a, 3, 2)
                                     * Tors.zeta(b, 2, 1)
@@ -345,7 +401,12 @@ class Tors(Simple):
                                     / (Lv * Lw * sin_v * sin_v)
                                 )
 
-                            if (a == 2 and b == 1) or (a == 2 and b == 0) or (a == 1 and b == 1) or (a == 1 and b == 0):
+                            if (
+                                (a == 2 and b == 1)
+                                or (a == 2 and b == 0)
+                                or (a == 1 and b == 1)
+                                or (a == 1 and b == 0)
+                            ):
                                 tval += (
                                     Tors.zeta(a, 2, 1)
                                     * Tors.zeta(b, 1, 0)
@@ -365,9 +426,9 @@ class Tors(Simple):
                                     / (Lv * Lw * sin_v * sin_v)
                                 )
 
-                        dq2dx2[3 * self.atoms[a] + i][3 * self.atoms[b] + j] = dq2dx2[3 * self.atoms[b] + j][
-                            3 * self.atoms[a] + i
-                        ] = tval
+                        dq2dx2[3 * self.atoms[a] + i][3 * self.atoms[b] + j] = dq2dx2[
+                            3 * self.atoms[b] + j
+                        ][3 * self.atoms[a] + i] = tval
         return
 
     def diagonal_hessian_guess(self, geom, Z, connectivity, guess_type="SIMPLE"):
@@ -383,7 +444,9 @@ class Tors(Simple):
 
         elif guess_type == "SCHLEGEL":
             R_BC = v3d.dist(geom[self.B], geom[self.C])
-            Rcov = qcel.covalentradii.get(Z[self.B], missing=4.0) + qcel.covalentradii.get(Z[self.C], missing=4.0)
+            Rcov = qcel.covalentradii.get(Z[self.B], missing=4.0) + qcel.covalentradii.get(
+                Z[self.C], missing=4.0
+            )
             a = 0.0023
             b = 0.07
             if R_BC > (Rcov + a / b):
@@ -392,7 +455,9 @@ class Tors(Simple):
 
         elif guess_type == "FISCHER":
             R = v3d.dist(geom[self.B], geom[self.C])
-            Rcov = qcel.covalentradii.get(Z[self.B], missing=4.0) + qcel.covalentradii.get(Z[self.C], missing=4.0)
+            Rcov = qcel.covalentradii.get(Z[self.B], missing=4.0) + qcel.covalentradii.get(
+                Z[self.C], missing=4.0
+            )
             a = 0.0015
             b = 14.0
             c = 2.85
@@ -412,7 +477,6 @@ class Tors(Simple):
             return a + b * (np.power(L, d)) / (np.power(R * Rcov, e)) * (np.exp(-c * (R - Rcov)))
 
         elif guess_type == "LINDH_SIMPLE":
-
             R_AB = v3d.dist(geom[self.A], geom[self.B])
             R_BC = v3d.dist(geom[self.B], geom[self.C])
             R_CD = v3d.dist(geom[self.C], geom[self.D])

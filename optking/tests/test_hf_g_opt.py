@@ -1,5 +1,8 @@
 #! SCF STO-3G geometry optimzation, with Z-matrix input
+import os
+import pathlib
 import json
+import qcelemental as qcel
 import psi4
 import optking
 from .utils import utils
@@ -21,6 +24,7 @@ def test_hf_g_h2o(check_iter):
         "e_convergence": 10,
         "d_convergence": 10,
         "scf_type": "pk",
+        "print_trajectory_xyz_file": True,
     }
     psi4.set_options(psi4_options)
 
@@ -33,6 +37,25 @@ def test_hf_g_h2o(check_iter):
     assert psi4.compare_values(refnucenergy, nucenergy, 3, "Nuclear repulsion energy")  # TEST
     assert psi4.compare_values(refenergy, E, 6, "Reference energy")  # TEST
     utils.compare_iterations(json_output, 4, check_iter)
+
+    ##
+    # Test writing a trajectory file
+    ##
+    traj_file = pathlib.Path(f'opt_traj.{os.getpid()}.xyz')
+    assert traj_file.exists()
+
+    with traj_file.open() as f:
+        lines = f.readlines()
+    # Remove before assertions
+    os.system(f'rm {str(traj_file)}')
+
+    first = "".join(lines[:5])
+    last = "".join(lines[-5:])
+    first_mol = qcel.molparse.from_string(first, dtype='xyz')
+    last_mol = qcel.molparse.from_string(last, dtype='xyz')
+
+    assert first_mol.get('qm').get('elem').tolist() == ['O', 'H', 'H']
+    assert last_mol.get('qm').get('elem').tolist() == ['O', 'H', 'H']
 
 
 #! SCF cc-pVDZ geometry optimzation, Z-matrix input, tight convergence
@@ -93,7 +116,6 @@ def test_hf_g_h2o_large(check_iter):
 
 #! SCF cc-pVDZ geometry optimzation of ketene, starting from bent structure
 def test_hf_g_ketene(check_iter):
-
     ketene = psi4.geometry(
         """
         0 1
@@ -114,4 +136,4 @@ def test_hf_g_ketene(check_iter):
     E = result["energies"][-1]  # TEST
     REF_energy = -151.7410313803  # TEST
     assert psi4.compare_values(REF_energy, E, 8, "RHF energy")  # TEST
-    utils.compare_iterations(result, 8, check_iter)
+    utils.compare_iterations(result, 7, check_iter)

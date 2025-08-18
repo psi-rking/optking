@@ -89,7 +89,11 @@ def zmat_point(A, B, C, R_CD, theta_BCD, phi_ABCD):
 
     eY = v3d.cross(eAB, eBC) / sinABC
     eX = v3d.cross(eY, eBC)
-    D = C + R_CD * (-eBC * cos(theta_BCD) + eX * sin(theta_BCD) * cos(phi_ABCD) + eY * sin(theta_BCD) * sin(phi_ABCD))
+    D = C + R_CD * (
+        -eBC * cos(theta_BCD)
+        + eX * sin(theta_BCD) * cos(phi_ABCD)
+        + eY * sin(theta_BCD) * sin(phi_ABCD)
+    )
     return D
 
 

@@ -40,13 +40,13 @@ class Frag:
             self._intcos = intcos
 
     def __str__(self):
-
         np.set_printoptions(suppress=True, floatmode="fixed", sign=" ")
         s = f"\n\t {'Z (Atomic Numbers)':<20} {'Masses':^20} {'Geom':^40}"
 
         strip = lambda x: str(x).replace("[", "").replace("]", "")
         print_vals = [
-            f"\n\t {self._Z[i]: ^20f} {self._masses[i]:^20f} {strip(self._geom[i]):^40}" for i in range(self.natom)
+            f"\n\t {self._Z[i]: ^20f} {self._masses[i]:^20f} {strip(self._geom[i]):^40}"
+            for i in range(self.natom)
         ]
         s += "".join(print_vals)
 
@@ -149,15 +149,20 @@ class Frag:
         intcos_report += "\n"
         logger.info(intcos_report)
 
-    def connectivity_from_distances(self):
+    def connectivity_from_distances(self, covalent_connect=1.3):
         """Determine the connectivity of the fragment based on covalent radii and distance matrix"""
-        return addIntcos.connectivity_from_distances(self._geom, self._Z)
+        return addIntcos.connectivity_from_distances(self._geom, self._Z, covalent_connect)
 
-    def add_intcos_from_connectivity(self, connectivity=None):
+    def add_intcos_from_connectivity(self, connectivity=None, ignore_coords=[]):
         """Automatically add a set of internal coordinates to the fragment based on connectivity"""
         if connectivity is None:
             connectivity = self.connectivity_from_distances()
-        addIntcos.add_intcos_from_connectivity(connectivity, self._intcos, self._geom)
+        addIntcos.add_intcos_from_connectivity(
+            connectivity,
+            self._intcos,
+            self._geom,
+            ignore_coords=ignore_coords
+        )
         self.add_h_bonds()
 
     def add_auxiliary_bonds(self, connectivity=None):
@@ -246,7 +251,7 @@ class Frag:
             return True
         else:
             xyz = self.geom
-            for (i, j, k) in combinations(range(self.natom), r=3):
+            for i, j, k in combinations(range(self.natom), r=3):
                 if not are_collinear(xyz[i], xyz[j], xyz[k]):
                     return False
             return True

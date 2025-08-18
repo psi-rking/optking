@@ -1,10 +1,11 @@
 import logging
-from math import sqrt
+from typing import Tuple
 
 import numpy as np
 from numpy.linalg import LinAlgError
 
 from .exceptions import OptError
+from .printTools import print_array_string
 from . import log_name
 
 logger = logging.getLogger(f"{log_name}{__name__}")
@@ -24,7 +25,11 @@ def abs_min(V):
 
 
 def rms(V):
-    return np.sqrt(np.mean(V**2))
+    try:
+        return np.sqrt(np.mean(V**2))
+    except FloatingPointError as error:
+        print(V)
+        raise error
 
 
 def sign_of_double(d):
@@ -37,19 +42,19 @@ def sign_of_double(d):
 
 
 # Returns eigenvectors as rows?
-def symm_mat_eig(mat):
+def symm_mat_eig(mat) -> Tuple[np.ndarray, np.ndarray]:
     try:
         evals, evects = np.linalg.eigh(mat)
         if abs(min(evects[:, 0])) > abs(max(evects[:, 0])):
             evects[:, 0] *= -1.0
-    except:
+    except np.linalg.LinAlgError:
         raise OptError("symm_mat_eig: could not compute eigenvectors")
         # could be ALG_FAIL ?
     evects = evects.T
     return evals, evects
 
 
-def lowest_eigenvector_symm_mat(mat):
+def lowest_eigenvector_symm_mat(mat) -> np.ndarray:
     """Returns eigenvector with lowest eigenvalues; makes the largest
         magnitude element positive.
 
@@ -68,12 +73,12 @@ def lowest_eigenvector_symm_mat(mat):
         evals, evects = np.linalg.eigh(mat)
         if abs(min(evects[:, 0])) > abs(max(evects[:, 0])):
             evects[:, 0] *= -1.0
-    except:
+    except np.linalg.LinAlgError:
         raise OptError("symm_mat_eig: could not compute eigenvectors")
     return evects[:, 0]
 
 
-def asymm_mat_eig(mat):
+def asymm_mat_eig(mat) -> Tuple[np.ndarray, np.ndarray]:
     """Compute the eigenvalues and right eigenvectors of a square array.
     Wraps numpy.linalg.eig to sort eigenvalues, put eigenvectors in rows, and suppress complex.
 
@@ -95,7 +100,7 @@ def asymm_mat_eig(mat):
     """
     try:
         evals, evects = np.linalg.eig(mat)
-    except np.LinAlgError as e:
+    except np.linalg.LinAlgError as e:
         raise OptError("asymm_mat_eig: could not compute eigenvectors") from e
 
     idx = np.argsort(evals)
@@ -105,7 +110,7 @@ def asymm_mat_eig(mat):
     return evals.real, evects.real.T
 
 
-def symm_mat_inv(A, redundant=False, small_val_limit=1.0e-10):
+def symm_mat_inv(A, redundant=False, threshold=1.0e-8, print_lvl=1) -> np.ndarray:
     """
     Return the inverse of a real, symmetric matrix.
 
@@ -114,7 +119,7 @@ def symm_mat_inv(A, redundant=False, small_val_limit=1.0e-10):
     A : np.ndarray
     redundant : bool
         allow generalized inverse
-    smallValLimit : float
+    threshold : float
         specifies how small of singular values to invert
 
     Returns
@@ -129,20 +134,30 @@ def symm_mat_inv(A, redundant=False, small_val_limit=1.0e-10):
 
     try:
         if redundant:
+            try:
+                evals, evects = np.linalg.eigh(A)
+                if print_lvl > 1:
+                    logger.debug(
+                        "Eigenvalues for matrix to invert\n%s",
+                        print_array_string(evals, form=":10.2e")
+                    )
+            except LinAlgError:
+                raise OptError("symm_mat_inv: could not compute eigenvectors")
 
-            if logger.isEnabledFor(logging.DEBUG):
-                try:
-                    evals, evects = np.linalg.eigh(A)
-                except LinAlgError:
-                    raise OptError("symm_mat_inv: could not compute eigenvectors")
+            absEvals = np.abs(evals)
+            # numpy uses a relative size comparison anything less than rcond * largest val
+            # is zeroed out. Therefore larger values of rcond tighten the critera.
+            # We want a `threshold` (params.linear_algebra_tol) to tighten the criteria
+            # compute rcond such that any eigenvalues smaller than threshold are zeroed
+            rcond = threshold / np.max(absEvals)
 
-                absEvals = np.abs(evals)
-                threshold = small_val_limit * np.max(absEvals)
-                logger.debug("Singular | values | > %8.3e will be inverted." % threshold)
-                val = np.min(absEvals[absEvals > threshold])
-                logger.debug("Smallest inverted value is %8.3e." % val)
+            # logger.debug("Singular | values | > %8.3e will be inverted." % threshold)
+            val = np.min(absEvals[absEvals > threshold])
+            if val < 1e-6:
+                logger.warning("Inverting a small eigenvalue. System may include redundancies")
+                logger.warning("Smallest inverted value is %8.3e." % val)
 
-            return np.linalg.pinv(A, rcond=small_val_limit)
+            return np.linalg.pinv(A, rcond)
 
         else:
             return np.linalg.inv(A)
@@ -152,7 +167,7 @@ def symm_mat_inv(A, redundant=False, small_val_limit=1.0e-10):
         # could be LinAlgError?
 
 
-def symm_mat_root(A, Inverse=None):
+def symm_mat_root(A, inverse=None, threshold=1e-10) -> np.ndarray:
     """
     Compute A^(1/2) for a positive-definite matrix
 
@@ -174,17 +189,11 @@ def symm_mat_root(A, Inverse=None):
     except LinAlgError:
         raise OptError("symm_mat_root: could not compute eigenvectors")
 
-    evals[np.abs(evals) < 10 * np.finfo(float).resolution] = 0.0
-    evects[np.abs(evects) < 10 * np.finfo(float).resolution] = 0.0
+    evals[np.abs(evals) < 10 * threshold] = 0.0
+    evects[np.abs(evects) < 10 * threshold] = 0.0
 
-    rootMatrix = np.zeros((len(evals), len(evals)))
-    if Inverse:
-        for i in range(0, len(evals)):
-            evals[i] = 1 / evals[i]
+    if inverse:
+        evals = 1 / evals
 
-    for i in range(0, len(evals)):
-        rootMatrix[i][i] = sqrt(evals[i])
-
-    A = np.dot(evects, np.dot(rootMatrix, evects.T))
-
-    return A
+    root_matrix = np.diagflat(np.sqrt(evals))
+    return evects @ root_matrix @ evects.T

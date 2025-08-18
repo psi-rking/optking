@@ -1,7 +1,7 @@
 import json
 import logging
 from copy import deepcopy
-from itertools import combinations, permutations
+from itertools import combinations, permutations, zip_longest
 
 import numpy as np
 import qcelemental as qcel
@@ -20,7 +20,7 @@ from . import misc
 logger = logging.getLogger(f"{log_name}{__name__}")
 
 
-def connectivity_from_distances(geom, Z):
+def connectivity_from_distances(geom, Z, covalent_connect=1.3):
     """
     Creates a matrix (1 or 0) to describe molecular connectivity based on
     nuclear distances
@@ -30,6 +30,8 @@ def connectivity_from_distances(geom, Z):
         (nat, 3) cartesian geometry
     Z : list[int]
         (nat) list of atomic numbers
+    covalent_connect: float, optional
+        Scalar for  the sum of atomic covalent radii to determine bonding (default is 1.3)
 
     Returns
     -------
@@ -41,10 +43,12 @@ def connectivity_from_distances(geom, Z):
     C = np.zeros((len(geom), len(geom)), bool)
     for i, j in combinations(range(nat), 2):
         R = v3d.dist(geom[i], geom[j])
-        Rcov = qcel.covalentradii.get(Z[i], missing=4.0) + qcel.covalentradii.get(Z[j], missing=4.0)
-        #logger.debug("Checking atoms %d (Z=%d) and %d (Z=%d); R: %.3f; Rcov: %.3f; %s" %(i,
-        #             Z[i],j,Z[j],R,Rcov, 'Y' if (R<op.Params.covalent_connect*Rcov) else 'N'))
-        if R < op.Params.covalent_connect * Rcov:
+        Rcov = qcel.covalentradii.get(Z[i], missing=4.0) + qcel.covalentradii.get(
+            Z[j], missing=4.0
+        )
+        # logger.debug("Checking atoms %d (Z=%d) and %d (Z=%d); R: %.3f; Rcov: %.3f; %s" %(i,
+        #              Z[i],j,Z[j],R,Rcov, 'Y' if (R<op.Params.covalent_connect*Rcov) else 'N'))
+        if R < covalent_connect * Rcov:
             C[i, j] = C[j, i] = True
 
     return C
@@ -72,7 +76,7 @@ def add_auxiliary_bonds(connectivity, intcos, geom, Z):
     """
     radii = qcel.covalentradii  # these are in bohr
     Natom = len(geom)  # also in bohr
-    Nadded=0
+    Nadded = 0
 
     for a, b in combinations(range(Natom), 2):
         # No auxiliary bonds involving H atoms
@@ -88,35 +92,38 @@ def add_auxiliary_bonds(connectivity, intcos, geom, Z):
         omit = False
         # Omit auxiliary bonds between a and b, if a-c-b
         for c in range(Natom):
-            if c not in [a,b]:
+            if c not in [a, b]:
                 if connectivity[a][c] and connectivity[b][c]:
                     omit = True
                     break
-        if omit: continue
+        if omit:
+            continue
 
         # Omit auxiliary bonds between a and b, if a-c-d-b
         for c in range(Natom):
-            if c not in [a,b]:
+            if c not in [a, b]:
                 if connectivity[c][a]:
                     for d in range(Natom):
-                        if d not in [a,b,c]:
-                             if connectivity[d][c] and connectivity[d][b]:
-                                 omit = True
-                                 break
-                    if omit: break
-        if omit: continue
+                        if d not in [a, b, c]:
+                            if connectivity[d][c] and connectivity[d][b]:
+                                omit = True
+                                break
+                    if omit:
+                        break
+        if omit:
+            continue
 
         s = stre.Stre(a, b)
         if s not in intcos:
-            logger.info("Adding auxiliary bond %d - %d" % (a+1,b+1))
-            logger.info("Rcov = %10.5f; R = %10.5f; R/Rcov = %10.5f" % (Rcov, R, R/Rcov))
+            logger.info("Adding auxiliary bond %d - %d" % (a + 1, b + 1))
+            logger.info("Rcov = %10.5f; R = %10.5f; R/Rcov = %10.5f" % (Rcov, R, R / Rcov))
             intcos.append(s)
             Nadded += 1
 
     return Nadded
 
 
-def add_intcos_from_connectivity(C, intcos, geom):
+def add_intcos_from_connectivity(C, intcos, geom, ignore_coords=[]):
     """
     Calls add_x_FromConnectivity for each internal coordinate type
     Parameters
@@ -131,7 +138,7 @@ def add_intcos_from_connectivity(C, intcos, geom):
 
     """
     add_stre_from_connectivity(C, intcos)
-    add_bend_from_connectivity(C, intcos, geom)
+    add_bend_from_connectivity(C, intcos, geom, ignore_coords=ignore_coords)
     add_tors_from_connectivity(C, intcos, geom)
     if op.Params.include_oofp or check_if_oofp_needed(C, intcos, geom):
         add_oofp_from_connectivity(C, intcos, geom)
@@ -211,7 +218,7 @@ def add_h_bonds(geom, zs: list, num_atoms):
     return h_bonds
 
 
-def add_bend_from_connectivity(C, intcos, geom):
+def add_bend_from_connectivity(C, intcos, geom, ignore_coords=[]):
     """
     Adds Bends from connectivity
 
@@ -248,8 +255,9 @@ def add_bend_from_connectivity(C, intcos, geom):
                             if b2 not in intcos:
                                 intcos.append(b2)
                         else:
+                            b_linear = bend.Bend(i, j, k, bend_type="LINEAR")
                             b = bend.Bend(i, j, k)
-                            if b not in intcos:
+                            if b not in intcos and b not in ignore_coords and b_linear not in intcos:
                                 intcos.append(b)
     # return len(intcos) - Norig
 
@@ -279,7 +287,6 @@ def add_tors_from_connectivity(C, intcos, geom):
         if C[i, j]:
             for k in range(Natom):
                 if C[k, j] and k != i:
-
                     # ensure i-j-k is not collinear; that a regular such bend exists
                     b = bend.Bend(i, j, k)
                     if b not in intcos:
@@ -287,7 +294,6 @@ def add_tors_from_connectivity(C, intcos, geom):
 
                     for l in range(i + 1, Natom):
                         if C[l, k] and l != j:
-
                             # ensure j-k-l is not collinear
                             b = bend.Bend(j, k, l)
                             if b not in intcos:
@@ -313,7 +319,6 @@ def add_tors_from_connectivity(C, intcos, geom):
                     nbonds = sum(C[m])
 
                     if nbonds == 2:  # Nothing else is bonded to m
-
                         # look for an 'I' for I-J-[m]-k-L such that I-J-K is not collinear
                         J = j
                         i = 0
@@ -343,6 +348,7 @@ def add_tors_from_connectivity(C, intcos, geom):
                                                         geom[J],
                                                         geom[K],
                                                         geom[L],
+                                                        indices=[I, J, K, L]
                                                     )
                                                 except AlgError:
                                                     pass
@@ -362,9 +368,35 @@ def check_if_oofp_needed(C, intcos, geom):
     # This catches cases like BF3, and CH4.
     Natom = len(C)
     maxNneighbors = max([sum(C[i]) for i in range(Natom)])
+    # num_neighbors = sum([row for row in C])
+    # central_atoms = np.argwhere(num_neighbors > 2).flatten()
+    # central atoms that could take a oofp
+
+    # torsions_covered = True
+    # for atom in central_atoms:
+    #     atom_covered = False
+    #     for intco in intcos:
+    #         if isinstance(intco, tors.Tors):
+    #             if atom in intco.atoms[1:-1]:
+    #                 atom_covered = True
+
+    #     # A central atom is not covered by any torsions. Worrying unless there is a single
+    #     # central atom
+    #     if not atom_covered:
+    #         torsions_covered = False
+
     if maxNneighbors == Natom - 1 and maxNneighbors > 2:
+        for coord in intcos:
+            if isinstance(coord, bend.Bend):
+                if coord.bend_type in ['LINEAR', 'COMPLEMENT']:
+                    # If we've added a linear bend then there is already a coordinate to break
+                    # the plane of the molecule. No need to add OOFP. SF4 for instance is not
+                    # helped at all by addition of OOFPs
+                    return False
         logger.debug("check_if_oofp_needed() is turning oofp ON")
         return True
+    # elif not torsions_covered:
+    #     return True
     else:
         return False
 
@@ -380,7 +412,7 @@ def add_oofp_from_connectivity(C, intcos, geom):
     for T in terminal_atoms:
         vertex_atoms.append(np.where(C[T])[0][0])
 
-    for (T, V) in zip(terminal_atoms, vertex_atoms):
+    for T, V in zip(terminal_atoms, vertex_atoms):
         if Nneighbors[V] < 3:
             pass
         # Find at least 2 other/side atoms
@@ -400,6 +432,12 @@ def add_oofp_from_connectivity(C, intcos, geom):
                     errors.append([T, V, side1, side2])
                     continue
                 else:
+                    # Don't add an OOFP (1, 2, 3, 4) if (3, 2, 1, 4) already added
+                    # This check improves some worsens others. Not clear if reducing oofps
+                    # is beneficial. Causes a symmetry break in Psi4's opt14
+                    # present = similar_oofp_added([T, V, side1, side2], intcos)
+
+                    # if not present:
                     oneOofp = oofp.Oofp(T, V, side1, side2)
                     if oneOofp not in intcos:
                         intcos.append(oneOofp)
@@ -407,25 +445,47 @@ def add_oofp_from_connectivity(C, intcos, geom):
     # Check all torsions that could not be added. If one or more OOFPs were not added for that
     # central atom, then place add an improper torsion. Not a fully redundant set but an improper
     # torsion in addition to the linear bends should be sufficient
-    if errors:
+    for error in errors:
         covered = False
         for coord in intcos:
             if isinstance(coord, oofp.Oofp):
-                if V == coord.atoms[1]:
+                if error[1] == coord.atoms[1]:
                     covered = True
                 if not covered:
                     try:
                         im_tors = improper_torsion_around_oofp(
-                            coord.atoms[1],
-                            coord.atoms[0],
-                            coord.atoms[2],
-                            coord.atoms[3]
+                            coord.atoms[1], coord.atoms[0], coord.atoms[2], coord.atoms[3], geom
                         )
                         intcos.append(im_tors)
                     except AlgError:
-                        raise AlgError("Tried to add out-of-plane angles but couldn't evaluate all of them.", oofp_failures=oofp.Oofp(T, V, side1, side2))
+                        raise AlgError(
+                            "Tried to add out-of-plane angles but couldn't evaluate all of them.",
+                            oofp_failures=oofp.Oofp(T, V, side1, side2),
+                        )
 
     return
+
+
+def similar_oofp_added(indices, intcos) -> bool:
+    """ Check whether a torsion with the same central atom and the same three terminal atoms
+    already exists. Returns true is so """
+
+    oofps = [intco for intco in intcos if isinstance(intco, oofp.Oofp)]
+    sides_1 = list(map(int, indices[0:1] + indices[2:]))
+    central_1 = indices[1]
+
+    for oofp_obj in oofps:
+        atoms = oofp_obj.atoms
+        sides_2 = list(map(int, atoms[0:1] + atoms[2:]))
+        central_2 = atoms[1]
+
+        if central_1 == central_2:
+            if compare_lists(sorted(sides_1), sorted(sides_2)):
+                # Found a similar oofp. sorted lists of size were equivalent
+                logger.debug(list(sides_1))
+                logger.debug(list(sides_2))
+                return True
+    return False
 
 
 def add_cartesian_intcos(intcos, geom):
@@ -455,7 +515,8 @@ def add_cartesian_intcos(intcos, geom):
 def linear_bend_check(o_molsys):
     """
     Searches fragments to identify bends which are quasi-linear but not
-    previously identified as "linear bends". Called in displace after fragments are adjusted (post backtransform)
+    previously identified as "linear bends". Called in displace after fragments are adjusted
+    (post backtransform)
     Parameters
     ---------
     o_molsys : MOLSYS class
@@ -463,12 +524,22 @@ def linear_bend_check(o_molsys):
 
     Returns
     -------
-    list
-        missing linear bends
+    list: missing_bends
+        linear bends that have not been previously added to the coordinate system. Should be added.
+    list: bends_to_remove
+        Bends to be explicitly removed. If recomputing the internal coordinate system (as optking)
+        normally does - ensure these coordinates don't get added back.
+
+    Notes
+    -----
+    The step that caused linear_bend_check to execute will not be taken if there are linear bends
+    found. This is why any bends in bends_to_remove need to be explicitly excluded from the coord
+    system. The molecule will still be in a configuration where these bends may be valid.
     """
 
     linear_bends = []
     missing_bends = []
+    bends_to_remove = []
 
     for frag_index, frag in enumerate(o_molsys.fragments):
         for i, intco in enumerate(frag.intcos):
@@ -476,25 +547,54 @@ def linear_bend_check(o_molsys):
                 new_val = intco.q(frag.geom)
                 A, B, C = intco.A, intco.B, intco.C
 
-                # <ABC < 0.  A-C-B should be linear bends.
-                if new_val < 0.0:
-                    linear_bends.append(bend.Bend(A, C, B, bend_type="LINEAR"))
-                    linear_bends.append(bend.Bend(A, C, B, bend_type="COMPLEMENT"))
+                # Task 1. Add the linear versions of the appropriate bend. Try permutation of atoms
+                # if needed
+                # Task 2. Make note of the "Regular" version of any permutation and the old
+                # permutation to ensure they're removed and not added back.
+
+                # <ABC < 0.  A-C-B or B-A-C should be linear bends.
+                if new_val < np.pi - op.Params.linear_bend_threshold:
+
+                    # A-C-B doesn't always work. If A(A, B, C) is 0 A(A, C, B) could also be zero
+                    # Need to check connectivity to find the most natural set of bends for the
+                    # current connectivity.
+                    connect = frag.connectivity_from_distances()
+                    all_bends = []
+                    add_bend_from_connectivity(connect, all_bends, frag._geom)
+
+                    # Now check for permutations of the newly found linear bend
+                    if bend.Bend(A, C, B) in all_bends:
+                        linear_bends.append(bend.Bend(A, C, B, bend_type="LINEAR"))
+                        linear_bends.append(bend.Bend(A, C, B, bend_type="COMPLEMENT"))
+                        bends_to_remove.append(bend.Bend(A, B, C))
+                        bends_to_remove.append(bend.Bend(A, C, B))
+                    elif bend.Bend(B, A, C) in all_bends:
+                        linear_bends.append(bend.Bend(B, A, C, bend_type="LINEAR"))
+                        linear_bends.append(bend.Bend(B, A, C, bend_type="COMPLEMENT"))
+                        bends_to_remove.append(bend.Bend(A, B, C))
+                        bends_to_remove.append(bend.Bend(B, A, C))
 
                 # <ABC~pi. Add A-B-C linear bends.
                 elif new_val > op.Params.linear_bend_threshold:
                     linear_bends.append(bend.Bend(A, B, C, bend_type="LINEAR"))
                     linear_bends.append(bend.Bend(A, B, C, bend_type="COMPLEMENT"))
+                    bends_to_remove.append(bend.Bend(A, B, C))
 
         missing_bends = [b for b in linear_bends if b not in frag.intcos]
-        bend_report = [f"{b}, already present.\n" if b not in missing_bends else f"{b}, missing.\n" for b in linear_bends]
+        bend_report = [
+            f"{b}, already present.\n" if b not in missing_bends else f"{b}, missing.\n"
+            for b in linear_bends
+        ]
 
         if missing_bends:
-            logger.warning("\n\tThe following linear bends should be present:\n %s", "\t".join(bend_report))
+            logger.warning(
+                "\n\tThe following linear bends have been detected:\n%s",
+                "\t".join(bend_report),
+            )
         # Need to reset this or linear bends will be rechecked for alternate fragments
         linear_bends = []
 
-    return missing_bends
+    return missing_bends, bends_to_remove
 
 
 def frozen_stre_from_input(frozen_stre_list, o_molsys):
@@ -965,8 +1065,9 @@ def add_constrained_intcos(o_molsys, params):
         torsions = frozen(params.unfreeze_dihedrals, 4)
         freeze_all_torsions(o_molsys, torsions)
 
+
 def freeze_all_torsions(molsys, skipped_torsions=[]):
-    """ Freeze all intrafragment torsions.
+    """Freeze all intrafragment torsions.
     Parameters
     ----------
     molsys: molsys.Molsys
@@ -985,13 +1086,14 @@ def freeze_all_torsions(molsys, skipped_torsions=[]):
         f = check_fragment(atoms, molsys)
         new_tors = tors.Tors(*atoms)
 
+        frag = molsys.fragments[f]
         try:
-            index = molsys.fragments[f].intcos.index(new_tors)
+            index = frag.intcos.index(new_tors)
             frag.intcos[index].unfreeze()
         except ValueError:
             logger.info(
                 "dihedral angle %s was unfrozen but was not present - adding it.",
-                new_tors
+                new_tors,
             )
             frag.intcos.append(new_tors)
 
@@ -1065,7 +1167,9 @@ def add_dimer_frag_intcos(o_molsys, params):
             # Find ref. pt. 3 on A.
             if o_molsys.fragments[A].natom > 2 and not o_molsys.fragments[A].is_linear():
                 for i in range(o_molsys.fragments[A].natom):
-                    if i in [refA1, refA2] or are_collinear(xyzA[i], xyzA[refA2], xyzA[refA1], col_tol):
+                    if i in [refA1, refA2] or are_collinear(
+                        xyzA[i], xyzA[refA2], xyzA[refA1], col_tol
+                    ):
                         continue
                     frag_ref_atomsA.append([i])
                     break
@@ -1074,7 +1178,9 @@ def add_dimer_frag_intcos(o_molsys, params):
             # Find ref. pt. 3 on B.
             if o_molsys.fragments[B].natom > 2 and not o_molsys.fragments[B].is_linear():
                 for i in range(o_molsys.fragments[B].natom):
-                    if i in [refB1, refB2] or are_collinear(xyzB[i], xyzB[refB2], xyzB[refB1], col_tol):
+                    if i in [refB1, refB2] or are_collinear(
+                        xyzB[i], xyzB[refB2], xyzB[refB1], col_tol
+                    ):
                         continue
                     frag_ref_atomsB.append([i])
                     break
@@ -1091,8 +1197,8 @@ def add_dimer_frag_intcos(o_molsys, params):
 
 
 def improper_torsion_around_oofp(center, a, b, c, geom):
-    """ To help compensate for missing the oofp. Create an improper torsion which goes from
-    T1-T2-C-T3 where T denotes terminal atoms, C denotes the OOFP center, and T1-C-T3 is linear """
+    """To help compensate for missing the oofp. Create an improper torsion which goes from
+    T1-T2-C-T3 where T denotes terminal atoms, C denotes the OOFP center, and T1-C-T3 is linear"""
 
     if v3d.are_collinear(geom[center], geom[a], geom[b]):
         return tors.Tors(a, c, center, b)
@@ -1100,3 +1206,10 @@ def improper_torsion_around_oofp(center, a, b, c, geom):
         return tors.Tors(b, a, center, c)
     else:
         return tors.Tors(a, b, center, c)
+
+def compare_lists(iter1, iter2) -> bool:
+    for a, b in zip(iter1, iter2):
+        if a != b:
+            # lists not equal
+            return False
+    return True

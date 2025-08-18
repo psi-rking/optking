@@ -2,8 +2,10 @@
 import pathlib
 import psi4
 import optking
+import os
 import json
 from .utils import utils
+import qcelemental as qcel
 
 psi4.set_memory("2 GB")
 
@@ -40,13 +42,16 @@ def test_hooh_irc(check_iter):
 
     print("%15s%15s%20s%15s" % ("Step Number", "Arc Distance", "Energy", "HOOH dihedral"))
     for step in IRC:
-        print("%15d%15.5f%20.10f%15.5f" % (step["step_number"], step["arc_dist"], step["energy"], step["q"][5]))
+        print(
+            "%15d%15.5f%20.10f%15.5f"
+            % (step["step_number"], step["arc_dist"], step["energy"], step["q"][5])
+        )
 
     assert psi4.compare_values(energy_5th_IRC_pt, IRC[5]["energy"], 6, "Energy of 5th IRC point.")  # TEST
     utils.compare_iterations(json_output, 20, check_iter)
 
 def test_hooh_irc_quick(check_iter):
-    energy_5th_IRC_pt = -150.812913276783  # TEST
+    energy_5th_IRC_pt = -150.812913276783  # TEST 5th point for .2 1st point for 1.0
     h2o2 = psi4.geometry(
         """
       H     0.0000000000   0.9803530335  -0.8498671785
@@ -66,7 +71,9 @@ def test_hooh_irc_quick(check_iter):
         "g_convergence": "gau_verytight",
         "opt_type": "irc",
         "irc_step_size": 1.0,
+        "irc_points": 2,
         "cart_hess_read": True,
+        "print_trajectory_xyz_file": True
     }
 
     psi4.set_options(psi4_options)
@@ -76,4 +83,26 @@ def test_hooh_irc_quick(check_iter):
     # Does not match perfectly; however, the true "arc distance" is slightly different between the
     # two runs 0.99941 for 1.0 step size 0.99998 for default step_size
     assert psi4.compare_values(energy_5th_IRC_pt, IRC[1]["energy"], 4, "Energy of 1st IRC point.")  # TEST
-    utils.compare_iterations(json_output, 12, check_iter)
+    utils.compare_iterations(json_output, 10, check_iter)
+
+    ###
+    # Test that reading trajcetory files works.
+    ###
+
+    traj_file = pathlib.Path(f'irc_traj.{os.getpid()}.xyz')
+    assert traj_file.exists()
+
+    with traj_file.open() as f:
+        lines = f.readlines()
+    # Remove before assertions
+    os.system(f'rm {str(traj_file)}')
+
+    first = "".join(lines[:6])
+    last = "".join(lines[-6:])
+    first_mol = qcel.molparse.from_string(first, dtype='xyz')
+    last_mol = qcel.molparse.from_string(last, dtype='xyz')
+
+    import pprint
+    pprint.pprint(first_mol)
+    assert first_mol.get('qm').get('elem').tolist() == ['H', 'O', 'O', 'H']
+    assert last_mol.get('qm').get('elem').tolist() == ['H', 'O', 'O', 'H']

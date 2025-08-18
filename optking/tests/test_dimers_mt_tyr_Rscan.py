@@ -16,7 +16,7 @@ au2kcal = qcel.constants.hartree2kcalmol
 @pytest.mark.dftd3
 @pytest.mark.skipif(
     (has_program("dftd3") or has_program("s-dftd3")) is False,
-    reason="Neither DFTD3 nor s-DFTD3 is findable"
+    reason="Neither DFTD3 nor s-DFTD3 is findable",
 )
 @pytest.mark.long
 def test_dimers_mt_tyr_Rscan():
@@ -69,7 +69,11 @@ def test_dimers_mt_tyr_Rscan():
         # also, avoid phi_B ~180 deg
         "A Label": "methylthiophene",  # labels are optional
         "B Frag": 2,
-        "B Ref Atoms": [[13, 14, 15, 16, 17, 18], [13], [15]],  # Average of ring C's  # one C  # another C
+        "B Ref Atoms": [
+            [13, 14, 15, 16, 17, 18],
+            [13],
+            [15],
+        ],  # Average of ring C's  # one C  # another C
         "B label": "tyrosine",  # optional
     }
 
@@ -87,12 +91,8 @@ def test_dimers_mt_tyr_Rscan():
     MT_mol = psi4.geometry(init_xyz)
 
     # Use the psi4 molecule to provide the fragment geometries.
-    Axyz = MT_mol.geometry().np[
-        0:12,
-    ]
-    Bxyz = MT_mol.geometry().np[
-        12:,
-    ]
+    Axyz = MT_mol.geometry().np[0:12,]
+    Bxyz = MT_mol.geometry().np[12:,]
 
     # To see the values of the interfragment coordinates, do this:
     # dimerCoord.update_reference_geometry(Axyz, Bxyz)
@@ -118,11 +118,16 @@ def test_dimers_mt_tyr_Rscan():
     for R_AB in np.arange(4.0, 8.1, 1.0):
         q_target = np.array([R_AB, theta_A, theta_B, tau, phi_A, phi_B])
         # This function returns the geometry of the second fragment.
-        Bxyz[:] = dimerCoord.orient_fragment(Axyz, Bxyz, q_target, unit_angle="deg", unit_length="Angstrom")
+        Bxyz[:] = dimerCoord.orient_fragment(
+            Axyz, Bxyz, q_target, unit_angle="deg", unit_length="Angstrom"
+        )
         xyz = psi4.core.Matrix.from_array(np.concatenate((Axyz, Bxyz)))
         # Put the geometry into psi4, compute energy, save results.
         MT_mol.set_geometry(xyz)
         E_Rab.append([R_AB, xyz.to_array(), psi4.energy("b3lyp-d3mbj")])
+
+        psi4_options = {"basis": "6-31G(d)", "d_convergence": "9", "guess": "read"}
+        psi4.set_options(psi4_options)
 
     # Convert the energies to relative energies in kcal/mol.
     E_Rab = np.array(E_Rab, dtype=object)

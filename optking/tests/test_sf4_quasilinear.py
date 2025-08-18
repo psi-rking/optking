@@ -44,7 +44,9 @@ def test_sf4_quasilinear_cart(check_iter):
 # linear bends forces symmetry breaking, but for now this has been
 # tweaked for at least this case by choosing different bend axes
 # inside optking. (see the arbitrary ref. axes in Helgaker/Bakken).
-@pytest.mark.skip
+#
+# An almost identical test is used by Psi4. If this breaks we will break their tests
+@pytest.mark.long
 def test_sf4_quasilinear():
     sf4 = psi4.geometry(
         """

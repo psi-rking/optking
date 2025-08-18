@@ -131,3 +131,5 @@ input.py.dat
 *.molden
 *.cube
 dfh.*
+
+.vscode/*.json

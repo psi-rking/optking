@@ -3,9 +3,15 @@ import pytest
 import psi4
 import optking
 from .utils import utils
+import os
 
 final_energy = -150.786766850
-hess_every = [(-1, final_energy, 10), (0, final_energy, 10), (1, final_energy, 4), (3, final_energy, 5)]
+hess_every = [
+    (-1, final_energy, 10),
+    (0, final_energy, 10),
+    (1, final_energy, 4),
+    (3, final_energy, 5),
+]
 hess_guess = [
     ("fischer", final_energy, 9),
     ("lindH_simple", final_energy, 11),
@@ -14,12 +20,13 @@ hess_guess = [
 ]
 hess_update = [("MS", final_energy, 10), ("powell", final_energy, 11), ("bofill", final_energy, 10)]
 
-logger = optking.logger
+# logger = optking.logger
 
 
-@pytest.mark.parametrize("every, expected, num_steps", hess_every, ids=["None", "First Step", "Every", "Every 3"])
+@pytest.mark.parametrize(
+    "every, expected, num_steps", hess_every, ids=["None", "First Step", "Every", "Every 3"]
+)
 def test_hess_every(check_iter, every, expected, num_steps):
-
     hooh = psi4.geometry(
         """
         H
@@ -49,7 +56,6 @@ def test_hess_every(check_iter, every, expected, num_steps):
 
 @pytest.mark.parametrize("guess, expected, num_steps", hess_guess)
 def test_hess_guess(check_iter, guess, expected, num_steps):
-
     hooh = psi4.geometry(
         """
         H
@@ -60,7 +66,12 @@ def test_hess_guess(check_iter, guess, expected, num_steps):
     )
 
     psi4.core.clean_options()
-    psi4_options = {"basis": "cc-pvdz", "scf_type": "pk", "g_convergence": "gau_verytight", "intrafrag_hess": guess}
+    psi4_options = {
+        "basis": "cc-pvdz",
+        "scf_type": "pk",
+        "g_convergence": "gau_verytight",
+        "intrafrag_hess": guess,
+    }
 
     psi4.set_options(psi4_options)
     json_output = optking.optimize_psi4("hf")  # Uses default program (psi4)
@@ -73,7 +84,6 @@ def test_hess_guess(check_iter, guess, expected, num_steps):
 
 @pytest.mark.parametrize("update, expected, num_steps", hess_update)
 def test_hess_update(check_iter, update, expected, num_steps):
-
     hooh = psi4.geometry(
         """
         H
@@ -84,7 +94,12 @@ def test_hess_update(check_iter, update, expected, num_steps):
     )
 
     psi4.core.clean_options()
-    psi4_options = {"basis": "cc-pvdz", "scf_type": "pk", "g_convergence": "gau_verytight", "hess_update": update}
+    psi4_options = {
+        "basis": "cc-pvdz",
+        "scf_type": "pk",
+        "g_convergence": "gau_verytight",
+        "hess_update": update,
+    }
 
     psi4.set_options(psi4_options)
     json_output = optking.optimize_psi4("hf")  # Uses default program (psi4)
@@ -94,8 +109,10 @@ def test_hess_update(check_iter, update, expected, num_steps):
 
     utils.compare_iterations(json_output, num_steps, check_iter)
 
+
 def test_hess_read(check_iter):
     import os
+
     hooh = psi4.geometry(
         """
         H
@@ -124,8 +141,12 @@ def test_hess_read(check_iter):
     }
 
     psi4.set_options(psi4_options)
-    json_output = optking.optimize_psi4("hf", **{"cart_hess_read": True, "hessian_file": f"stdout.default.{os.getpid()}.hess"})
+    json_output = optking.optimize_psi4(
+        "hf", **{"cart_hess_read": True, "hessian_file": f"stdout.default.{os.getpid()}.hess"}
+    )
     E = json_output["energies"][-1]
     assert psi4.compare_values(final_energy, E, 8, "Final energy, every step Hessian")  # TEST
     utils.compare_iterations(json_output, 10, check_iter)
 
+    # cleanup any and all files
+    os.system(f"{psi4.core.get_writer_file_prefix(hooh.name())}.*")

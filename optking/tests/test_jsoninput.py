@@ -12,6 +12,7 @@ from qcelemental.testing import compare_values
 from .utils import utils
 from .psi4_helper import using_qcmanybody
 
+
 # Varying number of repulsion energy decimals to check.
 @pytest.mark.parametrize(
     "inp,expected,num_steps",
@@ -19,8 +20,12 @@ from .psi4_helper import using_qcmanybody
         pytest.param("json_h2o.json", (8.9064890670, -74.965901192, 3), 5),
         pytest.param("json_betapinene.json", (568.2219045869, -383.38105559, 1), 4),
         pytest.param("json_hooh_frozen.json", (37.969354880, -150.786372411, 2), 6),
-        pytest.param("json_lif_cp.json", (8.95167, -106.8867587, 2, 3.016), 4, marks=using_qcmanybody),
-        pytest.param("json_lif_nocp.json", (9.09281, -106.9208785, 2, 2.969), 5, marks=using_qcmanybody),
+        pytest.param(
+            "json_lif_cp.json", (8.95167, -106.8867587, 2, 3.016), 4, marks=[using_qcmanybody, pytest.mark.long]
+        ),
+        pytest.param(
+            "json_lif_nocp.json", (9.09281, -106.9208785, 2, 2.969), 5, marks=using_qcmanybody
+        ),
     ],
 )
 def test_input_through_json(inp, expected, num_steps, check_iter):
@@ -61,16 +66,24 @@ def test_input_through_json(inp, expected, num_steps, check_iter):
     assert compare_values(
         expected[0],
         json_dict["trajectory"][-1]["properties"]["nuclear_repulsion_energy"],
-        atol=1.0 * 10**-expected[2],
+        atol=1.0 * 10 ** -expected[2],
         label="Nuclear repulsion energy",
     )
     assert compare_values(
-        expected[1], json_dict["trajectory"][-1]["properties"]["return_energy"], atol=1.e-6, label="Reference energy"
+        expected[1],
+        json_dict["trajectory"][-1]["properties"]["return_energy"],
+        atol=1.0e-6,
+        label="Reference energy",
     )
     utils.compare_iterations(json_dict, num_steps, check_iter)
 
     if len(expected) > 3:
-        assert compare_values(expected[3], json_dict["final_molecule"]["geometry"][5] - json_dict["final_molecule"]["geometry"][2], atol=1.e-3, label="bond length")
+        assert compare_values(
+            expected[3],
+            json_dict["final_molecule"]["geometry"][5] - json_dict["final_molecule"]["geometry"][2],
+            atol=1.0e-3,
+            label="bond length",
+        )
 
     # with open(os.path.join(os.path.dirname(__file__), inp), 'r+') as input_data:
     #    input_data.seek(0)

@@ -25,7 +25,6 @@ class Cart(Simple):
         range_max=None,
         ext_force=None,
     ):
-
         self.xyz = xyz_in  # uses setter below
         atoms = (a,)
         Simple.__init__(self, atoms, constraint, range_min, range_max, ext_force)
@@ -50,7 +49,9 @@ class Cart(Simple):
 
         s += "(%d)" % (self.A + 1)
         if self.ranged:
-            s += "[{:.3f},{:.3f}]".format(self.range_min * self.q_show_factor, self.range_max * self.q_show_factor)
+            s += "[{:.3f},{:.3f}]".format(
+                self.range_min * self.q_show_factor, self.range_max * self.q_show_factor
+            )
         return s
 
     def __eq__(self, other):

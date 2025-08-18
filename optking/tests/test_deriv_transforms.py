@@ -50,7 +50,7 @@ def test_stationary_forces_h2o():
 
     grad_x = grad_x.to_array()
 
-    grad_q = OptMol.gradient_to_internals(grad_x.flatten(), useMasses=False)  # returns ndarray
+    grad_q = OptMol.gradient_to_internals(grad_x.flatten(), use_masses=False)  # returns ndarray
     grad_x2 = OptMol.gradient_to_cartesians(grad_q).reshape(Natom, 3)
     grad_x2 = psi4.core.Matrix.from_array(grad_x2)
     # psi4.core.print_out("Internal Coordinate Gradient:\n"+str(grad_q)+"\n")
@@ -63,7 +63,7 @@ def test_stationary_forces_h2o():
     # print(f"RMS diff gradient, cart->int->cart: {rms_diff:8.4e}")
     assert psi4.compare_values(grad_x, grad_x2, 10, "Diff grad. CART->int->CART")
 
-    grad_q = OptMol.gradient_to_internals(grad_x.flatten(), useMasses=True)
+    grad_q = OptMol.gradient_to_internals(grad_x.flatten(), use_masses=True)
     grad_x2 = OptMol.gradient_to_cartesians(grad_q).reshape(Natom, 3)
     grad_x2 = psi4.core.Matrix.from_array(grad_x2)
     assert psi4.compare_values(grad_x, grad_x2, 10, "Diff grad. CART->int->CART with u=1/mass")
@@ -110,7 +110,7 @@ def test_stationary_hessian_h2o():
     # print("Hessian transformed back into Cartesian coordinates")
     # print(H_xy2)
     assert psi4.compare_values(H_xy, H_xy2, 7, "Diff hessian CART->int->CART")
-    H_q = OptMol.hessian_to_internals(H_xy.to_array(), useMasses=True)
+    H_q = OptMol.hessian_to_internals(H_xy.to_array(), use_masses=True)
     H_xy2 = OptMol.hessian_to_cartesians(H_q)
     assert psi4.compare_values(H_xy, H_xy2, 7, "Diff hessian CART->int->CART with u=1/mass")
 
@@ -139,12 +139,12 @@ def test_nonstationary_forces_h2o():
 
     grad_x = psi4.gradient("hf").to_array()
 
-    grad_q = OptMol.gradient_to_internals(grad_x.flatten(), useMasses=False)
+    grad_q = OptMol.gradient_to_internals(grad_x.flatten(), use_masses=False)
     grad_x2 = OptMol.gradient_to_cartesians(grad_q).reshape(Natom, 3)
     grad_x2 = psi4.core.Matrix.from_array(grad_x2)
     assert psi4.compare_values(grad_x, grad_x2, 10, "Diff grad. CART->int->CART")
 
-    grad_q = OptMol.gradient_to_internals(grad_x.flatten(), useMasses=True)
+    grad_q = OptMol.gradient_to_internals(grad_x.flatten(), use_masses=True)
     grad_x2 = OptMol.gradient_to_cartesians(grad_q).reshape(Natom, 3)
     grad_x2 = psi4.core.Matrix.from_array(grad_x2)
     assert psi4.compare_values(grad_x, grad_x2, 10, "Diff grad. CART->int->CART with u=1/mass")
@@ -179,13 +179,13 @@ def test_nonstationary_hessian_h2o():
     grad_x = psi4.gradient("hf").to_array().flatten()
     H_xy = psi4.hessian("hf")
 
-    H_q = OptMol.hessian_to_internals(H_xy.to_array(), grad_x, useMasses=False)
-    grad_q = OptMol.gradient_to_internals(grad_x, useMasses=False)
+    H_q = OptMol.hessian_to_internals(H_xy.to_array(), grad_x, use_masses=False)
+    grad_q = OptMol.gradient_to_internals(grad_x, use_masses=False)
     H_xy2 = OptMol.hessian_to_cartesians(H_q, grad_q)
     assert psi4.compare_values(H_xy, H_xy2, 8, "Diff hessian CART->int->CART")
 
-    H_q = OptMol.hessian_to_internals(H_xy.to_array(), grad_x, useMasses=True)
-    grad_q = OptMol.gradient_to_internals(grad_x, useMasses=True)
+    H_q = OptMol.hessian_to_internals(H_xy.to_array(), grad_x, use_masses=True)
+    grad_q = OptMol.gradient_to_internals(grad_x, use_masses=True)
     H_xy2 = OptMol.hessian_to_cartesians(H_q, grad_q)
     assert psi4.compare_values(H_xy, H_xy2, 8, "Diff hessian CART->int->CART with u=1/masses")
 
@@ -206,18 +206,24 @@ def test_stationary_forces_hooh():
     psi4.set_options(psi4_options)
     xyz = mol.geometry().to_array()
     Natom = mol.natom()
-    coords = [stre.Stre(0, 1), stre.Stre(2, 3), bend.Bend(0, 1, 2), bend.Bend(1, 2, 3), tors.Tors(0, 1, 2, 3)]
+    coords = [
+        stre.Stre(0, 1),
+        stre.Stre(2, 3),
+        bend.Bend(0, 1, 2),
+        bend.Bend(1, 2, 3),
+        tors.Tors(0, 1, 2, 3),
+    ]
     Z = [mol.Z(i) for i in range(0, Natom)]
     masses = [mol.mass(i) for i in range(0, Natom)]
     f1 = optking.frag.Frag(Z, xyz, masses, intcos=coords, frozen=False)
     OptMol = optking.molsys.Molsys([f1])
 
     grad_x = psi4.gradient("hf").to_array()
-    grad_q = OptMol.gradient_to_internals(grad_x.flatten(), useMasses=False)
+    grad_q = OptMol.gradient_to_internals(grad_x.flatten(), use_masses=False)
     grad_x2 = OptMol.gradient_to_cartesians(grad_q).reshape(Natom, 3)
     assert psi4.compare_values(grad_x, grad_x2, 8, "Diff grad. CART->int->CART")
 
-    grad_q = OptMol.gradient_to_internals(grad_x.flatten(), useMasses=True)
+    grad_q = OptMol.gradient_to_internals(grad_x.flatten(), use_masses=True)
     grad_x2 = OptMol.gradient_to_cartesians(grad_q).reshape(Natom, 3)
     assert psi4.compare_values(grad_x, grad_x2, 8, "Diff grad. CART->int->CART with u=1/mass")
 
@@ -238,7 +244,13 @@ def test_stationary_hessian_hooh():
     psi4_options = {"basis": "cc-pvdz", "scf_type": "pk"}
     psi4.set_options(psi4_options)
     xyz = mol.geometry().to_array()
-    coords = [stre.Stre(0, 1), stre.Stre(2, 3), bend.Bend(0, 1, 2), bend.Bend(1, 2, 3), tors.Tors(0, 1, 2, 3)]
+    coords = [
+        stre.Stre(0, 1),
+        stre.Stre(2, 3),
+        bend.Bend(0, 1, 2),
+        bend.Bend(1, 2, 3),
+        tors.Tors(0, 1, 2, 3),
+    ]
     Z = [mol.Z(i) for i in range(0, Natom)]
     masses = [mol.mass(i) for i in range(0, Natom)]
     f1 = optking.frag.Frag(Z, xyz, masses, intcos=coords, frozen=False)
@@ -246,9 +258,9 @@ def test_stationary_hessian_hooh():
 
     H_xy = psi4.hessian("hf").to_array()
 
-    H_q = OptMol.hessian_to_internals(H_xy, useMasses=False)
+    H_q = OptMol.hessian_to_internals(H_xy, use_masses=False)
     H_xy2 = OptMol.hessian_to_cartesians(H_q)
-    H_q2 = OptMol.hessian_to_internals(H_xy2, useMasses=False)
+    H_q2 = OptMol.hessian_to_internals(H_xy2, use_masses=False)
     assert psi4.compare_values(H_q, H_q2, 7, "Diff hessian cart->INT->cart->INT")
 
     # Cartesians do not agree due to implicit rotations
@@ -271,7 +283,13 @@ def test_nonstationary_hessian_hooh():
     psi4_options = {"basis": "cc-pvdz", "scf_type": "pk"}
     psi4.set_options(psi4_options)
     xyz = mol.geometry().to_array()
-    coords = [stre.Stre(0, 1), stre.Stre(2, 3), bend.Bend(0, 1, 2), bend.Bend(1, 2, 3), tors.Tors(0, 1, 2, 3)]
+    coords = [
+        stre.Stre(0, 1),
+        stre.Stre(2, 3),
+        bend.Bend(0, 1, 2),
+        bend.Bend(1, 2, 3),
+        tors.Tors(0, 1, 2, 3),
+    ]
     Z = [mol.Z(i) for i in range(0, Natom)]
     masses = [mol.mass(i) for i in range(0, Natom)]
     f1 = optking.frag.Frag(Z, xyz, masses, intcos=coords, frozen=False)
