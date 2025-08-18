@@ -1086,9 +1086,9 @@ def freeze_all_torsions(molsys, skipped_torsions=[]):
         f = check_fragment(atoms, molsys)
         new_tors = tors.Tors(*atoms)
 
+        frag = molsys.fragments[f]
         try:
-            index = molsys.fragments[f].intcos.index(new_tors)
-            # TODO this looks like a clear error
+            index = frag.intcos.index(new_tors)
             frag.intcos[index].unfreeze()
         except ValueError:
             logger.info(
