@@ -56,7 +56,7 @@ def test_frozen_coords(option, expected, num_steps, check_iter):
     assert psi4.compare_values(expected, thisenergy, 6)  # TEST
     utils.compare_iterations(json_output, num_steps, check_iter)
 
-
+@pytest.mark.pubchem
 def test_butane_frozen(check_iter):
     _ = psi4.geometry("pubchem:butane")
 
@@ -114,7 +114,7 @@ def test_butane_frozen(check_iter):
     assert psi4.compare_values(E1, E2, 8, "RHF energy")  # TEST
     utils.compare_iterations(result, 5, check_iter)
 
-
+@pytest.mark.pubchem
 def test_butane_skip_frozen(check_iter):
     _ = psi4.geometry("pubchem:butane")
 

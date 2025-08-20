@@ -98,7 +98,7 @@ class OptParams(BaseModel):
     as Psi4 change the logging level from the command line. `psi4 --loglevel=10...`"""
 
     # Print all optimization parameters.
-    printxopt_params: bool = False
+    # printxopt_params: bool = False
     # output_type: str = Field(pattern=r"FILE|STDOUT|NULL", default="FILE")
 
     # Specifies minimum search, transition-state search, or IRC following
@@ -175,8 +175,9 @@ class OptParams(BaseModel):
 
     # Whether to accept geometry steps that lower the molecular point group. DEFAULT=False
     accept_symmetry_breaking: bool = False
-    """Whether to accept geometry steps that lower the molecular point group. Note - as of 0.3.0,
-    this is only effective when running through Psi4"""
+    """Whether to accept steps that lower the molecular point group. Within optking this check is
+    not rigorous and if the only reasonable step is symmetry breaking it will be taken. This keyword
+    affects optking's symmetrization not Psi4's"""
 
     # TODO This needs a validator to check the allowed values as well as set dynamic_lvl_max depending
     # upon dynamic_lvl
@@ -269,7 +270,7 @@ class OptParams(BaseModel):
     """Upper bound for dynamic trust radius [au]"""
 
     # Initial maximum step size in bohr or radian along an interfragment coordinate
-    interfrag_trust: float = Field(gt=0.0, default=0.5)
+    interfrag_trust: float = Field(gt=0.0, default=0.5, alias="INTERFRAG_STEP_LIMIT")
     """Initial maximum step size in bohr or radian along an interfragment coordinate"""
 
     # Lower bound for dynamic trust radius [a/u] for interfragment coordinates
