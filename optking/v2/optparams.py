@@ -26,10 +26,10 @@ from optking import log_name
 logger = logging.getLogger(f"{log_name}{__name__}")
 
 CART_STR = r"(?:xyz|xy|yz|x|y|z)"
-ATOM_2 = r"\W?\d+\W?\s+\d+\W*\s*"
-ATOM_3 = r"\W?\d+\W?\s+\d+\W?\s+\d+\W*s*"
-ATOM_4 = r"\W?\d+\W?\s+\d+\W?\s+\d+\W?\s+\d+\W*\s*"
-RANGE = r"\W?-?\d+\.\d+\W?\s+-?\d+\.\d+\W*\s*"
+ATOM_2 = r"\W?\s*\d+\W?\s+\d+\s*\W*\s*"
+ATOM_3 = r"\W?\s*\d+\W?\s+\d+\W?\s+\d+\s*\W*s*"
+ATOM_4 = r"\W?\s*\d+\W?\s+\d+\W?\s+\d+\W?\s+\d+\s*\W*\s*"
+RANGE = r"\W?-?\d+\.\d+\W?\s+-?\d+\.\d+\s*\W*\s*"
 
 class InterfragCoords(BaseModel):
     """Validate that the string input to create interfragment coords is mostly correct
