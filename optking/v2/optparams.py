@@ -26,19 +26,10 @@ from optking import log_name
 logger = logging.getLogger(f"{log_name}{__name__}")
 
 CART_STR = r"(?:xyz|xy|yz|x|y|z)"
-
-# # Maintains pydantic v1 compatbility. Tried making a wrapper decorator but that doesn't fix needing
-# # to pass 'after'/'before' or False/True
-# if version.Version(pydantic_version) >= version.Version("2"):
-#     from pydantic import model_validator as pydantic_model_validator
-#     from pydantic import field_validator as pydantic_field_validator
-#     eval_time_after={'mode': 'after'}
-#     eval_time_before={'mode': 'before'}
-# else:
-#     from pydantic import root_validator as pydantic_model_validator
-#     from pydantic import validator as pydantic_field_validator
-#     eval_time_after={"pre": False}
-#     eval_time_before={"pre": True}
+ATOM_2 = r"\W?\d+\W?\s+\d+\W*\s*"
+ATOM_3 = r"\W?\d+\W?\s+\d+\W?\s+\d+\W*s*"
+ATOM_4 = r"\W?\d+\W?\s+\d+\W?\s+\d+\W?\s+\d+\W*\s*"
+RANGE = r"\W?-?\d+\.\d+\W?\s+-?\d+\.\d+\W*\s*"
 
 class InterfragCoords(BaseModel):
     """Validate that the string input to create interfragment coords is mostly correct
@@ -99,10 +90,10 @@ class OptParams(BaseModel):
 
     # Print all optimization parameters.
     # printxopt_params: bool = False
-    # output_type: str = Field(pattern=r"FILE|STDOUT|NULL", default="FILE")
+    # output_type: str = Field(pattern=r"^(?:FILE|STDOUT|NULL)$", default="FILE")
 
     # Specifies minimum search, transition-state search, or IRC following
-    opt_type: str = Field(pattern=re.compile(r"MIN|TS|IRC", flags=re.IGNORECASE), default="MIN")
+    opt_type: str = Field(pattern=re.compile(r"^(?:MIN|TS|IRC)$", flags=re.IGNORECASE), default="MIN")
     """One of `["MIN", "TS", or "IRC"]`. `OPT_TYPE` will be changed if `OPT_TYPE` is not provided, but
 	`STEP_TYPE` is provided, and the two are inconsistent. If both are provided but are
 	inconsistent, an error will be raised.
@@ -123,7 +114,7 @@ class OptParams(BaseModel):
 
     # Geometry optimization step type, e.g., Newton-Raphson or Rational Function Optimization
     step_type: str = Field(
-        pattern=re.compile(r"RFO|RS_I_RFO|P_RFO|NR|SD|LINESEARCH|CONJUGATE", flags=re.IGNORECASE),
+        pattern=re.compile(r"^(?:RFO|RS_I_RFO|P_RFO|NR|SD|LINESEARCH|CONJUGATE)$", flags=re.IGNORECASE),
         default="RFO",
     )
     """One of `["RFO", "RS_I_RFO", "P_RFO", "NR", "SD", "LINESEARCH", "CONJUGATE"]`. If `OPT_TYPE`
@@ -135,7 +126,7 @@ class OptParams(BaseModel):
 
     # variation of steepest descent step size
     steepest_descent_type: str = Field(
-        pattern=re.compile(r"OVERLAP|BARZILAI_BORWEIN", flags=re.IGNORECASE), default="OVERLAP"
+        pattern=re.compile(r"^(?:OVERLAP|BARZILAI_BORWEIN)$", flags=re.IGNORECASE), default="OVERLAP"
     )
     """One of "OVERLAP", or "BARZILAI_BORWEIN". Change how the `SD` is calculated (scaled)"""
 
@@ -144,7 +135,7 @@ class OptParams(BaseModel):
     # Revue Française d'Automatique, Informatique, Recherche Opérationnelle. 3 (1): 35–43.
     # "FLETCHER" for Fletcher-Reeves.  Fletcher, R.; Reeves, C. M. (1964).
     conjugate_gradient_type: str = Field(
-        pattern=re.compile(r"FLETCHER|DESCENT|POLAK", flags=re.IGNORECASE), default="FLETCHER"
+        pattern=re.compile(r"^(?:FLETCHER|DESCENT|POLAK)$", flags=re.IGNORECASE), default="FLETCHER"
     )
     """One of "POLAK", "FLETCHER", or "DESCENT". Change how the step direction is calculated."""
 
@@ -156,7 +147,7 @@ class OptParams(BaseModel):
     # BOTH uses both redundant and Cartesian coordinates.
     opt_coordinates: str = Field(
         pattern=re.compile(
-            r"REDUNDANT|INTERNAL|DELOCALIZED|NATURAL|CARTESIAN|BOTH", flags=re.IGNORECASE
+            r"^(?:REDUNDANT|INTERNAL|DELOCALIZED|NATURAL|CARTESIAN|BOTH)$", flags=re.IGNORECASE
         ),
         default="INTERNAL",
     )
@@ -220,13 +211,13 @@ class OptParams(BaseModel):
     """How large `dynamic_lvl` is allowed to grow. If `dynamic_lvl` $> 0$, `dynamic_lvl`
     will default to 6"""
 
-    # IRC step size in bohr(amu)^{1/2}$.
+    # IRC step size in bohr(amu)^(?:){1/2})$.
     irc_step_size: float = Field(gt=0.0, default=0.2)
     """Specifies the distance between each converged point along the IRC reaction path in $bohr amu^{1/2}$"""
 
     # IRC mapping direction
     irc_direction: str = Field(
-        pattern=re.compile("FORWARD|BACKWARD", flags=re.IGNORECASE), default="FORWARD"
+        pattern=re.compile("^(?:FORWARD|BACKWARD)$", flags=re.IGNORECASE), default="FORWARD"
     )
     """One of "forward" or "backward". Whether to step in the forward (+) direction along
     the transition state mode (smallest mode of hessian) or backward (-)"""
@@ -238,7 +229,7 @@ class OptParams(BaseModel):
     a minimum, this is needed to cap the number of step's Optking is allowed to take"""
 
     irc_mode: str = Field(
-        pattern=re.compile("NORMAL|CONFIRM", flags=re.IGNORECASE), default="NORMAL"
+        pattern=re.compile("^(?:NORMAL|CONFIRM)$", flags=re.IGNORECASE), default="NORMAL"
     )
     """Experimental - One of ['NORMAL', 'CONFIRM']. 'CONFIRM' is meant to be used for dissociation
     reactions. The IRC is terminated once the molecule's connectivity has changed. Convergence
@@ -323,33 +314,33 @@ class OptParams(BaseModel):
     ``opt_traj.<pid>.json``"""
 
     # Specify distances between atoms to be frozen (unchanged)
-    frozen_distance: str = Field(default="", pattern=r"(?:\d\s+){2}*")
+    frozen_distance: str = Field(default="", pattern=rf"^\s*(?:{ATOM_2})*$")
     """A string of white-space separated atomic indices to specify that the distances between the
     atoms should be frozen (unchanged).
     Example: `"1 2 3 4"` --> Freezes `Stre(1, 2)` and `Stre(3, 4)`"""
 
     # Specify angles between atoms to be frozen (unchanged)
-    frozen_bend: str = Field(default="", pattern=r"(?:\d\s+){3}*")
+    frozen_bend: str = Field(default="", pattern=rf"^\s*(?:{ATOM_3})*$")
     """A string of white-space separated atomic indices to specify that the distances between the
     atoms should be frozen (unchanged).
     Example: `"1 2 3 4"` --> Freezes `Stre(1, 2)` and `Stre(3, 4)`"""
 
     # Specify dihedral angles between atoms to be frozen (unchanged)
-    frozen_dihedral: str = Field(default="", pattern=r"(?:\d\s+){4}*")
+    frozen_dihedral: str = Field(default="", pattern=rf"^\s*(?:{ATOM_4})*$")
     """
     A string of white-space separated atomic indices to specify that the corresponding dihedral
     angle should be frozen (unchanged).
     Example: `"1 2 3  3 2 3 4 5"` --> Freezes `TORS(1, 2, 3, 4)` and `TORS(2, 3, 4, 5)`"""
 
     # Specify out-of-plane angles between atoms to be frozen (unchanged)
-    frozen_oofp: str = Field(default="", pattern=r"(?:\d\s+){4}*")
+    frozen_oofp: str = Field(default="", pattern=rf"^\s*(?:{ATOM_4})*$")
     """A string of white-space separated atomic indices to specify that the corresponding
     out-of-plane angle should be frozen.
     atoms should be frozen (unchanged).
     Example: `"1 2 3 4 2 3 4 5"` --> Freezes `OOFP(1, 2, 3, 4)` and `OOFP(2, 3, 4, 5)`"""
 
     # Specify atom and X, XY, XYZ, ... to be frozen (unchanged)
-    frozen_cartesian: str = Field(default="", pattern=rf"(?:\d\s{CART_STR}\s?)*")
+    frozen_cartesian: str = Field(default="", pattern=rf"(?i)^\s*(?:\W?\d\s{CART_STR}\W*\s*)*$")
     """A string of white-space separated atomic indices and Cartesian labels to specify that the
     Cartesian coordinates for a given atom should be frozen (unchanged).
     Example: `"1 XYZ 2 XY 2 Z"` --> Freezes `CART(1, X)`, `CART(1, Y)`, `CART(1, Z)`, `CART(2, X)`,
@@ -360,25 +351,25 @@ class OptParams(BaseModel):
     """A shortcut to request that all dihedrals should be frozen."""
 
     # For use only with `freeze_all_dihedrals` unfreeze a small subset of dihedrals
-    unfreeze_dihedrals: str = Field(default="", pattern=r"(?:\d\s+){4}*")
+    unfreeze_dihedrals: str = Field(default="", pattern=rf"\s*(?:{ATOM_4})*$")
     """A string of white-space separated atomic indices to specify that the corresponding dihedral
     angle should be unfrozen. This keyword is meant to be used in conjunction with
     `FREEZE_ALL_DIHEDRALS`"""
 
     # Specify distance between atoms to be ranged
-    ranged_distance: str = Field(default="", pattern=rf"(?:(?:\d\s*){2}(?:\d+\.\d+\s*){2})*")
+    ranged_distance: str = Field(default="", pattern=rf"^\s*(?:{ATOM_2}{RANGE})*$")
     """A string of white-space separated atomic indices and bounds for the distance between two
     atoms.
     Example: `"1 2 2.3 2.4"` --> Forces `Stre(1, 2)` to remain between 2.3 and 2.4 Angstroms"""
 
     # Specify angles between atoms to be ranged
-    ranged_bend: str = Field(default="", pattern=rf"(?:(?:\d\s*){3}(?:\d+\.\d+\s*){2})*")
+    ranged_bend: str = Field(default="", pattern=rf"^\s*(?:{ATOM_3}{RANGE})*$")
     """A string of white-space separated atomic indices and bounds for the angle between three
     atoms.
     Example: `"1 2 3 100 110"` --> Forces `Bend(1, 2, 3)` to remain between 100 and 110 degrees"""
 
     # Specify dihedral angles between atoms to be ranged
-    ranged_dihedral: str = Field(default="", pattern=rf"(?:(?:\d\s*){4}(?:\d+\.\d+\s*){2})*")
+    ranged_dihedral: str = Field(default="", pattern=rf"^\s*(?:{ATOM_4}{RANGE})*$")
     """A string of white-space separated atomic indices and bounds for the torsion angle of four
     atoms. The order of specification determines whether the dihedral is a proper or improper
     torsion/dihedral.
@@ -386,21 +377,21 @@ class OptParams(BaseModel):
     degrees"""
 
     # Specify out-of-plane angles between atoms to be ranged
-    ranged_oofp: str = Field(default="", pattern=rf"(?:(?:\d\s*){4}(?:\d+\.\d+\s*){2})*")
+    ranged_oofp: str = Field(default="", pattern=rf"^\s*(?:{ATOM_4}{RANGE})*$")
     """A string of white-space separated atomic indices and bounds for the out of plane angle
     defined by four atoms where the second atom is the central atom.
     Example: `"1 2 3 4 100 110"` --> Forces `OOFP(1, 2, 3, 4)` to remain between 100 and 110
     degrees"""
 
     # Specify atom and X, XY, XYZ, ... to be ranged
-    ranged_cartesian: str = Field(default="", pattern=rf"(?:\d\s+{CART_STR}\s+(?:\d+\.\d+\s*){2})*")
+    ranged_cartesian: str = Field(default="", pattern=rf"(?i)^\s*(?:\W?\d+\s+{CART_STR}\W*\s*{RANGE})*$")
     """A string of white-space separated atomic indices, Cartesian labels, and bounds for the
     Cartesian coordinates of a given atom.
     Example: `"1 XYZ 2.0 2.1"` --> Forces the X Y and Z coordinates of atom 1 to remain
     between 2.0 and 2.1 angstroms"""
 
     # Specify distances for which extra force will be added
-    ext_force_distance: str = Field(default="", pattern=rf"(?:(?:\d\s*){2}\(.*?\))*")
+    ext_force_distance: str = Field(default="", pattern=rf"""^\s*(?:{ATOM_2}\s*['"].*['"]\W?)*$""")
     """A string of white-space separated atomic indices (2) followed by a single variable equation
     surrounded in either a single or double quotation mark.
     Example: `"1 2 'Sin(x)'"` or `'1 2 "Sin(x)"'` --> Evaluate the force along the coordinate
@@ -408,7 +399,7 @@ class OptParams(BaseModel):
     coordinate (stretch)."""
 
     # Specify angles for which extra force will be added
-    ext_force_bend: str = Field(default="", pattern=rf"(?:(?:\d\s*){3}\(.*?\))*")
+    ext_force_bend: str = Field(default="", pattern=rf"""^\s*(?:{ATOM_3}\s*['"].*['"]\W?)*$""")
     """A string of white-space separated atomic indices (3) followed by a single variable equation
     surrounded in either a single or double quotation mark.
     Example: `"1 2 3 'Sin(x)'"` --> Evaluate the force along the coordinate as a 1-D
@@ -416,7 +407,7 @@ class OptParams(BaseModel):
     coordinate (bend)"""
 
     # Specify dihedral angles for which extra force will be added
-    ext_force_dihedral: str = Field(default="", pattern=rf"(?:(?:\d\s*){4}\(.*?\))*")
+    ext_force_dihedral: str = Field(default="", pattern=rf"""^\s*(?:{ATOM_4}\s*['"].*['"]\W?)*$""")
     """A string of white-space separated atomic indices (4) followed by a single variable equation
     surrounded in either a single or double quotation mark.
     Example: `"1 2 3 4 'Sin(x)'"` --> Evaluate the force along the coordinate as a 1-D
@@ -424,7 +415,7 @@ class OptParams(BaseModel):
     coordinate (torsion)"""
     
     # Specify out-of-plane angles for which extra force will be added
-    ext_force_oofp: str = Field(default="", pattern=rf"(?:(?:\d\s*){4}\(.*?\))*")
+    ext_force_oofp: str = Field(default="", pattern=rf"""^\s*(?:{ATOM_4}\s*['"].*['"]\W?)*$""")
     """A string of white-space separated atomic indices (4) followed by a single variable equation
     surrounded in either a single or double quotation mark.
     Example: `"1 2 3 4 'Sin(x)'"` --> Evaluate the force along the coordinate as a 1-D
@@ -432,7 +423,7 @@ class OptParams(BaseModel):
     coordinate (oofp)"""
 
     # Specify Cartesian coordinates for which extra force will be added
-    ext_force_cartesian: str = Field(default="", pattern=rf"(?:(?:\d\s+{CART_STR})\(.*?\))*")
+    ext_force_cartesian: str = Field(default="", pattern=rf"(?i)^\s*(?:\W?\d+\s+{CART_STR}\W?\s+['\"].*['\"]\W?)*$")
     """A string of whitecaps separated atomic indices (1) and Cartesian labels, followed by a
     single variable equation surrounded in either a single or double quotation mark.
     Example: `"1 X 'Sin(x)'"` --> Evaluate the force along the coordinate as 1 1-D sinusoidal
@@ -448,7 +439,7 @@ class OptParams(BaseModel):
 
     g_convergence: str = Field(
         pattern=re.compile(
-            r"QCHEM|MOLPRO|GAU|GAU_LOOSE|GAU_TIGHT|GAU_VERYTIGHT|TURBOMOLE|CFOUR|NWCHEM_LOOSE|INTERFRAG_TIGHT",
+            r"^(?:QCHEM|MOLPRO|GAU|GAU_LOOSE|GAU_TIGHT|GAU_VERYTIGHT|TURBOMOLE|CFOUR|NWCHEM_LOOSE|INTERFRAG_TIGHT)$",
             flags=re.IGNORECASE,
         ),
         default="QCHEM",
@@ -491,7 +482,7 @@ class OptParams(BaseModel):
     #
     # SUBSECTION Hessian Update
     # Hessian update scheme
-    hess_update: str = Field(pattern=r"NONE|BFGS|MS|POWELL|BOFILL", default="BFGS")
+    hess_update: str = Field(pattern=r"^(?:NONE|BFGS|MS|POWELL|BOFILL)$", default="BFGS")
     """one of: [NONE, "BFGS", "MS", "POWELL", "BOFILL"]
     Update scheme for the hessian. Default depends on `OPT_TYPE`"""
 
@@ -555,7 +546,7 @@ class OptParams(BaseModel):
 
     # Model Hessian to guess intrafragment force constants
     intrafrag_hess: str = Field(
-        pattern=re.compile(r"SCHLEGEL|FISCHER|SIMPLE|LINDH|LINDH_SIMPLE", flags=re.IGNORECASE),
+        pattern=re.compile(r"^(?:SCHLEGEL|FISCHER|SIMPLE|LINDH|LINDH_SIMPLE)$", flags=re.IGNORECASE),
         default="SCHLEGEL",
     )
     """Model Hessian to guess intrafragment force constants. One of `["SCHLEGEL", "FISCHER",
@@ -594,7 +585,7 @@ class OptParams(BaseModel):
     # coordinates. A primary difference is that in ``MULTI`` mode, the interfragment
     # coordinates are not redundant.
     frag_mode: str = Field(
-        pattern=re.compile(r"SINGLE|MULTI", flags=re.IGNORECASE), default="SINGLE"
+        pattern=re.compile(r"^(?:SINGLE|MULTI)$", flags=re.IGNORECASE), default="SINGLE"
     )
     """For multi-fragment molecules, treat as single bonded molecule or via interfragment
     coordinates. A primary difference is that in ``MULTI`` mode, the interfragment
@@ -616,7 +607,7 @@ class OptParams(BaseModel):
     # When interfragment coordinates are present, use as reference points either
     # principal axes or fixed linear combinations of atoms.
     interfrag_mode: str = Field(
-        pattern=re.compile(r"FIXED|PRINCIPAL_AXES", re.IGNORECASE), default="FIXED"
+        pattern=re.compile(r"^(?:FIXED|PRINCIPAL_AXES)$", re.IGNORECASE), default="FIXED"
     )
     """One of ['FIXED', 'PRINCIPAL_AXES']. Use either principal axes or fixed linear combinations
     of atoms as reference points for generating the interfragment coordinates."""
@@ -642,7 +633,7 @@ class OptParams(BaseModel):
     See input examples."""
 
     interfrag_hess: str = Field(
-        pattern=re.compile(r"DEFAULT|FISCHER_LIKE", flags=re.IGNORECASE), default="DEFAULT"
+        pattern=re.compile(r"^(?:DEFAULT|FISCHER_LIKE)$", flags=re.IGNORECASE), default="DEFAULT"
     )
     """Model Hessian to guess interfragment force constants. One of ["DEFAULT", "FISCHER_LIKE"]"""
 

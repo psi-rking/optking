@@ -95,7 +95,7 @@ def tokenize_input_string(inString):
     returns: a list of integers correspoding to an atom
     removes spaces or non integer characters from string of internal coordinates to be frozen
     """
-    outString = inString.replace("(", "").replace(")", "")
+    outString = inString.replace("(", "").replace(")", "").replace(",", "")
     return outString.split()
 
 

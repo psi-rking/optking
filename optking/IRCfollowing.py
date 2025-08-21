@@ -190,10 +190,7 @@ class IntrinsicReactionCoordinate(OptimizationInterface):
             if self.irc_step_number < 2 and self.params.irc_points > 1:
                 return False
 
-            # Needs to be outside substep so that calling converged again (i.e. Psi4 driver will)
-            # hit this multiple times. As is Psi4 will go one past
-            irc_points = self.params.irc_points - 1 if "psi4" in kwargs else self.params.irc_points
-            if self.irc_step_number >= irc_points:
+            if self.irc_step_number >= self.params.irc_points:
                 logger.info(
                     f"\tThe requested {self.params.irc_points} IRC points have been obtained."
                 )
