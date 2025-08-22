@@ -248,7 +248,23 @@ def initialize_options(opt_keys, silent=False):
     try:
         params = op.OptParams(**opt_keys)
     except (KeyError, ValueError, AttributeError, ValidationError) as e:
-        raise OptError("unable to parse params from userOptions") from e
+        error_key = ''
+        if isinstance(e, ValidationError):
+            for key in opt_keys.keys():
+                if key in str(e):
+                    error_key = key
+        logger.critical("\nEncountered an %s error parsing options %s", type(e), e)
+        logger.critical(
+            "\nFor valdidation errors please check the documenation to find an example of the desired\n"
+            "keyword being uitilized: https://optking.readthedocs.io/en/latest/options.html#options\n"
+        )
+        if error_key:
+            raise OptError(
+                f"unable to parse user provided options. \n{e}"
+                f"\n{error_key}:\t{opt_keys[error_key]}"
+            ) from e
+        else:
+            raise OptError(f"unable to parse provided options. \n{e}") from e
 
     # TODO we should make this just be a normal object
     #  we should return it to the optimize method

@@ -1,8 +1,10 @@
 import copy
+from pydantic import ValidationError
 import qcelemental as qcel
 import numpy as np
 import optking
 import pathlib
+import pytest
 
 """
 These tests attempt to verify that validation as well as saving the options object and reloading
@@ -131,3 +133,79 @@ def test_hessians():
     # TEST confirm that the original option set Params.to_dict() matches the option set after
     # reloading and calling to_dict again()
     assert_options_match(initial_params, reloaded_params)
+
+@pytest.mark.parametrize("option, keyword, valid", [
+    ("frozen_bend", "1 2 3", True),
+    ("frozen_bend", "1 2 3 4 5 6", True),
+    ("frozen_bend", "(1 2 3) (4 5 6)", True),
+    ("frozen_bend", "(1 2 3), (4 5)", False),
+    ("frozen_bend", "(1 2), (4 5)", False),
+    ("frozen_distance", "1 2", True),
+    ("frozen_distance", "1 2 3 4 5 6", True),
+    ("frozen_distance", "1 2, 3 4", True),
+    ("frozen_distance", "(1 2) (3 4) (5 6)", True),
+    ("frozen_distance", "(1 2), (4 5)", True),
+    ("frozen_distance", "1 2 3 4 AB", False),
+    ("frozen_distance", "(1 2) (3 4 5) (6)", False),
+    ("frozen_dihedral", "1 2 3 4", True),
+    ("frozen_dihedral", "(1 2 3 4) (4 5 6 7)", True),
+    ("frozen_dihedral", "(1 2 3 4), (4 5 6 7)", True),
+    ("frozen_dihedral", "1 2 3 4 5 6", False),
+    ("frozen_dihedral", "(1 2 3 4), (4 5)", False),
+    ("frozen_oofp", "1 2 3 4", True),
+    ("frozen_oofp", "1 2 3 4 5 6", False),
+    ("frozen_oofp", "(1 2 3 10) (10 4 5 6)", True),
+    ("frozen_oofp", "(1 2 3 10), (10 4 5 6)", True),
+    ("frozen_oofp", "(1 2 3) (4 5 6)", False),
+    ("frozen_oofp", "(1 2 3), (4 5)", False),
+    ("frozen_oofp", "(1 2), (4 5)", False),
+    ("frozen_oofp", "(1 2, 4 5)", True),
+    ("ranged_distance", "1 2 2.0 3.0", True),
+    ("ranged_distance", "1 2 2 3", False),  # Needs to be float
+    ("ranged_distance", "1 2 2.0 3.0 3 4 2.0 3.0 5 6 2.0 3.0", True),
+    ("ranged_distance", "1 2 2.0 3.0, 3 4 2.0 10.0", True),
+    ("ranged_distance", "(1 2 2.0 3.0) (3 4 2.0 3.0) (5 6 2.0 3.0)", True),
+    ("ranged_distance", "(1 2 2.0 3.0), (4 5 2.0 3.0)", True),
+    ("ranged_distance", "1 2 2.0 3.0 3 4 A B", False),
+    ("ranged_distance", "(1 2) (3 4 5) (6)", False),
+    ("ranged_dihedral", "1 2 3 4 2.0 3.0", True),
+    ("ranged_dihedral", "(1 2 3 4 30.0 40.0),", True),
+    ("ranged_dihedral", "(1 2 3 4 2.0 3.0) (4 5 6 7 2.0 3.0)", True),
+    ("ranged_dihedral", "(1 2 3 4 2.0 3.0), (4 5 6 7 110.0 115.0)", True),
+    ("ranged_dihedral", "1 2 3 4 5 6", False),
+    ("ranged_dihedral", "(1 2 3 4), (4 5)", False),
+    ("ranged_dihedral", "(1 2 3 4 3 4),", False),
+    ("ext_force_bend", "1 2 3 'Sin(x)'", True),
+    ("ext_force_bend", "1 2 3 Sin(x)", False),
+    ("ext_force_bend", "1 2 3 4 'Sin(x)'", False),
+    ("ext_force_bend", "1 2 3 'Sin(x)' 4 5 6 'Sin(x)'", True),
+    ("ext_force_bend", "(1 2 3 'Sin(x)') (4 5 6 'Sin(x)')", True),
+    ("ext_force_bend", "(1 2 3 'Sin(x)'), (4 5)", False),
+    ("ext_force_bend", "(1 2) 'Sin(x)', (4 5 6) 'Sin(x)'", False),
+    ("ext_force_bend", "(1 2 3 'Sin(x)'), (4 5 6) 'Sin(x)'", True),
+    ("frozen_cartesian", "1 XYZ 2 X 3 Y 2 Y", True),
+    ("frozen_cartesian", "(1 XYZ), (2 XYZ)", True),
+    ("frozen_cartesian", "1 2 XYZ", False),
+    ("frozen_cartesian", "1", False),
+    ("ranged_cartesian", "(1 XYZ 2.0 3.0)", True),
+    ("ranged_cartesian", "1 XYZ 3.0 4.0, 2 X 3.0 4.0", True),
+    ("ranged_cartesian", "(1 XYZ 2.0 3.0 4.0)", False),
+    ("ranged_cartesian", "1 XYZ 3.0 4.0 2 X 3.0 4.0, 2 M 3.0 4.0", False),
+    ("ext_force_cartesian", "10 XYZ 'Sin(x)'", True),
+    ("ext_force_cartesian", "10 XYZ 'Sin(x)', 4 XYZ 'Sin(x)', 3 X 'Sin(x)'", True),
+    ("ext_force_cartesian", "10 XYZ 'Sin(x)', 4 XYZ 'Sin(x)', 3 X Sin(x)", False),
+    ("G_CONVERGENCE", "GAU_TIGHT", True),
+    ("G_CONVERGENCE", "QCHEM", True),
+    ("G_CONVERGENCE", "GAUSSIAN", False),
+    ("OPT_TPYE", "IRC", True),
+    ("OPT_TYPE", "IRC2", False),
+    ("OPT_TYPE", "2IRC", False),
+    ("OPT_TYPE", "Random", False)
+])
+def test_regex_validation(option, keyword, valid):
+
+    if not valid:
+        with pytest.raises(ValidationError):
+            params = optking.op.OptParams(**{option: keyword})
+    else:
+        optking.op.OptParams(**{option: keyword})
