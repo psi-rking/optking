@@ -67,16 +67,16 @@ From Source
 The project is hosted on `github <https://github.com/psi-rking/optking/>`_ Source code can be downloaded with
 git or with the tarballs provided under `releases <https://github.com/psi-rking/optking/releases/latest>`_.
 
-To install OptKing and its required dependencies run::
+To install OptKing and its required dependencies run:
 
     pip install .
 
-from the projects root directory. `pip install -e .` will install OptKing in development mode.
+from the projects root directory. ``pip install -e .`` will install OptKing in development mode.
 
 This will install numpy, qcengine, qcelemental and more if not already present in the current virtual
 environment; however, installation of specific Quantum Chemistry programs is left to the user.
-OptKing uses `hatch` for its build system which also allows for creating environments.
-To create a conda environment with Psi4, optking's required dependencies, and OptKing::
+OptKing uses ``hatch`` for its build system which also allows for creating environments.
+To create a conda environment with Psi4, OptKing's required dependencies, and OptKing:
 
     pip install hatch
     hatch env create psi4
