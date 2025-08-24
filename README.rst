@@ -53,34 +53,45 @@ Conda & Pypi
 ------------
 
 The recommended method of installation is through conda. All required dependencies and several
-Quantum Chemistry packages are available on conda-forge. To install::
+Quantum Chemistry packages are available on conda-forge. To install OptKing 
 
-    conda install optking -c conda-forge
+.. code-block:: bash
 
-OptKing and it's required depdendencies can also be installed from pypi::
+  conda install optking -c conda-forge
+
+
+OptKing's and its' required dependencies can also be installed from pypi.
+
+.. code-block:: bash
 
     pip install optking
 
 From Source
 -----------
 
-The project is hosted on `github <https://github.com/psi-rking/optking/>`_ Source code can be downloaded with
+The project is hosted on `github <https://github.com/psi-rking/optking/>`_. Source code can be downloaded with
 git or with the tarballs provided under `releases <https://github.com/psi-rking/optking/releases/latest>`_.
 
-To install OptKing and its required dependencies run::
+To install OptKing and its required dependencies run the following command from the project's root directory
 
-    pip install .
+.. code-block:: bash
 
-from the projects root directory. ``pip install -e .`` will install OptKing in development mode.
+  pip install .
 
-This will install numpy, qcengine, qcelemental and more if not already present in the current virtual
-environment; however, installation of specific Quantum Chemistry programs is left to the user.
-OptKing uses ``hatch`` for its build system which also allows for creating environments.
-To create a conda environment with Psi4, OptKing's required dependencies, and OptKing::
 
-    pip install hatch
-    hatch env create psi4
-    pip install .
+Running ``pip install -e .`` instead, will install OptKing in development mode.
+Installing with `pip` will install numpy, qcengine, qcelemental, pydantic
+and more if not already present in the current virtual environment; however, installation of
+specific Quantum Chemistry programs is left to the user.
+
+OptKing uses ``hatch`` for its build system which can be used to create conda environments.
+To create a conda environment with Psi4, OptKing's required dependencies, and OptKing run
+
+.. code-block:: bash
+
+    pip install hatch hatch-conda  # Install hatch and conda plugin (conda must already be installed)
+    hatch env create psi4          # Create conda environment with all required deps
+    pip install .                  # Install OptKing into conda env
 
 For most use cases, QCEngine and your QC/MM program of choice OR Psi4 is required.
 If using QCEngine see MolSSI's `qcengine documentation <http://docs.qcarchive.molssi.org/projects/QCEngine/en/stable/>`_ 
@@ -101,7 +112,8 @@ Running through QCEngine
 
 A basic driver has been implemented in QCEngine. QCEngine is built upon QCElemental which provides input
 validation and standardized input/output. To see the requirements for an Optimziation Input check MolSSI's
-`qcelemental documentation <http://docs.qcarchive.molssi.org/projects/QCElemental/en/stable/api/qcelemental.models.OptimizationInput.html#qcelemental.models.OptimizationInput>`_. **NOTE** QCElemental assumes atomic units by default:
+`qcelemental documentation <http://docs.qcarchive.molssi.org/projects/QCElemental/en/stable/api/qcelemental.models.OptimizationInput.html#qcelemental.models.OptimizationInput>`_.
+**NOTE** QCElemental assumes atomic units by default:
 
 .. code-block:: python
 
