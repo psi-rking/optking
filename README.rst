@@ -15,6 +15,7 @@
 .. |RTD| image:: https://readthedocs.org/projects/optking/badge/?version=latest
     :target: https://optking.readthedocs.io/en/latest/?badge=latest
     :alt: Documentation Status
+.. |HATCH| image:: https://img.shields.io/badge/%F0%9F%A5%9A-Hatch-4051b5.svg
 
 =====
 About
@@ -47,18 +48,38 @@ Getting Started
 Installation and Setup
 -----------------------
 
-The recommended method of installation is through conda. To install::
-    
+Conda / Pypi
+~~~~~~~~~~~~
+
+The recommended method of installation is through conda. All required dependencies and several
+Quantum Chemistry packages are available on conda-forge. To install::
+
     conda install optking -c conda-forge
+
+OptKing and it's required depdendencies can also be installed from pypi::
+
+    pip install optking
+
+From Source
+~~~~~~~~~~~
 
 The project is hosted on `github <https://github.com/psi-rking/optking/>`_ Source code can be downloaded with
 git or with the tarballs provided under `releases <https://github.com/psi-rking/optking/releases/latest>`_.
 
-To install from source make sure all dependencies are installed via conda or pip and run::
+To install OptKing and its required dependencies run::
 
-    pip install -e .
+    pip install .
 
-from the installation directory.
+from the projects root directory. `pip install -e .` will install OptKing in development mode.
+
+This will install numpy, qcengine, qcelemental and more if not already present in the current virtual
+environment; however, installation of specific Quantum Chemistry programs is left to the user.
+OptKing uses `hatch` for its build system which also allows for creating environments.
+To create a conda environment with Psi4, optking's required dependencies, and OptKing::
+
+    pip install hatch
+    hatch env create psi4
+    pip install .
 
 For most use cases, QCEngine and your QC/MM program of choice OR Psi4 is required.
 If using QCEngine see MolSSI's `qcengine documentation <http://docs.qcarchive.molssi.org/projects/QCEngine/en/stable/>`_ 

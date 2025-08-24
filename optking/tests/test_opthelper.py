@@ -187,8 +187,7 @@ def test_stepwise_export():
     assert psi4.compare_values(refnucenergy, nucenergy, 3, "Nuclear repulsion energy")
     assert psi4.compare_values(refenergy, E, 6, "Reference energy")
 
-
-def test_hooh_irc(check_iter):
+def test_hooh_irc(check_iter, irc_cleanup):
     import psi4
     from .utils import utils
 
@@ -220,6 +219,7 @@ def test_hooh_irc(check_iter):
         "irc_step_size": 1.0,
         "cart_hess_read": True,
         "irc_points": 2,
+        "write_trajectory": False
     }
 
     psi4.set_options(psi4_options)

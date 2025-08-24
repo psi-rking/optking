@@ -18,7 +18,7 @@ test_dir = pathlib.Path(__file__).parent
         ["backward", 9, -190.129671982538],  # Very short IRC in forward direction
     ),
 )
-def test_irc_CH3O2(direction, NUM_POINTS, REF_ENERGY):
+def test_irc_CH3O2(direction, NUM_POINTS, REF_ENERGY, irc_cleanup):
 
     # Random IRC calculation that was ending before reaching a minimum
 
@@ -45,6 +45,7 @@ def test_irc_CH3O2(direction, NUM_POINTS, REF_ENERGY):
         "irc_step_size": 0.2,
         "irc_points": 10,
         "geom_maxiter": 200,
+        "write_trajectory": False
     }
 
     psi4.set_options(psi4_options)
@@ -67,7 +68,7 @@ def test_irc_CH3O2(direction, NUM_POINTS, REF_ENERGY):
         # terminating. linear bends only get added at end.
     ),
 )
-def test_irc_HCN(direction, NUM_POINTS, REF_ENERGY):
+def test_irc_HCN(direction, NUM_POINTS, REF_ENERGY, irc_cleanup):
     HCN = psi4.geometry("""
         N  -0.0428368408   0.5748930708   0.0000000000
         C  -0.0428349579  -0.6464622551   0.0000000000
@@ -85,6 +86,7 @@ def test_irc_HCN(direction, NUM_POINTS, REF_ENERGY):
             "irc_step_size": 0.2,
             "irc_points": 23,  # just enough to make sure we complete
             "geom_maxiter": 300,
+            "write_trajectory": False,
         }
     )
 
@@ -104,7 +106,7 @@ with open(f'{test_dir}/test_data/CH5_irc_ref.json', 'r+') as f:
         ["forward", ch5_ref["CH5_FORWARD_REF_COORDS"], ch5_ref["CH5_FORWARD_REF_ENS"]]
     ),
 )
-def test_irc_CH5(direction, coords, energies):
+def test_irc_CH5(direction, coords, energies, irc_cleanup):
     ch5 = psi4.geometry("""
         C   0.1513220558  -0.0642324356  -0.1019101693
         H   0.8996390163  -0.3080157036   0.6421558506
@@ -130,6 +132,7 @@ def test_irc_CH5(direction, coords, energies):
             "irc_step_size": 0.2,
             "irc_points": 11,
             "write_opt_history": True,
+            "write_trajectory": False,
         }
     )
 

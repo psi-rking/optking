@@ -19,6 +19,7 @@ An Open-Source Geometry Optimizer For Molecules
    molecule
    api
    coords
+   devs
 
 ====
 
