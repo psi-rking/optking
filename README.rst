@@ -17,19 +17,18 @@
     :target: https://optking.readthedocs.io/en/latest/?badge=latest
     :alt: Documentation Status
 
-=====
 About
-=====
+#####
 
-optking is a molecular geometry optimization program that began as a rewrite of the previous
+OptKing is a molecular geometry optimization program that began as a rewrite of the previous
 c++ module of the same name in psi4. The translation into python and subsequent development was
 undertaken to support more complex tasks, and to join with interoperability efforts such as 
-QCSchema, QCArchive and QCDB. optking supports the location of minima,
+QCSchema, QCArchive and QCDB. OptKing supports the location of minima,
 transition states, and reaction paths on molecular potential surfaces. Current work is focused
 especially on expanding the available reaction path methods. Contributions are welcome!
 Please fork this repository and open a PR!
 
-====
+=====
 
 |Build|
 |codecov|
@@ -42,32 +41,33 @@ Please fork this repository and open a PR!
 |Black|
 |HATCH|
 
-===============
+====
+
 Getting Started
-===============
+###############
 
 Installation and Setup
------------------------
+======================
 
-Conda / Pypi
-~~~~~~~~~~~~
+Conda & Pypi
+------------
 
 The recommended method of installation is through conda. All required dependencies and several
-Quantum Chemistry packages are available on conda-forge. To install:
+Quantum Chemistry packages are available on conda-forge. To install::
 
     conda install optking -c conda-forge
 
-OptKing and it's required depdendencies can also be installed from pypi:
+OptKing and it's required depdendencies can also be installed from pypi::
 
     pip install optking
 
 From Source
-~~~~~~~~~~~
+-----------
 
 The project is hosted on `github <https://github.com/psi-rking/optking/>`_ Source code can be downloaded with
 git or with the tarballs provided under `releases <https://github.com/psi-rking/optking/releases/latest>`_.
 
-To install OptKing and its required dependencies run:
+To install OptKing and its required dependencies run::
 
     pip install .
 
@@ -76,7 +76,7 @@ from the projects root directory. ``pip install -e .`` will install OptKing in d
 This will install numpy, qcengine, qcelemental and more if not already present in the current virtual
 environment; however, installation of specific Quantum Chemistry programs is left to the user.
 OptKing uses ``hatch`` for its build system which also allows for creating environments.
-To create a conda environment with Psi4, OptKing's required dependencies, and OptKing:
+To create a conda environment with Psi4, OptKing's required dependencies, and OptKing::
 
     pip install hatch
     hatch env create psi4
@@ -92,6 +92,9 @@ Alternatively, an ``OptimizationManager`` or an even lower-level class could be 
 Gradients, energies, and possibly hessians can be provided directly.
 To use the most basic representation of the algorithms with no reference to molecules one of the classes
 inheriting from OptimizationAlgorithm will be needed.
+
+Running OptKing
+===============
 
 Running through QCEngine
 ------------------------
@@ -172,16 +175,10 @@ place Angstroms are expected:
     opt = qcng.get_procedure("optking")
     result = opt.compute(opt_input, config)
 
-Running through Psi4 - Development
------------------------------------
-
-Direct integration in Psi4 is in development. Check an upcoming Psi4 release to run optking through psi4.
-Running this input file ``psi4 input.dat`` will trigger (as of 1.6) the old c++ optimizer. In the future this
-will trigger optimization through pyoptking. Almost everything in Psi4's current optking documentation is also
-applicable to the new optimizer. Optimizations can also be run through Psi4's python API.
+Running through Psi4
+--------------------
 
 ::
-
 
     molecule hooh {
         0 1
@@ -199,7 +196,7 @@ applicable to the new optimizer. Optimizations can also be run through Psi4's py
     optimize("hf/sto-3g")
 
 The OptHelpers
-==============
+--------------
 
 For users looking to run optimizations from python, an example of QCEngine's python API has already been shown.
 To run optking through Psi4's python API checkout the `Psi4 API docs <https://psicode.org/psi4manual/master/psiapi.html>`_.
