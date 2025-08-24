@@ -12,10 +12,10 @@
   :target: #
 .. |GH_activity| image:: https://img.shields.io/github/commit-activity/y/psi-rking/optking.svg
 .. |GH_releasedate| image:: https://img.shields.io/github/release-date/psi-rking/optking.svg
+.. |HATCH| image:: https://img.shields.io/badge/%F0%9F%A5%9A-Hatch-4051b5.svg
 .. |RTD| image:: https://readthedocs.org/projects/optking/badge/?version=latest
     :target: https://optking.readthedocs.io/en/latest/?badge=latest
     :alt: Documentation Status
-.. |HATCH| image:: https://img.shields.io/badge/%F0%9F%A5%9A-Hatch-4051b5.svg
 
 =====
 About
@@ -40,6 +40,7 @@ Please fork this repository and open a PR!
 |GH_releasedate|
 |RTD|
 |Black|
+|HATCH|
 
 ===============
 Getting Started
