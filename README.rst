@@ -53,11 +53,11 @@ Conda / Pypi
 ~~~~~~~~~~~~
 
 The recommended method of installation is through conda. All required dependencies and several
-Quantum Chemistry packages are available on conda-forge. To install::
+Quantum Chemistry packages are available on conda-forge. To install:
 
     conda install optking -c conda-forge
 
-OptKing and it's required depdendencies can also be installed from pypi::
+OptKing and it's required depdendencies can also be installed from pypi:
 
     pip install optking
 
