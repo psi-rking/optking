@@ -3,7 +3,6 @@ import logging
 from copy import deepcopy
 
 import numpy as np
-from qcelemental.models import AtomicInput, AtomicResult, Molecule
 from qcelemental.util.serialization import json_dumps
 
 from .exceptions import OptError
@@ -13,7 +12,7 @@ logger = logging.getLogger(f"{log_name}{__name__}")
 
 
 class ComputeWrapper:
-    """An implementation of MolSSI's qc schema
+    """An implementation of MolSSI's QCSchema
 
     Parameters
     ----------
@@ -22,13 +21,14 @@ class ComputeWrapper:
 
     """
 
-    def __init__(self, molecule, model, keywords, program):
+    def __init__(self, molecule, model, keywords, program, dtype=1):
         self.molecule = molecule
         # ensure molecule orientation does not differ from optking regardless of how mol was created
         self.molecule.update({'fix_com': True, 'fix_orientation': True})
         self.model = model
         self.keywords = keywords
         self.program = program
+        self.dtype = dtype
         self.trajectory = []
         self.energies = []
 
@@ -47,18 +47,24 @@ class ComputeWrapper:
         geom : np.ndarray
             cartesian geometry 1D list
 
-        Returns
-        -------
-        json_for_input : dict
         """
 
         self.molecule["geometry"] = [i for i in geom.flat]
 
     def generate_schema_input(self, driver):
-        molecule = Molecule(**self.molecule)
-        inp = AtomicInput(
-            molecule=molecule, model=self.model, keywords=self.keywords, driver=driver
-        )
+        if self.dtype == 1:
+            # works until QCElemental v0.70
+            from qcelemental.models import AtomicInput, Molecule
+            molecule = Molecule(**self.molecule)
+            inp = AtomicInput(
+                molecule=molecule, model=self.model, keywords=self.keywords, driver=driver
+            )
+        elif self.dtype == 2:
+            from qcelemental.models.v2 import AtomicInput, Molecule
+            molecule = Molecule(**self.molecule)
+            inp = AtomicInput(
+                molecule=molecule, specification={"model": self.model, "keywords": self.keywords, "driver": driver},
+            )
 
         return inp
 
@@ -147,9 +153,17 @@ class Psi4Computer(ComputeWrapper):
         if "1.3" in psi4.__version__:
             ret = psi4.json_wrapper.run_json_qcschema(inp.dict(), clean=True)
         else:
+            # note that this is a sub-fn, not the outer run_qcschema. in psi4 v1.11, run_json_qcschema runs in QCSchema v2,
+            #   whereas run_qcschema provides flexible v1/v2.
             ret = psi4.schema_wrapper.run_json_qcschema(
                 inp.dict(), clean=True, json_serialization=True
             )
+        if self.dtype == 1:
+            # works until QCElemental v0.70
+            from qcelemental.models import AtomicResult
+        elif self.dtype == 2:
+            from qcelemental.models.v2 import AtomicResult
+
         ret = AtomicResult(**ret)
         return ret
 

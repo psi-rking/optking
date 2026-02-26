@@ -36,6 +36,7 @@ def test_ch2_with_dummy_atoms(check_iter):
     psi4.set_options(psi4_options)
 
     json_output = optking.optimize_psi4("hf")
+    assert json_output["success"] is True, json_output["error"]
     thisenergy = json_output["energies"][-1]
     nucenergy = json_output["trajectory"][-1]["properties"]["nuclear_repulsion_energy"]
 
