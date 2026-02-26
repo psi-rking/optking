@@ -399,21 +399,29 @@ class CustomHelper(Helper):
         """
         Parameters
         ----------
-        mol_src: [dict, qcel.models.Molecule, psi4.qcdb.Molecule]
+        mol_src: [dict, qcel.models.Molecule, qcel.models.v2.Molecule, psi4.qcdb.Molecule]
             psi4 or qcelemental molecule to construct optking molecular system from
-
+        params: dict
+            Options with which to initialize OptKing
+        dtype: int
+            QCSchema version to run with (pass in kwargs)
         """
-
-        self.computer = optwrapper.make_computer(OPT_INPUT_TEMPLATE, "user")
+        dtype = kwargs.pop("dtype", 1)
+        self.computer = optwrapper.make_computer(OPT_INPUT_TEMPLATE[dtype], "user")
         super().__init__(params, **kwargs)
 
-        if isinstance(mol_src, (qcel.models.basemodels.ProtoModel, dict)):
+        try:
+            allowed = (qcel.models.v1.ProtoModel, qcel.models.v2.ProtoModel, dict)
+        except AttributeError:
+            allowed = (qcel.models.ProtoModel, dict)
+
+        if isinstance(mol_src, allowed):
             # from_dict will call from_schema as neeeded
             self.opt_input = from_dict(mol_src)
             self.molsys = molsys.Molsys.from_schema(self.opt_input["initial_molecule"])
         else:
             # If Psi4 molecule doesn't work as a backup error out
-            self.molsys, self.opt_input = from_psi4(mol_src)
+            self.molsys, self.opt_input = from_psi4(mol_src, dtype=dtype)
 
         self.computer.molecule = self.opt_input["initial_molecule"]
         self.build_coordinates()
@@ -674,13 +682,30 @@ class EngineHelper(Helper):
 
 
 MODEL_TYPES = {
-    "qcschema_optimization_input": qcel.models.OptimizationInput,
-    "qcschema_molecule": qcel.models.Molecule,
+    1: {
+        "qcschema_optimization_input": qcel.models.OptimizationInput,
+        "qcschema_molecule": qcel.models.Molecule,
+    },
 }
+try:
+    MODEL_TYPES[2] = {
+        "qcschema_optimization_input": qcel.models.v2.OptimizationInput,
+        "qcschema_molecule": qcel.models.v2.Molecule,
+    }
+except AttributeError:
+    pass
 
 OPT_INPUT_TEMPLATE = {
-    "initial_molecule": {},
-    "input_specification": {"model": {"method": "", "basis": ""}, "keywords": {}},
+    1: {
+        "initial_molecule": {},
+        "input_specification": {"model": {"method": "", "basis": ""}, "keywords": {}},
+    },
+    2: {
+        "initial_molecule": {},
+        "specification": {
+            "specification": {"model": {"method": "", "basis": ""}, "keywords": {}},
+        },
+    },
 }
 
 
@@ -769,7 +794,7 @@ def from_dict(input_obj: dict, type="") -> dict:
     return opt_input
 
 
-def from_psi4(mol_src) -> Tuple[molsys.Molsys, dict]:
+def from_psi4(mol_src, dtype) -> Tuple[molsys.Molsys, dict]:
     try:
         import psi4
     except ImportError:
@@ -779,7 +804,7 @@ def from_psi4(mol_src) -> Tuple[molsys.Molsys, dict]:
         raise
 
     if isinstance(mol_src, (psi4.qcdb.Molecule, psi4.core.Molecule)):
-        opt_mol, qc_mol = molsys.Molsys.from_psi4(mol_src)
+        opt_mol, qc_mol = molsys.Molsys.from_psi4(mol_src, dtype=dtype)
     else:
         logger.warning(
             "The user provided molecule is not a psi4.core.Molecule or psi4.qcdb.Molecule"
@@ -790,6 +815,6 @@ def from_psi4(mol_src) -> Tuple[molsys.Molsys, dict]:
         except Exception as error:
             raise OptError("Failed to grab psi4 molecule as last resort") from error
 
-    opt_input = OPT_INPUT_TEMPLATE.copy()
+    opt_input = OPT_INPUT_TEMPLATE[dtype].copy()
     opt_input.update({"initial_molecule": qc_mol})
     return opt_mol, opt_input

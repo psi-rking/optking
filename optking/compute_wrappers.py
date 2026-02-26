@@ -21,7 +21,7 @@ class ComputeWrapper:
 
     """
 
-    def __init__(self, molecule, model, keywords, program, dtype=1):
+    def __init__(self, molecule, model, keywords, program, dtype):
         self.molecule = molecule
         # ensure molecule orientation does not differ from optking regardless of how mol was created
         self.molecule.update({'fix_com': True, 'fix_orientation': True})
@@ -97,7 +97,11 @@ class ComputeWrapper:
         self.update_geometry(geom)
         ret = self._compute(driver)
         # Decodes the Result Schema to remove numpy elements (Makes ret JSON serializable)
-        ret = json.loads(json_dumps(ret))
+        if self.dtype == 1:
+            jret = json_dumps(ret)
+        elif self.dtype == 2:
+            jret = ret.model_dump_json()
+        ret = json.loads(jret)
         self.trajectory.append(ret)
 
         if print_result:
@@ -194,24 +198,42 @@ class QCEngineComputer(ComputeWrapper):
 
 # Class to produce a compliant output with user provided energy/gradient/hessian
 class UserComputer(ComputeWrapper):
-    def __init__(self, molecule, model, keywords, program):
-        super().__init__(molecule, model, keywords, program)
+    def __init__(self, molecule, model, keywords, program, dtype):
+        super().__init__(molecule, model, keywords, program, dtype)
         self.external_energy = None
         self.external_gradient = None
         self.external_hessian = None
 
     output_skeleton = {
-        "id": None,
-        "schema_name": "qcschema_output",
-        "schema_version": 1,
-        "model": {"method": "unknown", "basis": "unknown"},
-        "provenance": {"creator": "User", "version": "0.1"},
-        "properties": {},
-        "extras": {"qcvars": {}},
-        "stdout": "User provided energy, gradient, or hessian is returned",
-        "stderr": None,
-        "success": True,
-        "error": None,
+        1: {
+            "id": None,
+            "schema_name": "qcschema_output",
+            "schema_version": 1,
+            "model": {"method": "unknown", "basis": "unknown"},
+            "provenance": {"creator": "User", "version": "0.1"},
+            "properties": {},
+            "extras": {"qcvars": {}},
+            "stdout": "User provided energy, gradient, or hessian is returned",
+            "stderr": None,
+            "success": True,
+            "error": None,
+        },
+        2: {
+            "id": None,
+            "schema_name": "qcschema_atomic_result",
+            "schema_version": 2,
+            "input_data": {
+                "specification": {
+                    "model": {"method": "unknown", "basis": "unknown"},
+                },
+            },
+            "provenance": {"creator": "User", "version": "0.1"},
+            "properties": {},
+            "extras": {"qcvars": {}},
+            "stdout": "User provided energy, gradient, or hessian is returned",
+            "stderr": None,
+            "success": True,
+        },
     }
 
     def _compute(self, driver):
@@ -229,10 +251,22 @@ class UserComputer(ComputeWrapper):
             if E is None:
                 raise OptError("Must provide energy.")
 
-        result = deepcopy(UserComputer.output_skeleton)
-        result["driver"] = driver
-        mol = Molecule(**self.molecule)
-        result["molecule"] = mol
+        result = deepcopy(UserComputer.output_skeleton[self.dtype])
+
+        if self.dtype == 1:
+            from qcelemental.models import Molecule, AtomicResult
+            result["driver"] = driver
+            mol = Molecule(**self.molecule)
+            result["molecule"] = mol
+
+        elif self.dtype == 2:
+            from qcelemental.models.v2 import Molecule, AtomicResult
+            result["input_data"]["specification"]["driver"] = driver
+            self.molecule.pop("schema_version", None)
+            mol = Molecule(**self.molecule)
+            result["input_data"]["molecule"] = mol
+            result["molecule"] = mol
+
         NRE = mol.nuclear_repulsion_energy()
         result["properties"]["nuclear_repulsion_energy"] = NRE
         result["extras"]["qcvars"]["NUCLEAR REPULSION ENERGY"] = NRE

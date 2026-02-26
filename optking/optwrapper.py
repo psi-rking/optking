@@ -250,7 +250,7 @@ def make_computer(opt_input: dict, computer_type):
     # This gets updated so it shouldn't be a reference
     molecule = copy.deepcopy(opt_input["initial_molecule"])
 
-    schver = 2 if "specification" in opt_input else 1
+    schver = 2 if "specification" in opt_input.keys() else 1
 
     # Sorting by spec_schema_name isn't foolproof b/c opt_input might not be a
     #   constructed model at this point if it's not arriving through QCEngine.
@@ -277,10 +277,10 @@ def make_computer(opt_input: dict, computer_type):
         # Please note that program is not actually used here
         return Psi4Computer(molecule, model, options, program, dtype=schver)
     elif computer_type == "qc":
-        return QCEngineComputer(molecule, model, options, program)
+        return QCEngineComputer(molecule, model, options, program, dtype=schver)
     elif computer_type == "user":
         logger.info("Creating a UserComputer")
-        return UserComputer(molecule, model, options, program)
+        return UserComputer(molecule, model, options, program, dtype=schver)
     else:
         raise OptError("computer_type is unknown")
 
