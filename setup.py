@@ -38,9 +38,9 @@ if __name__ == "__main__":
                 "pydantic-autodoc",
                 "numpydoc",
             ],
-            "tests": ["pytest", "pytest-cov", "pytest-pep8",],
+            "tests": ["pytest", "pytest-cov", "pytest-pep8", "packaging",],
         },
-        tests_require=["pytest", "pytest-cov", "pytest-pep8",],
+        tests_require=["pytest", "pytest-cov", "pytest-pep8", "packaging",],
         classifiers=[
             "Development Status :: 4 - Beta",
             "Intended Audience :: Science/Research",

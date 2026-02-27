@@ -712,19 +712,29 @@ OPT_INPUT_TEMPLATE = {
 def from_schema(input_obj: Union[qcel.models.Molecule, qcel.models.OptimizationInput]):
     """Initialize opt_helper's molecule from QCSchema Input"""
     if isinstance(input_obj, qcel.models.Molecule):
-        return from_dict(input_obj.dict(), type="qcschema_molecule")
+        return from_dict(input_obj.dict(), type="qcschema_molecule", dtype=1)
     elif isinstance(input_obj, qcel.models.OptimizationInput):
-        return from_dict(input_obj.dict(), type="qcschema_optimization_input")
+        return from_dict(input_obj.dict(), type="qcschema_optimization_input", dtype=1)
     elif isinstance(input_obj, dict):
         # Be nice and attempt to run dictionary through from_dict checks
         return from_dict(input_obj, type="")
+
+    try:
+        from qcelemental.models import v2
+    except ImportError:
+        pass
     else:
-        raise ValueError(
-            "Provided a qcschema of unsupported type. Should be `Molecule` or `OptimizationInput`"
-        )
+        if isinstance(input_obj, qcel.models.v2.Molecule):
+            return from_dict(input_obj.dict(), type="qcschema_molecule", dtype=2)
+        elif isinstance(input_obj, qcel.models.v2.OptimizationInput):
+            return from_dict(input_obj.dict(), type="qcschema_optimization_input", dtype=2)
+
+    raise ValueError(
+        "Provided a qcschema of unsupported type. Should be `Molecule` or `OptimizationInput`"
+    )
 
 
-def from_dict(input_obj: dict, type="") -> dict:
+def from_dict(input_obj: dict, type="", dtype=1) -> dict:
     """Attempt to create a dictionary with required elements of an OptimizationInput from user
     input. User is not required to specify a full OptimizationInput. Used by OptHelper classes
     If input is of wrong type, will attempt to identify type of input and create schema.
@@ -748,11 +758,16 @@ def from_dict(input_obj: dict, type="") -> dict:
     def check_name_and_validate(name, input_obj):
         """Can raise a ValidationError if input_obj is incorrectly formatted"""
         if input_obj.get("schema_name") != name or not input_obj.get("validated"):
-            return MODEL_TYPES[name](**input_obj).dict()
+            return MODEL_TYPES[dtype][name](**input_obj).dict()
         return input_obj
 
+    try:
+        allowed = (qcel.models.v1.ProtoModel, qcel.models.v2.ProtoModel)
+    except AttributeError:
+        allowed = (qcel.models.ProtoModel)
+
     if not isinstance(input_obj, dict):
-        if isinstance(input_obj, qcel.models.basemodels.ProtoModel):
+        if isinstance(input_obj, allowed):
             return from_schema(input_obj)
         else:
             raise RuntimeError(
@@ -760,7 +775,7 @@ def from_dict(input_obj: dict, type="") -> dict:
                 "dictionary or a qcschema"
             )
 
-    opt_input = OPT_INPUT_TEMPLATE.copy()
+    opt_input = OPT_INPUT_TEMPLATE[dtype].copy()
 
     if not type:
         if "schema_name" in input_obj.keys():
@@ -794,7 +809,9 @@ def from_dict(input_obj: dict, type="") -> dict:
     return opt_input
 
 
-def from_psi4(mol_src, dtype) -> Tuple[molsys.Molsys, dict]:
+def from_psi4(mol_src, dtype=1) -> Tuple[molsys.Molsys, dict]:
+    """Construct an OptKing molecule and a QCSchema OptimizationInput dict of schema_version *dtype* from a Psi4-like molecule."""
+
     try:
         import psi4
     except ImportError:
@@ -811,7 +828,7 @@ def from_psi4(mol_src, dtype) -> Tuple[molsys.Molsys, dict]:
         )
         logger.warning("Checking for an active psi4 molecule")
         try:
-            opt_mol, qc_mol = molsys.Molsys.from_psi4(psi4.core.get_active_molecule())
+            opt_mol, qc_mol = molsys.Molsys.from_psi4(psi4.core.get_active_molecule(), dtype=dtype)
         except Exception as error:
             raise OptError("Failed to grab psi4 molecule as last resort") from error
 

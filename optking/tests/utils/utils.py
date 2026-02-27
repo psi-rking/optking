@@ -28,3 +28,11 @@ def compare_iterations(json_output, expected_steps, assert_iter):
 
 def psi4_runs_v2_qcschema(p4ver):
     return Version(p4ver) >= Version("1.11a1.dev2")
+
+def qcel_impl_v2_qcschema():
+    try:
+        from qcelemental.models import v2
+    except ImportError:
+        return False
+    else:
+        return True
