@@ -6,6 +6,7 @@ import json
 import logging
 import pprint
 
+import qcelemental
 from qcelemental.util.serialization import json_dumps
 from pydantic import ValidationError
 from pydantic.v1.error_wrappers import ValidationError as v1ValidationError
@@ -41,8 +42,9 @@ def optimize_psi4(calc_name, program="psi4", dertype=None, **xtra_opt_params):
     Returns
     -------
     opt_output: dict
-        dictionary serialized MOLSSI OptimizationResult.
-        see https://github.com/MolSSI/QCElemental/blob/master/qcelemental/models/procedures.py
+        dictionary serialized MolSSI OptimizationResult.
+        If Psi4 supports QCSchema v2 (~v1.11 Spring 2026), *opt_output* will be v2: https://molssi.github.io/QCElemental/next/model_opt.html .
+        Otherwise, *opt_output* will be v1: https://molssi.github.io/QCElemental/dev/api/qcelemental.models.OptimizationInput.html#qcelemental.models.OptimizationInput .
     """
 
     opt_input = {}
@@ -216,14 +218,24 @@ def optimize_qcengine(opt_input, computer_type="qc"):
 
     """
 
-    if isinstance(opt_input, OptimizationInput):
+    try:
+        allowed = (qcelemental.models.v1.OptimizationInput, qcelemental.models.v2.OptimizationInput)
+    except AttributeError:
+        allowed = (qcelemental.models.OptimizationInput)
+
+    if isinstance(opt_input, allowed):
         opt_input = json.loads(json_dumps(opt_input))  # Remove numpy elements turn into dictionary
     opt_output = copy.deepcopy(opt_input)
+
+    dtype = 2 if "specification" in opt_output.keys() else 1
 
     # Make basic optking molecular system
     oMolsys = molsys.Molsys.from_schema(opt_input["initial_molecule"])
     try:
-        initialize_options(opt_input["keywords"])
+        if dtype == 1:
+            initialize_options(opt_input["keywords"])
+        elif dtype == 2:
+            initialize_options(opt_input["specification"]["keywords"])
         computer = make_computer(opt_input, computer_type)
         opt_output = optimize(oMolsys, computer)
     except Exception as error:
@@ -234,10 +246,16 @@ def optimize_qcengine(opt_input, computer_type="qc"):
         }
         logger.critical(f"Error placed in qcschema: {opt_output}")
     finally:
-        opt_input.update(opt_output)
-        opt_input.update({"provenance": optking._optking_provenance_stamp})
-        opt_input["provenance"]["routine"] = "optimize_qcengine"
-    return opt_input
+        if dtype == 1:
+            opt_input.update(opt_output)
+            opt_input.update({"provenance": optking._optking_provenance_stamp})
+            opt_input["provenance"]["routine"] = "optimize_qcengine"
+            return opt_input
+        elif dtype == 2:
+            opt_output["input_data"] = opt_input
+            opt_output["provenance"] = optking._optking_provenance_stamp
+            opt_output["provenance"]["routine"] = "optimize_qcengine"
+            return opt_output
 
     # QCEngine.procedures.optking.py takes 'output_data', unpacks and creates Optimization Schema
     # from qcel.models.procedures.py

@@ -1,9 +1,13 @@
 import optking
+from packaging.version import Version
 import sys
 
 def compare_iterations(json_output, expected_steps, assert_iter):
     logger = optking.logger
-    steps_taken = len(json_output["trajectory"])
+    try:
+        steps_taken = len(json_output["trajectory"])  # OptimizationResult.schema_version = 1
+    except KeyError:
+        steps_taken = len(json_output["trajectory_results"])  # OptimizationResult.schema_version = 2
     if steps_taken != expected_steps:
         logger.warning(
             f"TEST - Number of steps taken {steps_taken}, Previous required steps {expected_steps}"
@@ -21,3 +25,6 @@ def compare_iterations(json_output, expected_steps, assert_iter):
                 case = "more"
             print(f"Test required {case} steps than expected. Expected: {expected_steps} Actual: {steps_taken}", file=sys.stderr)
             raise
+
+def psi4_runs_v2_qcschema(p4ver):
+    return Version(p4ver) >= Version("1.11a1.dev2")

@@ -28,7 +28,7 @@ class ComputeWrapper:
         self.model = model
         self.keywords = keywords
         self.program = program
-        self.dtype = dtype
+        self.dtype = dtype  # schema_version
         self.trajectory = []
         self.energies = []
 

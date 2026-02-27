@@ -611,7 +611,7 @@ class EngineHelper(Helper):
     ...        break
     >>> else:
     ...     print("Optimization FAILURE:")
-    >>> json_output = opt.close() # create an unvalidated OptimizationOutput like object
+    >>> json_output = opt.close() # create an unvalidated QCSchema OptimizationResult-like object
     >>> E = json_output["energies"][-1]
 
     """

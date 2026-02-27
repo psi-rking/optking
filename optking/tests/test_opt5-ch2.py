@@ -37,8 +37,12 @@ def test_ch2_with_dummy_atoms(check_iter):
 
     json_output = optking.optimize_psi4("hf")
     assert json_output["success"] is True, json_output["error"]
-    thisenergy = json_output["energies"][-1]
-    nucenergy = json_output["trajectory"][-1]["properties"]["nuclear_repulsion_energy"]
+    if utils.psi4_runs_v2_qcschema(psi4.__version__):
+        thisenergy = json_output["trajectory_properties"][-1]["return_energy"]
+        nucenergy = json_output["trajectory_results"][-1]["properties"]["nuclear_repulsion_energy"]
+    else:
+        thisenergy = json_output["energies"][-1]
+        nucenergy = json_output["trajectory"][-1]["properties"]["nuclear_repulsion_energy"]
 
     assert psi4.compare_values(nucrefenergy, nucenergy, 3, "Nuclear repulsion energy")  # TEST
     assert psi4.compare_values(refenergy, thisenergy, 6, "Reference energy")  # TEST

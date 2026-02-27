@@ -364,7 +364,9 @@ def write_opt_xyz_trajectory(optimization_output, filename=""):
         if the key: "trajectory" does not exist within schema
     """
 
-    trajectory = optimization_output["trajectory"]
+    # schema_version 1:2 :: trajectory:trajectory_results
+    trajectory = optimization_output.get("trajectory_results", optimization_output["trajectory"])
+
     geometries = [step["molecule"]["geometry"] for step in trajectory]
     comments = (
         f"Optimization step: {i}. E: {step['extras']['qcvars']['CURRENT ENERGY']}" for i, step in enumerate(trajectory)

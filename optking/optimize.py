@@ -809,14 +809,25 @@ def prepare_opt_output(o_molsys, computer, rxnpath=[], error=None):
     computer.update_geometry(o_molsys.geom)
     final_molecule = computer.molecule
 
-    qc_output = {
-        "schema_name": "qcschema_optimization_output",
-        "trajectory": computer.trajectory,
-        "energies": computer.energies,
-        "final_molecule": final_molecule,
-        "extras": {},
-        "success": True,
-    }
+    if computer.dtype == 1:
+        qc_output = {
+            "schema_name": "qcschema_optimization_output",
+            "trajectory": computer.trajectory,
+            "energies": computer.energies,
+            "final_molecule": final_molecule,
+            "extras": {},
+            "success": True,
+        }
+    elif computer.dtype == 2:
+        qc_output = {
+            "schema_name": "qcschema_optimization_result",
+            "properties": {"return_energy": computer.energies[-1]},
+            "trajectory_results": computer.trajectory,
+            "trajectory_properties": [{"return_energy": e} for e in computer.energies],
+            "final_molecule": final_molecule,
+            "extras": {},
+            "success": True,
+        }
 
     if isinstance(error, OptError):
         qc_output.update(
