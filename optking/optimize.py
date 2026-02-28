@@ -821,7 +821,7 @@ def prepare_opt_output(o_molsys, computer, rxnpath=[], error=None):
     elif computer.dtype == 2:
         qc_output = {
             "schema_name": "qcschema_optimization_result",
-            "properties": {"return_energy": computer.energies[-1]},
+            "properties": {} if len(computer.energies) == 0 else {"return_energy": computer.energies[-1]},  # TODO add "final_rms_force": computer.params._i_rms_force}, etc.
             "trajectory_results": computer.trajectory,
             "trajectory_properties": [{"return_energy": e} for e in computer.energies],
             "final_molecule": final_molecule,

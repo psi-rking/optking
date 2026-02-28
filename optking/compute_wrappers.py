@@ -33,8 +33,8 @@ class ComputeWrapper:
         self.energies = []
 
     @classmethod
-    def init_full(cls, molecule, model, keywords, program, trajectory, energies):
-        wrapper = cls(molecule, model, keywords, program)
+    def init_full(cls, molecule, model, keywords, program, trajectory, energies, dtype):
+        wrapper = cls(molecule, model, keywords, program, dtype)
         wrapper.trajectory = trajectory
         wrapper.energies = energies
         return wrapper
@@ -137,13 +137,14 @@ def make_computer_from_dict(computer_type, d):
     prog = d.get("program")
     traj = d.get("trajectory")
     ener = d.get("energies")
+    dtype = d.get("dtype")
 
     if computer_type == "psi4":
-        return Psi4Computer.init_full(mol, mod, key, prog, traj, ener)
+        return Psi4Computer.init_full(mol, mod, key, prog, traj, ener, dtype)
     elif computer_type == "qc":
-        return QCEngineComputer.init_full(mol, mod, key, prog, traj, ener)
+        return QCEngineComputer.init_full(mol, mod, key, prog, traj, ener, dtype)
     elif computer_type == "user":
-        return UserComputer.init_full(mol, mod, key, prog, traj, ener)
+        return UserComputer.init_full(mol, mod, key, prog, traj, ener, dtype)
     else:
         raise OptError("computer_type is unknown")
 
@@ -153,20 +154,22 @@ class Psi4Computer(ComputeWrapper):
         import psi4
 
         inp = self.generate_schema_input(driver)
+        if self.dtype == 1:
+            # works until QCElemental v0.70
+            from qcelemental.models import AtomicResult
+            dinp = inp.dict()
+        elif self.dtype == 2:
+            from qcelemental.models.v2 import AtomicResult
+            dinp = inp.model_dump()
 
         if "1.3" in psi4.__version__:
-            ret = psi4.json_wrapper.run_json_qcschema(inp.dict(), clean=True)
+            ret = psi4.json_wrapper.run_json_qcschema(dinp, clean=True)
         else:
             # note that this is a sub-fn, not the outer run_qcschema. in psi4 v1.11, run_json_qcschema runs in QCSchema v2,
             #   whereas run_qcschema provides flexible v1/v2.
             ret = psi4.schema_wrapper.run_json_qcschema(
-                inp.dict(), clean=True, json_serialization=True
+                dinp, clean=True, json_serialization=True
             )
-        if self.dtype == 1:
-            # works until QCElemental v0.70
-            from qcelemental.models import AtomicResult
-        elif self.dtype == 2:
-            from qcelemental.models.v2 import AtomicResult
 
         ret = AtomicResult(**ret)
         return ret
@@ -265,7 +268,7 @@ class UserComputer(ComputeWrapper):
             self.molecule.pop("schema_version", None)
             mol = Molecule(**self.molecule)
             result["input_data"]["molecule"] = mol
-            result["molecule"] = mol
+            result["molecule"] = mol  # TODO right to duplicate?
 
         NRE = mol.nuclear_repulsion_energy()
         result["properties"]["nuclear_repulsion_energy"] = NRE

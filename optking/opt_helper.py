@@ -130,6 +130,7 @@ class Helper(ABC):
             "hessian": self._Hq,
             "opt_input": self.opt_input,
             "opt_manager": self.opt_manager.to_dict(),
+            "dtype": self.dtype,
         }
         return d
 
@@ -406,8 +407,8 @@ class CustomHelper(Helper):
         dtype: int
             QCSchema version to run with (pass in kwargs)
         """
-        dtype = kwargs.pop("dtype", 1)
-        self.computer = optwrapper.make_computer(OPT_INPUT_TEMPLATE[dtype], "user")
+        self.dtype = kwargs.pop("dtype", 1)
+        self.computer = optwrapper.make_computer(OPT_INPUT_TEMPLATE[self.dtype], "user")
         super().__init__(params, **kwargs)
 
         try:
@@ -417,11 +418,11 @@ class CustomHelper(Helper):
 
         if isinstance(mol_src, allowed):
             # from_dict will call from_schema as neeeded
-            self.opt_input = from_dict(mol_src)
+            self.opt_input = from_dict(mol_src, dtype=self.dtype)
             self.molsys = molsys.Molsys.from_schema(self.opt_input["initial_molecule"])
         else:
             # If Psi4 molecule doesn't work as a backup error out
-            self.molsys, self.opt_input = from_psi4(mol_src, dtype=dtype)
+            self.molsys, self.opt_input = from_psi4(mol_src, dtype=self.dtype)
 
         self.computer.molecule = self.opt_input["initial_molecule"]
         self.build_coordinates()
@@ -432,7 +433,7 @@ class CustomHelper(Helper):
 
     @classmethod
     def from_dict(cls, d):
-        helper = cls(d.get("opt_input"), params={}, silent=True)
+        helper = cls(d.get("opt_input"), params={}, silent=True, dtype=d.get("dtype", 1))
 
         # We need to make sure that the new params EXACTLY matches what was exported.
         # No validation should occur after export as validation will interpret each exported
@@ -703,7 +704,7 @@ OPT_INPUT_TEMPLATE = {
     2: {
         "initial_molecule": {},
         "specification": {
-            "specification": {"model": {"method": "", "basis": ""}, "keywords": {}},
+            "specification": {"model": {"method": "", "basis": ""}, "keywords": {}, "driver": "gradient"},  # v2 req driver
         },
     },
 }

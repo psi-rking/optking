@@ -365,7 +365,10 @@ def write_opt_xyz_trajectory(optimization_output, filename=""):
     """
 
     # schema_version 1:2 :: trajectory:trajectory_results
-    trajectory = optimization_output.get("trajectory_results", optimization_output["trajectory"])
+    try:
+        trajectory = optimization_output["trajectory_results"]
+    except KeyError:
+        trajectory = optimization_output["trajectory"]
 
     geometries = [step["molecule"]["geometry"] for step in trajectory]
     comments = (

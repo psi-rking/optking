@@ -16,7 +16,10 @@ except ImportError:
 
 # Wrap Psi4 in ifden
 using_psi4 = pytest.mark.skipif(found_psi4, reason="Psi4 not found, skipping.")
+using_qcengine = pytest.mark.skipif(which_import("qcengine", return_bool=True) is False,
+    reason="cound not find QCEngine. please install the package to enable tests",
+)
 using_qcmanybody = pytest.mark.skipif(
     which_import("qcmanybody", return_bool=True) is False,
-    reason="cound not find qcmanybody. please install the package to enable tests",
+    reason="cound not find QCManyBody. please install the package to enable tests",
 )

@@ -24,6 +24,8 @@ jobs:
             python-version: "3.13"
           - conda-env: base2
             python-version: "3.13"
+          - conda-env: base-next
+            python-version: "3.13"
     env:
       PYVER: ${{ matrix.cfg.python-version }}
       CONDA_ENV: ${{ matrix.cfg.conda-env }}

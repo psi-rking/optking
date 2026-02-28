@@ -285,7 +285,7 @@ def make_computer(opt_input: dict, computer_type):
         spec_schema_name = opt_input["specification"]["specification"].get("schema_name", "qcschema_atomic_specification")
         if spec_schema_name == "qcschema_many_body_specification":
             model = "(proc_spec_in_options)"
-            options = opt_input["specification"]["specification"]
+            options = opt_input["specification"]["specification"]  # TODO path not yet tested
         else:
             qc_input = opt_input["specification"]["specification"]
             options = qc_input["keywords"]

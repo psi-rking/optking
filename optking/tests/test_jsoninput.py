@@ -13,6 +13,8 @@ from .utils import utils
 from .psi4_helper import using_qcmanybody
 
 
+_schver = 2 if utils.psi4_runs_v2_qcschema(psi4.__version__) else 1
+
 # Varying number of repulsion energy decimals to check.
 @pytest.mark.parametrize(
     "inp,expected,num_steps",
