@@ -7,6 +7,8 @@ from .utils import utils
 # Optimized neon dimer
 MP2minEnergy = -257.4109749
 
+_schver = 2 if utils.psi4_runs_v2_qcschema(psi4.__version__) else 1
+
 
 #! (Ne)_2 with interfrag coordinates, specifying ref atoms, from long-range
 @pytest.mark.dimers
@@ -32,7 +34,11 @@ def test_dimers_ne2_long(check_iter):
     }
     psi4.set_options(psi4_options)
     json_output = optking.optimize_psi4("mp2")
-    E = json_output["energies"][-1]
+    if _schver == 1:
+        E = json_output["energies"][-1]
+    elif _schver == 2:
+        E = json_output["trajectory_properties"][-1]["return_energy"]
+
     assert psi4.compare_values(MP2minEnergy, E, 6, "MP2 Energy opt from afar")
     utils.compare_iterations(json_output, 14, check_iter)
 
@@ -62,7 +68,10 @@ def test_dimers_ne2_short(check_iter):
     psi4.core.clean_options()
     psi4.set_options(psi4_options)
     json_output = optking.optimize_psi4("mp2")
-    E = json_output["energies"][-1]
+    if _schver == 1:
+        E = json_output["energies"][-1]
+    elif _schver == 2:
+        E = json_output["trajectory_properties"][-1]["return_energy"]
     assert psi4.compare_values(MP2minEnergy, E, 6, "MP2 Energy opt from close")
     utils.compare_iterations(json_output, 15, check_iter)
 
@@ -90,7 +99,10 @@ def test_dimers_ne2_auto(check_iter):  # auto reference pt. creation
     }
     psi4.set_options(psi4_options)
     json_output = optking.optimize_psi4("mp2")
-    E = json_output["energies"][-1]
+    if _schver == 1:
+        E = json_output["energies"][-1]
+    elif _schver == 2:
+        E = json_output["trajectory_properties"][-1]["return_energy"]
     assert psi4.compare_values(MP2minEnergy, E, 6, "MP2 Energy opt from afar, auto")
     utils.compare_iterations(json_output, 13, check_iter)
 
@@ -121,7 +133,10 @@ def test_dimers_ne2_inverseR(check_iter):
     }
     psi4.set_options(psi4_options)
     json_output = optking.optimize_psi4("mp2")
-    E = json_output["energies"][-1]
+    if _schver == 1:
+        E = json_output["energies"][-1]
+    elif _schver == 2:
+        E = json_output["trajectory_properties"][-1]["return_energy"]
     assert psi4.compare_values(MP2minEnergy, E, 6, "MP2 Energy opt from afar, auto")
     utils.compare_iterations(json_output, 10, check_iter)
 
@@ -157,5 +172,8 @@ def test_dimers_ne2_dict():
 
     psi4.set_options(psi4_options)
     json_output = optking.optimize_psi4("mp2", interfrag_coords=str(dimer))
-    E = json_output["energies"][-1]
+    if _schver == 1:
+        E = json_output["energies"][-1]
+    elif _schver == 2:
+        E = json_output["trajectory_properties"][-1]["return_energy"]
     assert psi4.compare_values(MP2minEnergy, E, 6, "MP2 Energy opt from afar, auto")

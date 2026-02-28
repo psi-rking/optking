@@ -16,6 +16,8 @@ import optking
 import pytest
 from .utils import utils
 
+_schver = 2 if utils.psi4_runs_v2_qcschema(psi4.__version__) else 1
+
 menthone = """
 0 1
 O        0.00000000     0.00000000     4.83502957
@@ -119,13 +121,14 @@ def test_auxiliary_bonds(check_iter):
 @pytest.mark.parametrize("molecule, aux_indices", aux_bonds)
 def test_add_aux_bonds(molecule, aux_indices):
     """ Check that auxiliary bonds can be added for molecules from baker tests """
+
     for mol_name in ['menthone', 'ACHTAR10']:
 
         psi4.core.clean_options()
         mol = psi4.geometry(molecule)
 
         params = optking.optwrapper.initialize_options({"add_auxiliary_bonds": True})
-        opt_molsys, _ = optking.molsys.Molsys.from_psi4(mol)
+        opt_molsys, _ = optking.molsys.Molsys.from_psi4(mol, dtype=_schver)
         optking.make_internal_coords(opt_molsys, params)
 
         opt_molsys.print_intcos()
@@ -137,7 +140,7 @@ def test_add_aux_bonds(molecule, aux_indices):
         del opt_molsys
         del params
         params = optking.optwrapper.initialize_options({"add_auxiliary_bonds": False})
-        opt_molsys, _ = optking.molsys.Molsys.from_psi4(mol)
+        opt_molsys, _ = optking.molsys.Molsys.from_psi4(mol, dtype=_schver)
         optking.make_internal_coords(opt_molsys, params)
 
         opt_molsys.print_intcos()
@@ -161,5 +164,8 @@ def test_aux_opt(check_iter):
     test_dir = pathlib.Path(__file__).parent
     result = optking.optimize_psi4("HF", **{"hessian_file": f"{test_dir}/test_data/C4H9NO2.hess"})
     utils.compare_iterations(result, 8, check_iter)
-    E = result["energies"][-1]
+    if _schver == 1:
+        E = result["energies"][-1]
+    elif _schver == 2:
+        E = result["trajectory_properties"][-1]["return_energy"]
     assert psi4.compare_values(HF_E["ACHTAR10"], E, 5, "HF energy")

@@ -6,6 +6,7 @@ from .utils import utils
 
 finalEnergy = -76.05776970  # TEST
 
+_schver = 2 if utils.psi4_runs_v2_qcschema(psi4.__version__) else 1
 
 #! SCF CC-PVTZ geometry optimzation, with Z-matrix input
 @pytest.mark.parametrize(
@@ -34,6 +35,9 @@ def test_h2o_rfo(option, expected, num_steps, check_iter):
 
     json_output = optking.optimize_psi4("hf")
 
-    E = json_output["energies"][-1]  # TEST
+    if _schver == 1:
+        E = json_output["energies"][-1]
+    elif _schver == 2:
+        E = json_output["trajectory_properties"][-1]["return_energy"]
     assert psi4.compare_values(finalEnergy, E, 6, f"{option} Step Final Energy")  # TEST
     utils.compare_iterations(json_output, num_steps, check_iter)

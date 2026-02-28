@@ -3,6 +3,8 @@ import optking
 from .utils import utils
 
 
+_schver = 2 if utils.psi4_runs_v2_qcschema(psi4.__version__) else 1
+
 #! DC-06 calculation for the O2 molecule (triplet ground state). This performs
 #! geometry optimization using two-step and simultaneous solution of the
 #! response equations for the analytic gradient.
@@ -32,9 +34,14 @@ def test_dcft_O2(check_iter):
 
     result = optking.optimize_psi4("dct")
 
-    this_uhf = result["trajectory"][-1]["properties"]["scf_total_energy"]  # TEST
-    this_mp2 = result["trajectory"][-1]["properties"]["mp2_total_energy"]  # TEST
-    this_dct = result["energies"][-1]  # TEST
+    if _schver == 1:
+        this_uhf = result["trajectory"][-1]["properties"]["scf_total_energy"]  # TEST
+        this_mp2 = result["trajectory"][-1]["properties"]["mp2_total_energy"]  # TEST
+        this_dct = result["energies"][-1]  # TEST
+    elif _schver == 2:
+        this_uhf = result["trajectory_results"][-1]["properties"]["scf_total_energy"]  # TEST
+        this_mp2 = result["trajectory_results"][-1]["properties"]["mp2_total_energy"]  # TEST
+        this_dct = result["trajectory_properties"][-1]["return_energy"]  # TEST
     REF_uhf = -149.6520519320  # TEST
     REF_mp2 = -150.0109986566  # TEST
     REF_dct = -150.0227937862  # TEST

@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 from .utils import utils
 
+_schver = 2 if utils.psi4_runs_v2_qcschema(psi4.__version__) else 1
 
 # Demonstrate and test positioning two water molecules by specifying
 # their interfragment reference points and coordinates.
@@ -103,7 +104,10 @@ def test_dimers_h2o_auto(check_iter, option, iter):  # auto reference pt. creati
     }  # increase to prevent too colinear reference points
     json_output = optking.optimize_psi4("mp2", **newOptParams)
 
-    E = json_output["energies"][-1]
+    if _schver == 1:
+        E = json_output["energies"][-1]
+    elif _schver == 2:
+        E = json_output["trajectory_properties"][-1]["return_energy"]  # TEST
     assert psi4.compare_values(MP2minEnergy, E, 6, "MP2 Energy opt from afar, auto")
 
     utils.compare_iterations(json_output, iter, check_iter)

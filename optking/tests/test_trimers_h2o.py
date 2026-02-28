@@ -6,6 +6,8 @@ from .utils import utils
 
 MP2minEnergy = -228.669584375489
 
+_schver = 2 if utils.psi4_runs_v2_qcschema(psi4.__version__) else 1
+
 
 #! H2O trimer with auto-generated interfragment coordinates
 @pytest.mark.multimers
@@ -43,7 +45,10 @@ def test_trimers_h2o_auto(check_iter):
     # json_output = optking.optimize_psi4("b3lyp-d3mbj")
     json_output = optking.optimize_psi4("mp2", **bypass_options)
 
-    E = json_output["energies"][-1]
+    if _schver == 1:
+        E = json_output["energies"][-1]
+    elif _schver == 2:
+        E = json_output["trajectory_properties"][-1]["return_energy"]
     assert psi4.compare_values(MP2minEnergy, E, 6, "(H2O)_3 MP2 Energy opt, auto")
     utils.compare_iterations(json_output, 22, check_iter)
 
@@ -116,7 +121,10 @@ def test_trimers_h2o_user(check_iter):
     # json_output = optking.optimize_psi4("b3lyp-d3mbj")
     json_output = optking.optimize_psi4("mp2", **bypass_options)
 
-    E = json_output["energies"][-1]
+    if _schver == 1:
+        E = json_output["energies"][-1]
+    elif _schver == 2:
+        E = json_output["trajectory_properties"][-1]["return_energy"]
     assert psi4.compare_values(MP2minEnergy, E, 6, "(H2O)_3 MP2 Energy opt, user")
     utils.compare_iterations(json_output, 22, check_iter)
 
@@ -194,6 +202,9 @@ def test_trimers_h2o_weights(check_iter):
     # json_output = optking.optimize_psi4("b3lyp-d3mbj")
     json_output = optking.optimize_psi4("mp2", **bypass_options)
 
-    E = json_output["energies"][-1]
+    if _schver == 1:
+        E = json_output["energies"][-1]
+    elif _schver == 2:
+        E = json_output["trajectory_properties"][-1]["return_energy"]
     assert psi4.compare_values(MP2minEnergy, E, 6, "(H2O)_3 MP2 Energy opt, user")
     utils.compare_iterations(json_output, 19, check_iter)

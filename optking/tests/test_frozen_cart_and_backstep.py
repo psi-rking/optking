@@ -5,6 +5,7 @@ from .utils import utils
 import numpy as np
 from qcelemental import constants
 
+_schver = 2 if utils.psi4_runs_v2_qcschema(psi4.__version__) else 1
 bohr2angstroms = constants.bohr2angstroms
 
 #! Various constrained energy minimizations of HOOH with cc-pvdz RHF.
@@ -80,7 +81,10 @@ def test_hooh_freeze_xyz_Hs(check_iter, options, expected, num_steps):
 
     json_output = optking.optimize_psi4("hf")
 
-    thisenergy = json_output["energies"][-1]  # TEST
+    if _schver == 1:
+        thisenergy = json_output["energies"][-1]  # TEST
+    elif _schver == 2:
+        thisenergy = json_output["trajectory_properties"][-1]["return_energy"]  # TEST
     assert psi4.compare_values(expected, thisenergy, 6)  # TEST
 
     utils.compare_iterations(json_output, num_steps, check_iter)
@@ -113,7 +117,10 @@ def test_frozen_cart_h2o(check_iter):
 
     optGeom = bohr2angstroms * np.asarray(json_output["final_molecule"]["geometry"]).reshape(-1, 3)
 
-    thisenergy = json_output["energies"][-1]
+    if _schver == 1:
+        thisenergy = json_output["energies"][-1]  # TEST
+    elif _schver == 2:
+        thisenergy = json_output["trajectory_properties"][-1]["return_energy"]  # TEST
     assert psi4.compare_values(-76.0270327834836, thisenergy, 6, "RHF Energy")
     assert psi4.compare_values(optGeom[0, 0], 1.0, 6, "X Frozen coordinate")
     assert psi4.compare_values(optGeom[0, 1], 1.0, 6, "Y Frozen coordinate")
@@ -152,7 +159,10 @@ def test_frozen_cart_h2o_dimer(check_iter):
 
     optGeom = np.asarray(json_output["final_molecule"]["geometry"]).reshape(-1, 3)
 
-    thisenergy = json_output["energies"][-1]  # TEST
+    if _schver == 1:
+        thisenergy = json_output["energies"][-1]  # TEST
+    elif _schver == 2:
+        thisenergy = json_output["trajectory_properties"][-1]["return_energy"]  # TEST
     assert psi4.compare_values(-152.47381494, thisenergy, 8, "MP2 Energy")
 
     assert psi4.compare_values(inputGeom[0, 0], optGeom[0, 0], 6, "O1 X Frozen coordinate")

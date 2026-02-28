@@ -7,6 +7,8 @@ import optking
 from .utils import utils
 
 
+_schver = 2 if utils.psi4_runs_v2_qcschema(psi4.__version__) else 1
+
 OH_frozen_stre_rhf = -150.781130356  # TEST
 OOH_frozen_bend_rhf = -150.786372411  # TEST
 HOOH_frozen_dihedral_rhf = -150.786766848  # TEST
@@ -51,7 +53,10 @@ def test_frozen_coords(option, expected, num_steps, check_iter):
     psi4.set_options(option)
 
     json_output = optking.optimize_psi4("hf")
-    thisenergy = json_output["energies"][-1]
+    if _schver == 1:
+        thisenergy = json_output["energies"][-1]
+    elif _schver == 2:
+        thisenergy = json_output["trajectory_properties"][-1]["return_energy"]
 
     assert psi4.compare_values(expected, thisenergy, 6)  # TEST
     utils.compare_iterations(json_output, num_steps, check_iter)
@@ -71,7 +76,10 @@ def test_butane_frozen(check_iter):
         "freeze_all_dihedrals": True,
     }
     result = optking.optimize_psi4("scf", **tmp)
-    E1 = result["energies"][-1]  # TEST
+    if _schver == 1:
+        E1 = result["energies"][-1]
+    elif _schver == 2:
+        E1 = result["trajectory_properties"][-1]["return_energy"]
 
     psi4.core.clean_options()
     psi4_options = {
@@ -109,7 +117,10 @@ def test_butane_frozen(check_iter):
     }
     psi4.set_options(psi4_options)
     result = optking.optimize_psi4("scf")
-    E2 = result["energies"][-1]
+    if _schver == 1:
+        E2 = result["energies"][-1]
+    elif _schver == 2:
+        E2 = result["trajectory_properties"][-1]["return_energy"]
 
     assert psi4.compare_values(E1, E2, 8, "RHF energy")  # TEST
     utils.compare_iterations(result, 5, check_iter)
@@ -137,7 +148,10 @@ def test_butane_skip_frozen(check_iter):
     psi4.set_options(psi4_options)
 
     result = optking.optimize_psi4("scf", **tmp)
-    E1 = result["energies"][-1]  # TEST
+    if _schver == 1:
+        E1 = result["energies"][-1]
+    elif _schver == 2:
+        E1 = result["trajectory_properties"][-1]["return_energy"]
 
     psi4.core.clean_options()
     psi4_options = {
@@ -169,7 +183,10 @@ def test_butane_skip_frozen(check_iter):
     }
     psi4.set_options(psi4_options)
     result = optking.optimize_psi4("scf")
-    E2 = result["energies"][-1]
+    if _schver == 1:
+        E2 = result["energies"][-1]
+    elif _schver == 2:
+        E2 = result["trajectory_properties"][-1]["return_energy"]
 
     assert psi4.compare_values(E1, E2, 8, "RHF energy")  # TEST
     utils.compare_iterations(result, 5, check_iter)

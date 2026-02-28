@@ -10,6 +10,8 @@ from optking.optwrapper import make_computer
 from optking.history import History
 from optking.exceptions import OptError
 
+from .utils import utils
+
 RefEnergy = -127.8037761406364581
 
 
@@ -18,19 +20,33 @@ def test_atom_stepwise():
 
     psi4.core.clean_options()
 
+    schver = 2 if utils.psi4_runs_v2_qcschema(psi4.__version__) else 1
+
     params = op.OptParams()
     history = History(params)
-    opt_mol, qcschema_mol = Molsys.from_psi4(neon)
+    opt_mol, qcschema_mol = Molsys.from_psi4(neon, schver)
 
-    opt_input = {
-        # "keywords": {}, for optimizer, optional
-        "initial_molecule": qcschema_mol,
-        "input_specification": {
-            "model": {"basis": "3-21G", "method": "hf"},
-            "driver": "gradient",
-            "keywords": {},
-        },
-    }
+    if schver == 1:
+        opt_input = {
+            # "keywords": {}, for optimizer, optional
+            "initial_molecule": qcschema_mol,
+            "input_specification": {
+                "model": {"basis": "3-21G", "method": "hf"},
+                "driver": "gradient",
+                "keywords": {},
+            },
+        }
+    elif schver == 2:
+        opt_input = {
+            # "keywords": {}, for optimizer, optional
+            "initial_molecule": qcschema_mol,
+            "specification": {
+              "specification": {
+                "model": {"basis": "3-21G", "method": "hf"},
+                "driver": "gradient",
+                "keywords": {},
+            }},
+        }
     computer = make_computer(opt_input, "psi4")
 
     opt_manager = OptimizationManager(opt_mol, history, params, computer)
@@ -40,8 +56,12 @@ def test_atom_stepwise():
         assert False
     except OptError as error:
         qc_output = opt_manager.opt_error_handler(error)
-        E = qc_output["energies"][-1]
-        Etraj = qc_output["trajectory"][-1]["extras"]["qcvars"]["CURRENT ENERGY"]
+        if schver == 1:
+            E = qc_output["energies"][-1]
+            Etraj = qc_output["trajectory"][-1]["extras"]["qcvars"]["CURRENT ENERGY"]
+        elif schver == 2:
+            E = qc_output["trajectory_properties"][-1]["return_energy"]
+            Etraj = qc_output["trajectory_results"][-1]["extras"]["qcvars"]["CURRENT ENERGY"]
 
         assert not qc_output["success"]
         assert (

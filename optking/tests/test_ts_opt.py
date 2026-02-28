@@ -4,6 +4,7 @@ import pytest
 
 from .utils import utils
 
+_schver = 2 if utils.psi4_runs_v2_qcschema(psi4.__version__) else 1
 
 #! Optimization to 180 degree torsion from 120
 @pytest.mark.parametrize("option, expected_steps", [("P_RFO", 14), ("RS_I_RFO", 13)])
@@ -32,7 +33,11 @@ def test_hooh_TS(check_iter, option, expected_steps):
 
     json_output = optking.optimize_psi4("hf", **{"step_type": option})
 
-    E = json_output["energies"][-1]  # TEST
+    if _schver == 1:
+        E = json_output["energies"][-1]  # TEST
+    elif _schver == 2:
+        E = json_output["trajectory_properties"][-1]["return_energy"]  # TEST
+
     # print( '{:15.10f}'.format(E) )
     C2H_TS_ENERGY = -150.7854114803  # TEST
     assert psi4.compare_values(
@@ -71,7 +76,11 @@ def test_hooh_TS_zero(check_iter, option, expected_steps):
 
     json_output = optking.optimize_psi4("hf", **{"step_type": option})
 
-    E = json_output["energies"][-1]  # TEST
+    if _schver == 1:
+        E = json_output["energies"][-1]  # TEST
+    elif _schver == 2:
+        E = json_output["trajectory_properties"][-1]["return_energy"]  # TEST
+
     C2V_TS_ENERGY = -150.774009217562  # TEST
     assert psi4.compare_values(
         C2V_TS_ENERGY, E, 6, "RHF Energy after optimization to C2H TS"
@@ -103,7 +112,11 @@ def test_hooh_min(check_iter):
 
     json_output = optking.optimize_psi4("hf")
 
-    E = json_output["energies"][-1]  # TEST
+    if _schver == 1:
+        E = json_output["energies"][-1]  # TEST
+    elif _schver == 2:
+        E = json_output["trajectory_properties"][-1]["return_energy"]  # TEST
+
     # print( '{:15.10f}'.format(E) )
     MIN_ENERGY = -150.7867668  # TEST
     assert psi4.compare_values(MIN_ENERGY, E, 6, "RHF Energy")  # TEST

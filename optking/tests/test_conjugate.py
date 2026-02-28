@@ -6,6 +6,8 @@ import psi4
 import optking
 from .utils import utils
 
+_schver = 2 if utils.psi4_runs_v2_qcschema(psi4.__version__) else 1
+
 check_iter = True
 
 REF_PROPYLAMINE = -173.3000252
@@ -41,7 +43,10 @@ def test_conjugate_gradient_default(check_iter):
     optking_options = {"step_type": "CONJUGATE"}
 
     json_output = optking.optimize_psi4("hf", **optking_options)
-    thisenergy = json_output["energies"][-1]
+    if _schver == 1:
+        thisenergy = json_output["energies"][-1]
+    elif _schver == 2:
+        thisenergy = json_output["trajectory_properties"][-1]["return_energy"]
 
     assert psi4.compare_values(REF_PROPYLAMINE, thisenergy, 5)
     utils.compare_iterations(json_output, 14, check_iter)
@@ -73,8 +78,14 @@ def test_conjugate_gradient_type(option, energy, check_iter):
 
     psi4.set_options(psi4_options)
     json_output = optking.optimize_psi4("hf", **optking_options)  # Uses default program (psi4)
-    thisenergy = json_output["energies"][-1]
+    if _schver == 1:
+        thisenergy = json_output["energies"][-1]
+    elif _schver == 2:
+        thisenergy = json_output["trajectory_properties"][-1]["return_energy"]
 
     assert psi4.compare_values(energy, thisenergy, 5, "Final energy, every step Hessian")  # TEST
-    assert len(json_output["energies"]) == 5
+    if _schver == 1:
+        assert len(json_output["energies"]) == 5
+    elif _schver == 2:
+        assert len(json_output["trajectory_properties"]) == 5
 

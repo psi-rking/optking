@@ -3,6 +3,8 @@ import psi4
 import optking
 from .utils import utils
 
+_schver = 2 if utils.psi4_runs_v2_qcschema(psi4.__version__) else 1
+
 #! B3LYP cc-pVDZ geometry optimzation of phenylacetylene, starting from
 #! not quite linear structure
 @pytest.mark.long
@@ -36,6 +38,9 @@ def test_b3lyp_phenylacetylene(check_iter):
     result = optking.optimize_psi4("B3LYP")
 
     REF_b3lyp_E = -308.413691796  # TEST
-    E = result["energies"][-1]  # TEST
+    if _schver == 1:
+        E = result["energies"][-1]  # TEST
+    elif _schver == 2:
+        E = result["trajectory_properties"][-1]["return_energy"]  # TEST
     assert psi4.compare_values(REF_b3lyp_E, E, 5, "B3LYP energy")  # TEST
     utils.compare_iterations(result, 5, check_iter)

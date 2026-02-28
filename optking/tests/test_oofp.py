@@ -17,6 +17,7 @@ import psi4
 import optking
 from .utils import utils
 
+_schver = 2 if utils.psi4_runs_v2_qcschema(psi4.__version__) else 1
 
 def test_oofp_formaldehyde(check_iter):
     form = psi4.geometry(
@@ -37,7 +38,10 @@ def test_oofp_formaldehyde(check_iter):
     psi4.set_options(psi4_options)
 
     result = optking.optimize_psi4("b3lyp")
-    E = result["energies"][-1]  # TEST
+    if _schver == 1:
+        E = result["energies"][-1]
+    elif _schver == 2:
+        E = result["trajectory_properties"][-1]["return_energy"]  # TEST
 
     assert psi4.compare_values(b3lyp_opt_energy, E, 8, "B3LYP energy")
     utils.compare_iterations(result, 6, check_iter)
@@ -58,7 +62,10 @@ def test_ranged_oofp(check_iter):
 
     xtra = {"ranged_oofp": "(3 2 1 4 -40.0 -30.0) (4 2 1 3 30.0 40.0)"}
     result = optking.optimize_psi4("b3lyp", **xtra)
-    E = result["energies"][-1]
+    if _schver == 1:
+        E = result["energies"][-1]
+    elif _schver == 2:
+        E = result["trajectory_properties"][-1]["return_energy"]  # TEST
 
     assert psi4.compare_values(b3lyp_ranged_oop_30_energy, E, 5, "B3LYP energy")
     utils.compare_iterations(result, 3, check_iter)
@@ -79,7 +86,10 @@ def test_ext_force_oofp(check_iter):
 
     xtra = {"ext_force_oofp": "3 2 1 4 '-0.5*(x+30)' 4 2 1 3 '-0.5*(x-30.0)'"}
     result = optking.optimize_psi4("b3lyp", **xtra)
-    E = result["energies"][-1]
+    if _schver == 1:
+        E = result["energies"][-1]
+    elif _schver == 2:
+        E = result["trajectory_properties"][-1]["return_energy"]  # TEST
 
     assert psi4.compare_values(b3lyp_ext_force_oop_30_energy, E, 5, "B3LYP energy")
     utils.compare_iterations(result, 8, check_iter)
