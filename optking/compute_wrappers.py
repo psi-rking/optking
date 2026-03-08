@@ -69,6 +69,10 @@ class ComputeWrapper:
         return inp
 
     def generate_schema_input_for_procedure(self, driver):
+        if self.dtype == 1:
+            from qcelemental.models import Molecule
+        elif self.dtype == 2:
+            from qcelemental.models.v2 import Molecule
         molecule = Molecule(**self.molecule)
         mbspec = self.keywords
         mbspec["driver"] = driver
@@ -189,12 +193,12 @@ class QCEngineComputer(ComputeWrapper):
         if self.model == "(proc_spec_in_options)":
             logger.debug("QCEngineComputer.path: ManyBody")
             inp = self.generate_schema_input_for_procedure(driver)
-            ret = qcengine.compute_procedure(inp, "qcmanybody", True, task_config=task_config)
+            ret = qcengine.compute_procedure(inp, "qcmanybody", raise_error=True, task_config=task_config)
 
         else:
             logger.debug("QCEngineComputer.path: Atomic")
             inp = self.generate_schema_input(driver)
-            ret = qcengine.compute(inp, self.program, True, task_config=task_config)
+            ret = qcengine.compute(inp, self.program, raise_error=True, task_config=task_config)
 
         return ret
 

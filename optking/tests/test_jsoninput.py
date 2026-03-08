@@ -1,3 +1,4 @@
+import sys
 import os
 import json
 from packaging import version
@@ -7,7 +8,6 @@ import pytest
 import optking
 import psi4
 
-from qcelemental.models import OptimizationInput
 from qcelemental.testing import compare_values
 from .utils import utils
 from .psi4_helper import using_qcmanybody
@@ -16,6 +16,7 @@ from .psi4_helper import using_qcmanybody
 _schver = 2 if utils.psi4_runs_v2_qcschema(psi4.__version__) else 1
 
 # Varying number of repulsion energy decimals to check.
+@pytest.mark.parametrize("schver", [1, 2])
 @pytest.mark.parametrize(
     "inp,expected,num_steps",
     [
@@ -30,33 +31,44 @@ _schver = 2 if utils.psi4_runs_v2_qcschema(psi4.__version__) else 1
         ),
     ],
 )
-def test_input_through_json(inp, expected, num_steps, check_iter):
+def test_input_through_json(inp, expected, num_steps, check_iter, schver):
+    if ((schver == 1 and sys.version_info >= (3, 14)) or
+        (schver == 2 and not utils.qcel_impl_v2_qcschema())):
+        pytest.skip()
+    if schver == 1 and "lif" in inp:
+        pytest.skip("ManyBody Optimization is only available for QCSchema v2. The experimental v1 GeneralizedOptimization is retired.")
+
+    if schver == 1:
+        from qcelemental.models import OptimizationInput
+    elif schver == 2:
+        from qcelemental.models.v2 import OptimizationInput
+        inp = inp.replace(".json", ".v2.json")  # for generation (note below), use `v2_inp = inp...` and un-indent
+
     with open(os.path.join(os.path.dirname(__file__), inp)) as input_data:
         input_copy = json.load(input_data)
-        if "lif" in inp:
-            import qcmanybody
-            if version.Version(qcmanybody.__version__) >= version.Version("0.5"):
-                if version.Version(pydantic.__version__) < version.Version("2"):
-                    from qcmanybody.models.v1.generalized_optimization import GeneralizedOptimizationInput
-                else:
-                    from qcmanybody.models.v2.generalized_optimization import GeneralizedOptimizationInput
-            else:
-                from qcmanybody.models.generalized_optimization import GeneralizedOptimizationInput
-            opt_schema = GeneralizedOptimizationInput(**input_copy)
-        else:
-            opt_schema = OptimizationInput(**input_copy)
-
-        # Note it's important to have `input_specification.schema_name = "qcschema_manybodyspecification"`
-        #   in your json for a MBE optimization. Or you can explicitly construct a
-        #   GeneralizedOptimizationInput like above.
+        opt_schema = OptimizationInput(**input_copy)
+            # to generate v2 inp files from v1, uncomment below and run schver=1 (with qcel >=0.50 and not on py314)
+            # * define v2_inp var (note above)
+            # * for pretty formatting, add indent=4 to json_dumps in qcelemental/util/serialization.py
+            # v2 = opt_schema.convert_v(2)
+            # with open(os.path.join(os.path.dirname(__file__), v2_inp), "w") as input_data2:
+            #     input_data2.write(v2.serialize("json"))
+            # assert 0
 
     # optking.run_json_file(os.path.join(os.path.dirname(__file__), inp))
     json_dict = optking.optimize_qcengine(opt_schema)
+    assert json_dict["success"] is True, json_dict["error"]["error_message"]
 
     if "lif" in inp:
-        assert inp, json_dict["trajectory"][-1]["schema_name"] == "qcschema_manybodyresult"
+        if schver == 1:
+            assert inp, json_dict["trajectory"][-1]["schema_name"] == "qcschema_manybodyresult"
+        elif schver == 2:
+            assert inp, json_dict["trajectory_results"][-1]["schema_name"] == "qcschema_many_body_result"
     else:
-        assert inp, json_dict["trajectory"][-1]["schema_name"] == "qcschema_output"
+        if schver == 1:
+            assert inp, json_dict["trajectory"][-1]["schema_name"] == "qcschema_output"
+        elif schver == 2:
+            assert inp, json_dict["trajectory_results"][-1]["schema_name"] == "qcschema_atomic_result"
 
     # For testing purposes. If this works, we have properly returned the output, and added the result
     # to the original file. In order to preserve the form of the test suite, we now resore the input
@@ -65,18 +77,31 @@ def test_input_through_json(inp, expected, num_steps, check_iter):
     #    json_dict = json.load(input_data)
 
     # LAB: for the MBE optimizations, psi4.compare_values strangely segfaults python, so using compare_values from qcel
+    if schver == 1:
+        nre = json_dict["trajectory"][-1]["properties"]["nuclear_repulsion_energy"]
+        rete = json_dict["trajectory"][-1]["properties"]["return_energy"]
+    elif schver == 2:
+        nre = json_dict["trajectory_results"][-1]["properties"]["nuclear_repulsion_energy"]
+        rete = json_dict["trajectory_results"][-1]["properties"]["return_energy"]
     assert compare_values(
         expected[0],
-        json_dict["trajectory"][-1]["properties"]["nuclear_repulsion_energy"],
+        nre,
         atol=1.0 * 10 ** -expected[2],
         label="Nuclear repulsion energy",
     )
     assert compare_values(
         expected[1],
-        json_dict["trajectory"][-1]["properties"]["return_energy"],
+        rete,
         atol=1.0e-6,
         label="Reference energy",
     )
+    if schver == 2:
+        assert compare_values(
+            expected[1],
+            json_dict["properties"]["return_energy"],
+            atol=1.0e-6,
+            label="Reference energy",
+        )
     utils.compare_iterations(json_dict, num_steps, check_iter)
 
     if len(expected) > 3:

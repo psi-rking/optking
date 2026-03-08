@@ -1,0 +1,73 @@
+{
+    "id": null,
+    "schema_name": "qcschema_optimization_input",
+    "schema_version": 2,
+    "specification": {
+        "schema_name": "qcschema_optimization_specification",
+        "program": "",
+        "keywords": {},
+        "protocols": {
+            "trajectory_results": "all"
+        },
+        "extras": {},
+        "specification": {
+            "schema_name": "qcschema_atomic_specification",
+            "keywords": {
+                "diis": false,
+                "e_convergence": 10,
+                "d_convergence": 10,
+                "scf_type": "pk"
+            },
+            "program": "psi4",
+            "driver": "gradient",
+            "model": {
+                "method": "hf",
+                "basis": "sto-3g"
+            },
+            "protocols": {},
+            "extras": {}
+        }
+    },
+    "initial_molecule": {
+        "schema_name": "qcschema_molecule",
+        "schema_version": 3,
+        "validated": true,
+        "symbols": [
+            "O",
+            "H",
+            "H"
+        ],
+        "geometry": [
+            0.0,
+            0.0,
+            0.28100228,
+            0.0,
+            1.42674323,
+            -0.8431958,
+            0.0,
+            -1.42674323,
+            -0.8431958
+        ],
+        "name": "H2O",
+        "molecular_charge": 0.0,
+        "molecular_multiplicity": 1,
+        "masses": [
+            15.994915,
+            1.007825,
+            1.007825
+        ],
+        "fix_com": false,
+        "fix_orientation": false,
+        "provenance": {
+            "creator": "QCElemental",
+            "version": "0.50.0rc2",
+            "routine": "qcelemental.molparse.from_schema"
+        },
+        "extras": {}
+    },
+    "provenance": {
+        "creator": "QCElemental",
+        "version": "0.50.0rc2",
+        "routine": "qcelemental.models.v1.procedures"
+    }
+}

@@ -1,0 +1,73 @@
+{
+    "id": null,
+    "schema_name": "qcschema_optimization_input",
+    "schema_version": 2,
+    "specification": {
+        "schema_name": "qcschema_optimization_specification",
+        "program": "",
+        "keywords": {
+            "frozen_bend": "1 2 3 2 3 4",
+            "g_convergence": "gau_verytight"
+        },
+        "protocols": {
+            "trajectory_results": "all"
+        },
+        "extras": {},
+        "specification": {
+            "schema_name": "qcschema_atomic_specification",
+            "keywords": {
+                "diis": false,
+                "scf_type": "pk"
+            },
+            "program": "psi4",
+            "driver": "gradient",
+            "model": {
+                "method": "HF",
+                "basis": "cc-pvdz"
+            },
+            "protocols": {},
+            "extras": {}
+        }
+    },
+    "initial_molecule": {
+        "schema_name": "qcschema_molecule",
+        "schema_version": 3,
+        "validated": true,
+        "symbols": [
+            "H",
+            "O",
+            "O",
+            "H"
+        ],
+        "geometry": [
+            1.635264,
+            1.392752,
+            0.846589,
+            0.194579,
+            1.308419,
+            -0.053343,
+            -0.194579,
+            -1.308419,
+            -0.053343,
+            -1.635264,
+            -1.392752,
+            0.846589
+        ],
+        "name": "H2O2",
+        "molecular_charge": 0.0,
+        "molecular_multiplicity": 1,
+        "fix_com": false,
+        "fix_orientation": false,
+        "provenance": {
+            "creator": "QCElemental",
+            "version": "0.50.0rc2",
+            "routine": "qcelemental.molparse.from_schema"
+        },
+        "extras": {}
+    },
+    "provenance": {
+        "creator": "QCElemental",
+        "version": "0.50.0rc2",
+        "routine": "qcelemental.models.v1.procedures"
+    }
+}

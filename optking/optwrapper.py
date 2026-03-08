@@ -144,8 +144,7 @@ def initialize_from_psi4(calc_name, program, computer_type, dertype=None, **xtra
     # Psi4 options can get mixed in with optking's options in prepare_options_for_module anyway.
     # Atomic_input will contain all set options so only accept options that are present in
     # options dict. Assume everything else is for Psi4.
-    at_kw = atomic_input.get("keywords") if psi4_can_v2 else atomic_input.get("keywords")
-    for opt, optval in at_kw.items():
+    for opt, optval in atomic_input.get("keywords").items():
         if opt.upper() in optking_canon:
             opt_keys[opt] = optval
 
