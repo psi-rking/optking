@@ -821,9 +821,16 @@ def prepare_opt_output(o_molsys, computer, rxnpath=[], error=None):
     elif computer.dtype == 2:
         qc_output = {
             "schema_name": "qcschema_optimization_result",
-            "properties": {} if len(computer.energies) == 0 else {"return_energy": computer.energies[-1]},  # TODO add "final_rms_force": computer.params._i_rms_force}, etc.
+            # RAK/AH, please check sourcing for all these properties please
+            "properties": {} if len(computer.energies) == 0 else {
+                "return_energy": computer.energies[-1],
+                "return_gradient": np.array(computer.trajectory[-1]["return_result"]).reshape((-1, 3)),
+                "optimization_iterations": len(computer.energies),
+                "nuclear_repulsion_energy": o_molsys.to_schema(2).nuclear_repulsion_energy(),
+                # TODO add "final_rms_force": computer.params._i_rms_force}, etc.
+            },
             "trajectory_results": computer.trajectory,
-            "trajectory_properties": [{"return_energy": e} for e in computer.energies],
+            "trajectory_properties": [r["properties"] for r in computer.trajectory],
             "final_molecule": final_molecule,
             "extras": {},
             "success": True,

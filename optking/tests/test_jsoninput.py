@@ -37,6 +37,16 @@ def test_input_through_json(inp, expected, num_steps, check_iter, schver):
         pytest.skip()
     if schver == 1 and "lif" in inp:
         pytest.skip("ManyBody Optimization is only available for QCSchema v2. The experimental v1 GeneralizedOptimization is retired.")
+    try:
+        import qcmanybody
+        import qcengine
+    except ImportError:
+        mbeopt = False
+    else:
+        mbeopt = (version.Version(qcmanybody.__version__) >= version.Version("0.6.1") and
+                  version.Version(qcengine.__version__) >= version.Version("0.50.0rc2"))
+        if not mbeopt:
+            pytest.skip("QCManyBody or QCEngine not new enough for MBE Opt")
 
     if schver == 1:
         from qcelemental.models import OptimizationInput

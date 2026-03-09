@@ -223,7 +223,11 @@ def optimize_qcengine(opt_input, computer_type="qc"):
         allowed = (qcelemental.models.OptimizationInput)
 
     if isinstance(opt_input, allowed):
-        opt_input = json.loads(json_dumps(opt_input))  # Remove numpy elements turn into dictionary
+        try:
+            opt_input = json.loads(opt_input.model_dump_json())
+        except AttributeError:
+            # v1 only due to fragments missing in qcel.json_dumps. try again with qcel 0.50.0rc4
+            opt_input = json.loads(json_dumps(opt_input))  # Remove numpy elements turn into dictionary
     opt_output = copy.deepcopy(opt_input)
 
     dtype = 2 if "specification" in opt_output.keys() else 1
