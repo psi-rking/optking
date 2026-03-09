@@ -629,7 +629,8 @@ class EngineHelper(Helper):
         # Just call from_dict for brevity. If schema, will be cast to dict
         self.opt_input = from_dict(optimization_input)
 
-        super().__init__(self.opt_input["keywords"], **kwargs)
+        top_level_kw = self.opt_input["specification"]["keywords"] if "specification" in self.opt_input else self.opt_input["keywords"]
+        super().__init__(top_level_kw, **kwargs)
         self.molsys = molsys.Molsys.from_schema(self.opt_input["initial_molecule"])
         self.computer = optwrapper.make_computer(self.opt_input, "qc")
         self.computer_type = "qc"
