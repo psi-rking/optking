@@ -21,7 +21,7 @@ class ComputeWrapper:
 
     """
 
-    def __init__(self, molecule, model, keywords, program, dtype):
+    def __init__(self, molecule, model, keywords, program, protocols, dtype):
         self.molecule = molecule
         # ensure molecule orientation does not differ from optking regardless of how mol was created
         self.molecule.update({'fix_com': True, 'fix_orientation': True})
@@ -29,12 +29,13 @@ class ComputeWrapper:
         self.keywords = keywords
         self.program = program
         self.dtype = dtype  # schema_version
+        self.protocols = protocols
         self.trajectory = []
         self.energies = []
 
     @classmethod
-    def init_full(cls, molecule, model, keywords, program, trajectory, energies, dtype):
-        wrapper = cls(molecule, model, keywords, program, dtype)
+    def init_full(cls, molecule, model, keywords, program, trajectory, energies, protocols, dtype):
+        wrapper = cls(molecule, model, keywords, program, protocols, dtype)
         wrapper.trajectory = trajectory
         wrapper.energies = energies
         return wrapper
@@ -63,7 +64,8 @@ class ComputeWrapper:
             from qcelemental.models.v2 import AtomicInput, Molecule
             molecule = Molecule(**self.molecule)
             inp = AtomicInput(
-                molecule=molecule, specification={"model": self.model, "keywords": self.keywords, "driver": driver},
+                molecule=molecule, specification={"model": self.model, "keywords": self.keywords, "driver": driver, "protocols":
+self.protocols},
             )
 
         return inp
@@ -142,13 +144,14 @@ def make_computer_from_dict(computer_type, d):
     traj = d.get("trajectory")
     ener = d.get("energies")
     dtype = d.get("dtype")
+    ptcl = d.get("protocols")
 
     if computer_type == "psi4":
-        return Psi4Computer.init_full(mol, mod, key, prog, traj, ener, dtype)
+        return Psi4Computer.init_full(mol, mod, key, prog, traj, ener, ptcl, dtype)
     elif computer_type == "qc":
-        return QCEngineComputer.init_full(mol, mod, key, prog, traj, ener, dtype)
+        return QCEngineComputer.init_full(mol, mod, key, prog, traj, ener, ptcl, dtype)
     elif computer_type == "user":
-        return UserComputer.init_full(mol, mod, key, prog, traj, ener, dtype)
+        return UserComputer.init_full(mol, mod, key, prog, traj, ener, ptcl, dtype)
     else:
         raise OptError("computer_type is unknown")
 
@@ -205,8 +208,8 @@ class QCEngineComputer(ComputeWrapper):
 
 # Class to produce a compliant output with user provided energy/gradient/hessian
 class UserComputer(ComputeWrapper):
-    def __init__(self, molecule, model, keywords, program, dtype):
-        super().__init__(molecule, model, keywords, program, dtype)
+    def __init__(self, molecule, model, keywords, program, ptcl, dtype):
+        super().__init__(molecule, model, keywords, program, ptcl, dtype)
         self.external_energy = None
         self.external_gradient = None
         self.external_hessian = None

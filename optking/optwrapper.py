@@ -278,30 +278,38 @@ def make_computer(opt_input: dict, computer_type):
     if schver == 1:
         spec_schema_name = opt_input["input_specification"].get("schema_name", "qcschema_input")
         if spec_schema_name == "qcschema_manybodyspecification":
+            # route is defunct
             model = "(proc_spec_in_options)"
             options = opt_input["input_specification"]
+            protocols = {}
         else:
             qc_input = opt_input["input_specification"]
             options = qc_input["keywords"]
             model = qc_input["model"]
+            protocols = {}  # no field for protocols in v1 QCInputSpecification
     elif schver == 2:
         spec_schema_name = opt_input["specification"]["specification"].get("schema_name", "qcschema_atomic_specification")
         if spec_schema_name == "qcschema_many_body_specification":
             model = "(proc_spec_in_options)"
-            options = opt_input["specification"]["specification"]  # TODO path not yet tested
+            options = opt_input["specification"]["specification"]
+            if "model" in (qc := options["specification"]):  # single spec
+                protocols = qc.get("protocols", {})
+            else:  # mapping spec
+                protocols = next(iter(qc.values())).get("protocols", {})
         else:
             qc_input = opt_input["specification"]["specification"]
             options = qc_input["keywords"]
             model = qc_input["model"]
+            protocols = qc_input["protocols"]
 
     if computer_type == "psi4":
         # Please note that program is not actually used here
-        return Psi4Computer(molecule, model, options, program, dtype=schver)
+        return Psi4Computer(molecule, model, options, program, protocols, dtype=schver)
     elif computer_type == "qc":
-        return QCEngineComputer(molecule, model, options, program, dtype=schver)
+        return QCEngineComputer(molecule, model, options, program, protocols, dtype=schver)
     elif computer_type == "user":
         logger.info("Creating a UserComputer")
-        return UserComputer(molecule, model, options, program, dtype=schver)
+        return UserComputer(molecule, model, options, program, protocols, dtype=schver)
     else:
         raise OptError("computer_type is unknown")
 
