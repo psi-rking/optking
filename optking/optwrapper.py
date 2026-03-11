@@ -296,11 +296,13 @@ def make_computer(opt_input: dict, computer_type):
                 protocols = qc.get("protocols", {})
             else:  # mapping spec
                 protocols = next(iter(qc.values())).get("protocols", {})
+            program = opt_input["specification"]["specification"].get("program") or "qcmanybody"
         else:
             qc_input = opt_input["specification"]["specification"]
             options = qc_input["keywords"]
             model = qc_input["model"]
             protocols = qc_input.get("protocols", {})
+            program = qc_input["program"]
 
     if computer_type == "psi4":
         # Please note that program is not actually used here

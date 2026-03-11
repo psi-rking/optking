@@ -196,7 +196,7 @@ class QCEngineComputer(ComputeWrapper):
         if self.model == "(proc_spec_in_options)":
             logger.debug("QCEngineComputer.path: ManyBody")
             inp = self.generate_schema_input_for_procedure(driver)
-            ret = qcengine.compute_procedure(inp, "qcmanybody", raise_error=True, task_config=task_config)
+            ret = qcengine.compute_procedure(inp, self.program, raise_error=True, task_config=task_config)
 
         else:
             logger.debug("QCEngineComputer.path: Atomic")
