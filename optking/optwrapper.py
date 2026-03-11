@@ -302,7 +302,7 @@ def make_computer(opt_input: dict, computer_type):
             options = qc_input["keywords"]
             model = qc_input["model"]
             protocols = qc_input.get("protocols", {})
-            program = qc_input["program"]
+            program = qc_input.get("program", program)
 
     if computer_type == "psi4":
         # Please note that program is not actually used here
