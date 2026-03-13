@@ -75,7 +75,6 @@ def test_lj_external_gradient():
     import numpy as np
 
     schver = 2 if sys.version_info >= (3, 14) else 1
-    print(f"{schver=} lsdlskfjsl")
 
     sh2o = """
         O  0.00000000  0.00000000 -0.12947689

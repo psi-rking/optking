@@ -1,3 +1,4 @@
+import inspect
 import optking
 from packaging.version import Version
 import sys
@@ -27,7 +28,9 @@ def compare_iterations(json_output, expected_steps, assert_iter):
             raise
 
 def psi4_runs_v2_qcschema(p4ver):
-    return Version(p4ver) >= Version("1.11a1.dev2")
+    # return Version(p4ver) >= Version("1.11a1.dev2")  # someday 1.11.0 might be easier
+    import psi4
+    return "dtype" in inspect.signature(psi4.driver.p4util.state_to_atomicinput).parameters
 
 def qcel_impl_v2_qcschema():
     try:
