@@ -180,9 +180,10 @@ class OptParams(BaseModel):
     must be > 0 for alternative approaches to be tried.
     A backstep will be triggered (if allowed) by DE > 0 in minimization
     A step is considered "bad"
-        * if DE > 0, no more backsteps are allowed
-        * and iterations > 5
-        * or there are badly defined internal coordinates or derivatives.
+    * if DE > 0, no more backsteps are allowed
+    * and iterations > 5
+    * or there are badly defined internal coordinates or derivatives.
+
     Default = 0
     +-----------+------+-------+------------+--------------+-------------------------------+
     | dynamic   | step | coord | trust      | backsteps    | criteria to change dynamic_lvl|
@@ -447,9 +448,9 @@ class OptParams(BaseModel):
     """A set of optimization criteria covering the change in energy, magnitude of the forces and
     the step_size. One of ["QCHEM", "MOLPRO", "GAU", "GAU_LOOSE", "GAU_TIGHT", "GAU_VERYTIGHT",
     "TURBOMOLE", "CFOUR", "NWCHEM_LOOSE", "INTERFRAG_TIGHT"].
-    Set of optimization criteria. Specification of any MAX_*_G_CONVERGENCE
-    RMS_*_G_CONVERGENCE options will append to overwrite the criteria set here if
-    |flexible_g_convergence| is also on.
+    Set of optimization criteria. Specification of any MAX_<any>_G_CONVERGENCE
+    RMS_<any>_G_CONVERGENCE options will append to overwrite the criteria set here if
+    |optking__flexible_g_convergence| is also on.
     See Table :ref:`Geometry Convergence <table:optkingconv>` for details."""
 
     # _conv_rms_force = -1
@@ -474,9 +475,9 @@ class OptParams(BaseModel):
     # Even if a user-defined threshold is set, allow for normal, flexible convergence criteria
 
     flexible_g_convergence: bool = False
-    """Normally, any specified *_G_CONVERGENCE keyword like `MAX_FORCE_G_CONVERGENCE` will be obeyed
+    """Normally, any specified <any>_G_CONVERGENCE keyword like `MAX_FORCE_G_CONVERGENCE` will be obeyed
     exclusively. If active, `FLEXIBLE_G_CONVERGENCE` appends to `G_CONVERGENCE` with the value from
-    `*_G_CONVERGENCE` instead of overriding.
+    `<any>_G_CONVERGENCE` instead of overriding.
     """
 
     #
@@ -493,9 +494,9 @@ class OptParams(BaseModel):
     # Do limit the magnitude of changes caused by the Hessian update?
     hess_update_limit: bool = True
     """Do limit the magnitude of changes caused by the Hessian update?
-    If |hess_update_limit| is True, changes to the Hessian from the update are limited
-    to the larger of |hess_update_limit_scale| * (current value) and
-    |hess_update_limit_max| [au].  By default, a Hessian value cannot be changed by more
+    If |optking__hess_update_limit| is True, changes to the Hessian from the update are limited
+    to the larger of |optking__hess_update_limit_scale| * (current value) and
+    |optking__hess_update_limit_max| [au].  By default, a Hessian value cannot be changed by more
     than 50% and 1 au."""
 
     # If |hess_update_limit| is True, changes to the Hessian from the update are limited
@@ -519,7 +520,7 @@ class OptParams(BaseModel):
     # Do read Cartesian Hessian?  Only for experts - use
     # |Optking__full_hess_every| instead.
     cart_hess_read: bool = False
-    """Do read Cartesian Hessian? Recommended to use |full_hess_every| instead.
+    """Do read Cartesian Hessian? Recommended to use |optking__full_hess_every| instead.
     cfour format or `.json` file (AtomicOutput) allowed. The filetype is determined by the presence
     of a `.json` extension. The cfour hessian format specifies that the first line contains the
     number of atoms. Each subsequent line contains three hessian values provided in
@@ -530,7 +531,7 @@ class OptParams(BaseModel):
     # Need two options here because str_to_upper cannot be turned of for members of the Model
     # _hessian_file avoids str_to_upper
     hessian_file: pathlib.Path = Field(default=pathlib.Path(""), validate_default=False)
-    """Accompanies |CART_HESS_READ|. path to file where hessian has been saved."""
+    """Accompanies |optking__cart_hess_read|. path to file where hessian has been saved."""
 
     # _hessian_file = pathlib.Path("")
 
@@ -680,7 +681,7 @@ class OptParams(BaseModel):
 
     linesearch: bool = False
     # Guess at Hessian in steepest-descent direction.
-    """perform linesearch on top of current |step_type|."""
+    """perform linesearch on top of current |optking__step_type|."""
 
     sd_hessian: float = Field(gt=0.0, default=1.0)
     """Guess at Hessian in steepest-descent direction (acts as a stepsize control)."""

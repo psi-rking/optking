@@ -18,37 +18,37 @@ Some of the more important options for general use of ``OptKing``. See below for
 
     .. grid-item-card::    General
 
-        * :py:attr:`step_type <optking.v1.optparams.OptParams.step_type>`
-        * :py:attr:`opt_type <optking.v1.optparams.OptParams.opt_type>`
-        * :py:attr:`g_convergence <optking.v1.optparams.OptParams.g_convergence>`
-        * :py:attr:`full_hess_every <optking.v1.optparams.OptParams.full_hess_every>`
-        * :py:attr:`intrafrag_step_limit <optking.v1.optparams.OptParams.intrafrag_trust>`
-        * :py:attr:`geom_maxiter <optking.v1.optparams.OptParams.geom_maxiter>`
-        * :py:attr:`opt_coordinates <optking.v1.optparams.OptParams.opt_coordinates>`
+        * :py:attr:`step_type <optking.v2.optparams.OptParams.step_type>`
+        * :py:attr:`opt_type <optking.v2.optparams.OptParams.opt_type>`
+        * :py:attr:`g_convergence <optking.v2.optparams.OptParams.g_convergence>`
+        * :py:attr:`full_hess_every <optking.v2.optparams.OptParams.full_hess_every>`
+        * :py:attr:`intrafrag_step_limit <optking.v2.optparams.OptParams.intrafrag_trust>`
+        * :py:attr:`geom_maxiter <optking.v2.optparams.OptParams.geom_maxiter>`
+        * :py:attr:`opt_coordinates <optking.v2.optparams.OptParams.opt_coordinates>`
 
     .. grid-item-card::    IRC
 
-        * :py:attr:`irc_direction <optking.v1.optparams.OptParams.irc_direction>`
-        * :py:attr:`irc_points <optking.v1.optparams.OptParams.irc_points>`
-        * :py:attr:`irc_step_size <optking.v1.optparams.OptParams.irc_step_size>`
+        * :py:attr:`irc_direction <optking.v2.optparams.OptParams.irc_direction>`
+        * :py:attr:`irc_points <optking.v2.optparams.OptParams.irc_points>`
+        * :py:attr:`irc_step_size <optking.v2.optparams.OptParams.irc_step_size>`
 
     .. grid-item-card::    Constraints
 
-        * :py:attr:`frozen_distance <optking.v1.optparams.OptParams.frozen_distance>`
-        * :py:attr:`frozen_bend <optking.v1.optparams.OptParams.frozen_bend>`
-        * :py:attr:`frozen_dihedral <optking.v1.optparams.OptParams.frozen_dihedral>`
-        * :py:attr:`frozen_oofp <optking.v1.optparams.OptParams.frozen_oofp>`
-        * :py:attr:`frozen_cartesian <optking.v1.optparams.OptParams.frozen_cartesian>`
-        * :py:attr:`ranged_distance <optking.v1.optparams.OptParams.ranged_distance>`
-        * :py:attr:`ranged_bend <optking.v1.optparams.OptParams.ranged_bend>`
-        * :py:attr:`ranged_dihedral <optking.v1.optparams.OptParams.ranged_dihedral>`
-        * :py:attr:`ranged_oofp <optking.v1.optparams.OptParams.ranged_oofp>`
-        * :py:attr:`ranged_cartesian <optking.v1.optparams.OptParams.ranged_cartesian>`
-        * :py:attr:`ext_force_distance <optking.v1.optparams.OptParams.ext_force_distance>`
-        * :py:attr:`ext_force_bend <optking.v1.optparams.OptParams.ext_force_bend>`
-        * :py:attr:`ext_force_dihedral <optking.v1.optparams.OptParams.ext_force_dihedral>`
-        * :py:attr:`ext_force_oofp <optking.v1.optparams.OptParams.ext_force_oofp>`
-        * :py:attr:`ext_force_cartesian <optking.v1.optparams.OptParams.ext_force_cartesian>`
+        * :py:attr:`frozen_distance <optking.v2.optparams.OptParams.frozen_distance>`
+        * :py:attr:`frozen_bend <optking.v2.optparams.OptParams.frozen_bend>`
+        * :py:attr:`frozen_dihedral <optking.v2.optparams.OptParams.frozen_dihedral>`
+        * :py:attr:`frozen_oofp <optking.v2.optparams.OptParams.frozen_oofp>`
+        * :py:attr:`frozen_cartesian <optking.v2.optparams.OptParams.frozen_cartesian>`
+        * :py:attr:`ranged_distance <optking.v2.optparams.OptParams.ranged_distance>`
+        * :py:attr:`ranged_bend <optking.v2.optparams.OptParams.ranged_bend>`
+        * :py:attr:`ranged_dihedral <optking.v2.optparams.OptParams.ranged_dihedral>`
+        * :py:attr:`ranged_oofp <optking.v2.optparams.OptParams.ranged_oofp>`
+        * :py:attr:`ranged_cartesian <optking.v2.optparams.OptParams.ranged_cartesian>`
+        * :py:attr:`ext_force_distance <optking.v2.optparams.OptParams.ext_force_distance>`
+        * :py:attr:`ext_force_bend <optking.v2.optparams.OptParams.ext_force_bend>`
+        * :py:attr:`ext_force_dihedral <optking.v2.optparams.OptParams.ext_force_dihedral>`
+        * :py:attr:`ext_force_oofp <optking.v2.optparams.OptParams.ext_force_oofp>`
+        * :py:attr:`ext_force_cartesian <optking.v2.optparams.OptParams.ext_force_cartesian>`
 
 
 Global and Local Options
@@ -68,4 +68,4 @@ OptParams
 Alphabetized Keywords
 ---------------------
 
-.. autopydantic_model:: optking.v1.optparams.OptParams
+.. autopydantic_model:: optking.v2.optparams.OptParams

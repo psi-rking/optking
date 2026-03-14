@@ -5,7 +5,7 @@ channels:
 dependencies:
   - numpy
   - python=3.12
-  - qcelemental
+  - conda-forge/label/qcelemental_dev::qcelemental
   - msgpack-python
   - sphinx=7.4.7
   - sphinx-automodapi
@@ -13,6 +13,6 @@ dependencies:
   - sphinxcontrib-napoleon
   - sphinx-design
   - pydata-sphinx-theme
-  - autodoc-pydantic=1.9.0
-  - pydantic=1.10
+  - autodoc-pydantic=2
+  - pydantic=2.11
   - pip
