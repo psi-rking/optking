@@ -826,7 +826,7 @@ def prepare_opt_output(o_molsys, computer, rxnpath=[], error=None):
                 "return_energy": computer.energies[-1],
                 "return_gradient": np.array(computer.trajectory[-1]["return_result"]).reshape((-1, 3)),
                 "optimization_iterations": len(computer.energies),
-                "nuclear_repulsion_energy": o_molsys.to_schema(2).nuclear_repulsion_energy(),
+                "nuclear_repulsion_energy": float(o_molsys.to_schema(2).nuclear_repulsion_energy()),
                 # TODO add "final_rms_force": computer.params._i_rms_force}, etc.
             },
             "trajectory_results": computer.trajectory,
