@@ -561,7 +561,7 @@ class OptimizationManager(stepAlgorithms.OptimizationInterface):
         else:
             logger.info("\tOptimization Finished\n" + self.history.summary_string())
 
-        qc_output = prepare_opt_output(self.molsys, self.computer, rxnpath=rxnpath, error=error)
+        qc_output = prepare_opt_output(self.molsys, self.computer, rxnpath=rxnpath, error=error, history=self.history)
         self.clear()
 
         if self.params.write_trajectory:
@@ -802,7 +802,7 @@ def make_internal_coords(o_molsys: Molsys, params: op.OptParams):
     return
 
 
-def prepare_opt_output(o_molsys, computer, rxnpath=[], error=None):
+def prepare_opt_output(o_molsys, computer, rxnpath=[], error=None, history=None):
     logger.info("Preparing OptimizationResult")
     # Get molecule from most recent step. Add provenance and fill in non-required fills.
     # Turn back to dict
@@ -819,14 +819,19 @@ def prepare_opt_output(o_molsys, computer, rxnpath=[], error=None):
             "success": True,
         }
     elif computer.dtype == 2:
+        final_props = {} if history is None else history.summary(printoption=False)[-1]
         qc_output = {
             "schema_name": "qcschema_optimization_result",
             # RAK/AH, please check sourcing for all these properties please
             "properties": {} if len(computer.energies) == 0 else {
                 "return_energy": computer.energies[-1],
-                "return_gradient": np.array(computer.trajectory[-1]["return_result"]).reshape((-1, 3)),
+                "return_gradient": computer.trajectory[-1]["return_result"],
                 "optimization_iterations": len(computer.energies),
-                "nuclear_repulsion_energy": float(o_molsys.to_schema(2).nuclear_repulsion_energy()),
+                "nuclear_repulsion_energy": o_molsys.to_schema(2).nuclear_repulsion_energy(),
+                "final_max_force": final_props["max_force"],
+                "final_rms_force": final_props["rms_force"],
+                "final_max_displacement": final_props["max_disp"],
+                "final_rms_displacement": final_props["rms_disp"],
                 # TODO add "final_rms_force": computer.params._i_rms_force}, etc.
             },
             "trajectory_results": computer.trajectory,
@@ -834,6 +839,7 @@ def prepare_opt_output(o_molsys, computer, rxnpath=[], error=None):
             "final_molecule": final_molecule,
             "extras": {},
             "success": True,
+            "provenance": optking._optking_provenance_stamp,
         }
 
     if isinstance(error, OptError):

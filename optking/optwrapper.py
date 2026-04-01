@@ -80,10 +80,18 @@ def optimize_psi4(calc_name, program="psi4", dertype=None, **xtra_opt_params):
             "error": {"error_type": type(error), "error_message": str(error)},
         }
     finally:
-        opt_input.update({"provenance": optking._optking_provenance_stamp})
-        opt_input["provenance"]["routine"] = "optimize_psi4"
-        opt_input.update(opt_output)
-    return opt_input
+        if computer.dtype == 1:
+            opt_input.update({"provenance": optking._optking_provenance_stamp})
+            opt_input["provenance"]["routine"] = "optimize_psi4"
+            opt_input.update(opt_output)
+
+            return opt_input
+
+        elif computer.dtype == 2:
+            opt_output["input_data"] = opt_input
+            opt_output["provenance"]["routine"] = "optimize_psi4"
+
+            return opt_output
 
 
 def initialize_from_psi4(calc_name, program, computer_type, dertype=None, **xtra_opt_params):
@@ -223,11 +231,8 @@ def optimize_qcengine(opt_input, computer_type="qc"):
         allowed = (qcelemental.models.OptimizationInput)
 
     if isinstance(opt_input, allowed):
-        try:
-            opt_input = json.loads(opt_input.model_dump_json())
-        except AttributeError:
-            # v1 only due to fragments missing in qcel.json_dumps. try again with qcel 0.50.0rc4
-            opt_input = json.loads(json_dumps(opt_input))  # Remove numpy elements turn into dictionary
+        # Remove numpy elements and turn into dictionary
+        opt_input = json.loads(json_dumps(opt_input))
     opt_output = copy.deepcopy(opt_input)
 
     dtype = 2 if "specification" in opt_output.keys() else 1
@@ -261,7 +266,7 @@ def optimize_qcengine(opt_input, computer_type="qc"):
             return opt_output
 
     # QCEngine.procedures.optking.py takes 'output_data', unpacks and creates Optimization Schema
-    # from qcel.models.procedures.py
+    # from qcel.models.v1.procedures.py or qcel.models.v2.optimization.py
 
 
 def make_computer(opt_input: dict, computer_type):

@@ -39,9 +39,9 @@ def test_B_dB_matrices(check_iter):
         assert "test_derivative_b" in json_output["keywords"]  # TEST
         assert "g_convergence" in json_output["keywords"]  # TEST
     elif _schver == 2:
-        assert "test_b" in json_output["specification"]["keywords"]  # TEST
-        assert "test_derivative_b" in json_output["specification"]["keywords"]  # TEST
-        assert "g_convergence" in json_output["specification"]["keywords"]  # TEST
+        assert "test_b" in json_output["input_data"]["specification"]["keywords"]  # TEST
+        assert "test_derivative_b" in json_output["input_data"]["specification"]["keywords"]  # TEST
+        assert "g_convergence" in json_output["input_data"]["specification"]["keywords"]  # TEST
     assert psi4.compare_values(refnucenergy, nucenergy, 3, "Nuclear repulsion energy")  # TEST
     assert psi4.compare_values(refenergy, E, 8, "Reference energy")  # TEST
     utils.compare_iterations(json_output, 7, check_iter)
@@ -73,7 +73,7 @@ def test_maxiter(check_iter):
     if _schver == 1:
         assert "geom_maxiter" in json_output["keywords"]  # TEST
     elif _schver == 2:
-        assert "geom_maxiter" in json_output["specification"]["keywords"]  # TEST
+        assert "geom_maxiter" in json_output["input_data"]["specification"]["keywords"]  # TEST
     assert "Maximum number of steps exceeded" in json_output["error"]["error_message"]  # TEST
     assert "OptError" in str(json_output["error"]["error_type"])  # TEST
 

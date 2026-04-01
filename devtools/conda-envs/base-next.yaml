@@ -8,7 +8,7 @@ dependencies:
     # Base
   - numpy
   - python
-  - qcelemental >=0.50.0rc3
+  - qcelemental >=0.50.0rc4
   - qcengine >=0.50.0rc2
   - msgpack-python
   - pydantic=2  # Make sure that v2/optparams is generally working
