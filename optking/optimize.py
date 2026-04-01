@@ -819,6 +819,7 @@ def prepare_opt_output(o_molsys, computer, rxnpath=[], error=None, history=None)
             "success": True,
         }
     elif computer.dtype == 2:
+        import optking
         final_props = {} if history is None else history.summary(printoption=False)[-1]
         qc_output = {
             "schema_name": "qcschema_optimization_result",
