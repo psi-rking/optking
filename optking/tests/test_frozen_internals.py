@@ -4,6 +4,7 @@ import pytest
 
 import psi4
 import optking
+import qcelemental as qcel
 from .utils import utils
 
 
@@ -63,7 +64,10 @@ def test_frozen_coords(option, expected, num_steps, check_iter):
 
 @pytest.mark.pubchem
 def test_butane_frozen(check_iter):
-    _ = psi4.geometry("pubchem:butane")
+    try:
+        _ = psi4.geometry("pubchem:butane")
+    except qcel.exceptions.ValidationError:
+        pytest.xfail("Could not obtain molecule.")
 
     psi4.core.clean_options()
     psi4_options = {
@@ -127,7 +131,10 @@ def test_butane_frozen(check_iter):
 
 @pytest.mark.pubchem
 def test_butane_skip_frozen(check_iter):
-    _ = psi4.geometry("pubchem:butane")
+    try:
+        _ = psi4.geometry("pubchem:butane")
+    except qcel.exceptions.ValidationError:
+        pytest.xfail("Could not obtain molecule from pubchem.")
 
     psi4.core.clean_options()
     psi4_options = {
