@@ -8,6 +8,8 @@ from .utils import utils
 conv_RHF_OO_at_135 = -150.7853238  # minimum is 1.39
 init_OO_distance = [("1.28", 9), ("1.2999", 8), ("1.325", 8), ("1.35", 9), ("1.38", 8)]
 
+_schver = 2 if utils.psi4_runs_v2_qcschema(psi4.__version__) else 1
+
 
 @pytest.mark.parametrize("option, num_steps", init_OO_distance)
 def test_ranged_stretch(option, num_steps, check_iter):
@@ -29,7 +31,10 @@ def test_ranged_stretch(option, num_steps, check_iter):
     xtra = {"ranged_distance": "2 3 1.30 1.35"}
     json_output = optking.optimize_psi4("hf", **xtra)
 
-    thisenergy = json_output["energies"][-1]
+    if _schver == 1:
+        thisenergy = json_output["energies"][-1]
+    elif _schver == 2:
+        thisenergy = json_output["trajectory_properties"][-1]["return_energy"]  # TEST
     assert psi4.compare_values(conv_RHF_OO_at_135, thisenergy, 6)
     utils.compare_iterations(json_output, num_steps, check_iter)
 
@@ -60,7 +65,10 @@ def test_ranged_bend(option, num_steps, check_iter):
     xtra = {"ranged_bend": "(1 2 3 105.0 110.0) (2 3 4 105.0 110.0)"}
     json_output = optking.optimize_psi4("hf", **xtra)
 
-    thisenergy = json_output["energies"][-1]
+    if _schver == 1:
+        thisenergy = json_output["energies"][-1]
+    elif _schver == 2:
+        thisenergy = json_output["trajectory_properties"][-1]["return_energy"]  # TEST
     assert psi4.compare_values(conv_RHF_HOO_at_105, thisenergy, 6)
     utils.compare_iterations(json_output, num_steps, check_iter)
 
@@ -88,7 +96,10 @@ def test_ranged_tors(option):
     xtra = {"ranged_dihedral": "(1 2 3 4 100.0 110.0)"}
     json_output = optking.optimize_psi4("hf", **xtra)
 
-    thisenergy = json_output["energies"][-1]
+    if _schver == 1:
+        thisenergy = json_output["energies"][-1]
+    elif _schver == 2:
+        thisenergy = json_output["trajectory_properties"][-1]["return_energy"]  # TEST
     assert psi4.compare_values(conv_RHF_HOOH_at_110, thisenergy, 6)
 
 
@@ -117,5 +128,8 @@ def test_ranged_cart(option):
     xtra = {"ranged_cartesian": option}
     json_output = optking.optimize_psi4("hf", **xtra)
 
-    thisenergy = json_output["energies"][-1]
+    if _schver == 1:
+        thisenergy = json_output["energies"][-1]
+    elif _schver == 2:
+        thisenergy = json_output["trajectory_properties"][-1]["return_energy"]  # TEST
     assert psi4.compare_values(conv_RHF_HOOH, thisenergy, 6)

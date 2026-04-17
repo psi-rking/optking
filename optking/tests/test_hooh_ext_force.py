@@ -5,6 +5,8 @@ import psi4
 import optking
 from .utils import utils
 
+_schver = 2 if utils.psi4_runs_v2_qcschema(psi4.__version__) else 1
+
 # Minimized energy with OH bonds pushed toward 0.950 Angstroms.
 OH_950_stre = -150.786669
 # Minimized energy with OOH angles pushed toward 105.0 degrees.
@@ -46,7 +48,10 @@ def test_hooh_fixed_OH_stre(option, expected, num_steps):
 
     json_output = optking.optimize_psi4("hf", **option)
 
-    E = json_output["energies"][-1]
+    if _schver == 1:
+        E = json_output["energies"][-1]
+    elif _schver == 2:
+        E = json_output["trajectory_properties"][-1]["return_energy"]
     assert psi4.compare_values(expected, E, 6, list(option.keys())[0])
     # AH - these tests are unstable both in this PR and in master branch 16-19 steps required.
     # At the starting distance the forces are too large compared to the force constant and

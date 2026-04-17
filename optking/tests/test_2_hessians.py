@@ -1,9 +1,12 @@
+from packaging.version import Version
 import logging
 import pytest
 import psi4
 import optking
 from .utils import utils
 import os
+
+_schver = 2 if utils.psi4_runs_v2_qcschema(psi4.__version__) else 1
 
 final_energy = -150.786766850
 hess_every = [
@@ -47,7 +50,10 @@ def test_hess_every(check_iter, every, expected, num_steps):
 
     psi4.set_options(psi4_options)
     json_output = optking.optimize_psi4("hf")  # Uses default program (psi4)
-    E = json_output["energies"][-1]
+    if _schver == 1:
+        E = json_output["energies"][-1]
+    elif _schver == 2:
+        E = json_output["trajectory_properties"][-1]["return_energy"]
 
     assert psi4.compare_values(expected, E, 8, "Final energy, every step Hessian")  # TEST
 
@@ -72,11 +78,18 @@ def test_hess_guess(check_iter, guess, expected, num_steps):
         "g_convergence": "gau_verytight",
         "intrafrag_hess": guess,
     }
+    if Version(psi4.__version__) >= Version("1.10.0"):
+        # this option missing after https://github.com/psi4/psi4/pull/3317 but tests passes fine anyways
+        psi4_options.pop("intrafrag_hess")
 
     psi4.set_options(psi4_options)
     json_output = optking.optimize_psi4("hf")  # Uses default program (psi4)
-    E = json_output["energies"][-1]
-    print(f"Number of steps taken {len(json_output['trajectory'])}")
+    if _schver == 1:
+        E = json_output["energies"][-1]
+        print(f"Number of steps taken {len(json_output['trajectory'])}")
+    elif _schver == 2:
+        E = json_output["trajectory_properties"][-1]["return_energy"]
+        print(f"Number of steps taken {len(json_output['trajectory_results'])}")
     assert psi4.compare_values(expected, E, 8, "Final energy, every step Hessian")  # TEST
 
     utils.compare_iterations(json_output, num_steps, check_iter)
@@ -103,7 +116,10 @@ def test_hess_update(check_iter, update, expected, num_steps):
 
     psi4.set_options(psi4_options)
     json_output = optking.optimize_psi4("hf")  # Uses default program (psi4)
-    E = json_output["energies"][-1]
+    if _schver == 1:
+        E = json_output["energies"][-1]
+    elif _schver == 2:
+        E = json_output["trajectory_properties"][-1]["return_energy"]
 
     assert psi4.compare_values(expected, E, 8, "Final energy, every step Hessian")  # TEST
 
@@ -144,7 +160,10 @@ def test_hess_read(check_iter):
     json_output = optking.optimize_psi4(
         "hf", **{"cart_hess_read": True, "hessian_file": f"stdout.default.{os.getpid()}.hess"}
     )
-    E = json_output["energies"][-1]
+    if _schver == 1:
+        E = json_output["energies"][-1]
+    elif _schver == 2:
+        E = json_output["trajectory_properties"][-1]["return_energy"]
     assert psi4.compare_values(final_energy, E, 8, "Final energy, every step Hessian")  # TEST
     utils.compare_iterations(json_output, 10, check_iter)
 

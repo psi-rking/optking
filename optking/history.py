@@ -210,6 +210,7 @@ class History(object):
                     "Energy": step.E,
                     "DE": DE,
                     "max_force": max_force,
+                    "rms_force": rms_force,
                     "max_disp": max_disp,
                     "rms_disp": rms_disp,
                 }

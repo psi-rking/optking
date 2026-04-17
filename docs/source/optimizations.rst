@@ -48,6 +48,16 @@ A basic driver has been implemented in ``QCEngine``. ``QCEngine`` is built upon 
 validation and standardized input/output. To see the requirements for an ``OptimziationInput`` check MolSSI's
 `qcelemental documentation <https://molssi.github.io/QCElemental/>`_. NOTE ``QCElemental`` assumes atomic units by default:
 
+As of optking v0.5, it can run either QCSchema v1 or v2. For
+direct optking runs, input v1 emits v1 and input v2 emits v2. For
+qcengine.compute(), the same is true, but one can also pass a
+``return_version`` to return 2 from 1 or 1 from 2. Note that due to
+Pydantic restrictions, v1 is never available for Python 3.14+. See
+https://molssi.github.io/QCElemental/next/models.html#qcschema-v2 for
+conversion resources.
+
+This is QCSchema v1.
+
 .. code-block:: python
 
     import qcengine as qcng
@@ -82,8 +92,48 @@ validation and standardized input/output. To see the requirements for an ``Optim
 
     result = qcng.compute_procedure(opt_input, "optking")
 
+And this is QCSchema v2.
+
+.. code-block:: python
+
+    import qcengine as qcng
+
+    opt_input = {
+        "initial_molecule": {
+            "symbols": ["O", "O", "H", "H"],
+            "geometry": [
+                0.0000000000,
+                0.0000000000,
+                0.0000000000,
+                -0.0000000000,
+                -0.0000000000,
+                2.7463569188,
+                1.3013018774,
+                -1.2902977124,
+                2.9574871774,
+                -1.3013018774,
+                1.2902977124,
+                -0.2111302586,
+            ],
+            "fix_com": True,
+            "fix_orientation": True,
+        },
+        "specification": {
+            "specification": {
+                "model": {"method": "hf", "basis": "sto-3g"},
+                "driver": "gradient",
+                "keywords": {"d_convergence": "1e-7"},
+            },
+            "keywords": {"g_convergence": "GAU_TIGHT", "program": "psi4"},
+        },
+    }
+
+    result = qcng.compute(opt_input, "optking")
+
 An explicit example of creating and running an OptimizationInput. Note: Molecule.from_data seems to be the only
 place Angstroms are expected:
+
+This is QCSchema v1.
 
 .. code-block:: python
 
@@ -116,6 +166,43 @@ place Angstroms are expected:
         keywords={"g_convergence": "GAU_TIGHT", "program": "psi4"},  # optimizer options
     )
     
+    config = qcng.get_config()  # get machine info (e.g. number of cores) can specify explicitly
+    opt = qcng.get_procedure("optking")
+    result = opt.compute(opt_input, config)
+
+This is QCSchema v2.
+
+.. code-block:: python
+
+    import qcengine as qcng
+
+    from qcelemental.models.v2 import Molecule, OptimizationInput, Model, AtomicSpecification
+
+    # WARNING. The user MUST set fix_com and fix_orientation to True.
+    # optimization will almost certainly fail otherwise
+    molecule = Molecule.from_data(
+        """
+        O        0.0000000000      0.0000000000      0.0000000000
+        O       -0.0000000000     -0.0000000000      1.4533095991
+        H        0.6886193476     -0.6827961938      1.5650349285
+        H       -0.6886193476      0.6827961938     -0.1117253294""",
+        fix_com=True,
+        fix_orientation=True,
+    )
+
+    model = Model(method="hf", basis="sto-3g")
+    input_spec = AtomicSpecification(
+        driver="gradient", model=model, keywords={"d_convergence": 1e-7}  # QC program options
+    )
+
+    opt_input = OptimizationInput(
+        initial_molecule=molecule,
+        specification={
+            "specification": input_spec,
+            "keywords": {"g_convergence": "GAU_TIGHT", "program": "psi4"},  # optimizer options
+        },
+    )
+
     config = qcng.get_config()  # get machine info (e.g. number of cores) can specify explicitly
     opt = qcng.get_procedure("optking")
     result = opt.compute(opt_input, config)
@@ -162,6 +249,8 @@ as attributes of the OptHelper instance.
 be useful for implementing a custom optimization driver or procedure using OptKing.
 
 ``EngineHelper``:
+
+This is QCSchema v1.
 
 .. code-block:: python
 
@@ -211,39 +300,93 @@ be useful for implementing a custom optimization driver or procedure using OptKi
     json_output = opt.close() # create an unvalidated OptimizationOutput like object
     E = json_output["energies"][-1]
 
+This is QCSchema v2.
+
+.. code-block:: python
+
+    import optking
+    import qcengine as qcng
+
+    from qcelemental.models.v2 import Molecule, OptimizationInput, Model, AtomicSpecification
+
+    # WARNING. The user MUST set fix_com and fix_orientation to True.
+    # optimization will almost certainly fail otherwise
+    molecule = Molecule.from_data(
+        """
+        O        0.0000000000      0.0000000000      0.0000000000
+        O       -0.0000000000     -0.0000000000      1.4533095991
+        H        0.6886193476     -0.6827961938      1.5650349285
+        H       -0.6886193476      0.6827961938     -0.1117253294""",
+        fix_com=True,
+        fix_orientation=True,
+    )
+
+    opt_input = OptimizationInput(
+        initial_molecule=molecule,
+        specification={
+            "specification": {
+                "driver": "gradient",
+                "model": Model(method="hf", basis="sto-3g"),
+                "keywords": {"d_convergence": 1e-7}  # QC program options
+            },
+            "keywords": {"g_convergence": "GAU_TIGHT", "program": "psi4"},  # optimizer options
+        },
+    )
+
+    opt = optking.EngineHelper(opt_input)
+
+    for step in range(30):
+
+        # Compute one's own energy and gradient
+        opt.compute() # process input. Get ready to take a step
+        opt.take_step()
+
+        conv = opt.test_convergence()
+
+        if conv is True:
+            print("Optimization SUCCESS:")
+        else:
+            print("Optimization FAILURE:\n")
+
+    json_output = opt.close() # create an unvalidated OptimizationOutput like object
+    E = json_output["trajectory_properties"][-1]["return_energy"]
+
 ``CustomHelper`` can take ``psi4`` or ``qcelemental`` molecules. A simple example of a custom optimization loop is
 shown where the gradients are provided from a simple lennard jones potential:
 
 .. code-block:: python
 
+    import psi4
+    import optking
+
     h2o = psi4.geometry(
-    """ 
+    """
      O
      H 1 1.0
      H 1 1.0 2 104.5
     """
-    )   
+    )
 
-    psi4_options = { 
+    psi4_options = {
         "basis": "sto-3g",
-    }   
+    }
     optking_options = {"g_convergence": "gau_verytight", "intrafrag_hess": "SIMPLE"}
 
     psi4.set_options(psi4_options)
 
     opt = optking.CustomHelper(h2o, optking_options)
 
-    for step in range(30):
+    for step in range(130):
 
         # Compute one's own energy and gradient
         E, gX = optking.lj_functions.calc_energy_and_gradient(opt.geom, 2.5, 0.01, True)
         # Insert these values into the 'user' computer.
-        opt.E = E 
+        opt.E = E
         opt.gX = gX
 
         opt.compute() # process input. Get ready to take a step
-        opt.take_step() 
-        
+        opt.take_step()
+
         conv = opt.test_convergence()
 
         if conv is True:

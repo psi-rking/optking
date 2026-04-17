@@ -11,6 +11,8 @@ from .utils import utils
 
 @pytest.mark.long
 def test_sf4_quasilinear_cart(check_iter):
+    schver = 2 if utils.psi4_runs_v2_qcschema(psi4.__version__) else 1
+
     sf4 = psi4.geometry("""
       S  0.00000000  -0.00000000  -0.30618267
       F -1.50688420  -0.00000000   0.56381732
@@ -30,7 +32,11 @@ def test_sf4_quasilinear_cart(check_iter):
 
     json_output = optking.optimize_psi4("hf")
 
-    E = json_output["energies"][-1]
+    if schver == 1:
+        E = json_output["energies"][-1]
+    elif schver == 2:
+        E = json_output["trajectory_properties"][-1]["return_energy"]  # TEST
+
     REF_energy = -795.1433965
     assert psi4.compare_values(REF_energy, E, 6, "Reference energy")
 
@@ -48,6 +54,8 @@ def test_sf4_quasilinear_cart(check_iter):
 # An almost identical test is used by Psi4. If this breaks we will break their tests
 @pytest.mark.long
 def test_sf4_quasilinear():
+    schver = 2 if utils.psi4_runs_v2_qcschema(psi4.__version__) else 1
+
     sf4 = psi4.geometry(
         """
       S  0.00000000  -0.00000000  -0.30618267
@@ -69,6 +77,9 @@ def test_sf4_quasilinear():
 
     json_output = optking.optimize_psi4("hf")
 
-    E = json_output["energies"][-1]
+    if schver == 1:
+        E = json_output["energies"][-1]
+    elif schver == 2:
+        E = json_output["trajectory_properties"][-1]["return_energy"]  # TEST
     REF_energy = -795.1433965
     assert psi4.compare_values(REF_energy, E, 5, "Reference energy")

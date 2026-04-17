@@ -4,6 +4,7 @@ import pytest
 from .utils import utils
 
 REF_E = -662.48908779
+_schver = 2 if utils.psi4_runs_v2_qcschema(psi4.__version__) else 1
 
 
 @pytest.mark.long
@@ -29,6 +30,9 @@ def test_methimazole(check_iter):
     psi4_options = {"basis": "pcseg-0"}
     psi4.set_options(psi4_options)
     result = optking.optimize_psi4("wb97x-d")
-    E = result["energies"][-1]
+    if _schver == 1:
+        E = result["energies"][-1]
+    elif _schver == 2:
+        E = result["trajectory_properties"][-1]["return_energy"]
     assert psi4.compare_values(E, REF_E, 5, "WB97X-D Min Energy")
     utils.compare_iterations(result, 6, check_iter)

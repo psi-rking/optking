@@ -3,6 +3,7 @@ import optking
 import json
 from .utils import utils
 
+_schver = 2 if utils.psi4_runs_v2_qcschema(psi4.__version__) else 1
 
 #! SCS-OMP2 cc-pVDZ geometry optimization for the H2O molecule.
 def test_scsmp2_opt(check_iter):
@@ -21,9 +22,14 @@ def test_scsmp2_opt(check_iter):
 
     result = optking.optimize_psi4("scs-omp2")
 
-    this_nuc = result["trajectory"][-1]["properties"]["nuclear_repulsion_energy"]  # TEST
-    this_scf = result["trajectory"][-1]["extras"]["qcvars"]["SCF TOTAL ENERGY"]  # TEST
-    this_energy = result["energies"][-1]  # TEST
+    if _schver == 1:
+        this_nuc = result["trajectory"][-1]["properties"]["nuclear_repulsion_energy"]  # TEST
+        this_scf = result["trajectory"][-1]["extras"]["qcvars"]["SCF TOTAL ENERGY"]  # TEST
+        this_energy = result["energies"][-1]  # TEST
+    elif _schver == 2:
+        this_nuc = result["trajectory_results"][-1]["properties"]["nuclear_repulsion_energy"]  # TEST
+        this_scf = result["trajectory_results"][-1]["extras"]["qcvars"]["SCF TOTAL ENERGY"]  # TEST
+        this_energy = result["trajectory_properties"][-1]["return_energy"]  # TEST
     REF_nuc = 9.1123208123
     REF_scf = -76.0260868661
     REF_scsomp2 = -76.2280452486
@@ -55,9 +61,14 @@ def test_scsmp3_opt(check_iter):
     result = optking.optimize_psi4("scs-omp3")
     print(json.dumps(result, indent=2))
 
-    this_nuc = result["trajectory"][-1]["properties"]["nuclear_repulsion_energy"]  # TEST
-    this_scf = result["trajectory"][-1]["extras"]["qcvars"]["SCF TOTAL ENERGY"]  # TEST
-    this_energy = result["energies"][-1]  # TEST
+    if _schver == 1:
+        this_nuc = result["trajectory"][-1]["properties"]["nuclear_repulsion_energy"]  # TEST
+        this_scf = result["trajectory"][-1]["extras"]["qcvars"]["SCF TOTAL ENERGY"]  # TEST
+        this_energy = result["energies"][-1]  # TEST
+    elif _schver == 2:
+        this_nuc = result["trajectory_results"][-1]["properties"]["nuclear_repulsion_energy"]  # TEST
+        this_scf = result["trajectory_results"][-1]["extras"]["qcvars"]["SCF TOTAL ENERGY"]  # TEST
+        this_energy = result["trajectory_properties"][-1]["return_energy"]  # TEST
     REF_nuc = 9.1193753755  # TEST
     REF_scf = -76.0261614278  # TEST
     REF_scsomp3 = -76.2296260036  # TEST
@@ -89,9 +100,14 @@ def test_sosmp2_opt(check_iter):
     result = optking.optimize_psi4("sos-omp2")
     print(json.dumps(result, indent=2))
 
-    this_nuc = result["trajectory"][-1]["properties"]["nuclear_repulsion_energy"]  # TEST
-    this_scf = result["trajectory"][-1]["extras"]["qcvars"]["SCF TOTAL ENERGY"]  # TEST
-    this_energy = result["energies"][-1]  # TEST
+    if _schver == 1:
+        this_nuc = result["trajectory"][-1]["properties"]["nuclear_repulsion_energy"]  # TEST
+        this_scf = result["trajectory"][-1]["extras"]["qcvars"]["SCF TOTAL ENERGY"]  # TEST
+        this_energy = result["energies"][-1]  # TEST
+    elif _schver == 2:
+        this_nuc = result["trajectory_results"][-1]["properties"]["nuclear_repulsion_energy"]  # TEST
+        this_scf = result["trajectory_results"][-1]["extras"]["qcvars"]["SCF TOTAL ENERGY"]  # TEST
+        this_energy = result["trajectory_properties"][-1]["return_energy"]  # TEST
     REF_nuc = 9.1236764248  # TEST
     REF_scf = -76.0262152850  # TEST
     REF_sosomp2 = -76.2106507336  # TEST
@@ -123,9 +139,14 @@ def test_sosmp3_opt(check_iter):
     result = optking.optimize_psi4("sos-omp3")
     print(json.dumps(result, indent=2))
 
-    this_nuc = result["trajectory"][-1]["properties"]["nuclear_repulsion_energy"]  # TEST
-    this_scf = result["trajectory"][-1]["extras"]["qcvars"]["SCF TOTAL ENERGY"]  # TEST
-    this_energy = result["energies"][-1]  # TEST
+    if _schver == 1:
+        this_nuc = result["trajectory"][-1]["properties"]["nuclear_repulsion_energy"]  # TEST
+        this_scf = result["trajectory"][-1]["extras"]["qcvars"]["SCF TOTAL ENERGY"]  # TEST
+        this_energy = result["energies"][-1]  # TEST
+    elif _schver == 2:
+        this_nuc = result["trajectory_results"][-1]["properties"]["nuclear_repulsion_energy"]  # TEST
+        this_scf = result["trajectory_results"][-1]["extras"]["qcvars"]["SCF TOTAL ENERGY"]  # TEST
+        this_energy = result["trajectory_properties"][-1]["return_energy"]  # TEST
     REF_nuc = 9.1134855397  # TEST
     REF_scf = -76.0261191302  # TEST
     REF_sosomp3 = -76.2277207554  # TEST

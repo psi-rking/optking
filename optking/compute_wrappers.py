@@ -3,7 +3,6 @@ import logging
 from copy import deepcopy
 
 import numpy as np
-from qcelemental.models import AtomicInput, AtomicResult, Molecule
 from qcelemental.util.serialization import json_dumps
 
 from .exceptions import OptError
@@ -13,7 +12,7 @@ logger = logging.getLogger(f"{log_name}{__name__}")
 
 
 class ComputeWrapper:
-    """An implementation of MolSSI's qc schema
+    """An implementation of MolSSI's QCSchema
 
     Parameters
     ----------
@@ -22,19 +21,21 @@ class ComputeWrapper:
 
     """
 
-    def __init__(self, molecule, model, keywords, program):
+    def __init__(self, molecule, model, keywords, program, protocols, dtype):
         self.molecule = molecule
         # ensure molecule orientation does not differ from optking regardless of how mol was created
         self.molecule.update({'fix_com': True, 'fix_orientation': True})
         self.model = model
         self.keywords = keywords
         self.program = program
+        self.dtype = dtype  # schema_version
+        self.protocols = protocols
         self.trajectory = []
         self.energies = []
 
     @classmethod
-    def init_full(cls, molecule, model, keywords, program, trajectory, energies):
-        wrapper = cls(molecule, model, keywords, program)
+    def init_full(cls, molecule, model, keywords, program, trajectory, energies, protocols, dtype):
+        wrapper = cls(molecule, model, keywords, program, protocols, dtype)
         wrapper.trajectory = trajectory
         wrapper.energies = energies
         return wrapper
@@ -47,22 +48,33 @@ class ComputeWrapper:
         geom : np.ndarray
             cartesian geometry 1D list
 
-        Returns
-        -------
-        json_for_input : dict
         """
 
         self.molecule["geometry"] = [i for i in geom.flat]
 
     def generate_schema_input(self, driver):
-        molecule = Molecule(**self.molecule)
-        inp = AtomicInput(
-            molecule=molecule, model=self.model, keywords=self.keywords, driver=driver
-        )
+        if self.dtype == 1:
+            # works until QCElemental v0.70
+            from qcelemental.models import AtomicInput, Molecule
+            molecule = Molecule(**self.molecule)
+            inp = AtomicInput(
+                molecule=molecule, model=self.model, keywords=self.keywords, driver=driver
+            )
+        elif self.dtype == 2:
+            from qcelemental.models.v2 import AtomicInput, Molecule
+            molecule = Molecule(**self.molecule)
+            inp = AtomicInput(
+                molecule=molecule, specification={"model": self.model, "keywords": self.keywords, "driver": driver, "protocols":
+self.protocols},
+            )
 
         return inp
 
     def generate_schema_input_for_procedure(self, driver):
+        if self.dtype == 1:
+            from qcelemental.models import Molecule
+        elif self.dtype == 2:
+            from qcelemental.models.v2 import Molecule
         molecule = Molecule(**self.molecule)
         mbspec = self.keywords
         mbspec["driver"] = driver
@@ -91,7 +103,11 @@ class ComputeWrapper:
         self.update_geometry(geom)
         ret = self._compute(driver)
         # Decodes the Result Schema to remove numpy elements (Makes ret JSON serializable)
-        ret = json.loads(json_dumps(ret))
+        if self.dtype == 1:
+            jret = json_dumps(ret)
+        elif self.dtype == 2:
+            jret = ret.model_dump_json()
+        ret = json.loads(jret)
         self.trajectory.append(ret)
 
         if print_result:
@@ -127,13 +143,15 @@ def make_computer_from_dict(computer_type, d):
     prog = d.get("program")
     traj = d.get("trajectory")
     ener = d.get("energies")
+    dtype = d.get("dtype")
+    ptcl = d.get("protocols")
 
     if computer_type == "psi4":
-        return Psi4Computer.init_full(mol, mod, key, prog, traj, ener)
+        return Psi4Computer.init_full(mol, mod, key, prog, traj, ener, ptcl, dtype)
     elif computer_type == "qc":
-        return QCEngineComputer.init_full(mol, mod, key, prog, traj, ener)
+        return QCEngineComputer.init_full(mol, mod, key, prog, traj, ener, ptcl, dtype)
     elif computer_type == "user":
-        return UserComputer.init_full(mol, mod, key, prog, traj, ener)
+        return UserComputer.init_full(mol, mod, key, prog, traj, ener, ptcl, dtype)
     else:
         raise OptError("computer_type is unknown")
 
@@ -143,13 +161,23 @@ class Psi4Computer(ComputeWrapper):
         import psi4
 
         inp = self.generate_schema_input(driver)
+        if self.dtype == 1:
+            # works until QCElemental v0.70
+            from qcelemental.models import AtomicResult
+            dinp = inp.dict()
+        elif self.dtype == 2:
+            from qcelemental.models.v2 import AtomicResult
+            dinp = inp.model_dump()
 
         if "1.3" in psi4.__version__:
-            ret = psi4.json_wrapper.run_json_qcschema(inp.dict(), clean=True)
+            ret = psi4.json_wrapper.run_json_qcschema(dinp, clean=True)
         else:
+            # note that this is a sub-fn, not the outer run_qcschema. in psi4 v1.11, run_json_qcschema runs in QCSchema v2,
+            #   whereas run_qcschema provides flexible v1/v2.
             ret = psi4.schema_wrapper.run_json_qcschema(
-                inp.dict(), clean=True, json_serialization=True
+                dinp, clean=True, json_serialization=True
             )
+
         ret = AtomicResult(**ret)
         return ret
 
@@ -168,36 +196,54 @@ class QCEngineComputer(ComputeWrapper):
         if self.model == "(proc_spec_in_options)":
             logger.debug("QCEngineComputer.path: ManyBody")
             inp = self.generate_schema_input_for_procedure(driver)
-            ret = qcengine.compute_procedure(inp, "qcmanybody", True, task_config=task_config)
+            ret = qcengine.compute_procedure(inp, self.program, raise_error=True, task_config=task_config)
 
         else:
             logger.debug("QCEngineComputer.path: Atomic")
             inp = self.generate_schema_input(driver)
-            ret = qcengine.compute(inp, self.program, True, task_config=task_config)
+            ret = qcengine.compute(inp, self.program, raise_error=True, task_config=task_config)
 
         return ret
 
 
 # Class to produce a compliant output with user provided energy/gradient/hessian
 class UserComputer(ComputeWrapper):
-    def __init__(self, molecule, model, keywords, program):
-        super().__init__(molecule, model, keywords, program)
+    def __init__(self, molecule, model, keywords, program, ptcl, dtype):
+        super().__init__(molecule, model, keywords, program, ptcl, dtype)
         self.external_energy = None
         self.external_gradient = None
         self.external_hessian = None
 
     output_skeleton = {
-        "id": None,
-        "schema_name": "qcschema_output",
-        "schema_version": 1,
-        "model": {"method": "unknown", "basis": "unknown"},
-        "provenance": {"creator": "User", "version": "0.1"},
-        "properties": {},
-        "extras": {"qcvars": {}},
-        "stdout": "User provided energy, gradient, or hessian is returned",
-        "stderr": None,
-        "success": True,
-        "error": None,
+        1: {
+            "id": None,
+            "schema_name": "qcschema_output",
+            "schema_version": 1,
+            "model": {"method": "unknown", "basis": "unknown"},
+            "provenance": {"creator": "User", "version": "0.1"},
+            "properties": {},
+            "extras": {"qcvars": {}},
+            "stdout": "User provided energy, gradient, or hessian is returned",
+            "stderr": None,
+            "success": True,
+            "error": None,
+        },
+        2: {
+            "id": None,
+            "schema_name": "qcschema_atomic_result",
+            "schema_version": 2,
+            "input_data": {
+                "specification": {
+                    "model": {"method": "unknown", "basis": "unknown"},
+                },
+            },
+            "provenance": {"creator": "User", "version": "0.1"},
+            "properties": {},
+            "extras": {"qcvars": {}},
+            "stdout": "User provided energy, gradient, or hessian is returned",
+            "stderr": None,
+            "success": True,
+        },
     }
 
     def _compute(self, driver):
@@ -215,10 +261,22 @@ class UserComputer(ComputeWrapper):
             if E is None:
                 raise OptError("Must provide energy.")
 
-        result = deepcopy(UserComputer.output_skeleton)
-        result["driver"] = driver
-        mol = Molecule(**self.molecule)
-        result["molecule"] = mol
+        result = deepcopy(UserComputer.output_skeleton[self.dtype])
+
+        if self.dtype == 1:
+            from qcelemental.models import Molecule, AtomicResult
+            result["driver"] = driver
+            mol = Molecule(**self.molecule)
+            result["molecule"] = mol
+
+        elif self.dtype == 2:
+            from qcelemental.models.v2 import Molecule, AtomicResult
+            result["input_data"]["specification"]["driver"] = driver
+            self.molecule.pop("schema_version", None)
+            mol = Molecule(**self.molecule)
+            result["input_data"]["molecule"] = mol
+            result["molecule"] = mol  # TODO right to duplicate?
+
         NRE = mol.nuclear_repulsion_energy()
         result["properties"]["nuclear_repulsion_energy"] = NRE
         result["extras"]["qcvars"]["NUCLEAR REPULSION ENERGY"] = NRE

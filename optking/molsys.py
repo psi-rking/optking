@@ -95,13 +95,15 @@ class Molsys(object):
         return cls(frags)
 
     @staticmethod
-    def from_psi4(mol) -> Tuple['Molsys', dict]:
+    def from_psi4(mol, dtype) -> Tuple['Molsys', dict]:
         """Creates a optking molecular system from psi4 mol. Note that not all information
         is preserved.
         Parameters
         ----------
         mol: (psi4.core.Molecule, psi4.qcdb.Molecule)
             psi4 mol
+        dtype:
+            QCSchema version. Note that Molecule.schema_version is advanced by 1.
         Returns
         -------
         Molsys:
@@ -117,12 +119,12 @@ class Molsys(object):
             logger.critical("from_psi4 cannot handle a non psi4 molecule")
             raise OptError("Cannot make molecular system from this molecule")
 
-        qc_mol = mol.to_schema(dtype=2)
+        qc_mol = mol.to_schema(dtype=dtype+1)
         qc_mol.update({"fix_com": True, "fix_orientation": True})
         opt_mol = Molsys.from_schema(qc_mol)
         return opt_mol, qc_mol
 
-    def to_schema(self) -> qcel.models.Molecule:
+    def to_schema(self, dtype) -> qcel.models.Molecule:
         mol_dict = {
             "symbols": self.atom_symbols,
             "geometry": self.geom.flat,
@@ -131,7 +133,10 @@ class Molsys(object):
             "fix_com": True,
             "fix_orientation": True,
         }
-        return qcel.models.Molecule(**mol_dict)
+        if dtype == 1:
+            return qcel.models.Molecule(**mol_dict)
+        elif dtype == 2:
+            return qcel.models.v2.Molecule(**mol_dict)
 
     def to_dict(self):
         d = {

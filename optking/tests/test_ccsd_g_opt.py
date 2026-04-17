@@ -3,6 +3,7 @@ import optking
 import pytest
 from .utils import utils
 
+_schver = 2 if utils.psi4_runs_v2_qcschema(psi4.__version__) else 1
 
 #! RHF-CCSD 6-31G** all-electron opt of H2O, default convergence
 def test_ccsd_h2o(check_iter):
@@ -19,11 +20,12 @@ def test_ccsd_h2o(check_iter):
     psi4.set_options(psi4_options)
 
     result = optking.optimize_psi4("ccsd")
-    print(result["trajectory"][-1].keys())
+    trajkey = "trajectory" if _schver == 1 else "trajectory_results"
+    print(result[trajkey][-1].keys())
 
-    this_scf = result["trajectory"][-1]["properties"]["scf_total_energy"]  # TEST
-    this_ccsd = result["trajectory"][-1]["properties"]["ccsd_correlation_energy"]  # TEST
-    this_total = result["trajectory"][-1]["properties"]["return_energy"]  # TEST
+    this_scf = result[trajkey][-1]["properties"]["scf_total_energy"]  # TEST
+    this_ccsd = result[trajkey][-1]["properties"]["ccsd_correlation_energy"]  # TEST
+    this_total = result[trajkey][-1]["properties"]["return_energy"]  # TEST
     REF_scf = -76.0229406477  # TEST
     REF_ccsd = -0.2082378354  # TEST
     REF_total = -76.2311784830  # TEST
@@ -60,9 +62,10 @@ def test_ccsd_ch2(check_iter):
 
     result = optking.optimize_psi4("CCSD")
 
-    this_scf = result["trajectory"][-1]["properties"]["scf_total_energy"]  # TEST
-    this_ccsd = result["trajectory"][-1]["properties"]["ccsd_correlation_energy"]  # TEST
-    this_total = result["trajectory"][-1]["properties"]["return_energy"]  # TEST
+    trajkey = "trajectory" if _schver == 1 else "trajectory_results"
+    this_scf = result[trajkey][-1]["properties"]["scf_total_energy"]  # TEST
+    this_ccsd = result[trajkey][-1]["properties"]["ccsd_correlation_energy"]  # TEST
+    this_total = result[trajkey][-1]["properties"]["return_energy"]  # TEST
     REF_scf = -38.9213947335  # TEST
     REF_cor = -0.1204840983  # TEST
     REF_tot = -39.0418788319  # TEST
@@ -99,9 +102,10 @@ def test_uccsd_ch2(check_iter):
 
     result = optking.optimize_psi4("CCSD")
 
-    this_scf = result["trajectory"][-1]["properties"]["scf_total_energy"]  # TEST
-    this_ccsd = result["trajectory"][-1]["properties"]["ccsd_correlation_energy"]  # TEST
-    this_total = result["trajectory"][-1]["properties"]["return_energy"]  # TEST
+    trajkey = "trajectory" if _schver == 1 else "trajectory_results"
+    this_scf = result[trajkey][-1]["properties"]["scf_total_energy"]  # TEST
+    this_ccsd = result[trajkey][-1]["properties"]["ccsd_correlation_energy"]  # TEST
+    this_total = result[trajkey][-1]["properties"]["return_energy"]  # TEST
     REF_scf = -38.9265869596  # TEST
     REF_ccsd = -0.1153361899  # TEST
     REF_total = -39.0419231495  # TEST
@@ -139,8 +143,9 @@ def test_uccsdpt_ch2(check_iter):
 
     result = optking.optimize_psi4("CCSD(T)")
 
-    this_ccsd_t = result["trajectory"][-1]["properties"]["ccsd_prt_pr_correlation_energy"]  # TEST
-    this_total = result["trajectory"][-1]["properties"]["ccsd_prt_pr_total_energy"]  # TEST
+    trajkey = "trajectory" if _schver == 1 else "trajectory_results"
+    this_ccsd_t = result[trajkey][-1]["properties"]["ccsd_prt_pr_correlation_energy"]  # TEST
+    this_total = result[trajkey][-1]["properties"]["ccsd_prt_pr_total_energy"]  # TEST
     REF_scf = -38.9265520844  # TEST. Value is not currently included in trajectory output
     REF_ccsd_t = -0.1171601876  # TEST
     REF_total = -39.0437122710  # TEST

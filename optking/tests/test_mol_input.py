@@ -1,7 +1,10 @@
+import sys
+import pytest
 import optking
 import psi4
 import qcelemental as qcel
 import numpy as np
+from .utils import utils
 
 GEOMETRY = np.asarray(
     [
@@ -40,7 +43,7 @@ def check_basic_mol(mol_dict):
     assert np.allclose(GEOMETRY, mol_dict["geometry"], atol=1e-7, rtol=0.0)
 
 
-def check_basic_input_spec(opt_input):
+def check_basic_input_spec(opt_input, schver):
     input_spec = {
         "driver": "gradient",
         "model": {"method": "hf", "basis": "STO-3G"},
@@ -48,14 +51,23 @@ def check_basic_input_spec(opt_input):
     }
 
     for val in input_spec.keys():
-        assert val in opt_input["input_specification"]
-        assert input_spec[val] == opt_input["input_specification"][val]
+        if schver == 1:
+            assert val in opt_input["input_specification"]
+            assert input_spec[val] == opt_input["input_specification"][val]
+        elif schver == 2:
+            assert val in opt_input["specification"]["specification"]
+            assert input_spec[val] == opt_input["specification"]["specification"][val]
 
 
-def test_psi4_core_mol():
+@pytest.mark.parametrize("dt", [None, 1, 2])
+def test_psi4_core_mol(dt):
+    if dt == 2 and not utils.qcel_impl_v2_qcschema():
+        pytest.skip()
+    kw = {"dtype": dt} if dt else {}
+
     psi4_mol = psi4.geometry(MOL_STRING + "\nNOCOM\nNOREORIENT")
     assert isinstance(psi4_mol, psi4.core.Molecule)
-    _, opt_input = optking.opt_helper.from_psi4(psi4_mol)
+    _, opt_input = optking.opt_helper.from_psi4(psi4_mol, **kw)
     check_basic_mol(opt_input["initial_molecule"])
 
 
@@ -73,39 +85,58 @@ def test_psi4_active_mol():
     check_basic_mol(opt_input["initial_molecule"])
 
 
-def build_qc():
-    qc_mol = qcel.models.Molecule.from_data(MOL_STRING, dtype="psi4", fix_com=True, fix_orientation=True)
-    input_spec = {
-        "driver": "gradient",
-        "model": {"method": "hf", "basis": "STO-3G"},
-        "keywords": {"scf_type": "pk"},  # just including a random keyword
-    }
+@pytest.fixture(scope="function", params=[1, 2])
+def build_qc(request):
+    if ((request.param == 1 and sys.version_info >= (3, 14)) or
+        (request.param == 2 and not utils.qcel_impl_v2_qcschema())):
+        pytest.skip()
 
-    opt_input = qcel.models.OptimizationInput(
-        initial_molecule=qc_mol.dict(), input_specification=input_spec
-    )
-    return opt_input, qc_mol
+    if request.param == 1:
+        qc_mol = qcel.models.Molecule.from_data(MOL_STRING, dtype="psi4", fix_com=True, fix_orientation=True)
+        input_spec = {
+            "driver": "gradient",
+            "model": {"method": "hf", "basis": "STO-3G"},
+            "keywords": {"scf_type": "pk"},  # just including a random keyword
+        }
+        opt_input = qcel.models.OptimizationInput(
+            initial_molecule=qc_mol.dict(), input_specification=input_spec
+        )
+        return opt_input, qc_mol, request.param
+
+    elif request.param == 2:
+        qc_mol = qcel.models.v2.Molecule.from_data(MOL_STRING, dtype="psi4", fix_com=True, fix_orientation=True)
+        input_spec = {
+          "specification": {
+            "driver": "gradient",
+            "model": {"method": "hf", "basis": "STO-3G"},
+            "keywords": {"scf_type": "pk"},  # just including a random keyword
+        }}
+
+        opt_input = qcel.models.v2.OptimizationInput(
+            initial_molecule=qc_mol.dict(), specification=input_spec
+        )
+        return opt_input, qc_mol, request.param
 
 
-def test_qcel_mol():
-    opt_input, qc_mol = build_qc()
+def test_qcel_mol(build_qc):
+    opt_input, qc_mol, schver = build_qc
 
     opt_dict1 = optking.opt_helper.from_schema(opt_input)
     check_basic_mol(opt_dict1["initial_molecule"])
-    check_basic_input_spec(opt_dict1)
+    check_basic_input_spec(opt_dict1, schver)
 
     opt_dict2 = optking.opt_helper.from_schema(qc_mol)
     check_basic_mol(opt_dict2["initial_molecule"])
 
-    opt_dict1a = optking.opt_helper.from_dict(opt_input.dict())
+    opt_dict1a = optking.opt_helper.from_dict(opt_input.dict(), dtype=schver)
     check_basic_mol(opt_dict1a["initial_molecule"])
-    check_basic_input_spec(opt_dict1a)
+    check_basic_input_spec(opt_dict1a, schver)
 
-    opt_dict2a = optking.opt_helper.from_dict(qc_mol.dict())
+    opt_dict2a = optking.opt_helper.from_dict(qc_mol.dict(), dtype=schver)
     check_basic_mol(opt_dict2a["initial_molecule"])
 
 
-def test_molsys_creation():
-    opt_input, _ = build_qc()
+def test_molsys_creation(build_qc):
+    opt_input, _, _ = build_qc
     opt_molsys = optking.molsys.Molsys.from_schema(opt_input.dict()["initial_molecule"])
     assert np.allclose(opt_molsys.geom.reshape(12), GEOMETRY, atol=1e-7, rtol=0.0)

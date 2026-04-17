@@ -1,12 +1,15 @@
 name: test
 channels:
   - conda-forge
+  - conda-forge/label/qcelemental_dev
+  - conda-forge/label/qcengine_dev
   - nodefaults
 dependencies:
     # Base
   - numpy
   - python
-  - qcelemental
+  - qcelemental >=0.50.0rc4
+  - qcengine >=0.50.0rc2
   - msgpack-python
   - pydantic=2  # Make sure that v2/optparams is generally working
 
@@ -14,7 +17,6 @@ dependencies:
   - pytest
   - pytest-cov
   - pytest-xdist
-  - psi4 1.9.1
-  - libint=2.9.0=*_4
+  - psi4 1.10.0
   - dftd3-python
   - codecov

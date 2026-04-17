@@ -8,6 +8,7 @@ from .utils import utils
 nucrefenergy = 6.197322440574482  # TEST
 refenergy = -38.925486977153  # TEST
 
+_schver = 2 if utils.psi4_runs_v2_qcschema(psi4.__version__) else 1
 
 def test_ch2_with_dummy_atoms(check_iter):
     ch2 = psi4.geometry(
@@ -36,8 +37,13 @@ def test_ch2_with_dummy_atoms(check_iter):
     psi4.set_options(psi4_options)
 
     json_output = optking.optimize_psi4("hf")
-    thisenergy = json_output["energies"][-1]
-    nucenergy = json_output["trajectory"][-1]["properties"]["nuclear_repulsion_energy"]
+    assert json_output["success"] is True, json_output["error"]
+    if _schver == 2:
+        thisenergy = json_output["trajectory_properties"][-1]["return_energy"]
+        nucenergy = json_output["trajectory_results"][-1]["properties"]["nuclear_repulsion_energy"]
+    else:
+        thisenergy = json_output["energies"][-1]
+        nucenergy = json_output["trajectory"][-1]["properties"]["nuclear_repulsion_energy"]
 
     assert psi4.compare_values(nucrefenergy, nucenergy, 3, "Nuclear repulsion energy")  # TEST
     assert psi4.compare_values(refenergy, thisenergy, 6, "Reference energy")  # TEST

@@ -3,6 +3,7 @@ import optking
 
 from .utils import utils
 
+_schver = 2 if utils.psi4_runs_v2_qcschema(psi4.__version__) else 1
 
 def test_charged_anion(check_iter):
     no2 = psi4.geometry(
@@ -22,7 +23,10 @@ def test_charged_anion(check_iter):
 
     json_output = optking.optimize_psi4("hf")
 
-    E = json_output["energies"][-1]
+    if _schver == 1:
+        E = json_output["energies"][-1]
+    elif _schver == 2:
+        E = json_output["trajectory_properties"][-1]["return_energy"]
     refenergy = -203.894394347422
     assert psi4.compare_values(refenergy, E, 6, "RHF singlet NO2- energy")
     utils.compare_iterations(json_output, 3, check_iter)
@@ -46,7 +50,10 @@ def test_neutral_triplet(check_iter):
 
     result = optking.optimize_psi4("hf")
 
-    E = result["energies"][-1]
+    if _schver == 1:
+        E = result["energies"][-1]
+    elif _schver == 2:
+        E = result["trajectory_properties"][-1]["return_energy"]
     REF_uhf = -149.6318688
     assert psi4.compare_values(REF_uhf, E, 6, "UHF triplet O2 Energy")  # TEST
     utils.compare_iterations(result, 3, check_iter)

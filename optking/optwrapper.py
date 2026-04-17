@@ -1,11 +1,12 @@
 # wrapper for optking's optimize function for input by psi4API
 # creates a moleuclar system from psi4s and generates optkings options from psi4's lsit of options
 import copy
+import inspect
 import json
 import logging
 import pprint
 
-from qcelemental.models import OptimizationInput, OptimizationResult
+import qcelemental
 from qcelemental.util.serialization import json_dumps
 from pydantic import ValidationError
 from pydantic.v1.error_wrappers import ValidationError as v1ValidationError
@@ -41,8 +42,9 @@ def optimize_psi4(calc_name, program="psi4", dertype=None, **xtra_opt_params):
     Returns
     -------
     opt_output: dict
-        dictionary serialized MOLSSI OptimizationResult.
-        see https://github.com/MolSSI/QCElemental/blob/master/qcelemental/models/procedures.py
+        dictionary serialized MolSSI OptimizationResult.
+        If Psi4 supports QCSchema v2 (~v1.11 Spring 2026), *opt_output* will be v2: https://molssi.github.io/QCElemental/next/model_opt.html .
+        Otherwise, *opt_output* will be v1: https://molssi.github.io/QCElemental/dev/api/qcelemental.models.OptimizationInput.html#qcelemental.models.OptimizationInput .
     """
 
     opt_input = {}
@@ -78,10 +80,18 @@ def optimize_psi4(calc_name, program="psi4", dertype=None, **xtra_opt_params):
             "error": {"error_type": type(error), "error_message": str(error)},
         }
     finally:
-        opt_input.update({"provenance": optking._optking_provenance_stamp})
-        opt_input["provenance"]["routine"] = "optimize_psi4"
-        opt_input.update(opt_output)
-        return opt_input
+        if computer.dtype == 1:
+            opt_input.update({"provenance": optking._optking_provenance_stamp})
+            opt_input["provenance"]["routine"] = "optimize_psi4"
+            opt_input.update(opt_output)
+
+            return opt_input
+
+        elif computer.dtype == 2:
+            opt_output["input_data"] = opt_input
+            opt_output["provenance"]["routine"] = "optimize_psi4"
+
+            return opt_output
 
 
 def initialize_from_psi4(calc_name, program, computer_type, dertype=None, **xtra_opt_params):
@@ -107,20 +117,37 @@ def initialize_from_psi4(calc_name, program, computer_type, dertype=None, **xtra
     import psi4
 
     # Get Molecule and Options from Psi4 as QCSchema
-    logger.debug("Setting up optimization from Psi4's current state: p4util.state_to_atomic_input")
-    atomic_input = psi4.driver.p4util.state_to_atomicinput(
-        driver="gradient",
-        method=calc_name,
-    ).dict()
+    logger.debug("Setting up optimization from Psi4's current state: p4util.state_to_atomicinput")
+
+    psi4_can_v2 = "dtype" in inspect.signature(psi4.driver.p4util.state_to_atomicinput).parameters  # PR 3341 pre-v1.11
+
+    if psi4_can_v2:
+        full_atomic_input = psi4.driver.p4util.state_to_atomicinput(
+            dtype=2,
+            driver="gradient",
+            method=calc_name,
+        ).model_dump()
+        atomic_input = full_atomic_input["specification"]
+    else:
+        atomic_input = psi4.driver.p4util.state_to_atomicinput(
+            driver="gradient",
+            method=calc_name,
+        ).dict()
+
+    opt_keys = {}
 
     # QCEngine doesn't expect information to already have been validated
-    atomic_input.pop("id")
-    atomic_input.pop("provenance")
-    atomic_input.pop("protocols")
-    o_molsys = molsys.Molsys.from_schema(atomic_input.get("molecule"))
+    if psi4_can_v2:
+        o_molsys = molsys.Molsys.from_schema(full_atomic_input.get("molecule"))
+        atomic_input["program"] = program
+    else:
+        atomic_input.pop("id")
+        atomic_input.pop("provenance")
+        atomic_input.pop("protocols")
+        o_molsys = molsys.Molsys.from_schema(atomic_input.get("molecule"))
+        opt_keys["program"] = program
 
     optking_canon = op.OptParams().to_dict(by_alias=True).keys()
-    opt_keys = {"program": program}
 
     # Psi4 options can get mixed in with optking's options in prepare_options_for_module anyway.
     # Atomic_input will contain all set options so only accept options that are present in
@@ -134,15 +161,33 @@ def initialize_from_psi4(calc_name, program, computer_type, dertype=None, **xtra
             opt_keys[xtra_key] = xtra_value
 
     # Make a qcSchema OptimizationInput
-    opt_input = {
-        "keywords": opt_keys,
-        "initial_molecule": atomic_input.pop("molecule"),
-        "input_specification": atomic_input,
-    }
+    if psi4_can_v2:
+        opt_input = {
+            "initial_molecule": full_atomic_input.pop("molecule"),
+            "specification": {
+                "specification": atomic_input,
+                "keywords": opt_keys,
+            },
+        }
+    else:
+        opt_input = {
+            "keywords": opt_keys,
+            "initial_molecule": atomic_input.pop("molecule"),
+            "input_specification": atomic_input,
+        }
 
     # in case user has selected a specific dertype
     if dertype:
-        opt_input.get("input_specification").get("keywords").update("dertype", dertype)
+        if psi4_can_v2:
+            opt_input.get("specification").get("specification").get("keywords").update("dertype", dertype)
+        else:
+            opt_input.get("input_specification").get("keywords").update("dertype", dertype)
+
+    # any Psi4 that is v2-capable requires QCElemental >=0.50 where QCSchema v2 is RTG
+    if psi4_can_v2:
+        from qcelemental.models.v2 import OptimizationInput
+    else:
+        from qcelemental.models import OptimizationInput
 
     try:
         logger.debug("Creating OptimizationInput")
@@ -180,14 +225,25 @@ def optimize_qcengine(opt_input, computer_type="qc"):
 
     """
 
-    if isinstance(opt_input, OptimizationInput):
-        opt_input = json.loads(json_dumps(opt_input))  # Remove numpy elements turn into dictionary
+    try:
+        allowed = (qcelemental.models.v1.OptimizationInput, qcelemental.models.v2.OptimizationInput)
+    except AttributeError:
+        allowed = (qcelemental.models.OptimizationInput)
+
+    if isinstance(opt_input, allowed):
+        # Remove numpy elements and turn into dictionary
+        opt_input = json.loads(json_dumps(opt_input))
     opt_output = copy.deepcopy(opt_input)
+
+    dtype = 2 if "specification" in opt_output.keys() else 1
 
     # Make basic optking molecular system
     oMolsys = molsys.Molsys.from_schema(opt_input["initial_molecule"])
     try:
-        initialize_options(opt_input["keywords"])
+        if dtype == 1:
+            initialize_options(opt_input["keywords"])
+        elif dtype == 2:
+            initialize_options(opt_input["specification"]["keywords"])
         computer = make_computer(opt_input, computer_type)
         opt_output = optimize(oMolsys, computer)
     except Exception as error:
@@ -198,13 +254,19 @@ def optimize_qcengine(opt_input, computer_type="qc"):
         }
         logger.critical(f"Error placed in qcschema: {opt_output}")
     finally:
-        opt_input.update(opt_output)
-        opt_input.update({"provenance": optking._optking_provenance_stamp})
-        opt_input["provenance"]["routine"] = "optimize_qcengine"
-        return opt_input
+        if dtype == 1:
+            opt_input.update(opt_output)
+            opt_input.update({"provenance": optking._optking_provenance_stamp})
+            opt_input["provenance"]["routine"] = "optimize_qcengine"
+            return opt_input
+        elif dtype == 2:
+            opt_output["input_data"] = opt_input
+            opt_output["provenance"] = optking._optking_provenance_stamp
+            opt_output["provenance"]["routine"] = "optimize_qcengine"
+            return opt_output
 
     # QCEngine.procedures.optking.py takes 'output_data', unpacks and creates Optimization Schema
-    # from qcel.models.procedures.py
+    # from qcel.models.v1.procedures.py or qcel.models.v2.optimization.py
 
 
 def make_computer(opt_input: dict, computer_type):
@@ -214,25 +276,47 @@ def make_computer(opt_input: dict, computer_type):
     # This gets updated so it shouldn't be a reference
     molecule = copy.deepcopy(opt_input["initial_molecule"])
 
+    schver = 2 if "specification" in opt_input.keys() else 1
+
     # Sorting by spec_schema_name isn't foolproof b/c opt_input might not be a
     #   constructed model at this point if it's not arriving through QCEngine.
-    spec_schema_name = opt_input["input_specification"].get("schema_name", "qcschema_input")
-    if spec_schema_name == "qcschema_manybodyspecification":
-        model = "(proc_spec_in_options)"
-        options = opt_input["input_specification"]
-    else:
-        qc_input = opt_input["input_specification"]
-        options = qc_input["keywords"]
-        model = qc_input["model"]
+    if schver == 1:
+        spec_schema_name = opt_input["input_specification"].get("schema_name", "qcschema_input")
+        if spec_schema_name == "qcschema_manybodyspecification":
+            # route is defunct
+            model = "(proc_spec_in_options)"
+            options = opt_input["input_specification"]
+            protocols = {}
+        else:
+            qc_input = opt_input["input_specification"]
+            options = qc_input["keywords"]
+            model = qc_input["model"]
+            protocols = {}  # no field for protocols in v1 QCInputSpecification
+    elif schver == 2:
+        spec_schema_name = opt_input["specification"]["specification"].get("schema_name", "qcschema_atomic_specification")
+        if spec_schema_name == "qcschema_many_body_specification":
+            model = "(proc_spec_in_options)"
+            options = opt_input["specification"]["specification"]
+            if "model" in (qc := options["specification"]):  # single spec
+                protocols = qc.get("protocols", {})
+            else:  # mapping spec
+                protocols = next(iter(qc.values())).get("protocols", {})
+            program = opt_input["specification"]["specification"].get("program") or "qcmanybody"
+        else:
+            qc_input = opt_input["specification"]["specification"]
+            options = qc_input["keywords"]
+            model = qc_input["model"]
+            protocols = qc_input.get("protocols", {})
+            program = qc_input.get("program", program)
 
     if computer_type == "psi4":
         # Please note that program is not actually used here
-        return Psi4Computer(molecule, model, options, program)
+        return Psi4Computer(molecule, model, options, program, protocols, dtype=schver)
     elif computer_type == "qc":
-        return QCEngineComputer(molecule, model, options, program)
+        return QCEngineComputer(molecule, model, options, program, protocols, dtype=schver)
     elif computer_type == "user":
         logger.info("Creating a UserComputer")
-        return UserComputer(molecule, model, options, program)
+        return UserComputer(molecule, model, options, program, protocols, dtype=schver)
     else:
         raise OptError("computer_type is unknown")
 

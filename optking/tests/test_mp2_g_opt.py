@@ -2,6 +2,7 @@ import psi4
 import optking
 from .utils import utils
 
+_schver = 2 if utils.psi4_runs_v2_qcschema(psi4.__version__) else 1
 
 def test_mp2_h2o(check_iter):
     h2o = psi4.geometry(
@@ -25,8 +26,12 @@ def test_mp2_h2o(check_iter):
 
     result = optking.optimize_psi4("mp2")
 
-    this_nucenergy = result["trajectory"][-1]["properties"]["nuclear_repulsion_energy"]  # TEST
-    this_mp2 = result["energies"][-1]  # TEST
+    if _schver == 1:
+        this_nucenergy = result["trajectory"][-1]["properties"]["nuclear_repulsion_energy"]  # TEST
+        this_mp2 = result["energies"][-1]
+    elif _schver == 2:
+        this_nucenergy = result["trajectory_results"][-1]["properties"]["nuclear_repulsion_energy"]  # TEST
+        this_mp2 = result["trajectory_properties"][-1]["return_energy"]
     REF_nucenergy = 9.1622581908184  # TEST
     REF_mp2 = -76.2224486598878  # TEST
     assert psi4.compare_values(REF_nucenergy, this_nucenergy, 3, "Nuclear repulsion energy")  # TEST

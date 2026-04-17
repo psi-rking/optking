@@ -1,3 +1,4 @@
+import sys
 import copy
 from pydantic import ValidationError
 import qcelemental as qcel
@@ -5,13 +6,14 @@ import numpy as np
 import optking
 import pathlib
 import pytest
+from .utils import utils
 
 """
 These tests attempt to verify that validation as well as saving the options object and reloading
 occurs correctly
 """
 
-def build_basic_mol():
+def build_basic_mol(dtype=None):
     """ The exact molecule doesn't matter just need something """
 
     mol_string = """0 1
@@ -21,29 +23,43 @@ def build_basic_mol():
     H      0.968989   -0.038209   -0.111740
     """
 
-    qc_mol = qcel.models.Molecule.from_data(mol_string, dtype="psi4")
+    if dtype == 2:
+        qc_mol = qcel.models.v2.Molecule.from_data(mol_string, dtype="psi4")
+    else:
+        qc_mol = qcel.models.Molecule.from_data(mol_string, dtype="psi4")
 
     print(qc_mol.dict())
 
-    qcel.models.OptimizationInput
-    input_spec = {
-            "driver": "gradient",
-            "model": {"method": "hf", "basis": "STO-3G"},
-            "keywords": {"scf_type": "pk"}  # just including a random keyword
-    }
-    opt_input = qcel.models.OptimizationInput(
-        initial_molecule=qc_mol.dict(),
-        input_specification=input_spec
-    )
+    if dtype == 2:
+        input_spec = {
+            "specification": {
+                "driver": "gradient",
+                "model": {"method": "hf", "basis": "STO-3G"},
+                "keywords": {"scf_type": "pk"}  # just including a random keyword
+        }}
+        opt_input = qcel.models.v2.OptimizationInput(
+            initial_molecule=qc_mol.model_dump(),
+            specification=input_spec
+        )
+    else:
+        input_spec = {
+                "driver": "gradient",
+                "model": {"method": "hf", "basis": "STO-3G"},
+                "keywords": {"scf_type": "pk"}  # just including a random keyword
+        }
+        opt_input = qcel.models.OptimizationInput(
+            initial_molecule=qc_mol.dict(),
+            input_specification=input_spec
+        )
     return opt_input
 
-def custom_helper_with_reload(params):
+def custom_helper_with_reload(params, **kwargs):
     """ Create an opthelper, take a step (just use unit forces), dump optimization to dict, and
     then reload it. Allows for testing changes in optking's internal state """
 
-    opt_input = build_basic_mol()
+    opt_input = build_basic_mol(**kwargs)
     optking.optwrapper.initialize_options(params, silent=False)
-    cust_helper = optking.CustomHelper(opt_input, params=params)
+    cust_helper = optking.CustomHelper(opt_input, params=params, **kwargs)
 
     cust_helper.gX = np.ones(12)
     stashed_opt = cust_helper.to_dict()
@@ -61,12 +77,19 @@ def assert_options_match(initial_params, new_params):
         assert key in new_params
         assert new_params[key] == item
 
-def test_hessians():
+
+@pytest.mark.parametrize("schver", [None, 1, 2])
+def test_hessians(schver):
+    if ((schver == 2 and not utils.qcel_impl_v2_qcschema()) or
+        (schver != 2 and sys.version_info >= (3, 14))):
+        pytest.skip()
 
     test_dir = pathlib.Path(__file__).parent
 
+    kw = {} if schver is None else {"dtype": schver}
+
     params = {"hessian_file": f"{test_dir}/test_data/H2O2_irc.hess"}
-    custom_helper, initial_params, reloaded_params = custom_helper_with_reload(params)
+    custom_helper, initial_params, reloaded_params = custom_helper_with_reload(params, **kw)
     print(initial_params)
 
     HESSIAN = np.asarray([

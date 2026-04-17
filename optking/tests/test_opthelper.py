@@ -3,13 +3,17 @@
 #  2. optking still has a module level parameters and history,
 #       that could be eliminated, so not yet multi-object safe.
 #  3. Have not yet restarted from json or disk, but should be close to working.
+import sys
 import optking
 import pytest
 import pprint
 import pathlib
+from .utils import utils
 
 def test_step_by_step():
     import psi4
+
+    schver = 2 if utils.psi4_runs_v2_qcschema(psi4.__version__) else 1
 
     h2o = psi4.geometry(
         """
@@ -29,7 +33,7 @@ def test_step_by_step():
     }
     psi4.set_options(psi4_options)
 
-    opt = optking.CustomHelper(h2o)
+    opt = optking.CustomHelper(h2o, dtype=schver)
 
     for step in range(30):
         grad, wfn = psi4.gradient("hf", return_wfn=True)
@@ -53,9 +57,13 @@ def test_step_by_step():
     # print(opt.history.summary_string())
     json_output = opt.close()
 
-    E = json_output["energies"][-1]  # TEST
+    if schver == 1:
+        E = json_output["energies"][-1]  # TEST
+        nucenergy = json_output["trajectory"][-1]["properties"]["nuclear_repulsion_energy"]
+    elif schver == 2:
+        E = json_output["trajectory_properties"][-1]["return_energy"]  # TEST
+        nucenergy = json_output["trajectory_results"][-1]["properties"]["nuclear_repulsion_energy"]
 
-    nucenergy = json_output["trajectory"][-1]["properties"]["nuclear_repulsion_energy"]
     refnucenergy = 8.9064983474  # TEST
     refenergy = -74.9659011923  # TEST
     assert psi4.compare_values(refnucenergy, nucenergy, 3, "Nuclear repulsion energy")
@@ -66,17 +74,18 @@ def test_lj_external_gradient():
     import qcelemental as qcel
     import numpy as np
 
-    h2o = qcel.models.Molecule.from_data(
-        """
+    schver = 2 if sys.version_info >= (3, 14) else 1
+
+    sh2o = """
         O  0.00000000  0.00000000 -0.12947689
         H  0.00000000 -1.49418674  1.02744610
         H  0.00000000  1.49418674  1.02744610
         """
-    )
+    h2o = qcel.models.Molecule.from_data(sh2o) if schver == 1 else qcel.models.v2.Molecule.from_data(sh2o)
 
     optking_options = {"g_convergence": "gau_verytight", "intrafrag_hess": "SIMPLE"}
 
-    opt = optking.CustomHelper(h2o, optking_options)
+    opt = optking.CustomHelper(h2o, optking_options, dtype=schver)
 
     for step in range(30):
         # Compute one's own energy and gradient
@@ -98,7 +107,10 @@ def test_lj_external_gradient():
     json_output = opt.close()
 
     assert conv is True
-    E = json_output["energies"][-1]  # TEST
+    if schver == 1:
+        E = json_output["energies"][-1]  # TEST
+    elif schver == 2:
+        E = json_output["trajectory_properties"][-1]["return_energy"]  # TEST
     RefEnergy = -0.03  # - epsilon * 3, where -epsilon is depth of each Vij well
     assert np.isclose(RefEnergy, E, rtol=1e-05, atol=1e-6)
 
@@ -116,6 +128,8 @@ def test_stepwise_export():
     """
     )
 
+    schver = 2 if utils.psi4_runs_v2_qcschema(psi4.__version__) else 1
+
     psi4.core.clean_options()
     psi4_options = {
         "diis": False,
@@ -126,7 +140,7 @@ def test_stepwise_export():
     }
     psi4.set_options(psi4_options)
 
-    opt = optking.CustomHelper(h2o)
+    opt = optking.CustomHelper(h2o, dtype=schver)
     optSaved = opt.to_dict()
 
     pp = pprint.PrettyPrinter(indent=2)
@@ -161,9 +175,13 @@ def test_stepwise_export():
     # print(opt.history.summary_string())
     json_output = opt.close()
 
-    E = json_output["energies"][-1]  # TEST
+    if schver == 1:
+        E = json_output["energies"][-1]  # TEST
+        nucenergy = json_output["trajectory"][-1]["properties"]["nuclear_repulsion_energy"]
+    elif schver == 2:
+        E = json_output["trajectory_properties"][-1]["return_energy"]  # TEST
+        nucenergy = json_output["trajectory_results"][-1]["properties"]["nuclear_repulsion_energy"]
 
-    nucenergy = json_output["trajectory"][-1]["properties"]["nuclear_repulsion_energy"]
     refnucenergy = 8.9064983474  # TEST
     refenergy = -74.9659011923  # TEST
     assert psi4.compare_values(refnucenergy, nucenergy, 3, "Nuclear repulsion energy")
@@ -173,6 +191,8 @@ def test_stepwise_export():
 def test_hooh_irc(check_iter):
     import psi4
     from .utils import utils
+
+    schver = 2 if utils.psi4_runs_v2_qcschema(psi4.__version__) else 1
 
     energy_5th_IRC_pt = -150.812913276783  # TEST
     h2o2 = psi4.geometry(
@@ -203,7 +223,7 @@ def test_hooh_irc(check_iter):
     }
 
     psi4.set_options(psi4_options)
-    opt = optking.CustomHelper(h2o2, params)
+    opt = optking.CustomHelper(h2o2, params, dtype=schver)
     optSaved = opt.to_dict()
 
     for i in range(50):
@@ -246,6 +266,8 @@ def test_linesearch(check_iter):
     import psi4
     from .utils import utils
 
+    schver = 2 if utils.psi4_runs_v2_qcschema(psi4.__version__) else 1
+
     refenergy = -1053.880393  # Eh
     Ar2 = psi4.geometry(
         """
@@ -264,7 +286,7 @@ def test_linesearch(check_iter):
     }
 
     psi4.set_options(psi4_options)
-    opt = optking.CustomHelper(Ar2, optking_options)
+    opt = optking.CustomHelper(Ar2, optking_options, dtype=schver)
     optSaved = opt.to_dict()
 
     for _ in range(50):
@@ -294,8 +316,12 @@ def test_linesearch(check_iter):
 
     # "linesearch" is not currrently recognized by psi4 read_options.
     json_output = opt.close()
-    E = json_output["energies"][-1]
-    nucenergy = json_output["trajectory"][-1]["properties"]["nuclear_repulsion_energy"]
+    if schver == 1:
+        E = json_output["energies"][-1]  # TEST
+        nucenergy = json_output["trajectory"][-1]["properties"]["nuclear_repulsion_energy"]
+    elif schver == 2:
+        E = json_output["trajectory_properties"][-1]["return_energy"]  # TEST
+        nucenergy = json_output["trajectory_results"][-1]["properties"]["nuclear_repulsion_energy"]
     assert psi4.compare_values(nucenergy, nucenergy, 3, "Nuclear repulsion energy")  # TEST
     assert psi4.compare_values(refenergy, E, 1, "Reference energy")  # TEST
     utils.compare_iterations(json_output, 9, check_iter)
