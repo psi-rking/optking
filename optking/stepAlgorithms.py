@@ -48,13 +48,13 @@ process is desired an OptimizationManager should be created.
 """
 
 import logging
-from math import fabs, sqrt
 from abc import ABC, abstractmethod
-from typing import Union
+from math import fabs, sqrt
+from typing import Literal, Union
 
 import numpy as np
 
-from . import convcheck
+from . import convcheck, log_name, op
 from .displace import displace_molsys
 from .exceptions import AlgError, OptError
 from .history import History
@@ -62,8 +62,6 @@ from .linearAlgebra import symm_mat_eig
 from .misc import is_dq_symmetric
 from .molsys import Molsys
 from .printTools import print_array_string, print_mat_string
-from . import log_name
-from . import op
 
 logger = logging.getLogger(f"{log_name}{__name__}")
 
@@ -91,7 +89,9 @@ class OptimizationInterface(ABC):
         self.print_lvl = params.print_lvl
 
     @abstractmethod
-    def take_step(self, fq=None, H=None, energy=None, **kwargs):
+    def take_step(
+        self, fq=None, H=None, energy=None, **kwargs
+    ) -> Union[tuple[np.ndarray, str], np.ndarray]:
         """Method skeleton (for example see OptimizationAlgorithm)
         1. Choose what kind of step should take place next
         2. take step
@@ -139,13 +139,13 @@ class OptimizationAlgorithm(OptimizationInterface):
         # self.linesearch = params.linesearch
 
     @abstractmethod
-    def requires(self, **kwargs):
+    def requires(self, **kwargs) -> tuple:
         """Returns tuple with strings ('energy', 'gradient', 'hessian') for what the algorithm
         needs to compute a new point"""
         pass
 
     @abstractmethod
-    def supports_trust_region(self):
+    def supports_trust_region(self) -> bool:
         """Returns boolean for whether a trust region should be used with this method"""
         pass
 
@@ -168,10 +168,12 @@ class OptimizationAlgorithm(OptimizationInterface):
         """Basic form of the algorithm"""
         pass
 
-    def take_step(self, fq=None, H=None, energy=None, return_str=False, **kwargs):
+    def take_step(
+        self, fq=None, H=None, energy=None, return_str=False, **kwargs
+    ) -> Union[tuple[np.ndarray, str], np.ndarray]:
         """Compute step and take step"""
 
-        if len(fq) == 0:
+        if fq is None or len(fq) == 0:
             logger.warning("Forces are missing. Step is 0")
             return np.zeros(0)
 
@@ -194,7 +196,7 @@ class OptimizationAlgorithm(OptimizationInterface):
             dq,
             fq,
             ensure_convergence=self.params.ensure_bt_convergence,
-            return_str=return_str,
+            return_str=True,  # Always use return_str here. Decide whether to return later
             **self.params.__dict__,
         )
         dq_norm, unit_dq, projected_fq, projected_hess = self.step_metrics(achieved_dq, fq, H)
@@ -441,10 +443,10 @@ class OptimizationAlgorithm(OptimizationInterface):
 
 
 class QuasiNewtonOptimization(OptimizationAlgorithm, ABC):
-    def requires(self):
+    def requires(self, **kwargs):
         return "energy", "gradient", "hessian"
 
-    def supports_trust_region(self):
+    def supports_trust_region(self) -> bool:
         return True
 
     def expected_energy(self, dq, fq, H):
@@ -471,7 +473,7 @@ class SteepestDescent(OptimizationAlgorithm):
         super().__init__(molsys, history, params)
         self.method = params.steepest_descent_type
 
-    def requires(self):
+    def requires(self, **kwargs):
         return "energy", "gradient"
 
     def supports_trust_region(self):
@@ -545,7 +547,7 @@ class SteepestDescent(OptimizationAlgorithm):
 
 
 class ConjugateGradient(OptimizationAlgorithm):
-    """ Implements the conjugate gradient algorithm.
+    """Implements the conjugate gradient algorithm.
 
     Notes
     -----
@@ -560,7 +562,7 @@ class ConjugateGradient(OptimizationAlgorithm):
         super().__init__(molsys, history, params)
         self.method = params.conjugate_gradient_type
 
-    def requires(self):
+    def requires(self, **kwargs):
         return "energy", "gradient"
 
     def step(self, fq, *args, **kwargs):
@@ -586,6 +588,10 @@ class ConjugateGradient(OptimizationAlgorithm):
         elif self.method == "DESCENT":
             beta_numerator = np.dot(fq, fq)
             beta_denominator = np.dot(prev_fq, prev_dq)
+        else:
+            raise ValueError(
+                "Conjugate gradient method not recognized. Pydantic should have prevented this."
+            )
 
         beta_fq = beta_numerator / beta_denominator
         # logger.info("\tfq:\n\t" + print_array_string(fq))
@@ -862,7 +868,6 @@ class RestrictedStepRFO(RFO):
 
         if self.print_lvl >= 4:
             logger.debug("\tScaled RFO matrix.\n\n" + print_mat_string(SRFOmat))
-            logger.debug("\tEigenvectors of scaled RFO matrix.\n\n" + print_mat_string(SRFOevects))
             logger.debug(
                 "\tEigenvalues of scaled RFO matrix.\n\n\t" + print_array_string(SRFOevals)
             )

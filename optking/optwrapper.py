@@ -269,9 +269,13 @@ def optimize_qcengine(opt_input, computer_type="qc"):
     # from qcel.models.v1.procedures.py or qcel.models.v2.optimization.py
 
 
-def make_computer(opt_input: dict, computer_type):
+def make_computer(opt_input: dict, computer_type: "str", program: "str" = ""):
     logger.debug("Creating a Compute Wrapper")
-    program = op.Params.program
+
+    if not program:
+        # temporary default
+        # TODO remove reference to global Params
+        program = op.Params.program
 
     # This gets updated so it shouldn't be a reference
     molecule = copy.deepcopy(opt_input["initial_molecule"])

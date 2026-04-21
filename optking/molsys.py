@@ -76,6 +76,13 @@ class Molsys(object):
         """
         logger.debug("\tGenerating molecular system for optimization from QC Schema.\n")
 
+        if isinstance(qc_molecule, qcel.models.Molecule):
+            qc_molecule = qc_molecule.dict()
+
+        if not isinstance(qc_molecule, dict):
+            # catch any incorrect input.
+            raise TypeError(f"Cannot convert object of type {type(qc_molecule)} to Molsys")
+
         geom = np.asarray(qc_molecule["geometry"])
         geom = geom.reshape(-1, 3)
 

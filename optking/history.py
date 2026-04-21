@@ -98,7 +98,7 @@ class Step(object):
 class History(object):
     """A collection of ``Steps`` objects. Manages updating the hessian."""
     def __init__(self, params=None):
-        self.steps = []
+        self.steps: list[Step] = []
         History.stepsSinceLastHessian = 0
 
         if params is None:

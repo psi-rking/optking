@@ -7,6 +7,7 @@ import qcelemental as qcel
 from . import addIntcos, bend, oofp, stre, tors
 from .exceptions import OptError
 from .printTools import print_array_string, print_mat_string
+from .simple import Simple
 from .v3d import are_collinear
 from . import log_name
 
@@ -109,6 +110,15 @@ class Frag:
     def intcos(self):
         """Getter for internal coordinates describing geometry of fragment"""
         return self._intcos
+
+    @intcos.setter
+    def intcos(self, new_vals: list[Simple]):
+
+        not_coords = [not isinstance(x, Simple) for x in new_vals]
+        if any(not_coords):
+            raise TypeError("Attempted to add a non_coordinate value to intcos")
+
+        self._intcos = new_vals
 
     @property
     def frozen(self):
