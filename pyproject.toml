@@ -17,17 +17,21 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
     "msgpack>=1.0",
     "numpy>=1.20",
-    "pydantic>=1.10",
+    "pydantic>=1.10.17",
     "qcelemental>=0.20.0",
     "qcengine>=0.20.0",
     "pint",
     "packaging",
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 
 [project.optional-dependencies]
 docs = [
@@ -38,8 +42,8 @@ docs = [
     "sphinx-design",
     "sphinxcontrib-napoleon",
     "sphinx-autobuild",
-    "autodoc_pydantic==1.9.1",
-    "pydantic==1.10.17",
+    "autodoc_pydantic>=1.9.1",
+    # "pydantic>=1.10.17",
     "pint",
 ]
 tests = [
@@ -57,12 +61,13 @@ style = [
     "isort",
 ]
 
+# create pydanticv2 feature to force newer
 pydanticv2 = [
     "pydantic>=2.0"
 ]
 
 pydanticv1 = [
-    "pydantic==1.10.17"
+    "pydantic>=1.10.17"
 ]
 
 psi4 = [
@@ -85,30 +90,45 @@ include = [
 ####
 # Testing Setup.
 # Test a combination of python versions with both pydantic v1 and pydantic v2
-# python 3.13 and pydantic v1 also runs psi4's tests (psi4 --test=opt)
+# python 3.13 and pydantic v2 also runs psi4's tests (psi4 --test=opt)
 # This can be run from the parent directory with hatch test --all optking/tests
-# omiting the --all flag will run a single test py 3.9 and pydantic v1
+# omiting the --all flag will run a single test: py 3.10 and pydantic v1
 ####
 [tool.hatch.envs.hatch-test]
 type = "conda"
 command = "conda"
 parallel = true
-args = ['optking/tests/']
-extra-args = ["--show-capture=stderr", "--check_iter=1", "-m not long"]
+default-args = ["optking/tests/"]
+extra-args = ["--show-capture=stderr", "--check_iter=1", "-m", "not long"]
 conda-forge = true
-environment-file = "./devtools/conda-envs/hatch-test.yaml"
+# environment-file = "./devtools/conda-envs/base-next.yaml"
 
 [tool.hatch.envs.hatch-test.overrides]
-name."3.13-pydanticv1".extra-args = { value = ["--show-capture=stderr", "--check_iter=1"]}
-name."3.13-pydanticv1".scripts = [
-    "run=python scripts/test_optking_and_psi4.py {env:HATCH_TEST_ARGS}",
+name."3.13-pydanticv2".extra-args = { value = ["--show-capture=stderr", "--check_iter=1"]}
+name."3.13-pydanticv2".scripts = [
+    "run=python3 scripts/test_optking_and_psi4.py {env:HATCH_TEST_ARGS}",
 ]
+
+# Couldn't get the nicer syntax below to work. Manually set environment file
+# environment-file = { value = "devtools/conda-envs/hatch/hatch-test-python{matrix:python}-{matrix:pydantics}.yaml" }
+name."3.10-pydanticv1".environment-file = { value = "devtools/conda-envs/hatch/hatch-test-python3.10-pydanticv1.yaml" }
+# name."3.13-pydanticv1".environment-file = { value = "devtools/conda-envs/hatch/hatch-test-python3.13-pydanticv1.yaml" }
+name."3.11-pydanticv2".environment-file = { value = "devtools/conda-envs/hatch/hatch-test-python3.11-pydanticv2.yaml" }
+name."3.12-pydanticv2".environment-file = { value = "devtools/conda-envs/hatch/hatch-test-python3.12-pydanticv2.yaml" }
+name."3.13-pydanticv2".environment-file = { value = "devtools/conda-envs/hatch/hatch-test-python3.13-pydanticv2.yaml" }
 
 # Can invoke all environments with hatch test --all
 # Everything else will come from conda-forge, but we want multiple pydantic versions
 [[tool.hatch.envs.hatch-test.matrix]]
-python = ["3.9", "3.13"]
-features = ["pydanticv1", "pydanticv2"]
+python = ["3.10"]
+pydantics = ["pydanticv1"]
+
+[[tool.hatch.envs.hatch-test.matrix]]
+python = ["3.11", "3.12", "3.13"]
+pydantics = ["pydanticv2"]
+
+# [tool.hatch.envs.test.scripts]
+# display = "echo {environment-file}"
 
 ####
 # Basic environment to use Psi4 and Optking
@@ -142,7 +162,7 @@ lint-check = "flake8 --max-line-length=99 {args:.}"
 lint-fix = "lint-check"
 
 [tool.pytest.ini_options]
-testpaths = "optking/tests"
+testpaths = ["optking/tests"]
 
 [tool.hatch.envs.docs]
 features = ["docs"]

@@ -347,7 +347,7 @@ class OptParams(BaseModel):
     ``OptParams({"frozen_oofp": "1 2 3 4"})`` Freezes ``OOFP(1, 2, 3, 4)``"""
 
     # Specify atom and X, XY, XYZ, ... to be frozen (unchanged)
-    frozen_cartesian: str = Field(default="", regex=rf"(?i)^\s*(?:\W?\d\s{CART_STR}\W*\s*)*$")
+    frozen_cartesian: str = Field(default="", regex=rf"(?i)^\s*(?:\W?\d+\s{CART_STR}\W*\s*)*$")
     """A string of white-space separated atomic indices and Cartesian labels to specify that the
     Cartesian coordinates for a given atom should be frozen (unchanged).
     ``OptParams({"frozen_cartesian": "1 XYZ 2 XY 2 Z"})`` Freezes ``CART(1, X)``,
