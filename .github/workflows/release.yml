@@ -1,4 +1,4 @@
-name: release to pypi
+name: Release
 
 on:
   push:
@@ -9,9 +9,6 @@ jobs:
   build:
     name: Build Project
     runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v6
 
     steps:
     - uses: actions/checkout@v6
