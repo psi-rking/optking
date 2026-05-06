@@ -92,7 +92,15 @@ include = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["optking"]
-exclude = ["optking/tests"]
+exclude = [
+    "optking/tests",
+    "optking/__pycache__",
+    "*.out",
+    "*.bak",
+    "*.dat",
+    "*.hess",
+    "*.vibrec"
+]
 
 ####
 # Testing Setup.
