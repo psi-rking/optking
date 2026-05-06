@@ -81,13 +81,15 @@ Documentation = "https://optking.readthedocs.io/en/latest/"
 source = "vcs"  # Use hatch-vcs from above.
 # fallback-version = "0.5.1"
 
-[build.hooks.vcs]
-version-file = "_version.py"
+[tool.hatch.build.hooks.vcs]
+version-file = "optking/_version.py"
 
 [tool.hatch.build.targets.sdist]
 include = [
     "optking/",
     "docs/",
+    "scripts/",
+    "devtools/"
 ]
 
 [tool.hatch.build.targets.wheel]
