@@ -43,7 +43,6 @@ docs = [
     "sphinxcontrib-napoleon",
     "sphinx-autobuild",
     "autodoc_pydantic>=1.9.1",
-    # "pydantic>=1.10.17",
     "pint",
 ]
 tests = [
@@ -80,12 +79,20 @@ Documentation = "https://optking.readthedocs.io/en/latest/"
 
 [tool.hatch.version]
 source = "vcs"  # Use hatch-vcs from above.
+fallback-version = "0.5.0.dev0"
+
+[build.hooks.vcs]
+path = "optking/_version.py"
 
 [tool.hatch.build.targets.sdist]
 include = [
-    "/optking",
-    ""
+    "optking/",
+    "docs/",
 ]
+
+[tool.hatch.build.targets.wheel]
+packages = ["optking"]
+exclude = ["optking/tests"]
 
 ####
 # Testing Setup.
@@ -126,9 +133,6 @@ pydantics = ["pydanticv1"]
 [[tool.hatch.envs.hatch-test.matrix]]
 python = ["3.11", "3.12", "3.13"]
 pydantics = ["pydanticv2"]
-
-# [tool.hatch.envs.test.scripts]
-# display = "echo {environment-file}"
 
 ####
 # Basic environment to use Psi4 and Optking

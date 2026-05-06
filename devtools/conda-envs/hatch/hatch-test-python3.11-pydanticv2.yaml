@@ -1,0 +1,25 @@
+name: test
+channels:
+  - conda-forge
+  - nodefaults
+  - conda-forge/label/qcelemental_dev
+  - conda-forge/label/qcengine_dev
+dependencies:
+    # Base
+  - numpy
+  - python 3.11
+  - qcelemental >=0.50.0rc4
+  - qcengine >=0.50.0rc2
+  - msgpack-python
+  - pydantic>=2.0 # This will be installed by pip. Fingers crossed no conflict
+
+    # Testing
+  - pytest
+  - pytest-cov
+  - pytest-xdist
+  - psi4 1.10
+  - dftd3-python
+  - codecov
+  - pip
+  - pip:
+    - qcmanybody >=0.7
