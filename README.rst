@@ -87,9 +87,14 @@ specific Quantum Chemistry programs is left to the user.
 OptKing uses ``hatch`` for its build system which can be used to create conda environments.
 To create a conda environment with Psi4, OptKing's required dependencies, and OptKing run
 
+*Please note - do not recommend installing psi4 this way. If you need to install optking from source,
+please install Psi4 or your Quantum Chemistry package of choice and install optking into that environment*
+
 .. code-block:: bash
 
-    pip install hatch hatch-conda  # Install hatch and conda plugin (conda must already be installed)
+    pip install pipx               # Recommended way to install hatch
+    pipx install hatch             # Install hatch and conda plugin (conda must already be installed)
+    pipx inject hatch hatch-conda  # Install conda plugin
     hatch env create psi4          # Create conda environment with all required deps
     pip install .                  # Install OptKing into conda env
 
