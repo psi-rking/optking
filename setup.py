@@ -26,7 +26,7 @@ if __name__ == "__main__":
             "qcelemental>=0.20.0",
             "qcengine>=0.20.0",
             "msgpack>=1.0",
-            "pydantic>=1.10",
+            "pydantic>=2",
         ],
         extras_require={
             "docs": [
