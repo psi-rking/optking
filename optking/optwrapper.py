@@ -9,7 +9,6 @@ import pprint
 import qcelemental
 from qcelemental.util.serialization import json_dumps
 from pydantic import ValidationError
-from pydantic.v1.error_wrappers import ValidationError as v1ValidationError
 
 import optking
 
@@ -55,7 +54,7 @@ def optimize_psi4(calc_name, program="psi4", dertype=None, **xtra_opt_params):
             calc_name, program, computer_type="psi4", dertype=dertype, **xtra_opt_params
         )
         opt_output = optimize(oMolsys, computer)
-    except (ValidationError, v1ValidationError) as error:
+    except ValidationError as error:
         logger.critical("A ValidationError has occured: %s", error, exc_info=True)
         opt_output = {
             "success": False,
@@ -192,7 +191,7 @@ def initialize_from_psi4(calc_name, program, computer_type, dertype=None, **xtra
     try:
         logger.debug("Creating OptimizationInput")
         opt_input = OptimizationInput(**opt_input)
-    except (ValidationError, v1ValidationError) as error:
+    except ValidationError as error:
         logger.critical("A Validation Error has occured while initializing optking: %s", error)
         logger.critical("Could not create an OptimizationInput")
         logger.critical(
