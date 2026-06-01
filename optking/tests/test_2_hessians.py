@@ -76,14 +76,11 @@ def test_hess_guess(check_iter, guess, expected, num_steps):
         "basis": "cc-pvdz",
         "scf_type": "pk",
         "g_convergence": "gau_verytight",
-        "intrafrag_hess": guess,
     }
-    if Version(psi4.__version__) >= Version("1.10.0"):
-        # this option missing after https://github.com/psi4/psi4/pull/3317 but tests passes fine anyways
-        psi4_options.pop("intrafrag_hess")
-
     psi4.set_options(psi4_options)
-    json_output = optking.optimize_psi4("hf")  # Uses default program (psi4)
+    # Pass option directly to optking since option was removed from Psi4 by accident.
+    # check_iter in CI will fail
+    json_output = optking.optimize_psi4("hf", **{"intrafrag_hess": guess})  # Uses default program (psi4)
     if _schver == 1:
         E = json_output["energies"][-1]
         print(f"Number of steps taken {len(json_output['trajectory'])}")

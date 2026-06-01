@@ -9,6 +9,7 @@ import qcelemental as qcel
 from . import bend, cart, dimerfrag, oofp
 from . import stre, tors, v3d
 from .exceptions import AlgError, OptError
+from .printTools import print_mat_string
 from .v3d import are_collinear
 from . import log_name
 from . import op
@@ -18,6 +19,88 @@ from . import misc
 #    adding coordinates.
 
 logger = logging.getLogger(f"{log_name}{__name__}")
+
+
+def make_internal_coords(o_molsys, params: op.OptParams):
+    """
+    Add optimization coordinates to molecule system.
+    May be called if coordinates have not been added yet, or have been removed due to an
+    algorithm error (bend going linear, or energy increasing, etc.).
+
+    Parameters
+    ----------
+    o_molsys: Molsys
+        current molecular system.
+    params: op.OptParams
+
+    Returns
+    -------
+    o_molsys: Molsys
+        The molecular system updated with internal coordinates.
+    """
+    # if params is None:
+    #     params = op.Params
+    logger.debug("\t Adding internal coordinates to molecular system")
+
+    # Use covalent radii to determine bond connectivity.
+    connectivity = connectivity_from_distances(
+        o_molsys.geom, o_molsys.Z, params.covalent_connect
+    )
+    logger.debug("Connectivity Matrix\n" + print_mat_string(connectivity))
+
+    if params.frag_mode == "SINGLE":
+        try:
+            # Make a single, supermolecule.
+            o_molsys.consolidate_fragments()  # collapse into one frag (if > 1)
+            o_molsys.split_fragments_by_connectivity()  # separate by connectivity
+            # increase connectivity until all atoms are connected
+            o_molsys.augment_connectivity_to_single_fragment(connectivity)
+            o_molsys.consolidate_fragments()  # collapse into one frag
+
+            if params.opt_coordinates in ["INTERNAL", "REDUNDANT", "BOTH"]:
+                o_molsys.fragments[0].add_intcos_from_connectivity(connectivity)
+                if params.add_auxiliary_bonds:
+                    o_molsys.fragments[0].add_auxiliary_bonds(connectivity)
+        except AlgError as error:
+            o_molsys.fragments[0]._intcos = []
+            if error.oofp_failures or error.linear_bends or error.linear_torsions:
+                params.opt_coordinates = "CARTESIAN"
+
+        if params.opt_coordinates in ["CARTESIAN", "BOTH"]:
+            o_molsys.fragments[0].add_cartesian_intcos()
+
+    elif params.frag_mode == "MULTI":
+        try:
+            # if provided multiple frags, then we use these.
+            # if not, then split them (if not connected).
+            if o_molsys.nfragments == 1:
+                o_molsys.split_fragments_by_connectivity()
+
+            if o_molsys.nfragments > 1:
+                add_dimer_frag_intcos(o_molsys, params)
+                # remove connectivity so that we don't add redundant coordinates
+                # between fragments
+                o_molsys.purge_interfragment_connectivity(connectivity)
+
+            if params.opt_coordinates in ["INTERNAL", "REDUNDANT", "BOTH"]:
+                for iF, F in enumerate(o_molsys.fragments):
+                    C = np.ndarray((F.natom, F.natom))
+                    C[:] = connectivity[o_molsys.frag_atom_slice(iF), o_molsys.frag_atom_slice(iF)]
+                    F.add_intcos_from_connectivity(C)
+                    if params.add_auxiliary_bonds:
+                        F.add_auxiliary_bonds(connectivity)
+        except AlgError as error:
+            if error.oofp_failures or error.linear_bends or error.linear_torsions:
+                for frag in o_molsys.fragments:
+                    frag._intcos = []
+                params.opt_coordinates = "CARTESIAN"
+
+        if params.opt_coordinates in ["CARTESIAN", "BOTH"]:
+            for F in o_molsys.fragments:
+                F.add_cartesian_intcos()
+
+    add_constrained_intcos(o_molsys, params)  # make sure these are in the set
+    return
 
 
 def connectivity_from_distances(geom, Z, covalent_connect=1.3):

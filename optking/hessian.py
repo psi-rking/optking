@@ -37,16 +37,12 @@ def show(H: np.ndarray, oMolsys):
 
 
 # def guess(intcos, geom, Z, connectivity=None, guessType="SIMPLE"):
-def guess(oMolsys, connectivity=None, guessType="SIMPLE"):
+def guess(oMolsys, guessType="SIMPLE"):
     """Generates diagonal empirical Hessian in a.u.
 
     Parameters
     ----------
-    intcos : list of Stre, Bend, Tors
-    geom : ndarray
-        cartesian geometry
-    connectivity : ndarray, optional
-        connectivity matrix
+    oMolsys: Molsys
     guessType: str, optional
         the default is SIMPLE. other options: FISCHER, LINDH_SIMPLE, SCHLEGEL
 

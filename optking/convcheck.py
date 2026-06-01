@@ -7,15 +7,10 @@ conv_check: Primary wrapper. Take information (as dictionary) from previous step
 """
 
 import logging
-import pprint
 from math import fabs
-from pydantic import BaseModel
 
-import numpy as np
-
+from . import log_name, op
 from .linearAlgebra import abs_max, rms
-from . import log_name
-from . import op
 
 logger = logging.getLogger(f"{log_name}{__name__}")
 
@@ -30,7 +25,11 @@ CONVERGENCE_PRESETS = {
         "one of": [None],
         "alternate": ["flat_potential"],
     },
-    "IRC": {"required": ["max_DE, max_disp, rms_disp"], "one of": [None], "alternate": [None]},
+    "IRC": {
+        "required": ["max_DE, max_disp, rms_disp"],
+        "one of": [None],
+        "alternate": [None],
+    },
     "TURBOMOLE": {
         "required": ["max_force", "rms_force", "max_DE", "max_disp", "rms_disp"],
         "one of": [None],
@@ -45,7 +44,45 @@ CONVERGENCE_PRESETS = {
 }
 
 
-def conv_check(conv_info: dict, opt_params: op.OptParams, required=None, str_mode=""):
+def get_conv_info(conv_info: dict, opt_params: op.OptParams):
+    """Returns the current convergence criteria being used as specified in `opt_params` and current convergence status
+
+    Returns
+    -------
+    dict:
+        For each key (rms_force, max_force etc...) four fields are provided
+            threshold
+            value - the current value
+            met - whether the threshold is satisfied
+            active - whether the criteria is on.
+    """
+    params = opt_params.conv_criteria()
+    criteria = _get_conv_criteria(
+        conv_info.get("dq"), conv_info.get("fq"), conv_info.get("energies")
+    )
+    conv_met, conv_active = _transform_criteria(criteria, params)
+
+    conv_schema = {}
+    # Expannd criteria, conv_met, and conv_active into a more user-friendly structure
+    for key in criteria.keys():
+        conv_schema.update(
+            {
+                key: {
+                    "threshold": params.get(f"conv_{key}"),
+                    "value": criteria[key],
+                    "met": conv_met[key],
+                    "active": conv_active[key],
+                }
+            }
+        )
+    converged = _test_for_convergence(conv_met, conv_active)
+    conv_schema.update({"converged": converged})
+    return conv_schema
+
+
+def conv_check(
+    conv_info: dict, opt_params: op.OptParams, required=None, str_mode="", **kwargs
+):
     """
     Parameters
     ----------
@@ -209,7 +246,7 @@ def _test_for_convergence(conv_met, conv_active, return_str=False, params=op.Par
 
 
 def _print_convergence_table(
-    conv_info, criteria, conv_met, conv_active, params_dict, return_str=False
+    conv_info, criteria, conv_met, conv_active, params_dict, return_str=False, log=True
 ):
     """Print a nice looking table for the current step"""
 
@@ -234,7 +271,8 @@ def _print_convergence_table(
 
     # Get all the values for convergence critera and active criteria markers
     conv_symbols = {
-        key: _get_criteria_symbol(conv_met.get(key), conv_active.get(key)) for key in conv_met
+        key: _get_criteria_symbol(conv_met.get(key), conv_active.get(key))
+        for key in conv_met
     }
     print_vals = (
         [conv_info.get("iternum"), conv_info.get("energies")[-1]]
@@ -254,7 +292,11 @@ def _print_convergence_table(
         suffix = "~\n" if conv_info.get("iternum") == 1 else "\n"
         dash_length, extra_irc_space, header = 94, "", std_header
     else:
-        suffix = "~\n" if conv_info.get("iternum") == 1 and conv_info.get("sub_step_num") == 1 else "\n"
+        suffix = (
+            "~\n"
+            if conv_info.get("iternum") == 1 and conv_info.get("sub_step_num") == 1
+            else "\n"
+        )
         dash_length, extra_irc_space, header = 114, " " * 16, irc_header
 
     conv_str = f"""\n\t{"==> Convergence Check <==": ^92}
@@ -279,7 +321,8 @@ def _print_convergence_table(
     conv_str += "\t" + "-" * dash_length + "\n\n"
     if return_str:
         return conv_str
-    logger.info(conv_str)
+    if log:
+        logger.info(conv_str)
 
 
 def _print_active_criteria(conv_status, conv_requirements):

@@ -9,19 +9,13 @@ import logging
 import pathlib
 import re
 import warnings
-from packaging import version
 
-from pydantic import (
-    BaseModel,
-    Field,
-    ConfigDict,
-    field_validator,
-    model_validator
-)
+from packaging import version
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pydantic import __version__ as pydantic_version
 
-from optking.exceptions import OptError
 from optking import log_name
+from optking.exceptions import OptError
 
 logger = logging.getLogger(f"{log_name}{__name__}")
 
@@ -30,6 +24,7 @@ ATOM_2 = r"\W?\s*\d+\W?\s+\d+\s*\W*\s*"
 ATOM_3 = r"\W?\s*\d+\W?\s+\d+\W?\s+\d+\s*\W*s*"
 ATOM_4 = r"\W?\s*\d+\W?\s+\d+\W?\s+\d+\W?\s+\d+\s*\W*\s*"
 RANGE = r"\W?-?\d+\.\d+\W?\s+-?\d+\.\d+\s*\W*\s*"
+
 
 class InterfragCoords(BaseModel):
     """Validate that the string input to create interfragment coords is mostly correct
@@ -58,6 +53,7 @@ class InterfragCoords(BaseModel):
     @classmethod
     def from_dict(cls, dict_obj):
         return cls.model_validate(dict_obj).to_dict()
+
 
 class OptParams(BaseModel):
     model_config = ConfigDict(
@@ -114,7 +110,9 @@ class OptParams(BaseModel):
 
     # Geometry optimization step type, e.g., Newton-Raphson or Rational Function Optimization
     step_type: str = Field(
-        pattern=re.compile(r"^(?:RFO|RS_I_RFO|P_RFO|NR|SD|LINESEARCH|CONJUGATE)$", flags=re.IGNORECASE),
+        pattern=re.compile(
+            r"^(?:RFO|RS_I_RFO|P_RFO|NR|SD|LINESEARCH|CONJUGATE)$", flags=re.IGNORECASE
+        ),
         default="RFO",
     )
     """One of ``["RFO", "RS_I_RFO", "P_RFO", "NR", "SD", "LINESEARCH", "CONJUGATE"]``. If ``OPT_TYPE``
@@ -126,7 +124,8 @@ class OptParams(BaseModel):
 
     # variation of steepest descent step size
     steepest_descent_type: str = Field(
-        pattern=re.compile(r"^(?:OVERLAP|BARZILAI_BORWEIN)$", flags=re.IGNORECASE), default="OVERLAP"
+        pattern=re.compile(r"^(?:OVERLAP|BARZILAI_BORWEIN)$", flags=re.IGNORECASE),
+        default="OVERLAP",
     )
     """One of ``["OVERLAP", "BARZILAI_BORWEIN"]``. Change how the ``SD`` step is calculated (scaled)"""
 
@@ -135,7 +134,8 @@ class OptParams(BaseModel):
     # Revue Française d'Automatique, Informatique, Recherche Opérationnelle. 3 (1): 35–43.
     # "FLETCHER" for Fletcher-Reeves.  Fletcher, R.; Reeves, C. M. (1964).
     conjugate_gradient_type: str = Field(
-        pattern=re.compile(r"^(?:FLETCHER|DESCENT|POLAK)$", flags=re.IGNORECASE), default="FLETCHER"
+        pattern=re.compile(r"^(?:FLETCHER|DESCENT|POLAK)$", flags=re.IGNORECASE),
+        default="FLETCHER",
     )
     """One of ``["POLAK", "FLETCHER", "DESCENT"]``. Changes how the step direction is calculated."""
 
@@ -147,7 +147,8 @@ class OptParams(BaseModel):
     # BOTH uses both redundant and Cartesian coordinates.
     opt_coordinates: str = Field(
         pattern=re.compile(
-            r"^(?:REDUNDANT|INTERNAL|DELOCALIZED|NATURAL|CARTESIAN|BOTH)$", flags=re.IGNORECASE
+            r"^(?:REDUNDANT|INTERNAL|DELOCALIZED|NATURAL|CARTESIAN|BOTH)$",
+            flags=re.IGNORECASE,
         ),
         default="INTERNAL",
     )
@@ -340,7 +341,7 @@ class OptParams(BaseModel):
     ``OptParams({"frozen_oofp": "1 2 3 4"})`` Freezes ``OOFP(1, 2, 3, 4)``"""
 
     # Specify atom and X, XY, XYZ, ... to be frozen (unchanged)
-    frozen_cartesian: str = Field(default="", pattern=rf"(?i)^\s*(?:\W?\d\s{CART_STR}\W*\s*)*$")
+    frozen_cartesian: str = Field(default="", pattern=rf"(?i)^\s*(?:\W?\d+\s{CART_STR}\W*\s*)*$")
     """A string of white-space separated atomic indices and Cartesian labels to specify that the
     Cartesian coordinates for a given atom should be frozen (unchanged).
     ``OptParams({"frozen_cartesian": "1 XYZ 2 XY 2 Z"})`` Freezes ``CART(1, X)``,
@@ -386,7 +387,9 @@ class OptParams(BaseModel):
     :math:`100^{\\circ} <` ``Oofp(1, 2, 3, 4)`` :math:`< 110^{\\circ}`"""
 
     # Specify atom and X, XY, XYZ, ... to be ranged
-    ranged_cartesian: str = Field(default="", pattern=rf"(?i)^\s*(?:\W?\d+\s+{CART_STR}\W*\s*{RANGE})*$")
+    ranged_cartesian: str = Field(
+        default="", pattern=rf"(?i)^\s*(?:\W?\d+\s+{CART_STR}\W*\s*{RANGE})*$"
+    )
     """A string of white-space separated atomic indices, Cartesian labels, and bounds for the
     Cartesian coordinates of a given atom. ``OptParams({"ranged_cart": "1 XYZ 2.0 2.1"})`` Forces
     :math:`2.0 <` ``Cart(1, X), Cart(1, Y), Cart(1, Z)`` :math:`< 2.1` (Angstroms)"""
@@ -421,7 +424,9 @@ class OptParams(BaseModel):
     sinusoidal function where x is the "value" (angle [radians]) of the coordinate (oofp)"""
 
     # Specify Cartesian coordinates for which extra force will be added
-    ext_force_cartesian: str = Field(default="", pattern=rf"(?i)^\s*(?:\W?\d+\s+{CART_STR}\W?\s+['\"].*['\"]\W?)*$")
+    ext_force_cartesian: str = Field(
+        default="", pattern=rf"(?i)^\s*(?:\W?\d+\s+{CART_STR}\W?\s+['\"].*['\"]\W?)*$"
+    )
     """A string of whitecaps separated atomic indices (1) and Cartesian labels, followed by a
     single variable equation surrounded in either a single or double quotation mark.
     Example: ``"1 X 'Sin(x)'"`` evaluates the force along the coordinate as 1 1-D sinusoidal
@@ -525,7 +530,7 @@ class OptParams(BaseModel):
     number of atoms. Each subsequent line contains three hessian values provided in
     `row-major order <https://en.wikipedia.org/wiki/Row-_and_column-major_order>`__.
     see psi4 docs for details on [cfour format]"""
-    
+
     # accompanies cart_hess_read. The default is not validated
     # Need two options here because str_to_upper cannot be turned of for members of the Model
     # _hessian_file avoids str_to_upper
@@ -547,7 +552,9 @@ class OptParams(BaseModel):
 
     # Model Hessian to guess intrafragment force constants
     intrafrag_hess: str = Field(
-        pattern=re.compile(r"^(?:SCHLEGEL|FISCHER|SIMPLE|LINDH|LINDH_SIMPLE)$", flags=re.IGNORECASE),
+        pattern=re.compile(
+            r"^(?:SCHLEGEL|FISCHER|SIMPLE|LINDH|LINDH_SIMPLE)$", flags=re.IGNORECASE
+        ),
         default="SCHLEGEL",
     )
     """Model Hessian to guess intrafragment force constants. One of ``["SCHLEGEL", "FISCHER",
@@ -608,7 +615,8 @@ class OptParams(BaseModel):
     # When interfragment coordinates are present, use as reference points either
     # principal axes or fixed linear combinations of atoms.
     interfrag_mode: str = Field(
-        pattern=re.compile(r"^(?:FIXED|PRINCIPAL_AXES)$", re.IGNORECASE), default="FIXED"
+        pattern=re.compile(r"^(?:FIXED|PRINCIPAL_AXES)$", re.IGNORECASE),
+        default="FIXED",
     )
     """One of ['FIXED', 'PRINCIPAL_AXES']. Use either principal axes or fixed linear combinations
     of atoms as reference points for generating the interfragment coordinates."""
@@ -634,7 +642,8 @@ class OptParams(BaseModel):
     See input examples."""
 
     interfrag_hess: str = Field(
-        pattern=re.compile(r"^(?:DEFAULT|FISCHER_LIKE)$", flags=re.IGNORECASE), default="DEFAULT"
+        pattern=re.compile(r"^(?:DEFAULT|FISCHER_LIKE)$", flags=re.IGNORECASE),
+        default="DEFAULT",
     )
     """Model Hessian to guess interfragment force constants. One of ["DEFAULT", "FISCHER_LIKE"]"""
 
@@ -728,7 +737,7 @@ class OptParams(BaseModel):
     _i_untampered = False
 
     def to_dict(self, by_alias=True):
-        """ Specialized form of __dict__. Makes sure to include convergence keys that are hidden """
+        """Specialized form of __dict__. Makes sure to include convergence keys that are hidden"""
         save = self.model_dump(by_alias=by_alias)
         include = {
             "_i_max_force": self._i_max_force,
@@ -831,12 +840,14 @@ class OptParams(BaseModel):
                     self.__setattr__(keyword_set[2], True)
                     self._i_untampered = False
                     if self.flexible_g_convergence:
-                        # use flexible conv criteria don't leave criteria preset active except for mods
+                        # use flexible conv criteria
+                        # don't leave criteria preset active except for mods
                         self._i_untampered = True
                     else:
                         self._i_untampered = False
                 else:
-                    # Keyword was not specified by user. Deactivate all other keywords if running in normal mode
+                    # Keyword was not specified by user.
+                    # Deactivate all other keywords if running in normal mode
                     # if in flexible mode, leave other criteria active
                     if not self.flexible_g_convergence:
                         self.__setattr__(keyword_set[2], False)
@@ -872,7 +883,9 @@ class OptParams(BaseModel):
                 # so don't let minimum step get shrunk too much.
                 self.intrafrag_trust_min = self.intrafrag_trust / 2.0
 
-        if (self.opt_type in ["IRC", "TS"] or self.step_type == "RS_I_RFO") and "INTRAFRAG_STEP_LIMIT" not in self._raw_input:
+        if (
+            self.opt_type in ["IRC", "TS"] or self.step_type == "RS_I_RFO"
+        ) and "INTRAFRAG_STEP_LIMIT" not in self._raw_input:
             self.intrafrag_trust = 0.2  # start with smaller intrafrag_trust
 
         if self.intrafrag_trust_max < self.intrafrag_trust:
@@ -934,7 +947,7 @@ class OptParams(BaseModel):
         # If arbitrary user forces, don't shrink step_size if Delta(E) is poor.
         return self
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_hessian_file(self):
         # Stash value of hessian_file in _hessian_file for internal use
         # mode before required so that we stash before str_to_upper is called
@@ -943,13 +956,13 @@ class OptParams(BaseModel):
             self.hessian_file = pathlib.Path(hess_file)
         return self
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_trajectory(self):
         if self.print_trajectory_xyz_file:
             msg = "`print_trajectory_xyz_file` is deprecated. Please use `write_trajectory`"
             logger.warning(msg)
             warnings.warn(msg, DeprecationWarning)
-        if self.write_trajectory or self.print_trajectory_xyz_file: 
+        if self.write_trajectory or self.print_trajectory_xyz_file:
             self.write_trajectory = True
             self.print_trajectory_xyz_file = True
         return self

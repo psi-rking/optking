@@ -347,7 +347,7 @@ class OptParams(BaseModel):
     ``OptParams({"frozen_oofp": "1 2 3 4"})`` Freezes ``OOFP(1, 2, 3, 4)``"""
 
     # Specify atom and X, XY, XYZ, ... to be frozen (unchanged)
-    frozen_cartesian: str = Field(default="", regex=rf"(?i)^\s*(?:\W?\d\s{CART_STR}\W*\s*)*$")
+    frozen_cartesian: str = Field(default="", regex=rf"(?i)^\s*(?:\W?\d+\s{CART_STR}\W*\s*)*$")
     """A string of white-space separated atomic indices and Cartesian labels to specify that the
     Cartesian coordinates for a given atom should be frozen (unchanged).
     ``OptParams({"frozen_cartesian": "1 XYZ 2 XY 2 Z"})`` Freezes ``CART(1, X)``,
@@ -419,7 +419,7 @@ class OptParams(BaseModel):
     surrounded in either a single or double quotation mark.
     Example: ``"1 2 3 4 'Sin(x)'"`` evaluates the force along the coordinate as a 1-D
     sinusoidal function where x is the "value" (angle [radians]) of the coordinate (torsion)"""
-    
+
     # Specify out-of-plane angles for which extra force will be added
     ext_force_oofp: str = Field(default="", regex=rf"^\s*(?:{ATOM_4}\s+['\"].*['\"]\W?)*$")
     """A string of white-space separated atomic indices (4) followed by a single variable equation
@@ -525,7 +525,7 @@ class OptParams(BaseModel):
     format specifies that the first line contains the number of atoms. Each subsequent line
     contains three hessian values provided in
     `row-major order <https://en.wikipedia.org/wiki/Row-_and_column-major_order>`__."""
-    
+
     # accompanies cart_hess_read. The default is not validated
     # Need two options here because str_to_upper cannot be turned of for individual members of the Model
     # _hessian_file avoids str_to_upper. Captitalization does not seem to be an issue for V1.
@@ -825,7 +825,7 @@ class OptParams(BaseModel):
         keys_present = [True if keyword_set[0] in set_vars else False for keyword_set in keywords]
 
         # Skip if no tampering occured. The following code sets active to False for any values the
-        # user didn't explicitly specify. 
+        # user didn't explicitly specify.
         if any(keys_present):
             # Summary: If ANY convergence options were specified by the user
             # (without flexible convergence being on), turn untampered on and set all options to inactive

@@ -12,7 +12,7 @@ psi4.set_memory("2 GB")
 # ... optking/optking/tests/
 test_dir = pathlib.Path(__file__).parent
 
-def test_hooh_irc(check_iter):
+def test_hooh_irc(check_iter, irc_cleanup):
     energy_5th_IRC_pt = -150.812913276783  # TEST
     h2o2 = psi4.geometry(
         """
@@ -34,6 +34,7 @@ def test_hooh_irc(check_iter):
         "opt_type": "irc",
         "irc_points": 5,
         "cart_hess_read": True,
+        "write_trajectory": False,
     }
 
     psi4.set_options(psi4_options)
@@ -50,7 +51,7 @@ def test_hooh_irc(check_iter):
     assert psi4.compare_values(energy_5th_IRC_pt, IRC[5]["energy"], 6, "Energy of 5th IRC point.")  # TEST
     utils.compare_iterations(json_output, 20, check_iter)
 
-def test_hooh_irc_quick(check_iter):
+def test_hooh_irc_quick(check_iter, irc_cleanup):
     energy_5th_IRC_pt = -150.812913276783  # TEST 5th point for .2 1st point for 1.0
     h2o2 = psi4.geometry(
         """
@@ -73,7 +74,7 @@ def test_hooh_irc_quick(check_iter):
         "irc_step_size": 1.0,
         "irc_points": 2,
         "cart_hess_read": True,
-        "print_trajectory_xyz_file": True
+        "write_trajectory": True
     }
 
     psi4.set_options(psi4_options)

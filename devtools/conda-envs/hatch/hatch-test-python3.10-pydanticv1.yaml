@@ -1,0 +1,21 @@
+name: test
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+    # Base
+  - numpy < 2.0
+  - python 3.10
+  - qcelemental
+  - qcengine
+  - msgpack-python
+  - pydantic >=1.10.17 # This will be installed by pip. Fingers crossed no conflict
+    # Testing
+  - pytest
+  - pytest-cov
+  - pytest-xdist
+  - psi4 1.9.1
+  - libint==2.9.0=*_4
+  - dftd3-python
+  - codecov
+  - pip

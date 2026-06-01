@@ -40,7 +40,7 @@ else:
             "If issues are encountered please downgrade pydantic or upgrade QCElemental as appropriate"
         )
 
-from ._version import get_versions
+from ._version import __version__ as optking_version
 from .opt_helper import EngineHelper, CustomHelper
 from .optimize import make_internal_coords, optimize
 from .optwrapper import optimize_psi4, optimize_qcengine
@@ -51,10 +51,9 @@ from .frag import Frag
 from .molsys import Molsys
 from .history import History
 
-__version__ = get_versions()["version"]
-del get_versions
+__version__ = optking_version
 _optking_provenance_stamp = {
     "creator": "optking",
     "routine": None,
-    "version": __version__,
+    "version": optking_version,
 }
