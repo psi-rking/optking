@@ -2,6 +2,7 @@ name: test
 channels:
   - conda-forge/label/qcelemental_dev
   - conda-forge/label/qcengine_dev
+  - psi4
   - conda-forge
   - nodefaults
 dependencies:
@@ -15,7 +16,7 @@ dependencies:
 
   # Quantum Chemistry Backends
   - psi4=1.10
-  - libxc<7.0
+  - libxc<6.0
   - dftd3-python
 
   # Testing
