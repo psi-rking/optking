@@ -15,8 +15,6 @@ dependencies:
 
   # Quantum Chemistry Backends
   - psi4=1.10
-  - libdkh>=1.2
-  - libxc=5.2.3
   - dftd3-python
 
   # Testing
