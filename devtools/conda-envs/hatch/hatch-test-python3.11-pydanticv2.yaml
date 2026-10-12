@@ -1,8 +1,8 @@
 name: test
 channels:
+  - conda-forge
   - conda-forge/label/qcelemental_dev
   - conda-forge/label/qcengine_dev
-  - conda-forge
   - nodefaults
 dependencies:
   # Base
@@ -15,6 +15,7 @@ dependencies:
 
   # Quantum Chemistry Backends
   - psi4=1.10
+  - einsums
   - dftd3-python
 
   # Testing
