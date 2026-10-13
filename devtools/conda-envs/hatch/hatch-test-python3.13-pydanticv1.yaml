@@ -16,6 +16,7 @@ dependencies:
   - pytest-cov
   - pytest-xdist
   - psi4 1.9.1
+  - libxc
   - libint==2.9.0=*_4
   - dftd3-python
   - codecov

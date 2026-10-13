@@ -254,6 +254,17 @@ def linear_torsion_check(phi_123, phi_234, phi_lim, indices):
     linear_bends = []
     old_bends = []
 
+    # An interior angle near 0 (below phi_lim) is not a linear bend: the torsion runs through a
+    # terminal atom (a connectivity artefact). Adding "linear bends" with that atom as vertex feeds
+    # inconsistent LINEAR coordinates into add_intcos_from_connectivity (see issue #115). Reset instead.
+    if (phi_123_bad and phi_123 < phi_lim) or (phi_234_bad and phi_234 < phi_lim):
+        raise AlgError(
+            f"Could not compute T({indices}): interior angle near 0 "
+            f"({phi_123 * 180.0 / np.pi:5.1f}, {phi_234 * 180.0 / np.pi:5.1f} deg); "
+            "torsion through a terminal atom, resetting coordinates",
+            back_transformation=True,
+        )
+
     # Print specific message of which bend has become problematic in torsion
     if phi_123_bad:
         val = phi_123 * 180.0 / np.pi

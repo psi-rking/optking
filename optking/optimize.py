@@ -820,23 +820,25 @@ def prepare_opt_output(o_molsys, computer, rxnpath=[], error=None, history=None)
         }
     elif computer.dtype == 2:
         import optking
-        final_props = {} if history is None else history.summary(printoption=False)[-1]
+        #final_props = {} if history is None else history.summary(printoption=False)[-1]
+        if history and history.summary(printoption=False):
+            final_props = history.summary(printoption=False)[-1]
+        else:
+            final_props = {}
         qc_output = {
             "schema_name": "qcschema_optimization_result",
-            # RAK/AH, please check sourcing for all these properties please
             "properties": {} if len(computer.energies) == 0 else {
                 "return_energy": computer.energies[-1],
-                "return_gradient": computer.trajectory[-1]["return_result"],
+                "return_gradient": computer.trajectory[-1]["return_result"] if computer.trajectory else None,
                 "optimization_iterations": len(computer.energies),
                 "nuclear_repulsion_energy": o_molsys.to_schema(2).nuclear_repulsion_energy(),
-                "final_max_force": final_props["max_force"],
-                "final_rms_force": final_props["rms_force"],
-                "final_max_displacement": final_props["max_disp"],
-                "final_rms_displacement": final_props["rms_disp"],
-                # TODO add "final_rms_force": computer.params._i_rms_force}, etc.
+                "final_max_force": final_props.get("max_force"),
+                "final_rms_force": final_props.get("rms_force"),
+                "final_max_displacement": final_props.get("max_disp"),
+                "final_rms_displacement": final_props.get("rms_disp"),
             },
             "trajectory_results": computer.trajectory,
-            "trajectory_properties": [r["properties"] for r in computer.trajectory],
+            "trajectory_properties": [r["properties"] for r in computer.trajectory if "properties" in r],
             "final_molecule": final_molecule,
             "extras": {},
             "success": True,

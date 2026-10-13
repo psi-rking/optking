@@ -405,10 +405,20 @@ def add_tors_from_connectivity(C, intcos, geom):
                         # look for an 'I' for I-J-[m]-k-L such that I-J-K is not collinear
                         J = j
                         i = 0
+                        visited_J = {J}  # guard against a cycle of LINEAR bends (issue #115)
                         while i < Natom:
                             if C[i, J] and i != m:  # i!=J i!=m
                                 b = bend.Bend(i, J, k, bend_type="LINEAR")
                                 if b in intcos:  # i,J,k is collinear
+                                    if i in visited_J:
+                                        raise AlgError(
+                                            "Cycle of LINEAR bends around atoms "
+                                            f"{sorted(visited_J)} while searching for torsions "
+                                            "past a collinear segment; the coordinate set is "
+                                            "inconsistent",
+                                            back_transformation=True,
+                                        )
+                                    visited_J.add(i)
                                     J = i
                                     i = 0
                                     continue
@@ -416,10 +426,20 @@ def add_tors_from_connectivity(C, intcos, geom):
                                     I = i
                                     K = k
                                     l = 0
+                                    visited_K = {K}  # same guard for the outward walk from k
                                     while l < Natom:
                                         if C[l, K] and l != m and l != j and l != i:
                                             b = bend.Bend(l, K, J, bend_type="LINEAR")
                                             if b in intcos:  # J-K-l is collinear
+                                                if l in visited_K:
+                                                    raise AlgError(
+                                                        "Cycle of LINEAR bends around atoms "
+                                                        f"{sorted(visited_K)} while searching for "
+                                                        "torsions past a collinear segment; the "
+                                                        "coordinate set is inconsistent",
+                                                        back_transformation=True,
+                                                    )
+                                                visited_K.add(l)
                                                 K = l
                                                 l = 0
                                                 continue
