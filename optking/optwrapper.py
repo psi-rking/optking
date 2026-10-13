@@ -89,6 +89,8 @@ def optimize_psi4(calc_name, program="psi4", dertype=None, **xtra_opt_params):
 
         elif computer.dtype == 2:
             opt_output["input_data"] = opt_input
+            if "provenance" not in opt_output or opt_output["provenance"] is None:
+                opt_output["provenance"] = optking._optking_provenance_stamp.copy()
             opt_output["provenance"]["routine"] = "optimize_psi4"
 
             return opt_output
