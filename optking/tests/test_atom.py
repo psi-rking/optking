@@ -18,7 +18,10 @@ def test_atom():
         E = qc_output["energies"][-1]
         Etraj = qc_output["trajectory"][-1]["extras"]["qcvars"]["CURRENT ENERGY"]
     elif _schver == 2:
-        E = qc_output["trajectory_properties"][-1]["return_energy"]
+        if qc_output.get("trajectory_properties"):
+            E = qc_output["trajectory_properties"][-1]["return_energy"]
+        else:
+            E = qc_output.get("properties", {}).get("return_energy")
         Etraj = qc_output["trajectory_results"][-1]["extras"]["qcvars"]["CURRENT ENERGY"]
     success = qc_output["success"]
 
